@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Company Students | OJT-LOGS</title>
+
+    <link rel="stylesheet" href="../sidebar/sidebar-web.css">
+    <link rel="stylesheet" href="../students/students.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+</head>
+
+<body>
+
+<div class="dashboard">
+
+    <!-- SIDEBAR -->
+    <div id="sidebar-container"></div>
+
+    <!-- MAIN -->
+    <main class="main">
+        <header>
+            <div>
+                <h2 id="companyTitleHeader">Company Interns</h2>
+                <p id="companySubtitleHeader">Managing interns for selected company.</p>
+            </div>
+
+            <div class="top-right">
+                <div class="notification">
+                    <i class="fa-regular fa-bell"></i>
+                    <span class="badge">3</span>
+                </div>
+
+                <div class="profile">
+                    <div class="avatar" id="userAvatar">CO</div>
+                    <div class="profile-info">
+                        <h4 id="userName">Coordinator</h4>
+                        <p id="userRole">OJT Coordinator</p>
+                    </div>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- STUDENTS CONTENT -->
+        <div class="students-content">
+
+            <!-- PAGE TITLE -->
+            <div class="students-header-wrapper">
+
+                <div class="table-title-section">
+                    <h2 id="companyPageTitle">Company Students</h2>
+                    <p id="companyPageSubtitle">
+                        View and manage student interns assigned to this company.
+                    </p>
+                </div>
+
+                <!-- BACK BUTTON -->
+                <button class="add-btn back-btn" id="backToCompaniesBtn">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    Back to Companies
+                </button>
+
+            </div>
+
+            <!-- STUDENT TABLE CARD -->
+            <section class="table-card">
+
+                <!-- TABLE HEADER -->
+                <div class="table-header">
+                    <div class="table-header-right">
+                        <!-- SEARCH -->
+                        <div class="search-box">
+                            <i class="fa-solid fa-search"></i>
+                            <input
+                                type="text"
+                                id="searchStudent"
+                                placeholder="Search student..."
+                            >
+                        </div>
+
+                        <!-- SORT -->
+                        <select id="sortSelect">
+                            <option value="Sort By">Sort By</option>
+                            <option value="Name (A-Z)">Name (A-Z)</option>
+                            <option value="Name (Z-A)">Name (Z-A)</option>
+                            <option value="Student ID">Student ID</option>
+                        </select>
+
+                        <!-- STATUS -->
+                        <select id="statusFilter">
+                            <option value="All Status">All Status</option>
+                            <option value="Active">Active</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Completed">Completed</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- TABLE -->
+                <div class="table-container">
+                    <table class="students-table">
+                        <thead>
+                            <tr>
+                                <th>Photo <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
+                                <th>Student ID <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
+                                <th>Name <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
+                                <th>Course <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
+                                <th>Section <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
+                                <th>Company <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
+                                <th>Status <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
+                                <th>Actions <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="studentTable">
+                            <tr>
+                                <td colspan="8" style="text-align:center; padding:25px; color:#888;">
+                                    Loading student data...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- PAGINATION -->
+                <div class="table-footer">
+                    <div class="showing-text" id="paginationInfo">Showing 1 to 8 of 0 records</div>
+                    <div class="pagination-controls">
+                        <button id="prevPageBtn" class="page-btn"><i class="fa-solid fa-chevron-left"></i> Prev</button>
+                        <div id="pageNumbers" class="page-numbers"></div>
+                        <button id="nextPageBtn" class="page-btn">Next <i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                    <div class="rows-per-page">
+                        <label for="rowsPerPageSelect">Rows per page:</label>
+                        <select id="rowsPerPageSelect">
+                            <option value="5">5</option>
+                            <option value="8" selected>8</option>
+                            <option value="15">15</option>
+                        </select>
+                    </div>
+                </div>
+
+            </section>
+        </div>
+    </main>
+</div>
+
+<script src="../sidebar/sidebar-web.js"></script>
+<script type="module" src="company-student.js"></script>
+
+</body>
+</html>

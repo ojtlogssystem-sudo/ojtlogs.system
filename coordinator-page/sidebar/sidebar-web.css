@@ -1,0 +1,580 @@
+/* ==========================
+   OJT-LOGS GLOBAL LAYOUT & SIDEBAR
+========================== */
+
+/* GOOGLE FONT */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+/* ==========================
+   ROOT VARIABLES (WALANG BINAGO)
+========================== */
+:root {
+    --primary: #AB0A0A;
+    --primary-hover: #8E0909;
+    --white: #ffffff;
+    --light: #f4f6f9;
+    --text: #333333;
+    --gray: #666666;
+}
+
+/* ==========================
+   RESET (WALANG BINAGO)
+========================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+
+body {
+    background: var(--light);
+    overflow: hidden;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+ul {
+    list-style: none;
+}
+
+button {
+    border: none;
+    background: none;
+    cursor: pointer;
+}
+
+/* ==========================
+   SYSTEM LAYOUT (WALANG BINAGO)
+========================== */
+.dashboard {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+}
+
+/* ==========================
+   SIDEBAR CONTAINER WRAPPER (WALANG BINAGO)
+========================== */
+#sidebar-container {
+    height: 100vh;
+    display: flex;
+    flex-shrink: 0;
+}
+
+/* ==========================
+   SIDEBAR (WALANG BINAGO SA BACKGROUND AT SIZES)
+========================== */
+.sidebar {
+    width: 260px;
+    min-width: 260px;
+    height: 100vh;
+    flex-shrink: 0;
+    background-image: url('../images/open sidebar-bg.png');
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 100% 100%;
+    color: var(--white);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: width .3s ease, min-width .3s ease, background-image .3s ease;
+}
+
+/* COLLAPSED SIDEBAR (WALANG BINAGO) */
+.sidebar.close {
+    width: 80px;
+    min-width: 80px;
+    background-image: url('../images/sidebar-bg.png');
+}
+
+/* SIDEBAR HEADER (EXACT ORIGINAL - WALANG BINAGO) */
+.sidebar-header {
+    height: 88px;
+    padding: 0 20px; /* Inalis ang top/bottom padding para pantay ang alignment */
+    display: flex;
+    justify-content: space-between;
+    align-items: center; /* Ino-organize nito para centered vertical ang logo at button */
+}
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.logo img {
+    width: 40px;
+    height: 40px;
+    background: #fff;
+    border-radius: 50%;
+    padding: 4px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.logo-text h4 {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 18px;
+}
+
+.logo-text p {
+    font-size: 11px;
+    opacity: .8;
+}
+
+/* ==========================
+   MENU BUTTONS (WALANG BINAGO)
+========================== */
+#menu-btn,
+#menu-btn2 {
+    color: white;
+    font-size: 22px;
+    margin-top: 0; /* INALIS ANG 18px MARGIN-TOP DITO */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%; /* Sinesiguradong nakatapat sa mismong gitna ng header height */
+}
+
+.collapsed-menu {
+    display: none;
+}
+
+.collapsed-menu button {
+    color: white;
+}
+
+/* ==========================
+   ORGANIZED SIDEBAR MENU (INAYOS ANG GROUPINGS AT SUB-ITEMS)
+========================== */
+.menu {
+    flex: 1;
+    margin-top: 10px;
+    padding: 0;
+    overflow-y: auto;
+}
+
+/* CATEGORY TITLE (Evaluations, System, Analytics, etc.) */
+.menu-category {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    padding: 12px 20px 4px 20px;
+}
+
+/* MAIN MENU ITEMS */
+.menu li.has-dropdown.open .sub-menu {
+    display: block !important;
+}
+/* 2. SIGURADUHING NAKAKALIKOT / MAPIPINDOT ANG SUB-MENU LINKS */
+.sub-menu {
+    display: none; /* Default hidden */
+    padding-left: 20px;
+    margin-top: 4px;
+}
+
+.sub-menu li a {
+    height: 36px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 12px;
+    border-radius: 8px;
+}
+
+.menu li.has-dropdown.open .arrow {
+    transform: rotate(180deg);
+}
+.menu li {
+    margin: 2px 10px;
+    border-radius: 10px;
+    position: relative;
+    transition: background .2s ease;
+}
+
+.menu li a {
+    width: 100%;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 0 12px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--white);
+}
+
+.menu li i {
+    width: 20px;
+    min-width: 20px;
+    text-align: center;
+    font-size: 16px;
+}
+
+.menu li a i.arrow {
+    margin-left: auto;
+    font-size: 12px;
+    transition: transform 0.2s ease;
+}
+
+.menu li:hover > a {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+.menu li.active > a {
+    background: rgba(100, 0, 0, 0.5);
+    border-radius: 10px;
+}
+
+.menu li:not(.has-dropdown)::before {
+    content: "";
+    position: absolute;
+    left: -10px;
+    top: 50%;
+    width: 4px;
+    height: 24px;
+    background: #ffffff;
+    border-radius: 0 4px 4px 0;
+    opacity: 0;
+    transform: translateY(-50%) scaleY(0);
+    transform-origin: center;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease;
+}
+
+.menu li.active::before {
+    opacity: 1;
+    transform: translateY(-50%) scaleY(1);
+}
+
+.menu li:hover::before {
+    opacity: 0.6;
+    transform: translateY(-50%) scaleY(0.5);
+}
+
+.menu li.active:hover::before {
+    opacity: 1;
+    transform: translateY(-50%) scaleY(1);
+}
+
+.sidebar.close .menu li::before {
+    left: -16px;
+}
+
+.sub-menu {
+    display: none;
+    position: relative;
+    padding-left: 6px;
+    margin-left: 22px;  
+    margin-top: 4px;
+    margin-bottom: 4px;
+    border-left: 2px solid rgba(255, 255, 255, 0.25);
+}
+
+.menu li.open .sub-menu {
+    display: block;
+}
+
+.sub-menu li {
+    margin: 2px 0;
+}
+
+.sub-menu li a {
+    height: 36px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.85);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 10px 0 12px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.sub-menu li a:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.sub-menu li.active a {
+    color: #ffffff;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+
+/* ==========================
+   COLLAPSED SIDEBAR STYLE (WALANG BINAGO)
+========================== */
+.sidebar.close .logo-text,
+.sidebar.close .menu span,
+.sidebar.close .logout span,
+.sidebar.close #menu-btn,
+.sidebar.close .menu-category,
+.sidebar.close .arrow,
+.sidebar.close .sub-menu {
+    display: none !important;
+}
+
+.sidebar.close .sidebar-header {
+    justify-content: center;
+    padding: 20px 0;
+}
+
+.sidebar.close .collapsed-menu {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.sidebar.close .menu li {
+    width: 48px;
+    height: 48px;
+    margin: 6px auto;
+}
+
+.sidebar.close .menu li a {
+    justify-content: center;
+    padding: 0;
+}
+
+.sidebar.close .menu li i {
+    width: auto;
+}
+
+.sidebar.close .menu li:hover > a {
+    transform: none;
+}
+
+.sidebar.close .menu li.active::before {
+    left: -16px;
+}
+
+
+
+.logout {
+    padding: 10px; /* Pantay sa side margin ng menu items */
+    margin-top: auto;
+    margin-bottom: 15px;
+}
+
+.logout a {
+    width: 100%;
+    height: 42px; /* Parehong-pareho sa .menu li a */
+    display: flex;
+    align-items: center;
+    gap: 14px; /* Pareho sa .menu li a */
+    padding: 0 12px; /* Pareho sa .menu li a */
+    font-size: 14px; /* Pareho sa .menu li a */
+    font-weight: 500;
+    color: var(--white);
+    border-radius: 10px;
+    transition: background .2s ease;
+}
+
+.logout a i {
+    width: 20px;
+    min-width: 20px;
+    text-align: center;
+    font-size: 16px; /* Pareho sa .menu li i */
+}
+
+.logout a:hover {
+    background: rgba(255, 255, 255, 0.1); /* Pareho sa .menu li:hover > a */
+}
+
+/* PAG NAKA-COLLAPSE / CLOSE ANG SIDEBAR */
+.sidebar.close .logout {
+    padding: 10px 0;
+    display: flex;
+    justify-content: center;
+}
+
+.sidebar.close .logout a {
+    width: 48px;
+    height: 48px; /* Pareho sa .sidebar.close .menu li */
+    padding: 0;
+    justify-content: center;
+}
+
+.sidebar.close .logout span {
+    display: none !important;
+}
+
+/* ==========================
+   MAIN CONTENT (WALANG BINAGO)
+========================== */
+.main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* HEADER */
+header {
+    height: 80px;
+    flex-shrink: 0;
+    background: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 30px;
+    border-bottom: 1px solid #ececec;
+}
+
+header h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #222;
+}
+
+header p {
+    color: #888;
+    margin-top: 3px;
+    font-size: 12px;
+}
+
+/* ==========================
+   HEADER RIGHT (WALANG BINAGO)
+========================== */
+.top-right {
+    display: flex;
+    align-items: center;
+    gap: 40px;
+}
+
+/* ==========================
+   NOTIFICATION (WALANG BINAGO)
+========================== */
+.notification {
+    position: relative;
+    cursor: pointer;
+    font-size: 22px;
+    color: #222;
+}
+
+.notification .badge {
+    position: absolute;
+    top: -7px;
+    right: -8px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #d60000;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 600;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 2px solid white;
+}
+
+/* ==========================
+   PROFILE (WALANG BINAGO)
+========================== */
+.profile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+}
+
+.avatar {
+    width: 41px;
+    height: 41px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.profile-info h4 {
+    font-size: 13px;
+    font-weight: 600;
+    color: #222;
+    line-height: 1.1;
+}
+
+.profile-info p {
+    font-size: 11px;
+    color: #888;
+    margin-top: 2px;
+}
+
+.profile i {
+    font-size: 12px;
+    color: #777;
+}
+
+/* ==========================
+   SCROLLBAR & RESPONSIVE (WALANG BINAGO)
+========================== */
+.main::-webkit-scrollbar,
+.menu::-webkit-scrollbar {
+    width: 6px;
+}
+
+.main::-webkit-scrollbar-thumb,
+.menu::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+}
+
+@media(max-width: 768px) {
+    .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        height: 100vh;
+        z-index: 999;
+    }
+
+    .sidebar.close {
+        width: 75px;
+        min-width: 75px;
+    }
+
+    .main {
+        margin-left: 75px;
+    }
+
+    header {
+        padding: 0 20px;
+    }
+
+    header h2 {
+        font-size: 22px;
+    }
+
+    .top-right {
+        gap: 20px;
+    }
+}
+
+@media(max-width: 480px) {
+    header {
+        padding: 0 15px;
+    }
+
+    header p,
+    .profile-info,
+    .notification {
+        display: none;
+    }
+}

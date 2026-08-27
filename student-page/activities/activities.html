@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Activities</title>
+
+    <link rel="stylesheet" href="../templated/header.css">
+    <link rel="stylesheet" href="../templated/sidebar.css">
+    <link rel="stylesheet" href="../student_dashboard/student_dashboard.css">
+    <link rel="stylesheet" href="activities.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+</head>
+<body>
+
+<div class="dashboard">
+    <!-- Sidebar Container -->
+    <div id="sidebar-container"></div>
+
+    <main class="main">
+
+        <!-- Activity History Container -->
+        <section class="dashboard-content">
+            <div class="activity-card">
+                <div class="section-title">
+                    <div class="title-left">
+                        <span class="vertical-line red"></span>
+                        <h3>Activity History</h3>
+                    </div>
+                </div>
+
+                <!-- Dito mag-a-appear lahat ng dynamic activities mula sa Firebase nang walang limit -->
+                <div class="activity-list" id="all-activities-list">
+                    <div class="activity-item">
+                        <div class="activity-info">
+                            <h4>Loading activities...</h4>
+                            <p>Please wait.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<!-- Scripts -->
+<script type="module" src="activities.js"></script>
+
+</body>
+</html>

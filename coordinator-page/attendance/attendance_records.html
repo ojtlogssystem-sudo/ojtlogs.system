@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Records | OJT-LOGS</title>
+
+    <link rel="stylesheet" href="../sidebar/sidebar-web.css">
+    <link rel="stylesheet" href="todays_attendance.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+</head>
+
+<body>
+
+<div class="dashboard">
+
+    <!-- Sidebar Container -->
+    <div id="sidebar-container"></div>
+
+    <!-- Main Content -->
+    <main class="main">
+        
+        <!-- Header -->
+        <header>
+            <div>
+                <h2>Attendance Records</h2>
+                <p>View complete logs and historical attendance records of students.</p>
+            </div>
+
+            <div class="top-right">
+                <div class="notification">
+                    <i class="fa-regular fa-bell"></i>
+                    <span class="badge">3</span>
+                </div>
+
+                <div class="profile">
+                    <div class="avatar" id="headerAvatar">MS</div>
+                    <div class="profile-info">
+                        <h4 id="profileName">Coordinator</h4>
+                        <p>OJT Coordinator</p>
+                    </div>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- Attendance Content -->
+        <div class="attendance-content">
+
+            <section class="table-card">
+                <div class="table-header">
+                    <h3>Attendance Records</h3>
+
+                    <div class="table-header-right">
+                        <div class="search-box">
+                            <i class="fa-solid fa-search"></i>
+                            <input type="text" id="attendanceSearch" placeholder="Search student...">
+                        </div>
+
+                        <select id="sectionFilter">
+                            <option value="All Sections">All Sections</option>
+                        </select>
+
+                        <select id="statusFilter">
+                            <option value="All Status">All Status</option>
+                            <option value="Present">Present</option>
+                            <option value="Late">Late</option>
+                            <option value="Absent">Absent</option>
+                            <option value="Rejected">Rejected</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="students-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Student Name</th>
+                                <th>Course & Section</th>
+                                <th>Company</th>
+                                <th>Time In</th>
+                                <th>Time Out</th>
+                                <th>Total Hours</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="attendanceTable">
+                            <tr>
+                                <td colspan="9" style="text-align: center; padding: 25px;">Loading attendance records</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- TABLE FOOTER / PAGINATION -->
+                <div class="table-footer">
+                    <div class="pagination-info" id="paginationInfo">
+                        Showing 0 of 0 records
+                    </div>
+
+                    <div class="pagination-controls">
+                        <button class="page-btn" id="prevPageBtn" disabled>
+                            <i class="fa-solid fa-chevron-left"></i>
+                        </button>
+                        <div class="page-numbers" id="pageNumbers">
+                            <button class="page-num active">1</button>
+                        </div>
+                        <button class="page-btn" id="nextPageBtn" disabled>
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                    </div>
+
+                    <div class="rows-per-page">
+                        <span>Rows per page:</span>
+                        <select id="rowsPerPageSelect">
+                            <option value="6" selected>6</option>
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+
+    </main>
+
+</div>
+
+<script src="../sidebar/sidebar-web.js"></script>
+<script type="module" src="attendance_records.js"></script>
+
+</body>
+</html>

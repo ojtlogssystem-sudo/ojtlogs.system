@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard</title>
+    
+    <link rel="stylesheet" href="student_dashboard.css">
+    <link rel="stylesheet" href="../templated/header.css">
+    <link rel="stylesheet" href="../templated/sidebar.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+</head>
+<body>
+
+<div class="dashboard">
+    <div id="sidebar-container"></div>
+
+    <main class="main">
+        <!-- Header Bar -->
+        <header id="header-container" class="dashboard-header">
+            <div class="header-left">
+                <button id="mobile-menu" class="mobile-menu-btn"><i class="fa-solid fa-bars"></i></button>
+                <h2 id="page-title">Dashboard</h2>
+            </div>
+            
+            <div class="header-right">
+                <div class="notification">
+                    <i class="fa-regular fa-bell"></i>
+                    <span class="notification-badge">3</span>
+                </div>
+
+                <div class="user-profile" id="profile-dropdown-btn">
+                    <div class="profile-circle" id="user-initials">--</div>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </div>
+
+                <div class="profile-card-dropdown" id="profile-dropdown-menu">
+                    <div class="profile-card-header">
+                        <h4 id="dropdown-user-fullname">Loading...</h4>
+                        <p class="role-title">Student Intern</p>
+                    </div>
+
+                    <div class="profile-card-body">
+                        <a href="/profile/profile.html" class="profile-menu-item">
+                            <i class="fa-regular fa-user"></i>
+                            <span>My Profile</span>
+                        </a>
+                        <a href="/settings/settings.html" class="profile-menu-item">
+                            <i class="fa-solid fa-gear"></i>
+                            <span>Settings</span>
+                        </a>
+                        <a href="#" id="logout-btn" class="profile-menu-item logout">
+                            <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                            <span>Logout</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Summary Cards -->
+        <section class="summary-cards">
+            <div class="summary-card green">
+                <div class="card-top">
+                    <div>
+                        <h5>Hours Completed</h5>
+                        <h2>0 hours</h2>
+                    </div>
+
+                    <div class="card-icon green-icon">
+                        <i class="fa-regular fa-clock"></i>
+                    </div>
+                </div>
+
+                <div class="progress">
+                    <div class="progress-fill green-fill" style="width: 0%;"></div>
+                </div>
+
+                <span>0% of required hours</span>
+            </div>
+
+            <div class="summary-row">
+                <div class="summary-card blue">
+                    <div class="card-top">
+                        <div>
+                            <h5>Required Hours</h5>
+                            <h2>-- hours</h2>
+                        </div>
+
+                        <div class="card-icon blue-icon">
+                            <i class="fa-solid fa-bullseye"></i>
+                        </div>
+                    </div>
+
+                    <p class="card-sub">-- hours remaining</p>
+                </div>
+
+                <div class="summary-card purple">
+                    <div class="card-top">
+                        <div>
+                            <h5>Internship Status</h5>
+                            <h2>Loading...</h2>
+                        </div>
+
+                        <div class="card-icon purple-icon">
+                            <i class="fa-solid fa-shield-halved"></i>
+                        </div>
+                    </div>
+
+                    <span class="status-text">
+                        Loading status...
+                    </span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Content Sections -->
+        <section class="dashboard-content">
+
+            <!-- Today's Attendance -->
+            <div class="attendance-card">
+                <div class="section-title">
+                    <div class="title-left">
+                        <span class="vertical-line red"></span>
+                        <h3>Today's Attendance</h3>
+                    </div>
+                </div>
+
+                <div class="attendance-box orange-box" id="timein-box">
+                    <div class="box-left">
+                        <i class="fa-regular fa-clock" id="timein-icon"></i>
+                        <div>
+                            <h4 id="timein-title">Time In</h4>
+                            <p id="timein-desc">You haven't timed in yet.</p>
+                        </div>
+                    </div>
+
+                    <div class="box-right">
+                        <span>Time In</span>
+                        <h2 id="today-timein-val">--</h2>
+                    </div>
+                </div>
+
+                <div class="attendance-box orange-box" id="timeout-box">
+                    <div class="box-left">
+                        <i class="fa-regular fa-clock" id="timeout-icon"></i>
+                        <div>
+                            <h4 id="timeout-title">Time Out</h4>
+                            <p id="timeout-desc">Waiting for time in.</p>
+                        </div>
+                    </div>
+
+                    <div class="box-right">
+                        <span>Time Out</span>
+                        <h2 id="today-timeout-val">--</h2>
+                    </div>
+                </div>
+
+                <div class="attendance-footer">
+                    <div>
+                        <span>Total Hours Rendered Today</span>
+                    </div>
+                    <strong id="total-rendered-today">0h 0m</strong>
+                </div>
+            </div>
+
+            <!-- Internship Progress -->
+            <div class="progress-card">
+                <div class="section-title">
+                    <div class="title-left">
+                        <span class="vertical-line red"></span>
+                        <h3>Internship Progress</h3>
+                    </div>
+                </div>
+
+                <div class="progress-body">
+                    <div class="progress-circle">
+                        <div class="circle" style="background: conic-gradient(#22c55e 0%, #ececec 0);">
+                            <h1>0%</h1>
+                            <span>Overall Progress</span>
+                        </div>
+                    </div>
+
+                    <div class="progress-details">
+                        <div class="detail-item">
+                            <span>Hours Completed</span>
+                            <strong>0 hrs</strong>
+                        </div>
+
+                        <div class="detail-item">
+                            <span>Remaining Hours</span>
+                            <strong>0 hrs</strong>
+                        </div>
+
+                        <div class="detail-item">
+                            <span>Completion Date</span>
+                            <strong>--/----</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="progress-divider">
+
+                <div class="required-hours-box">
+                    <span class="required-label">Required Hours</span>
+                    <strong class="required-value purple">--</strong>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sa Recent Activity List -->
+            <div class="activity-card">
+                <div class="section-title">
+                    <div class="title-left">
+                        <span class="vertical-line red"></span>
+                        <h3>Recent Activity</h3>
+                    </div>
+                    <a href="../activities/activities.html" id="view-all-btn" style="text-decoration: none; color: #0284c7; font-weight: 500; font-size: 14px;">View All</a>
+                </div>
+
+                <div class="activity-list" id="recent-activity-list">
+                    <!-- Dito kusang mag-a-appear ang dynamic items mula sa Firebase -->
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+
+
+<script type="module" src="student_dashboard.js"></script>
+
+</body>
+</html>

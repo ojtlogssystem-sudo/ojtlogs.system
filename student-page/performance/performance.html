@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard</title>
+
+    <link rel="stylesheet" href="student_dashboard.css">
+    <link rel="stylesheet" href="/templated/header.css">
+    <link rel="stylesheet" href="/templated/sidebar.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+</head>
+
+<body>
+    <div class="dashboard">
+        <div id="sidebar-container"></div>
+
+        <main class="main">
+            <header id="header-container"></header>
+
+        </main>
+    </div>
+
+<script src="/templated/sidebar-loader.js"></script>
+<script src="/templated/header-loader.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    loadSidebar("Performance");
+    loadHeader("Performance");
+});
+</script>
+
+</body>
+</html>

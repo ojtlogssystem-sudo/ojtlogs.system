@@ -1,0 +1,2293 @@
+/* ========================================
+   ANALYTICS CONTENT
+======================================== */
+
+.analytics-content {
+    padding: 25px 30px 40px;
+    min-height: calc(100vh - 100px);
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+
+/* ========================================
+   SUMMARY CARDS
+   SAME CONCEPT AS TODAY'S ATTENDANCE
+======================================== */
+
+.analytics-summary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+}
+
+.summary-card {
+    background: #ffffff;
+    border-radius: 18px;
+    padding: 20px 22px 20px 26px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 120px;
+    transition: all 0.25s ease;
+    box-shadow:
+        0 2px 8px rgba(171, 10, 10, 0.04);
+    border: none;
+}
+
+.summary-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 42px;
+    width: 3.5px;
+    background: #ab0a0a;
+    border-radius: 0 4px 4px 0;
+    box-shadow:
+        2px 0 6px rgba(171, 10, 10, 0.4);
+    transition: all 0.3s ease;
+}
+
+.summary-card:hover {
+    transform: translateY(-3px);
+    box-shadow:
+        0 8px 18px rgba(171, 10, 10, 0.12);
+}
+
+.summary-card:hover::before {
+    height: 80px;
+    width: 4px;
+    box-shadow:
+        0 0 8px rgba(171, 10, 10, 0.8);
+}
+
+
+/* ICON */
+
+.summary-icon {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fde8e8;
+    color: #ab0a0a;
+    font-size: 16px;
+}
+
+.stat-content {
+    width: 100%;
+}
+
+.stat-content .title {
+    font-size: 13px;
+    font-weight: 500;
+    color: #666;
+    margin-bottom: 6px;
+    padding-right: 45px;
+}
+
+.stat-content h3 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1a1a1a;
+    line-height: 1.1;
+    margin-bottom: 12px;
+}
+
+.stat-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.stat-footer small {
+    font-size: 11px;
+    color: #999;
+}
+
+.positive,
+.negative {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.positive {
+    color: #27ae60;
+}
+
+.negative {
+    color: #e74c3c;
+}
+
+.positive i,
+.negative i {
+    font-size: 10px;
+    margin-right: 3px;
+}
+
+
+/* ========================================
+   TABLE CARD
+======================================== */
+
+.table-card {
+    background: #ffffff;
+    border-radius: 18px;
+    border: 1px solid #ececec;
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.03);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.table-header {
+    padding: 18px 25px;
+    border-bottom: 1px solid #ececec;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.table-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #222;
+    margin: 0;
+}
+
+.section-description {
+    font-size: 11px;
+    color: #999;
+    margin-top: 4px;
+    line-height: 1.5;
+}
+
+.table-header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+
+/* ========================================
+   SEARCH
+======================================== */
+
+.search-box {
+    width: 260px;
+    height: 40px;
+    background: #fff;
+    border: 1px solid #ececec;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    padding: 0 15px;
+    transition: 0.25s;
+}
+
+.search-box:focus-within {
+    border-color: #ab0a0a;
+
+    box-shadow:
+        0 0 0 3px rgba(171, 10, 10, 0.08);
+}
+
+.search-box i {
+    color: #888;
+    margin-right: 10px;
+}
+
+.search-box input {
+    width: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: #333;
+    font-size: 13px;
+}
+
+
+/* ========================================
+   FILTERS
+======================================== */
+
+.table-header-right select {
+    height: 40px;
+    min-width: 125px;
+    padding: 0 12px;
+    background: #fff;
+    border: 1px solid #ececec;
+    border-radius: 8px;
+    color: #555;
+    font-size: 13px;
+    font-weight: 500;
+    outline: none;
+    cursor: pointer;
+}
+
+.table-header-right select:focus {
+    border-color: #ab0a0a;
+    box-shadow:
+        0 0 0 3px rgba(171, 10, 10, 0.08);
+}
+
+
+/* ========================================
+   TABLE
+======================================== */
+
+.table-container {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.students-table {
+    width: 100%;
+    min-width: 1100px;
+    border-collapse: collapse;
+}
+
+.students-table thead {
+    background: #fafafa;
+}
+
+.students-table th {
+    padding: 18px;
+    text-align: left;
+    font-size: 13px;
+    color: #666;
+    font-weight: 600;
+    border-bottom: 1px solid #ececec;
+}
+
+.students-table td {
+    padding: 18px;
+    font-size: 13px;
+    color: #333;
+    border-bottom: 1px solid #f2f2f2;
+    vertical-align: middle;
+}
+
+.students-table tbody tr {
+    transition: 0.2s;
+}
+
+.students-table tbody tr:hover {
+    background: #fafafa;
+}
+
+.students-table td strong {
+    font-weight: 600;
+
+    color: #333;
+}
+
+.students-table td small {
+    color: #999;
+
+    font-size: 11px;
+}
+
+
+/* ========================================
+   PROGRESS
+======================================== */
+
+.progress-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 140px;
+}
+
+.progress {
+    width: 110px;
+    height: 8px;
+    background: #eeeeee;
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background: #4f8dfd;
+    border-radius: 20px;
+}
+
+.progress-bar.complete {
+    background: #33b864;
+}
+
+.progress-bar.danger {
+    background: #e74c3c;
+}
+
+.progress-value {
+    font-size: 11px;
+    font-weight: 600;
+    color: #666;
+}
+
+
+/* ========================================
+   STATUS BADGES
+======================================== */
+
+.status {
+    display: inline-block;
+
+    padding: 5px 11px;
+
+    border-radius: 14px;
+
+    font-size: 11px;
+
+    font-weight: 600;
+
+    text-transform: capitalize;
+}
+
+.status.completed {
+    background: #e3f4e7;
+    color: #27ae60;
+    border: 1px solid #a8d3b0;
+}
+
+.status.ongoing {
+    background: #e7f0ff;
+    color: #4f8dfd;
+    border: 1px solid #bfd3fa;
+}
+
+.status.atrisk {
+    background: #fce3e3;
+    color: #e74c3c;
+    border: 1px solid #e8a8a8;
+}
+
+
+/* ========================================
+   ACTION BUTTONS
+======================================== */
+
+.actions {
+    display: flex;
+    gap: 8px;
+}
+
+.action-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    transition: 0.25s;
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+}
+
+.view-btn {
+    background: #4f8dfd;
+}
+
+.view-btn:hover {
+    background: #2f73f2;
+}
+
+/* ========================================
+   TABLE FOOTER
+======================================== */
+
+.table-footer {
+    padding: 14px 25px;
+    border-top: 1px solid #ececec;
+    background: #fafafa;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.pagination-info {
+    font-size: 13px;
+
+    color: #666;
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.page-numbers {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.page-btn,
+.page-num {
+    height: 34px;
+    min-width: 34px;
+    padding: 0 8px;
+    background: #fff;
+    border: 1px solid #dcdcdc;
+    border-radius: 6px;
+    color: #333;
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.page-num.active {
+    background: #ab0a0a;
+    color: #ffffff;
+    border-color: #ab0a0a;
+    font-weight: 600;
+}
+
+.rows-per-page {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: #666;
+}
+
+.rows-per-page select {
+    height: 34px;
+    padding: 0 10px;
+    background: #fff;
+    border: 1px solid #dcdcdc;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    outline: none;
+}
+
+
+/* ========================================
+   ANALYTICS SECTIONS
+======================================== */
+
+.analytics-section {
+    background: #ffffff;
+    border-radius: 18px;
+    border: 1px solid #ececec;
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.03);
+    padding: 20px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+
+/* ========================================
+   AI AT-RISK CARDS
+======================================== */
+
+.ai-risk-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.ai-card {
+    min-height: 105px;
+    padding: 18px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    border: 1px solid;
+}
+
+.ai-card-icon {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+
+.ai-card p {
+    margin: 0 0 4px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.ai-card h2 {
+    margin: 0 0 2px;
+    font-size: 25px;
+    font-weight: 700;
+}
+
+.ai-card span {
+    font-size: 11px;
+    color: #777;
+}
+
+
+/* RISK */
+
+.ai-card.risk {
+    background: #fff6f6;
+    border-color: #f3caca;
+}
+
+.ai-card.risk .ai-card-icon {
+    background: #fde3e3;
+
+    color: #e74c3c;
+}
+
+.ai-card.risk p,
+.ai-card.risk h2 {
+    color: #c0392b;
+}
+
+
+/* MONITORING */
+
+.ai-card.monitoring {
+    background: #fffaf0;
+    border-color: #f1dfb2;
+}
+
+.ai-card.monitoring .ai-card-icon {
+    background: #fff0c7;
+
+    color: #f19c14;
+}
+
+.ai-card.monitoring p,
+.ai-card.monitoring h2 {
+    color: #c47d08;
+}
+
+
+/* SAFE */
+
+.ai-card.safe {
+    background: #f2faf4;
+    border-color: #c8e5ce;
+}
+
+.ai-card.safe .ai-card-icon {
+    background: #e1f3e5;
+    color: #27ae60;
+}
+
+.ai-card.safe p,
+.ai-card.safe h2 {
+    color: #219653;
+}
+
+
+/* ========================================
+   AT-RISK LIST
+======================================== */
+
+.risk-list {
+    border: 1px solid #ececec;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.subsection-title {
+    padding: 14px 16px;
+    background: #fafafa;
+    border-bottom: 1px solid #ececec;
+}
+
+.subsection-title h4 {
+    margin: 0;
+    font-size: 14px;
+    color: #333;
+    font-weight: 600;
+}
+
+.risk-row {
+    display: grid;
+    grid-template-columns: 1.2fr 1.5fr auto;
+    align-items: center;
+    gap: 20px;
+    padding: 14px 16px;
+    border-bottom: 1px solid #f2f2f2;
+}
+
+.risk-row:last-child {
+    border-bottom: none;
+}
+
+.student-mini {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.student-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #fde8e8;
+    color: #ab0a0a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.student-mini strong {
+    display: block;
+
+    font-size: 12px;
+
+    color: #333;
+}
+
+.student-mini small {
+    display: block;
+
+    margin-top: 2px;
+
+    font-size: 10px;
+
+    color: #999;
+}
+
+.risk-reason {
+    font-size: 11px;
+
+    color: #666;
+}
+
+
+/* ========================================
+   COMPLETION FORECAST
+======================================== */
+
+.forecast {
+    display: inline-flex;
+
+    align-items: center;
+
+    gap: 5px;
+
+    padding: 5px 10px;
+
+    border-radius: 14px;
+
+    font-size: 11px;
+
+    font-weight: 600;
+}
+
+.forecast.success {
+    background: #e3f4e7;
+
+    color: #27ae60;
+}
+
+.forecast.warning {
+    background: #fff4d6;
+
+    color: #f19c14;
+}
+
+.forecast.danger {
+    background: #fce3e3;
+
+    color: #e74c3c;
+}
+
+
+/* ========================================
+   SKILL GAP
+======================================== */
+
+.skill-grid {
+    display: grid;
+
+    grid-template-columns: repeat(2, 1fr);
+
+    gap: 15px;
+}
+
+.skill-card {
+    background: #fafafa;
+
+    border: 1px solid #ececec;
+
+    border-radius: 14px;
+
+    padding: 17px;
+
+    transition: 0.2s;
+}
+
+.skill-card:hover {
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 6px 15px rgba(0, 0, 0, 0.04);
+}
+
+.skill-header {
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    gap: 10px;
+
+    margin-bottom: 12px;
+}
+
+.skill-name {
+    display: flex;
+
+    align-items: center;
+
+    gap: 9px;
+
+    min-width: 0;
+}
+
+.skill-name span {
+    font-size: 12px;
+
+    font-weight: 600;
+
+    color: #333;
+}
+
+.skill-icon {
+    width: 34px;
+
+    height: 34px;
+
+    border-radius: 8px;
+
+    background: #fde8e8;
+
+    color: #ab0a0a;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    flex-shrink: 0;
+}
+
+.skill-header strong {
+    color: #ab0a0a;
+
+    font-size: 11px;
+
+    white-space: nowrap;
+}
+
+.skill-progress {
+    width: 100%;
+
+    height: 8px;
+
+    background: #e8e8e8;
+
+    border-radius: 20px;
+
+    overflow: hidden;
+
+    margin-bottom: 8px;
+}
+
+.skill-fill {
+    height: 100%;
+
+    border-radius: 20px;
+}
+
+.skill-fill.database {
+    background: #ab0a0a;
+}
+
+.skill-fill.networking {
+    background: #4f8dfd;
+}
+
+.skill-fill.programming {
+    background: #f19c14;
+}
+
+.skill-fill.communication {
+    background: #27ae60;
+}
+
+.skill-card small {
+    font-size: 10px;
+
+    color: #999;
+}
+
+
+/* ========================================
+   RESPONSIVE
+======================================== */
+
+@media (max-width: 1200px) {
+
+    .analytics-summary {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .ai-risk-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+}
+
+@media (max-width: 950px) {
+
+    .risk-row {
+        grid-template-columns: 1fr;
+
+        gap: 10px;
+    }
+
+    .risk-row .status {
+        width: fit-content;
+    }
+
+}
+
+@media (max-width: 800px) {
+
+    .analytics-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .ai-risk-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .skill-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .table-header {
+        align-items: flex-start;
+    }
+
+    .table-header-right {
+        width: 100%;
+    }
+
+    .search-box {
+        width: 100%;
+    }
+
+    .table-header-right select {
+        flex: 1;
+    }
+
+}
+
+@media (max-width: 600px) {
+
+    .analytics-content {
+        padding: 18px;
+    }
+
+    .table-header {
+        padding: 16px;
+    }
+
+    .analytics-section {
+        padding: 16px;
+    }
+
+    .table-footer {
+        padding: 14px 16px;
+
+        flex-direction: column;
+
+        align-items: flex-start;
+    }
+
+    .pagination-controls {
+        width: 100%;
+
+        justify-content: center;
+    }
+
+    .rows-per-page {
+        width: 100%;
+
+        justify-content: flex-end;
+    }
+
+}
+
+@media (max-width: 480px) {
+
+    .summary-card {
+        min-height: 115px;
+    }
+
+    .stat-content h3 {
+        font-size: 25px;
+    }
+
+    .ai-card {
+        padding: 15px;
+    }
+
+}
+
+/* =========================================================
+   OJT-LOGS ANALYTICS
+   CONSISTENT WITH TODAY'S ATTENDANCE UI
+========================================================= */
+
+
+/* =========================================================
+   ANALYTICS CONTENT
+========================================================= */
+
+.analytics-content {
+    padding: 24px 25px 40px;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 22px;
+}
+
+
+/* =========================================================
+   SUMMARY CARDS
+========================================================= */
+
+.analytics-summary {
+    display: grid;
+
+    grid-template-columns: repeat(4, 1fr);
+
+    gap: 18px;
+}
+
+.summary-card {
+    position: relative;
+
+    min-height: 118px;
+
+    background: #ffffff;
+
+    border-radius: 18px;
+
+    padding: 20px 22px 18px 25px;
+
+    display: flex;
+
+    align-items: center;
+
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.04);
+
+    border: 1px solid #eeeeee;
+
+    overflow: hidden;
+
+    transition: all 0.25s ease;
+}
+
+
+/* Red vertical accent */
+
+.summary-card::before {
+    content: "";
+
+    position: absolute;
+
+    left: 0;
+    top: 50%;
+
+    transform: translateY(-50%);
+
+    width: 4px;
+    height: 42px;
+
+    background: #ab0a0a;
+
+    border-radius: 0 5px 5px 0;
+
+    transition: all 0.25s ease;
+}
+
+.summary-card:hover {
+    transform: translateY(-3px);
+
+    box-shadow:
+        0 8px 18px rgba(171, 10, 10, 0.08);
+}
+
+.summary-card:hover::before {
+    height: 72px;
+}
+
+
+/* =========================================================
+   SUMMARY ICONS
+========================================================= */
+
+.summary-icon {
+    position: absolute;
+
+    top: 18px;
+    right: 18px;
+
+    width: 38px;
+    height: 38px;
+
+    border-radius: 9px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    font-size: 16px;
+}
+
+
+/* Blue */
+
+.summary-icon.blue {
+    background: #eaf1ff;
+
+    color: #4f8dfd;
+}
+
+
+/* Green */
+
+.summary-icon.green {
+    background: #e7f7ed;
+
+    color: #27ae60;
+}
+
+
+/* Orange */
+
+.summary-icon.orange {
+    background: #fff4dc;
+
+    color: #f19c14;
+}
+
+
+/* Red */
+
+.summary-icon.red {
+    background: #fde8e8;
+
+    color: #ab0a0a;
+}
+
+
+/* =========================================================
+   SUMMARY TEXT
+========================================================= */
+
+.summary-card > div:last-child {
+    padding-right: 45px;
+}
+
+.summary-card h3 {
+    margin: 0 0 5px;
+
+    font-size: 27px;
+
+    line-height: 1.1;
+
+    font-weight: 700;
+
+    color: #1d1d1d;
+}
+
+.summary-card p {
+    margin: 0;
+
+    font-size: 12px;
+
+    color: #777;
+
+    font-weight: 500;
+}
+
+
+/* =========================================================
+   GENERAL ANALYTICS SECTION
+========================================================= */
+
+.analytics-section {
+    background: #ffffff;
+
+    border-radius: 18px;
+
+    padding: 20px 22px;
+
+    border: 1px solid #eeeeee;
+
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.section-header {
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    margin-bottom: 18px;
+
+    gap: 15px;
+}
+
+.section-header h3 {
+    margin: 0;
+
+    font-size: 18px;
+
+    font-weight: 600;
+
+    color: #222;
+}
+
+
+/* =========================================================
+   TOOLBAR
+========================================================= */
+
+.toolbar-right {
+    display: flex;
+
+    align-items: center;
+
+    gap: 9px;
+}
+
+
+/* =========================================================
+   SEARCH BOX
+========================================================= */
+
+.search-box {
+    width: 235px;
+
+    height: 39px;
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 9px;
+
+    padding: 0 13px;
+
+    background: #ffffff;
+
+    border: 1px solid #e4e4e4;
+
+    border-radius: 8px;
+
+    transition: all 0.2s ease;
+}
+
+.search-box:focus-within {
+    border-color: #ab0a0a;
+
+    box-shadow:
+        0 0 0 3px rgba(171, 10, 10, 0.07);
+}
+
+.search-box i {
+    color: #999;
+
+    font-size: 13px;
+}
+
+.search-box input {
+    width: 100%;
+
+    border: none;
+
+    outline: none;
+
+    background: transparent;
+
+    font-family: "Poppins", sans-serif;
+
+    font-size: 12px;
+
+    color: #333;
+}
+
+
+/* =========================================================
+   FILTER SELECT
+========================================================= */
+
+.toolbar-right select {
+    height: 39px;
+
+    padding: 0 12px;
+
+    background: #ffffff;
+
+    border: 1px solid #e4e4e4;
+
+    border-radius: 8px;
+
+    outline: none;
+
+    font-family: "Poppins", sans-serif;
+
+    font-size: 12px;
+
+    color: #555;
+
+    cursor: pointer;
+
+    transition: 0.2s;
+}
+
+.toolbar-right select:focus {
+    border-color: #ab0a0a;
+
+    box-shadow:
+        0 0 0 3px rgba(171, 10, 10, 0.06);
+}
+
+
+/* =========================================================
+   TABLE CONTAINER
+========================================================= */
+
+.table-container {
+    width: 100%;
+
+    overflow-x: auto;
+}
+
+
+/* =========================================================
+   MAIN ANALYTICS TABLE
+========================================================= */
+
+.analytics-table {
+    width: 100%;
+
+    min-width: 850px;
+
+    border-collapse: separate;
+
+    border-spacing: 0;
+}
+
+
+/* Table Header */
+
+.analytics-table thead {
+    background: #fafafa;
+}
+
+.analytics-table th {
+    padding: 14px 16px;
+
+    text-align: left;
+
+    font-size: 11px;
+
+    font-weight: 600;
+
+    color: #777;
+
+    border-bottom: 1px solid #eeeeee;
+
+    white-space: nowrap;
+}
+
+.analytics-table th:first-child {
+    border-radius: 8px 0 0 0;
+}
+
+.analytics-table th:last-child {
+    border-radius: 0 8px 0 0;
+}
+
+
+/* Table Body */
+
+.analytics-table td {
+    padding: 15px 16px;
+
+    font-size: 12px;
+
+    color: #444;
+
+    border-bottom: 1px solid #f1f1f1;
+
+    vertical-align: middle;
+}
+
+.analytics-table tbody tr {
+    transition: background 0.2s ease;
+}
+
+.analytics-table tbody tr:hover {
+    background: #fcfcfc;
+}
+
+.analytics-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+
+/* =========================================================
+   PROGRESS BAR
+========================================================= */
+
+.progress {
+    width: 120px;
+
+    height: 7px;
+
+    background: #eeeeee;
+
+    border-radius: 20px;
+
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+
+    background: #4f8dfd;
+
+    border-radius: 20px;
+}
+
+.progress-bar.complete {
+    background: #27ae60;
+}
+
+.progress-bar.danger {
+    background: #e74c3c;
+}
+
+
+/* =========================================================
+   STATUS BADGES
+========================================================= */
+
+.status {
+    display: inline-flex;
+
+    align-items: center;
+
+    padding: 5px 11px;
+
+    border-radius: 20px;
+
+    font-size: 10px;
+
+    font-weight: 600;
+
+    white-space: nowrap;
+}
+
+
+/* Completed */
+
+.status.completed {
+    background: #e7f7ed;
+
+    color: #27ae60;
+
+    border: 1px solid #bce2c8;
+}
+
+
+/* On Track */
+
+.status.ongoing {
+    background: #eaf1ff;
+
+    color: #4f8dfd;
+
+    border: 1px solid #c6d7fa;
+}
+
+
+/* At Risk */
+
+.status.atrisk {
+    background: #fde8e8;
+
+    color: #d64545;
+
+    border: 1px solid #efbaba;
+}
+
+
+/* =========================================================
+   AI AT-RISK SECTION
+========================================================= */
+
+.risk-grid {
+    display: grid;
+
+    grid-template-columns: repeat(3, 1fr);
+
+    gap: 15px;
+
+    margin-bottom: 18px;
+}
+
+.risk-card {
+    position: relative;
+
+    border-radius: 14px;
+
+    padding: 18px;
+
+    text-align: left;
+
+    border: 1px solid;
+
+    overflow: hidden;
+}
+
+.risk-card i {
+    font-size: 18px;
+
+    margin-bottom: 10px;
+}
+
+.risk-card h4 {
+    margin: 0 0 5px;
+
+    font-size: 12px;
+
+    font-weight: 600;
+}
+
+.risk-card h2 {
+    margin: 0 0 3px;
+
+    font-size: 27px;
+
+    font-weight: 700;
+}
+
+.risk-card p {
+    margin: 0;
+
+    font-size: 10px;
+
+    color: #777;
+}
+
+
+/* At Risk */
+
+.risk-card.high {
+    background: #fff5f5;
+
+    color: #d64545;
+
+    border-color: #f1cccc;
+}
+
+.risk-card.high i {
+    color: #e74c3c;
+}
+
+
+/* Needs Monitoring */
+
+.risk-card.medium {
+    background: #fffaf0;
+
+    color: #c78310;
+
+    border-color: #f1dfb4;
+}
+
+.risk-card.medium i {
+    color: #f19c14;
+}
+
+
+/* On Track */
+
+.risk-card.low {
+    background: #f2faf4;
+
+    color: #27ae60;
+
+    border-color: #c9e5d0;
+}
+
+.risk-card.low i {
+    color: #27ae60;
+}
+
+
+/* =========================================================
+   AI RECOMMENDATION
+========================================================= */
+
+.recommendation-card {
+    position: relative;
+
+    background: #fafafa;
+
+    border: 1px solid #eeeeee;
+
+    border-left: 4px solid #ab0a0a;
+
+    padding: 16px 18px;
+
+    border-radius: 10px;
+}
+
+.recommendation-card h4 {
+    margin: 0 0 6px;
+
+    color: #333;
+
+    font-size: 13px;
+
+    font-weight: 600;
+}
+
+.recommendation-card p {
+    margin: 0;
+
+    color: #777;
+
+    font-size: 11px;
+
+    line-height: 1.6;
+}
+
+
+/* =========================================================
+   COMPANY SKILL EXPOSURE
+========================================================= */
+
+.company-skill-table {
+    min-width: 950px;
+}
+
+.company-skill-table td {
+    vertical-align: middle;
+}
+
+
+/* Skill Tags */
+
+.skill-tag {
+    display: inline-flex;
+
+    align-items: center;
+
+    padding: 5px 11px;
+
+    border-radius: 20px;
+
+    font-size: 10px;
+
+    font-weight: 600;
+
+    white-space: nowrap;
+}
+
+
+/* Networking */
+
+.skill-tag.networking {
+    background: #eaf1ff;
+
+    color: #4f8dfd;
+
+    border: 1px solid #c6d7fa;
+}
+
+
+/* Software */
+
+.skill-tag.software {
+    background: #f3eafa;
+
+    color: #8e44ad;
+
+    border: 1px solid #dbc3e6;
+}
+
+
+/* Hardware */
+
+.skill-tag.hardware {
+    background: #fff4dc;
+
+    color: #d88900;
+
+    border: 1px solid #efd39b;
+}
+
+
+/* Database */
+
+.skill-tag.database {
+    background: #e7f7ed;
+
+    color: #27ae60;
+
+    border: 1px solid #bce2c8;
+}
+
+
+/* =========================================================
+   COMPANY SKILL EXPOSURE BAR
+========================================================= */
+
+.company-progress {
+    display: flex;
+
+    align-items: center;
+
+    gap: 9px;
+
+    min-width: 135px;
+}
+
+.company-progress-bar {
+    width: 85px;
+
+    height: 7px;
+
+    background: #eeeeee;
+
+    border-radius: 20px;
+
+    overflow: hidden;
+}
+
+.company-progress-fill {
+    height: 100%;
+
+    border-radius: 20px;
+}
+
+
+/* Networking */
+
+.networking-fill {
+    background: #4f8dfd;
+}
+
+
+/* Software */
+
+.software-fill {
+    background: #8e44ad;
+}
+
+
+/* Hardware */
+
+.hardware-fill {
+    background: #f19c14;
+}
+
+
+/* Database */
+
+.database-fill {
+    background: #27ae60;
+}
+
+.company-progress > span {
+    font-size: 10px;
+
+    font-weight: 600;
+
+    color: #666;
+}
+
+
+/* =========================================================
+   COMPANY VIEW BUTTON
+========================================================= */
+
+.company-view-btn {
+    gap: 6px;
+    padding: 0 11px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #ab0a0a;
+    background: #ffffff;
+    color: #8c0909;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;    
+    transition: all 0.2s ease;
+}
+
+.company-view-btn:hover  {
+    background: #ab0a0a;
+    color: #ffffff;
+}
+
+
+/* =========================================================
+   COMPANY RECOMMENDATION
+========================================================= */
+
+.recommendation-section {
+    margin-top: 0;
+}
+
+
+/* Filter Area */
+
+.recommendation-filter {
+    display: grid;
+
+    grid-template-columns: 1fr 1fr auto;
+
+    align-items: end;
+
+    gap: 13px;
+
+    padding: 15px;
+
+    background: #fafafa;
+
+    border: 1px solid #eeeeee;
+
+    border-radius: 12px;
+
+    margin-bottom: 15px;
+}
+
+.recommendation-field {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 6px;
+}
+
+.recommendation-field label {
+    font-size: 11px;
+
+    color: #666;
+
+    font-weight: 600;
+}
+
+.recommendation-field select {
+    height: 38px;
+
+    padding: 0 11px;
+
+    background: #ffffff;
+
+    border: 1px solid #dedede;
+
+    border-radius: 8px;
+
+    outline: none;
+
+    font-family: "Poppins", sans-serif;
+
+    font-size: 11px;
+
+    color: #555;
+
+    cursor: pointer;
+}
+
+.recommendation-field select:focus {
+    border-color: #ab0a0a;
+
+    box-shadow:
+        0 0 0 3px rgba(171, 10, 10, 0.06);
+}
+
+
+/* Recommend Button */
+
+.recommend-btn {
+    height: 38px;
+
+    padding: 0 15px;
+
+    border: none;
+
+    border-radius: 8px;
+
+    background: #ab0a0a;
+
+    color: #ffffff;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    gap: 6px;
+
+    font-family: "Poppins", sans-serif;
+
+    font-size: 11px;
+
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition: all 0.2s ease;
+}
+
+.recommend-btn:hover {
+    background: #8e0909;
+
+    transform: translateY(-1px);
+
+    box-shadow:
+        0 4px 8px rgba(171, 10, 10, 0.15);
+}
+
+
+/* =========================================================
+   RECOMMENDATION RESULTS
+========================================================= */
+
+.recommendation-results {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 10px;
+}
+
+.recommendation-company {
+    display: grid;
+
+    grid-template-columns: 1.3fr auto 1.6fr;
+
+    align-items: center;
+
+    gap: 18px;
+
+    padding: 14px 16px;
+
+    background: #ffffff;
+
+    border: 1px solid #eeeeee;
+
+    border-radius: 12px;
+
+    transition: all 0.2s ease;
+}
+
+.recommendation-company:hover {
+    background: #fcfcfc;
+
+    box-shadow:
+        0 5px 14px rgba(0, 0, 0, 0.04);
+
+    transform: translateY(-1px);
+}
+
+
+/* Company information */
+
+.recommendation-company-info {
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+}
+
+.company-icon {
+    width: 38px;
+    height: 38px;
+
+    flex-shrink: 0;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    border-radius: 9px;
+
+    background: #fde8e8;
+
+    color: #ab0a0a;
+
+    font-size: 14px;
+}
+
+.recommendation-company-info h4 {
+    margin: 0 0 2px;
+
+    font-size: 12px;
+
+    color: #333;
+
+    font-weight: 600;
+}
+
+.recommendation-company-info p {
+    margin: 0;
+
+    font-size: 10px;
+
+    color: #999;
+}
+
+
+/* Match score */
+
+.match-score {
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    justify-content: center;
+
+    min-width: 60px;
+}
+
+.match-score strong {
+    color: #ab0a0a;
+
+    font-size: 19px;
+
+    font-weight: 700;
+}
+
+.match-score span {
+    color: #999;
+
+    font-size: 9px;
+}
+
+
+/* Recommendation details */
+
+.recommendation-details {
+    display: flex;
+
+    justify-content: flex-end;
+
+    align-items: center;
+
+    flex-wrap: wrap;
+
+    gap: 6px;
+}
+
+.recommendation-details span {
+    display: inline-flex;
+
+    align-items: center;
+
+    gap: 4px;
+
+    padding: 5px 8px;
+
+    background: #fafafa;
+
+    border: 1px solid #eeeeee;
+
+    border-radius: 12px;
+
+    color: #777;
+
+    font-size: 9px;
+}
+
+.recommendation-details i {
+    color: #ab0a0a;
+}
+
+
+/* =========================================================
+   OLD SKILL GRID
+   KEPT SO EXISTING HTML DOES NOT BREAK
+========================================================= */
+
+.skill-grid {
+    display: grid;
+
+    grid-template-columns: repeat(2, 1fr);
+
+    gap: 15px;
+}
+
+.skill-card {
+    background: #ffffff;
+
+    border: 1px solid #eeeeee;
+
+    border-radius: 12px;
+
+    padding: 16px;
+
+    transition: all 0.2s ease;
+}
+
+.skill-card:hover {
+    background: #fcfcfc;
+
+    transform: translateY(-1px);
+}
+
+.skill-header {
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    margin-bottom: 10px;
+}
+
+.skill-header span {
+    font-size: 12px;
+
+    font-weight: 600;
+
+    color: #333;
+}
+
+.skill-header strong {
+    color: #ab0a0a;
+
+    font-size: 11px;
+}
+
+.skill-progress {
+    width: 100%;
+
+    height: 7px;
+
+    background: #eeeeee;
+
+    border-radius: 20px;
+
+    overflow: hidden;
+}
+
+.skill-fill {
+    height: 100%;
+
+    border-radius: 20px;
+}
+
+.skill-fill.technical {
+    background: #4f8dfd;
+}
+
+.skill-fill.communication {
+    background: #27ae60;
+}
+
+.skill-fill.leadership {
+    background: #f19c14;
+}
+
+.skill-fill.problem {
+    background: #8e44ad;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 1200px) {
+
+    .analytics-summary {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .risk-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+}
+
+
+@media (max-width: 950px) {
+
+    .recommendation-company {
+        grid-template-columns: 1fr auto;
+    }
+
+    .recommendation-details {
+        grid-column: 1 / -1;
+
+        justify-content: flex-start;
+    }
+
+}
+
+
+@media (max-width: 800px) {
+
+    .analytics-summary {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .skill-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .recommendation-filter {
+        grid-template-columns: 1fr;
+    }
+
+    .recommend-btn {
+        width: 100%;
+    }
+
+}
+
+
+@media (max-width: 650px) {
+
+    .analytics-content {
+        padding: 18px;
+    }
+
+    .analytics-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .risk-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .analytics-section {
+        padding: 17px;
+    }
+
+    .section-header {
+        flex-direction: column;
+
+        align-items: flex-start;
+    }
+
+    .toolbar-right {
+        width: 100%;
+
+        flex-direction: column;
+
+        align-items: stretch;
+    }
+
+    .search-box {
+        width: 100%;
+    }
+
+    .toolbar-right select {
+        width: 100%;
+    }
+
+    .recommendation-company {
+        grid-template-columns: 1fr;
+    }
+
+    .match-score {
+        align-items: flex-start;
+    }
+
+    .recommendation-details {
+        grid-column: auto;
+
+        justify-content: flex-start;
+    }
+
+}
+
+
+@media (max-width: 480px) {
+
+    .summary-card {
+        min-height: 110px;
+    }
+
+    .summary-card h3 {
+        font-size: 24px;
+    }
+
+}

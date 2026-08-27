@@ -1,0 +1,122 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+/* SIDEBAR DRAWER FOR MOBILE (MATCHING DASHBOARD) */
+.sidebar {
+    position: fixed;
+    left: -280px;
+    top: 0;
+    height: 100vh;
+    width: 260px; 
+    background: var(--primary, #AB0A0A);
+    background-image: url('../images/open sidebar-bg.png');
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
+    color: var(--white, #ffffff);
+    display: flex;
+    flex-direction: column;
+    z-index: 1000;
+    transition: left 0.3s ease;
+    box-shadow: 4px 0 15px rgba(0,0,0,0.2);
+}
+
+.sidebar.show {
+    left: 0;
+}
+.sidebar-header #menu-btn {
+    display: none;
+}
+
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.logo img {
+    width: 40px;
+    height: 40px;  
+    background-color: #fff;  
+    border-radius: 50%;      
+    padding: 3px;           
+    object-fit: contain;     
+}
+
+.logo-text h4 {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.logo-text p {
+    font-size: 11px;
+    opacity: .8;
+}
+
+/* MENU */
+.menu {
+    flex: 1;
+    padding: 10px 0;
+    display: flex;
+    flex-direction: column;
+    list-style: none;
+}
+
+.menu li {
+    margin: 4px 12px;
+    border-radius: 10px;
+    height: 44px; 
+    display: flex;
+    align-items: center;
+}
+
+.menu li a {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 0 16px;
+    font-size: 15px; 
+    font-weight: 500;
+    width: 100%;    
+    color: var(--white, #ffffff);
+    text-decoration: none;
+}
+
+.menu li.active {
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.dashboard{
+    display:flex;
+    min-height:100vh;
+    width:100%;
+}
+
+.main{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    overflow-x:hidden;
+    background:#f7f8fc;
+}
+
+/* LOGOUT */
+.logout {
+    padding: 20px 15px;
+}
+
+.logout a {
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    gap: 12px;
+    border-radius: 10px;
+    color: var(--white, #ffffff);
+    text-decoration: none;
+}

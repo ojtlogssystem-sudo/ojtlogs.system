@@ -1,0 +1,370 @@
+/* ==========================================
+   REPORTS CONTENT
+========================================== */
+
+.reports-content{
+    padding:20px 25px;
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+}
+
+/* ==========================================
+   SUMMARY
+========================================== */
+
+.reports-summary{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:18px;
+}
+
+.summary-card{
+    background:#fff;
+    border-radius:12px;
+    padding:18px;
+    display:flex;
+    align-items:center;
+    gap:15px;
+    box-shadow:0 2px 10px rgba(0,0,0,.08);
+}
+
+.summary-icon{
+    width:55px;
+    height:55px;
+    border-radius:12px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    color:#fff;
+    font-size:22px;
+}
+
+.summary-icon.blue{background:#3b82f6;}
+.summary-icon.green{background:#22c55e;}
+.summary-icon.orange{background:#f59e0b;}
+.summary-icon.red{background:#ef4444;}
+
+.summary-card h3{
+    font-size:24px;
+    color:#222;
+}
+
+.summary-card p{
+    font-size:13px;
+    color:#777;
+}
+
+/* ==========================================
+   SECTION
+========================================== */
+
+.reports-section{
+    background:#fff;
+    border-radius:12px;
+    padding:20px;
+    box-shadow:0 2px 10px rgba(0,0,0,.08);
+}
+
+.section-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:18px;
+}
+
+.section-header h3{
+    color:#222;
+    font-size:18px;
+}
+
+/* ==========================================
+   SEARCH
+========================================== */
+
+.toolbar-right{
+    display:flex;
+    align-items:center;
+    gap:12px;
+}
+
+.search-box{
+    width:250px;
+    height:40px;
+    border:1px solid #ddd;
+    border-radius:8px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:0 12px;
+}
+
+.search-box input{
+    width:100%;
+    border:none;
+    outline:none;
+    font-size:13px;
+}
+
+.toolbar-right select{
+    height:40px;
+    border:1px solid #ddd;
+    border-radius:8px;
+    padding:0 12px;
+    outline:none;
+}
+
+/* ==========================================
+   TABLE
+========================================== */
+
+.table-container{
+    overflow-x:auto;
+}
+
+.reports-table{
+    width:100%;
+    min-width:900px;
+    border-collapse:collapse;
+}
+
+.reports-table th{
+    background:#fafafa;
+    color:#666;
+    font-size:13px;
+    text-align:left;
+    padding:15px;
+    border-bottom:1px solid #ececec;
+}
+
+.reports-table td{
+    padding:15px;
+    font-size:14px;
+    color:#333;
+    border-bottom:1px solid #f2f2f2;
+}
+
+.reports-table tbody tr{
+    transition:.25s;
+}
+
+.reports-table tbody tr:hover{
+    background:#fafafa;
+}
+
+/* ==========================================
+   STATUS
+========================================== */
+
+.status{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:6px 14px;
+    border-radius:20px;
+    font-size:12px;
+    font-weight:600;
+}
+
+.status.ready{
+    background:#dcfce7;
+    color:#15803d;
+}
+
+.status.processing{
+    background:#fef3c7;
+    color:#b45309;
+}
+
+/* ==========================================
+   ACTION BUTTONS
+========================================== */
+
+.action-btn{
+    width:36px;
+    height:36px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    margin-right:6px;
+    transition:.25s;
+    color:#fff;
+}
+
+.action-btn.view{
+    background:#3b82f6;
+}
+
+.action-btn.download{
+    background:#22c55e;
+}
+
+.action-btn.generate{
+    background:#AB0A0A;
+}
+
+.action-btn:hover{
+    transform:translateY(-2px);
+    opacity:.9;
+}
+/* ==========================================
+   REPORT STATISTICS
+========================================== */
+
+.statistics-grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:18px;
+}
+
+.stat-card{
+    background:#fafafa;
+    border:1px solid #ececec;
+    border-radius:12px;
+    padding:22px;
+    text-align:center;
+    transition:.25s;
+}
+
+.stat-card:hover{
+    transform:translateY(-4px);
+    box-shadow:0 6px 18px rgba(0,0,0,.08);
+}
+
+.stat-card i{
+    font-size:34px;
+    color:#AB0A0A;
+    margin-bottom:14px;
+}
+
+.stat-card h3{
+    font-size:24px;
+    color:#222;
+    margin-bottom:8px;
+}
+
+.stat-card p{
+    color:#666;
+    font-size:13px;
+    line-height:1.5;
+}
+
+/* ==========================================
+   EXPORT CENTER
+========================================== */
+
+.export-grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:18px;
+}
+
+.export-btn{
+    height:55px;
+    border:none;
+    border-radius:10px;
+    color:#fff;
+    font-size:15px;
+    font-weight:600;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    transition:.25s;
+}
+
+.export-btn:hover{
+    transform:translateY(-2px);
+    box-shadow:0 6px 15px rgba(0,0,0,.12);
+}
+
+.export-btn.pdf{
+    background:#dc2626;
+}
+
+.export-btn.excel{
+    background:#16a34a;
+}
+
+.export-btn.print{
+    background:#2563eb;
+}
+
+.export-btn.all{
+    background:#AB0A0A;
+}
+
+/* ==========================================
+   RESPONSIVE
+========================================== */
+
+@media(max-width:1200px){
+
+    .reports-summary,
+    .statistics-grid,
+    .export-grid{
+        grid-template-columns:repeat(2,1fr);
+    }
+
+}
+
+@media(max-width:900px){
+
+    .section-header{
+        flex-direction:column;
+        align-items:flex-start;
+        gap:15px;
+    }
+
+    .toolbar-right{
+        width:100%;
+        flex-direction:column;
+    }
+
+    .search-box,
+    .toolbar-right select{
+        width:100%;
+    }
+
+}
+
+@media(max-width:768px){
+
+    .reports-content{
+        padding:18px;
+    }
+
+    .reports-summary,
+    .statistics-grid,
+    .export-grid{
+        grid-template-columns:1fr;
+    }
+
+    .reports-table th,
+    .reports-table td{
+        padding:12px;
+        font-size:13px;
+    }
+
+}
+
+@media(max-width:480px){
+
+    .summary-card{
+        flex-direction:column;
+        text-align:center;
+    }
+
+    .action-btn{
+        width:34px;
+        height:34px;
+        margin-right:4px;
+    }
+
+    .export-btn{
+        height:50px;
+        font-size:14px;
+    }
+
+}

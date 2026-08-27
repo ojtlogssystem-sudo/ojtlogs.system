@@ -1,0 +1,111 @@
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <div class="logo">
+            <img src="../images/grc-logo.jpg" alt="Logo">
+            <div class="logo-text">
+                <h4>OJT-LOGS</h4>
+            </div>
+        </div>
+        <button id="menu-btn">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+    </div>
+
+    <div class="collapsed-menu">
+        <button id="menu-btn2">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+    </div>
+
+    <!-- Navigation -->
+    <div class="menu">
+        <div class="menu-category">Main</div>
+        <ul>
+            <li data-page="dashboard">
+                <a href="../dashboard/dashboard.html">
+                    <i class="fa-solid fa-table-columns"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+        </ul>
+
+        <div class="menu-category">Management</div>
+        <ul>
+            <li data-page="students">
+                <a href="../students/students.html">
+                    <i class="fa-solid fa-user-graduate"></i>
+                    <span>Students</span>
+                </a>
+            </li>
+            <li data-page="companies">
+                <a href="../companies/companies.html">
+                    <i class="fa-solid fa-building"></i>
+                    <span>Companies</span>
+                </a>
+            </li>
+            <li data-page="attendance" class="has-dropdown">
+                <a href="javascript:void(0);" class="dropdown-toggle">
+                    <i class="fa-solid fa-calendar-check"></i>
+                    <span>Attendance</span>
+                    <i class="fa-solid fa-chevron-down arrow"></i>     
+                </a> 
+                <ul class="sub-menu">
+                    <li data-sub="today-attendance">
+                        <a href="../attendance/todays_attendance.html">
+                            <i class="fa-solid fa-clock"></i>
+                            <span>Today's Attendance</span>
+                        </a>
+                    </li>
+                    <li data-sub="attendance-records">
+                        <a href="../attendance/attendance_records.html">
+                            <i class="fa-solid fa-folder-open"></i>
+                            <span>Attendance Records</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+
+        <div class="menu-category">Analytics & Reports</div>
+        <ul>
+            <li data-page="analytics">
+                <a href="../analytics/analytics.html">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <span>Analytics</span>
+                </a>
+            </li>
+            <li data-page="reports">
+                <a href="../reports/reports.html">
+                    <i class="fa-solid fa-file-lines"></i>
+                    <span>Reports</span>
+                </a>
+            </li>
+        </ul>
+
+        <div class="menu-category">System</div>
+        <ul>
+            <!-- SETTINGS DROPDOWN MENU -->
+            <li data-page="settings" class="has-dropdown">
+                <a href="javascript:void(0);" class="dropdown-toggle">
+                    <i class="fa-solid fa-gear"></i>
+                    <span>Settings</span>
+                    <i class="fa-solid fa-chevron-down arrow"></i>     
+                </a> 
+                <ul class="sub-menu">
+                    <li data-sub="account">
+                        <a href="../settings/settings.html">
+                            <i class="fa-regular fa-user"></i>
+                            <span>Account Settings</span>
+                        </a>
+                    </li>
+                    <li data-sub="privacy">
+                        <a href="../settings/privacy.html">
+                            <i class="fa-solid fa-lock"></i>
+                            <span>Privacy Settings</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+</aside>

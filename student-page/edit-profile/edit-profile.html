@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Profile - OJT-LOGS</title>
+
+    <link rel="stylesheet" href="/templated/header.css">
+    <link rel="stylesheet" href="/templated/sidebar.css">
+    <link rel="stylesheet" href="edit-profile.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+</head>
+
+<body>
+
+<div class="dashboard">
+    <div id="sidebar-container"></div>
+
+    <main class="main">
+        <header id="header-container"></header>
+
+        <div class="profile-container">
+            <div class="profile-card">
+                <div class="card-title">
+                    <span class="vertical-line red"></span>
+                    <h2>Edit Profile Information</h2>
+                </div>
+
+                <div id="alertMessage" class="alert-banner" style="display: none;"></div>
+
+                <form id="editProfileForm">
+                    <!-- PROFILE IMAGE UPLOAD -->
+                    <div class="profile-upload">
+                        <div class="profile-preview">
+                            <img id="previewImage" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" alt="Profile Picture">
+                            <label for="profileImage">
+                                <i class="fa-solid fa-camera"></i>
+                            </label>
+                            <input type="file" id="profileImage" accept="image/*" hidden>
+                        </div>
+                        <h3>Upload Profile Picture</h3>
+                        <p>JPG, PNG or GIF. Max size of 5MB.</p>
+                    </div>
+
+                    <!-- FORM INPUTS -->
+                    <div class="form-group">
+                        <div class="input-box">
+                            <input type="text" id="fullName" required placeholder=" ">
+                            <label for="fullName">Full Name</label>
+                            <i class="fa-regular fa-user"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="input-box">
+                            <input type="text" id="studentNumber" required placeholder=" ">
+                            <label for="studentNumber">Student Number</label>
+                            <i class="fa-regular fa-id-card"></i>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="input-box">
+                            <input type="text" id="companyName" required placeholder=" ">
+                            <label for="companyName">Company Name</label>
+                            <i class="fa-solid fa-building"></i>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="input-box">
+                            <input type="text" id="supervisorName" required placeholder=" ">
+                            <label for="supervisorName">Supervisor's Name</label>
+                            <i class="fa-solid fa-user-tie"></i>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="select-label">Section</label>
+                        <div class="select-box">
+                            <select id="sectionSelect" required>
+                                <option value="" disabled>Select your section</option>
+                                <option value="401">401</option>
+                                <option value="402">402</option>
+                                <option value="403">403</option>
+                            </select>
+                            <i class="fa-solid fa-chevron-down"></i>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="select-label">Course</label>
+                        <div class="select-box">
+                            <select id="courseSelect" required>
+                                <option value="" disabled>Select your course</option>
+                                <option value="BSIT">BSIT</option>
+                                <option value="BSBA">BSBA</option>
+                                <option value="BSE">BSE</option>
+                            </select>
+                            <i class="fa-solid fa-chevron-down"></i>
+                        </div>
+                    </div>
+
+                    <!-- ACTION BUTTONS -->
+                    <div class="button-group">
+                        <button type="button" class="cancel-btn" id="cancelBtn">Cancel</button>
+                        <button type="submit" class="continue-btn" id="saveBtn">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="/templated/header-loader.js"></script>
+<script src="/templated/sidebar-loader.js"></script>
+<script type="module" src="edit-profile.js"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        if (typeof loadHeader === "function") loadHeader("Edit Profile");
+        if (typeof loadSidebar === "function") loadSidebar("Settings");
+    });
+</script>
+
+</body>
+</html>

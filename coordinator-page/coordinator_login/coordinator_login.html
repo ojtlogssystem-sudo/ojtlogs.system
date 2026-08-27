@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OJT-LOGS - Coordinator Login</title>
+    <link rel="stylesheet" href="coordinator_login.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+</head>
+
+<body>
+    <div class="container">
+        <!-- Logo Area -->
+        <div class="logo-area">
+            <img src="../images/grc-logo.jpg" alt="GRC Logo">
+            <span>GLOBAL RECIPROCAL COLLEGES</span>
+        </div>
+
+        <!-- Left Content Header -->
+        <div class="left-content">
+            <div class="title-line"></div>
+            <h2>
+                Student Internship <br>
+                Records and <br>
+                Performance Monitoring
+            </h2>
+        </div>
+
+        <!-- Login Card -->
+        <div class="login-card">
+            <!-- Updated Header Text Structure -->
+            <div class="card-header">
+                <h1>OJT-LOGS</h1>
+            </div>
+            
+            <!-- Error Message Alert Container -->
+            <div id="errorMessage" class="error-msg"></div>
+
+            <form id="loginForm">
+                <div class="input-box">
+                    <input type="email" id="email" placeholder=" " required>
+                    <label for="email">Email</label>
+                </div>
+
+                <div class="input-box password">
+                    <input type="password" id="password" placeholder=" " required>
+                    <label for="password">Password</label>
+                    <i class="fa-regular fa-eye-slash" id="togglePassword"></i>
+                </div>
+
+                <a href="#" class="forgot" id="forgotBtn">Forgot password?</a>
+                
+                <button type="submit" class="login-btn" id="loginBtn">Login</button>
+            </form>
+
+            <div class="divider"><span>or</span></div>
+            <button class="google-btn" id="googleBtn">
+                <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google">
+                Continue with Google
+            </button>
+        </div>
+    </div>
+
+    <!-- Firebase Authentication Logic -->
+    <script type="module" src="coordinator_login.js"></script>
+</body>
+
+</html>

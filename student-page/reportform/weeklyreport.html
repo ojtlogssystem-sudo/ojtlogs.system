@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accomplishment Report</title>
+
+    <link rel="stylesheet" href="weeklyreport.css">
+</head>
+<body>
+
+    <!-- Print / Back / Submit Controls (Hidden on Print) -->
+    <div class="no-print" style="margin-bottom: 20px; display: flex; gap: 10px; align-items: center;">
+        <button onclick="window.print()" style="padding: 8px 16px; background: #AB0A0A; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+            Print Report
+        </button>
+        <button id="btn-submit-report" style="padding: 8px 16px; background: #16a34a; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 5px;">
+            Submit Report
+        </button>
+        <!-- INAYOS: Nilagyan ng id="btn-back-report" at tinanggal ang onclick history back -->
+        <button id="btn-back-report" style="padding: 8px 16px; background: #6b7280; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+            Back
+        </button>
+        <span id="submit-status" style="font-size: 14px; font-weight: bold; margin-left: 10px;"></span>
+    </div>
+
+    <div class="header">
+        <img src="/images/images.png" alt="GRC Logo" class="header-logo">
+        <p>Touching Hearts.....Renewing Minds.....Transforming Lives</p>
+        454 GRC Bldg., Rizal Avenue Ext., corner 9th Avenue<br>
+        Grace Park Caloocan City, Philippines<br>
+        Telefax: (02)361-63-30; (02) 452-29-45
+    </div>
+
+    <div class="title-bar">
+        ACCOMPLISHMENT REPORT
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th rowspan="2" class="col-date">Date</th>
+                <th colspan="2">Time Log</th>
+                <th rowspan="2" class="col-acc">Accomplishment</th>
+                <th rowspan="2" class="col-hrs">Hours Rendered</th>
+            </tr>
+            <tr>
+                <th class="col-time">IN</th>
+                <th class="col-time">OUT</th>
+            </tr>
+        </thead>
+        <tbody id="report-table-body">
+            <tr>
+                <td colspan="5" style="text-align: center; color: #6b7280; padding: 20px;">
+                    Loading report data from Firebase...
+                </td>
+            </tr>
+        </tbody>
+        <tfoot>
+            <tr class="total-row">
+                <td colspan="4" style="text-align: right;">TOTAL HOURS RENDERED</td>
+                <td style="text-align: center;" id="total-hours-cell">0 hrs</td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <div class="footer-section">
+        <div class="footer-content">
+            <hr class="footer-line">
+            <div class="footer-bottom-row">
+                <div class="footer-accent-box"></div>
+                <span class="footer-title-text">WEEKLY ACCOMPLISHMENT</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- FIREBASE MODULE LOGIC -->
+    <script type="module" src="weeklyreport.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,176 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+:root{
+    --primary:#AB0A0A;
+    --primary-hover:#8E0909;
+    --white:#ffffff;
+    --light:#f8f9fa;
+    --text:#1a1a1a;
+    --gray:#707070;
+    --border:#f0f0f0;
+    --shadow:0 4px 18px rgba(0,0,0,.04);
+    --radius:18px;
+    --icon-bg:#fdeaea;
+}
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Poppins',sans-serif;
+}
+
+body{
+    background:var(--light);
+    overflow-x:hidden;
+}
+
+/* SETTINGS CONTAINER */
+
+.settings-container {
+    width: 100%;
+    max-width: 100%;  
+    margin: 0 auto;
+    padding: 16px;        
+    display: flex;
+    flex-direction: column;
+    gap: 16px;              
+}
+/* Page Header */
+.settings-page-header {
+    margin-bottom: 8px;
+}
+
+.settings-page-header h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+}
+
+.settings-page-header p {
+    font-size: 11px;
+    color: var(--gray);
+}
+
+/* SETTINGS CARD */
+
+.settings-card {
+    background:var(--white);
+    border-radius: 18px;
+    padding:18px;
+    box-shadow:var(--shadow);
+}
+
+.logout-card {
+    padding: 16px 28px;
+}
+
+/* Red Vertical Line Title Accent */
+.card-section-title {
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:0px;
+}
+
+.card-section-title .red-line {
+    width:3.5px;
+    height:16px;
+    background:#AB0A0A;
+    border-radius:5px;
+    flex-shrink:0;
+}
+
+.card-section-title h3 {
+    margin:0;
+    font-size:14px;
+    font-weight:600;
+    color:#222;
+}
+
+/* Settings Items */
+.settings-list {
+    display: flex;
+    flex-direction: column;
+    padding:8px;
+    margin-bottom: -16px;
+}
+
+.settings-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+    text-decoration: none;
+    color: inherit;
+    transition: background-color 0.2s ease;
+    cursor: pointer;
+}
+
+.item-divider {
+    height: 1px;
+    background-color: var(--border);
+    width: 100%;
+}
+
+.icon-circle {
+    width: 46px;
+    height: 46px;
+    background-color: var(--icon-bg);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 20px;
+    flex-shrink: 0;
+}
+
+.icon-circle i {
+    font-size: 16px;
+    color: var(--primary);
+}
+
+.item-info {
+    flex: 1;
+}
+
+.item-info h4 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 2px;
+}
+
+.item-info p {
+    font-size: 11px;
+    color: var(--gray);
+    line-height: 1.4;
+    max-width: 220px;
+}
+
+.arrow-icon {
+    font-size: 14px;
+    color: #a0a0a0;
+    margin-left: 12px;
+}
+
+.select-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+}
+
+.selected-lang {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--primary);
+}
+
+.text-red {
+    color: var(--primary) !important;
+}
+
+.settings-card.logout-card {
+    padding: 10px 24px; /* Binawasan ang padding sa itaas at ibaba (dating 24px o 16px) */
+}

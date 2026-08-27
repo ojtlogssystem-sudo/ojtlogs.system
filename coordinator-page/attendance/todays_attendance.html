@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Today's Attendance | OJT-LOGS</title>
+
+    <link rel="stylesheet" href="../sidebar/sidebar-web.css">
+    <link rel="stylesheet" href="todays_attendance.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+</head>
+
+<body>
+
+<div class="dashboard">
+
+    <!-- Sidebar Container -->
+    <div id="sidebar-container"></div>
+
+    <!-- Main Content -->
+    <main class="main">
+        
+        <!-- Header -->
+        <header>
+            <div>
+                <h2>Today's Attendance</h2>
+                <p>Monitor real-time student check-ins and today's summary status.</p>
+            </div>
+
+            <div class="top-right">
+                <div class="notification">
+                    <i class="fa-regular fa-bell"></i>
+                    <span class="badge">3</span>
+                </div>
+
+                <div class="profile">
+                    <div class="avatar" id="profileAvatar">CO</div>
+                    <div class="profile-info">
+                        <h4 id="profileName">Coordinator</h4>
+                        <p id="profileRole">OJT Coordinator</p>
+                    </div>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- Attendance Content -->
+        <div class="attendance-content">
+
+            <!-- Summary Cards -->
+            <div class="attendance-summary">
+                <div class="summary-card">
+                    <div class="summary-icon">
+                        <i class="fa-solid fa-users"></i>
+                    </div>
+                    <div class="stat-content">
+                        <p class="title">Total Students</p>
+                        <h3>--</h3>
+                        <div class="stat-footer">
+                            <span class="positive"><i class="fa-solid fa-arrow-up"></i> Active</span>
+                            <small>100% Total</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="summary-card">
+                    <div class="summary-icon">
+                        <i class="fa-solid fa-user-check"></i>
+                    </div>
+                    <div class="stat-content">
+                        <p class="title">Present Today</p>
+                        <h3>--</h3>
+                        <div class="stat-footer">
+                            <span class="positive"><i class="fa-solid fa-arrow-up"></i> 0%</span>
+                            <small>of students</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="summary-card">
+                    <div class="summary-icon">
+                        <i class="fa-solid fa-clock"></i>
+                    </div>
+                    <div class="stat-content">
+                        <p class="title">Late</p>
+                        <h3>--</h3>
+                        <div class="stat-footer">
+                            <span class="negative"><i class="fa-solid fa-arrow-down"></i> 0%</span>
+                            <small>of students</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="summary-card">
+                    <div class="summary-icon">
+                        <i class="fa-solid fa-user-xmark"></i>
+                    </div>
+                    <div class="stat-content">
+                        <p class="title">Absent</p>
+                        <h3>--</h3>
+                        <div class="stat-footer">
+                            <span class="negative"><i class="fa-solid fa-arrow-down"></i> 0%</span>
+                            <small>of students</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <section class="table-card">
+                <div class="table-header">
+                    <h3>Today's Attendance List</h3>
+
+                    <div class="table-header-right">
+                        <div class="search-box">
+                            <i class="fa-solid fa-search"></i>
+                            <input type="text" id="attendanceSearch" placeholder="Search student...">
+                        </div>
+
+                        <select id="sectionFilter">
+                            <option value="All Sections">All Sections</option>
+                            <option value="3A">BSIT 3A</option>
+                            <option value="3B">BSIT 3B</option>
+                        </select>
+
+                        <select id="statusFilter">
+                            <option value="All Status">All Status</option>
+                            <option value="Present">Present</option>
+                            <option value="Late">Late</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="students-table">
+                        <thead>
+                            <tr>
+                                <th>Student Name</th>
+                                <th>Course</th>
+                                <th>Section</th>
+                                <th>Time In</th>
+                                <th>Time Out</th>
+                                <th>Total Hours</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="attendanceTable">
+                            <tr>
+                                <td colspan="8" style="text-align: center; color: #777; padding: 30px;">
+                                    No attendance records for today yet.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- TABLE FOOTER / PAGINATION -->
+                <div class="table-footer">
+                    <div class="pagination-info" id="paginationInfo">
+                        Showing 0 to 0 of 0 records
+                    </div>
+
+                    <div class="pagination-controls">
+                        <button class="page-btn" id="prevPageBtn" disabled>
+                            <i class="fa-solid fa-chevron-left"></i>
+                        </button>
+                        <div class="page-numbers" id="pageNumbers">
+                            <button class="page-num active">1</button>
+                        </div>
+                        <button class="page-btn" id="nextPageBtn" disabled>
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                    </div>
+
+                    <div class="rows-per-page">
+                        <span>Rows per page:</span>
+                        <select id="rowsPerPageSelect">
+                            <option value="6" selected>6</option>
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+
+    </main>
+
+</div>
+
+<script src="../sidebar/sidebar-web.js"></script>
+<script type="module" src="todays_attendance.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Details | OJT-LOGS</title>
+
+    <!-- CSS Links -->
+    <link rel="stylesheet" href="../sidebar/sidebar-web.css">
+    <link rel="stylesheet" href="attendance_details.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+</head>
+<body>
+
+<div class="dashboard">
+
+    <!-- Sidebar Container -->
+    <div id="sidebar-container"></div>
+
+    <!-- Main Content -->
+    <main class="main">
+        
+        <!-- Header -->
+        <header>
+            <div>
+                <h2>Attendance Details</h2>
+                <p>View complete attendance history of the selected student.</p>
+            </div>
+
+            <div class="top-right">
+                <div class="notification">
+                    <i class="fa-regular fa-bell"></i>
+                    <span class="badge">3</span>
+                </div>
+
+                <div class="profile">
+                    <div class="avatar" id="headerAvatar">MB</div>
+                    <div class="profile-info">
+                        <h4 id="profileName">Coordinator</h4>
+                        <p>OJT Coordinator</p>
+                    </div>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- Details Content -->
+        <div class="attendance-content">
+
+            <!-- Back Button -->
+            <a href="todays_attendance.html" class="back-btn-header">
+                <i class="fa-solid fa-arrow-left"></i> Back to Attendance Records
+            </a>
+
+            <!-- TWO-COLUMN GRID LAYOUT -->
+            <div class="details-grid">
+                
+                <!-- LEFT COLUMN -->
+                <div class="left-column">
+                    
+                    <!-- STUDENT INFORMATION -->
+                    <div class="card info-card">
+                        <div class="card-title">
+                            <span class="red-line"></span> Student Information
+                        </div>
+
+                        <div class="profile-header">
+                            <div class="avatar-circle" id="profileAvatarCircle">MB</div>
+                            <div class="profile-name">
+                                <h3 id="profileNameHeading">Loading Student</h3>
+                                <span class="badge-status active-badge">Active Intern</span>
+                            </div>
+                        </div>
+
+                        <div class="info-list student-info">
+                            <div class="info-item">
+                                <i class="fa-solid fa-graduation-cap"></i>
+                                <div>
+                                    <small>Course & Section</small>
+                                    <p id="infoSection">Loading...</p>
+                                </div>
+                            </div>
+                            <div class="info-item">
+                                <i class="fa-solid fa-building"></i>
+                                <div>
+                                    <small>Company</small>
+                                    <p id="infoCompany">Loading...</p>
+                                </div>
+                            </div>
+                            <div class="info-item">
+                                <i class="fa-solid fa-id-card"></i>
+                                <div>
+                                    <small>Student ID</small>
+                                    <p id="infoStudentId">Loading...</p>
+                                </div>
+                            </div>
+                            <div class="info-item">
+                                <i class="fa-solid fa-envelope"></i>
+                                <div>
+                                    <small>Email</small>
+                                    <p id="infoEmail">Loading...</p>
+                                </div>
+                            </div>
+                            <div class="info-item">
+                                <i class="fa-solid fa-user-tie"></i>
+                                <div>
+                                    <small>Supervisor</small>
+                                    <p id="infoSupervisor">Loading...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ATTENDANCE OVERVIEW -->
+                    <div class="card overview-card">
+                        <div class="card-title">
+                            <span class="red-line"></span> Attendance Overview
+                        </div>
+
+                        <div class="stat-box green-box">
+                            <div class="stat-icon"><i class="fa-regular fa-clock"></i></div>
+                            <div>
+                                <small>Total Rendered Hours</small>
+                                <h4 id="totalRenderedHours">--</h4>
+                            </div>
+                        </div>
+
+                        <div class="stat-box blue-box">
+                            <div class="stat-icon"><i class="fa-regular fa-calendar-check"></i></div>
+                            <div>
+                                <small>Days Present</small>
+                                <h4>-- <span>(--%)</span></h4>
+                            </div>
+                        </div>
+
+                        <div class="stat-box orange-box">
+                            <div class="stat-icon"><i class="fa-regular fa-clock"></i></div>
+                            <div>
+                                <small>Days Late</small>
+                                <h4>-- <span>(--%)</span></h4>
+                            </div>
+                        </div>
+
+                        <div class="stat-box red-box">
+                            <div class="stat-icon"><i class="fa-solid fa-user-xmark"></i></div>
+                            <div>
+                                <small>Days Absent</small>
+                                <h4>-- <span>(--%)</span></h4>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- RIGHT COLUMN -->
+                <div class="right-column">
+                    <div class="card table-card">
+                        
+                        <div class="table-card-header">
+                            <div class="card-title">
+                                <span class="red-line"></span> Attendance History
+                            </div>
+
+                            <div class="table-controls">
+                                <div class="date-picker">
+                                    <input type="text" id="dateRangePicker" placeholder="Select date range..." readonly style="border:none; outline:none; font-size:12px; color:#444; background:transparent; cursor:pointer; width:100%;">
+                                    <i class="fa-regular fa-calendar"></i>
+                                </div>
+
+                                <select class="filter-select">
+                                    <option>All Status</option>
+                                    <option>Present</option>
+                                    <option>Late</option>
+                                    <option>Absent</option>
+                                    <option>Rejected</option>
+                                </select>
+
+                                <div class="search-input">
+                                    <i class="fa-solid fa-magnifying-glass"></i>
+                                    <input type="text" placeholder="Search by date...">
+                                </div>
+
+                                <button class="filter-btn">
+                                    <i class="fa-solid fa-filter"></i> Filter
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="table-wrapper">
+                            <table class="history-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Day</th>
+                                        <th>Time In</th>
+                                        <th>Time Out</th>
+                                        <th>Total Hours</th>
+                                        <th>Status</th>
+                                        <th>Remarks</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="8" style="text-align: center; color: #666; padding: 25px;">Loading attendance history...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- PAGINATION -->
+                        <div class="table-footer">
+                            <span class="records-info">Showing 0 of 0 records</span>
+                            <div class="pagination">
+                                <button class="page-btn"><i class="fa-solid fa-chevron-left"></i></button>
+                                <button class="page-btn active">1</button>
+                                <button class="page-btn"><i class="fa-solid fa-chevron-right"></i></button>
+                            </div>
+                            <div class="rows-per-page">
+                                <span>Rows per page:</span>
+                                <select>
+                                    <option>10</option>
+                                    <option>20</option>
+                                </select>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="info-banner">
+                        <i class="fa-solid fa-circle-info"></i>
+                        <span>Note: Total rendered hours are based on recorded time in and time out within the allowed attendance time.</span>
+                    </div>
+                </div>
+            </div>
+
+        <!-- EDIT ATTENDANCE MODAL -->
+        <div class="attendance-modal" id="editAttendanceModal" aria-hidden="true">
+            <div class="modal-overlay" data-close-modal="editAttendanceModal"></div>
+            <div class="attendance-modal-box" role="dialog" aria-modal="true" aria-labelledby="editAttendanceTitle">
+                <div class="modal-header">
+                    <div>
+                        <h3 id="editAttendanceTitle">Edit Attendance</h3>
+                        <p>Adjust the student's recorded time based on the approved company consideration.</p>
+                    </div>
+                    <button class="modal-close" type="button" data-close-modal="editAttendanceModal" aria-label="Close">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="selected-date-box">
+                        <i class="fa-regular fa-calendar"></i>
+                        <div>
+                            <small>Attendance Date</small>
+                            <strong id="editAttendanceDate">—</strong>
+                        </div>
+                    </div>
+
+                    <div class="time-fields">
+                        <label>
+                            <span>Time In</span>
+                            <input type="time" id="editTimeIn">
+                        </label>
+                        <label>
+                            <span>Time Out</span>
+                            <input type="time" id="editTimeOut">
+                        </label>
+                    </div>
+
+                    <div class="adjustment-note">
+                        <i class="fa-solid fa-circle-info"></i>
+                        <span>You may reduce the rendered hours when the company has approved a deduction, such as 1 hour.</span>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="modal-secondary-btn" type="button" data-close-modal="editAttendanceModal">Cancel</button>
+                    <button class="modal-primary-btn" type="button" id="saveAttendanceBtn">
+                        <i class="fa-solid fa-check"></i> Save Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- REJECT ATTENDANCE MODAL -->
+        <div class="attendance-modal" id="rejectAttendanceModal" aria-hidden="true">
+            <div class="modal-overlay" data-close-modal="rejectAttendanceModal"></div>
+            <div class="attendance-modal-box reject-modal-box" role="dialog" aria-modal="true" aria-labelledby="rejectAttendanceTitle">
+                <div class="modal-header">
+                    <div>
+                        <h3 id="rejectAttendanceTitle">Reject Attendance</h3>
+                        <p>This will mark the student's time in and time out as rejected.</p>
+                    </div>
+                    <button class="modal-close" type="button" data-close-modal="rejectAttendanceModal" aria-label="Close">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="reject-warning">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <div>
+                            <strong>Are you sure you want to reject this attendance?</strong>
+                            <p>The rejected record will remain visible in the student's account details for tracking.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="modal-secondary-btn" type="button" data-close-modal="rejectAttendanceModal">Cancel</button>
+                    <button class="modal-danger-btn" type="button" id="confirmRejectBtn">
+                        <i class="fa-solid fa-xmark"></i> Reject Attendance
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="../sidebar/sidebar-web.js"></script>
+<script type="module" src="attendance_details.js"></script>
+
+</body>
+</html>

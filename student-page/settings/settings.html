@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings</title>
+
+    <link rel="stylesheet" href="settings.css">
+    <!-- Pinalitan ang / ng ../ -->
+    <link rel="stylesheet" href="../templated/header.css">
+    <link rel="stylesheet" href="../templated/sidebar.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+</head>
+
+<body>
+    <div class="dashboard">
+        <div id="sidebar-container"></div>
+
+        <main class="main">
+            <header id="header-container"></header>
+            
+            <section class="settings-container">
+
+                <!-- ACCOUNT CARD SECTION -->
+                <div class="settings-card">
+                    <div class="card-section-title">
+                        <span class="red-line"></span>
+                        <h3>Account</h3>
+                    </div>
+
+                    <div class="settings-list">
+                        <!-- Edit Profile -->
+                        <a href="../edit-profile/edit-profile.html" class="settings-item">
+                            <div class="icon-circle">
+                                <i class="fa-regular fa-user"></i>
+                            </div>
+                            <div class="item-info">
+                                <h4>Edit Profile</h4>
+                                <p>Update your personal information and profile picture</p>
+                            </div>
+                            <i class="fa-solid fa-chevron-right arrow-icon"></i>
+                        </a>
+
+                        <div class="item-divider"></div>
+
+                        <!-- Change Password -->
+                        <a href="../change-pass/change-pass.html" class="settings-item">
+                            <div class="icon-circle">
+                                <i class="fa-solid fa-lock"></i>
+                            </div>
+                            <div class="item-info">
+                                <h4>Change Password</h4>
+                                <p>Update your password to keep your account secure</p>
+                            </div>
+                            <i class="fa-solid fa-chevron-right arrow-icon"></i>
+                        </a>
+
+                        <div class="item-divider"></div>
+
+                        <!-- Privacy Settings -->
+                        <a href="privacy-settings.html" class="settings-item">
+                            <div class="icon-circle">
+                                <i class="fa-solid fa-shield-halved"></i>
+                            </div>
+                            <div class="item-info">
+                                <h4>Privacy Settings</h4>
+                                <p>Manage your privacy and data preferences</p>
+                            </div>
+                            <i class="fa-solid fa-chevron-right arrow-icon"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- PREFERENCE CARD SECTION -->
+                <div class="settings-card">
+                    <div class="card-section-title">
+                        <span class="red-line"></span>
+                        <h3>Preference</h3>
+                    </div>
+
+                    <div class="settings-list">
+                        <!-- Language -->
+                        <div class="settings-item">
+                            <div class="icon-circle">
+                                <i class="fa-solid fa-globe"></i>
+                            </div>
+                            <div class="item-info">
+                                <h4>Language</h4>
+                                <p>Choose your preferred<br>language</p>
+                            </div>
+                            <div class="select-wrapper">
+                                <span class="selected-lang">English</span>
+                                <i class="fa-solid fa-chevron-down arrow-icon"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LOGOUT CARD SECTION -->
+                <div class="settings-card logout-card">
+                    <a href="#" class="settings-item logout-item" id="logout-btn">
+                        <div class="icon-circle">
+                            <i class="fa-solid fa-right-from-bracket"></i>
+                        </div>
+                        <div class="item-info">
+                            <h4 class="text-red">Log Out</h4>
+                            <p>Sign out of your account</p>
+                        </div>
+                        <i class="fa-solid fa-chevron-right arrow-icon"></i>
+                    </a>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Pinalitan ang / ng ../ -->
+    <script src="../templated/sidebar-loader.js"></script>
+    <script src="../templated/header-loader.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            if (typeof loadSidebar === "function") {
+                loadSidebar("Settings");
+            }
+            if (typeof loadHeader === "function") {
+                loadHeader("Settings");
+            }
+        });
+    </script>
+</body>
+</html>

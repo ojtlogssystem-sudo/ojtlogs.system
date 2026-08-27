@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OJT-LOGS - Login</title>
+    <link rel="stylesheet" href="student_login.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+</head>
+
+<body>
+    <div class="container">
+        <!-- Login Card -->
+        <div class="login-card">
+            <!-- Updated Header Text Structure -->
+            <div class="card-header">
+                <h1>OJT-LOGS</h1>
+                <p>Track your on-the-job training progress</p>
+            </div>
+            
+            <!-- Error Message Alert Container -->
+            <div id="errorMessage" class="error-msg"></div>
+
+            <form id="loginForm">
+                <div class="input-box">
+                    <input type="email" id="email" placeholder=" " required>
+                    <label for="email">Email</label>
+                </div>
+
+                <div class="input-box password">
+                    <input type="password" id="password" placeholder=" " required>
+                    <label for="password">Password</label>
+                    <i class="fa-regular fa-eye-slash" id="togglePassword"></i>
+                </div>
+
+                <a href="#" class="forgot" id="forgotBtn">Forgot password?</a>
+                
+                <button type="submit" class="login-btn" id="loginBtn">Login</button>
+            </form>
+
+            <div class="divider"><span>or</span></div>
+            <button class="google-btn" id="googleBtn">
+                <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google">
+                Continue with Google
+            </button>
+        </div>
+    </div>
+
+    <!-- Firebase SDK and Script -->
+    <script type="module" src="student_login.js"></script>
+</body>
+</html>

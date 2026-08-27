@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Reports | OJT-LOGS</title>
+
+    <!-- Shared Layout -->
+    <link rel="stylesheet" href="../sidebar/sidebar-web.css">
+
+    <!-- Reports CSS -->
+    <link rel="stylesheet" href="reports.css">
+
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+
+</head>
+
+<body>
+
+<div class="dashboard">
+
+    <div id="sidebar-container"></div>
+
+    <!-- ===================== MAIN ===================== -->
+
+    <main class="main">
+
+        <header>
+
+            <div>
+                <h2>Reports</h2>
+                <p>Generate, preview and export internship reports.</p>
+            </div>
+
+            <div class="top-right">
+
+                <div class="notification">
+                    <i class="fa-regular fa-bell"></i>
+                    <span class="badge">3</span>
+                </div>
+
+                <div class="profile">
+
+                    <div class="avatar">MS</div>
+
+                    <div class="profile-info">
+                        <h4>Coordinator</h4>
+                        <p>OJT Coordinator</p>
+                    </div>
+
+                    <i class="fa-solid fa-chevron-down"></i>
+
+                </div>
+
+            </div>
+
+        </header>
+
+        <div class="reports-content">
+
+            <!-- SUMMARY -->
+
+            <div class="reports-summary">
+
+                <div class="summary-card">
+
+                    <div class="summary-icon blue">
+                        <i class="fa-solid fa-file-lines"></i>
+                    </div>
+
+                    <div>
+                        <h3>125</h3>
+                        <p>Total Reports</p>
+                    </div>
+
+                </div>
+
+                <div class="summary-card">
+
+                    <div class="summary-icon green">
+                        <i class="fa-solid fa-file-circle-check"></i>
+                    </div>
+
+                    <div>
+                        <h3>18</h3>
+                        <p>Generated Today</p>
+                    </div>
+
+                </div>
+
+                <div class="summary-card">
+
+                    <div class="summary-icon orange">
+                        <i class="fa-solid fa-clock"></i>
+                    </div>
+
+                    <div>
+                        <h3>6</h3>
+                        <p>Pending Reports</p>
+                    </div>
+
+                </div>
+
+                <div class="summary-card">
+
+                    <div class="summary-icon red">
+                        <i class="fa-solid fa-download"></i>
+                    </div>
+
+                    <div>
+                        <h3>94</h3>
+                        <p>Exported Reports</p>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- REPORT LIST -->
+
+            <section class="reports-section">
+
+                <div class="section-header">
+
+                    <h3>Generated Reports</h3>
+
+                    <div class="toolbar-right">
+
+                        <div class="search-box">
+
+                            <i class="fa-solid fa-search"></i>
+
+                            <input
+                                type="text"
+                                id="searchReport"
+                                placeholder="Search report...">
+
+                        </div>
+
+                        <select id="reportFilter">
+
+                            <option value="all">All Reports</option>
+                            <option value="attendance">Attendance</option>
+                            <option value="progress">Progress</option>
+                            <option value="risk">AI At-Risk</option>
+                            <option value="skill">AI Skill Gap</option>
+                            <option value="company">Company</option>
+
+                        </select>
+
+                    </div>
+
+                </div>
+
+                <div class="table-container">
+
+                    <table class="reports-table">
+
+                        <thead>
+
+                            <tr>
+
+                                <th>Report Name</th>
+                                <th>Category</th>
+                                <th>Date Generated</th>
+                                <th>Status</th>
+                                <th>Action</th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody id="reportTable">
+                            <tr>
+
+    <td>Attendance Report</td>
+    <td>Attendance</td>
+    <td>August 03, 2026</td>
+
+    <td>
+        <span class="status ready">Ready</span>
+    </td>
+
+    <td>
+
+        <button class="action-btn view">
+            <i class="fa-solid fa-eye"></i>
+        </button>
+
+        <button class="action-btn download">
+            <i class="fa-solid fa-download"></i>
+        </button>
+
+        <button class="action-btn generate">
+            <i class="fa-solid fa-file-circle-plus"></i>
+        </button>
+
+    </td>
+
+</tr>
+
+<tr>
+
+    <td>Internship Progress Report</td>
+    <td>Progress</td>
+    <td>August 03, 2026</td>
+
+    <td>
+        <span class="status ready">Ready</span>
+    </td>
+
+    <td>
+
+        <button class="action-btn view">
+            <i class="fa-solid fa-eye"></i>
+        </button>
+
+        <button class="action-btn download">
+            <i class="fa-solid fa-download"></i>
+        </button>
+
+        <button class="action-btn generate">
+            <i class="fa-solid fa-file-circle-plus"></i>
+        </button>
+
+    </td>
+
+</tr>
+
+<tr>
+
+    <td>AI At-Risk Report</td>
+    <td>Risk</td>
+    <td>August 03, 2026</td>
+
+    <td>
+        <span class="status processing">Processing</span>
+    </td>
+
+    <td>
+
+        <button class="action-btn view">
+            <i class="fa-solid fa-eye"></i>
+        </button>
+
+        <button class="action-btn download">
+            <i class="fa-solid fa-download"></i>
+        </button>
+
+        <button class="action-btn generate">
+            <i class="fa-solid fa-file-circle-plus"></i>
+        </button>
+
+    </td>
+
+</tr>
+
+<tr>
+
+    <td>AI Skill Gap Report</td>
+    <td>Skill</td>
+    <td>August 03, 2026</td>
+
+    <td>
+        <span class="status ready">Ready</span>
+    </td>
+
+    <td>
+
+        <button class="action-btn view">
+            <i class="fa-solid fa-eye"></i>
+        </button>
+
+        <button class="action-btn download">
+            <i class="fa-solid fa-download"></i>
+        </button>
+
+        <button class="action-btn generate">
+            <i class="fa-solid fa-file-circle-plus"></i>
+        </button>
+
+    </td>
+
+</tr>
+
+<tr>
+
+    <td>Company Deployment Report</td>
+    <td>Company</td>
+    <td>August 03, 2026</td>
+
+    <td>
+        <span class="status ready">Ready</span>
+    </td>
+
+    <td>
+
+        <button class="action-btn view">
+            <i class="fa-solid fa-eye"></i>
+        </button>
+
+        <button class="action-btn download">
+            <i class="fa-solid fa-download"></i>
+        </button>
+
+        <button class="action-btn generate">
+            <i class="fa-solid fa-file-circle-plus"></i>
+        </button>
+
+    </td>
+
+</tr>
+
+</tbody>
+
+</table>
+
+</div>
+
+</section>
+
+<!-- REPORT STATISTICS -->
+
+<section class="reports-section">
+
+    <div class="section-header">
+        <h3>Report Statistics</h3>
+    </div>
+
+    <div class="statistics-grid">
+
+        <div class="stat-card">
+
+            <i class="fa-solid fa-chart-column"></i>
+
+            <h3>125</h3>
+
+            <p>Total Reports Generated</p>
+
+        </div>
+
+        <div class="stat-card">
+
+            <i class="fa-solid fa-file-export"></i>
+
+            <h3>94</h3>
+
+            <p>Total Downloads</p>
+
+        </div>
+
+        <div class="stat-card">
+
+            <i class="fa-solid fa-star"></i>
+
+            <h3>Attendance</h3>
+
+            <p>Most Generated Report</p>
+
+        </div>
+
+        <div class="stat-card">
+
+            <i class="fa-solid fa-circle-check"></i>
+
+            <h3>98%</h3>
+
+            <p>Generation Success Rate</p>
+
+        </div>
+
+    </div>
+
+</section>
+
+<!-- EXPORT CENTER -->
+
+<section class="reports-section">
+
+    <div class="section-header">
+        <h3>Export Center</h3>
+    </div>
+
+    <div class="export-grid">
+
+        <button class="export-btn pdf">
+
+            <i class="fa-solid fa-file-pdf"></i>
+
+            Export PDF
+
+        </button>
+
+        <button class="export-btn excel">
+
+            <i class="fa-solid fa-file-excel"></i>
+
+            Export Excel
+
+        </button>
+
+        <button class="export-btn print">
+
+            <i class="fa-solid fa-print"></i>
+
+            Print Reports
+
+        </button>
+
+        <button class="export-btn all">
+
+            <i class="fa-solid fa-download"></i>
+
+            Export All
+
+        </button>
+
+    </div>
+
+</section>
+
+</div>
+
+</main>
+
+</div>
+
+<script src="../sidebar/sidebar-web.js"></script>
+<script src="reports.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,219 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --primary: #AB0A0A;
+    --primary-hover: #8E0909;
+    --white: #ffffff;
+    --light: #f8f9fa;
+    --text: #1a1a1a;
+    --gray: #707070;
+    --border: #ececec;
+    --shadow: 0 4px 18px rgba(0,0,0,.04);
+    --radius: 18px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+
+body {
+    background: var(--light);
+    overflow-x: hidden;
+}
+
+.profile-container {
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ================= PROFILE / SECURITY CARD ================= */
+.profile-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.card-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.vertical-line.red {
+    width: 3.5px;
+    height: 16px;
+    background: var(--primary);
+    border-radius: 5px;
+    flex-shrink: 0;
+}
+
+.card-title h2 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+/* ================= INPUTS & FLOATING LABELS ================= */
+.form-group {
+    margin-bottom: 16px;
+}
+
+.input-box {
+    position: relative;
+}
+
+.input-box input {
+    width: 100%;
+    height: 42px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    padding: 0 40px 0 14px;
+    font-size: 12px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.25s, box-shadow 0.25s;
+}
+
+.input-box input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(171, 10, 10, .08);
+}
+
+/* FLOATING LABEL STANDARD & ACTIVE STATE (RED) */
+.input-box label {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #fff;
+    padding: 0 4px;
+    color: #9ca3af;
+    font-size: 12px;
+    font-weight: 400;
+    pointer-events: none;
+    transition: all 0.25s ease;
+}
+
+.input-box input:focus + label,
+.input-box input:not(:placeholder-shown) + label {
+    top: 0;
+    transform: translateY(-50%);
+    font-size: 10px;
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.input-box i {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #777;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+/* ================= PASSWORD RULES ================= */
+.password-rules {
+    margin-top: 15px;
+    font-size: 11px;
+    background: #fdf2f2;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border-left: 3px solid var(--primary);
+}
+
+.password-rules p {
+    margin-bottom: 4px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.password-rules ul {
+    padding-left: 16px;
+    margin: 0;
+}
+
+.password-rules li {
+    font-size: 10px;
+    color: var(--gray);
+    line-height: 1.6;
+}
+
+/* ================= ALERT BANNER ================= */
+.alert-banner {
+    background-color: #fde8e8;
+    color: #9b1c1c;
+    border: 1px solid #f8b4b4;
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.5;
+    margin-bottom: 15px;
+    animation: slideDown 0.25s ease-out;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ================= BUTTONS ================= */
+.button-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.cancel-btn {
+    flex: 1;
+    height: 42px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--gray);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.25s ease;
+}
+
+.cancel-btn:hover {
+    background: #f0f0f0;
+    color: var(--text);
+}
+
+.continue-btn {
+    flex: 1;
+    height: 42px;
+    border: none;
+    border-radius: 10px;
+    background: var(--primary);
+    color: var(--white);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.25s ease, transform 0.1s ease;
+}
+
+.continue-btn:hover {
+    background: var(--primary-hover);
+}

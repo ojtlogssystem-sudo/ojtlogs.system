@@ -1,0 +1,923 @@
+html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden; /* Pinipigilan ang buong screen na mag-scroll */
+}
+
+.dashboard {
+    height: 100vh;
+    display: flex;
+    overflow: hidden;
+}
+
+.main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.students-content {
+    padding: 10px 30px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* Para kumasya ang flex child sa natitirang space */
+}
+
+
+/* =========================
+   TABLE TITLE & DESCRIPTION
+========================= */
+.students-header-wrapper {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 5px 20px 5px;
+    gap: 20px;
+}
+
+.table-title-section {
+    padding: 0;
+}
+
+.table-title-section h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0 0 4px 0;
+}
+
+.table-title-section p {
+    font-size: 13px;
+    color: #666;
+    margin: 0;
+}
+/* =========================
+   TABLE CARD FIX FOR PAGINATION
+========================= */
+.table-card {
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid #ececec;
+    box-shadow: 0 2px 8px rgba(0,0,0,.03);
+    overflow: hidden;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+table thead th i {
+    margin-right: 6px;             /* Spacing sa pagitan ng icon at text */
+    color: #666;               /* OJT-LOGS Red Theme Accent */
+    font-size: 11px;
+}
+
+.table-footer {
+    padding: 12px 25px;
+    border-top: 1px solid #ececec;
+    background: #fafafa;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-top: auto; /* Siguradong nakadikit sa pinaka-ibaba ng table card */
+}
+
+.add-btn {
+    height: 40px;
+    padding: 0 18px;
+    background: var(--primary, #ab0a0a);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    white-space: nowrap; /* Bawal maputol ang text */
+    flex-shrink: 0;
+}
+
+.add-btn:hover {
+    background: var(--primary-hover, #880808);
+}
+
+/* =========================
+   SEARCH BOX & SELECT
+========================= */
+.search-box {
+    flex: 1;                     /* Mag-eexpand para sakupin ang lahat ng bakanteng space sa kaliwa */
+    min-width: 1000px;            /* Siguradong hindi masyadong liliit sa mobile/small screens */
+    height: 40px;
+    background: #fff;
+    border: 1px solid #ececec;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    padding: 0 15px;
+    transition: .25s;
+}
+
+.search-box input {
+    width: 100%;
+    border: none;
+    outline: none;
+    background: none;
+    color: #333;
+    font-size: 13px;
+}
+
+.search-box:focus-within {
+    border-color: var(--primary, #ab0a0a);
+    box-shadow: 0 0 0 3px rgba(171,10,10,.08);
+}
+
+.search-box i {
+    color: #888;
+    margin-right: 10px;
+}
+
+
+.toolbar select {
+    height: 40px;
+    min-width: 180px;
+    padding: 0 15px;
+    background: #fff;
+    border: 1px solid #ececec;
+    border-radius: 8px;
+    color: #94a3b8;
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+}
+
+/* =========================
+   TABLE CARD & HEADER
+========================= */
+.table-card {
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid #ececec;
+    box-shadow: 0 2px 8px rgba(0,0,0,.03);
+    overflow: hidden;
+}
+
+.table-header {
+    padding: 16px 18px;
+    border-bottom: 1px solid #ececec;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.table-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #222;
+    margin: 0;
+    white-space: nowrap;
+}
+
+/* CONTAINER SA KANAN NG HEADER */
+.table-header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+table thead th {
+    padding: 8px 12px !important;  /* Bawas sa vertical space */
+    font-size: 12px !important;     /* Maliit na font size */
+    font-weight: 600;
+    color: #555555;
+    background-color: #fafafa;
+    border-bottom: 1px solid #eaeaea;
+    white-space: nowrap;           /* Bawal mag-wrap para malinis */
+}
+
+.table-header-right select {
+    height: 40px;
+    min-width: 150px;
+    padding: 0 15px;
+    background: #fff;
+    border: 1px solid #ececec;
+    border-radius: 8px;
+    color: #555;
+    font-size: 13px;
+    font-weight: 500;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+.table-header-right select:focus {
+    border-color: var(--primary, #ab0a0a);
+    box-shadow: 0 0 0 3px rgba(171, 10, 10, 0.08);
+}
+/* =========================
+   TABLE & IMAGES
+========================= */
+
+.students-table {
+    width: 100%;
+    min-width: 1000px;
+    border-collapse: collapse;
+}
+
+.students-table thead {
+    background: #fafafa;
+}
+
+.students-table th {
+    padding: 18px;
+    text-align: left;
+    font-size: 14px;
+    color: #666;
+    font-weight: 600;
+    border-bottom: 1px solid #ececec;
+}   
+
+.students-table td {
+    padding: 18px;
+    font-size: 14px;
+    color: #333;
+    border-bottom: 1px solid #f2f2f2;
+    vertical-align: middle;
+}
+
+.students-table tbody tr {
+    transition: .2s;
+}
+
+.students-table tbody tr:hover {
+    background: #fafafa;
+}
+
+/* Photo Wrapper & Custom Fallback Circle */
+.photo-wrapper {
+    width: 44px;
+    height: 44px;
+    position: relative;
+}
+
+.student-photo {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+    border: 1px solid #ececec;
+}
+.photo-wrapper,
+.student-avatar-fallback {
+    margin-left: 0 !important;
+}
+
+.student-avatar-fallback {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #ab0a0a;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 14px;
+    text-transform: uppercase;
+}
+
+/* =========================
+   STATUS BADGES
+========================= */
+.status {
+    display: inline-block;
+    padding: 6px 15px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.status.active {
+    background: #eaf8ef;
+    color: #27ae60;
+}
+
+.status.pending {
+    background: #fff6db;
+    color: #d68910;
+}
+
+.status.completed {
+    background: #e5f1ff;
+    color: #2980b9;
+}
+
+.status.archived {
+    background: #f3f3f3;
+    color: #777;
+}
+
+/* =========================
+   ACTION BUTTONS
+========================= */
+.actions {
+    display: flex !important;
+    justify-content: flex-start !important; /* Inililipat ang mga buttons sa kaliwa */
+    gap: 8px !important;
+}
+
+.action-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    transition: .25s;
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+}
+
+.view-btn { background: #4f8dfd; }
+.view-btn:hover { background: #2f73f2; }
+
+.edit-btn { background: #33b864; }
+.edit-btn:hover { background: #269c52; }
+
+.archive-btn { background: #ff5a5f; }
+.archive-btn:hover { background: #e2464b; }
+
+/* =========================
+   MODAL STYLES (MATCHED UI)
+========================= */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(2px);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    background: #ffffff;
+    width: 100%;
+    max-width: 460px;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+    box-sizing: border-box;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.modal-header h3 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1a1a1a;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-header h3 i {
+    font-size: 14px;
+    color: #1a1a1a;
+}
+
+.close-modal {
+    font-size: 20px;
+    cursor: pointer;
+    color: #a0a0a0;
+    transition: 0.2s;
+}
+
+.close-modal:hover {
+    color: #333333;
+}
+
+.modal-description {
+    font-size: 13.5px;
+    color: #707070;
+    line-height: 1.5;
+    margin-bottom: 12px;
+}
+
+/* Custom Input Field with Icon */
+.input-with-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.input-with-icon i {
+    position: absolute;
+    left: 14px;
+    color: #888888;
+    font-size: 15px;
+    pointer-events: none;
+}
+
+.input-with-icon input {
+    width: 100%;
+    height: 40px;
+    padding: 0 15px 0 42px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    outline: none;
+    font-size: 14px;
+    color: #2d3748;
+    background-color: #fafafa;
+    transition: all 0.2s ease;
+}
+
+.input-with-icon input:focus {
+    border-color: #3182ce;
+    background-color: #ffffff;
+    box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+}
+
+.input-with-icon input::placeholder {
+    color: #a0aec0;
+}
+
+/* Modal Action Buttons */
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+}
+
+.btn-cancel {
+    height: 36px;
+    padding: 0 22px;
+    border: none;
+    background: #dfe2e4;
+    color: #555555;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.btn-cancel:hover {
+    background: #e4e7eb;
+    color: #333333;
+}
+
+.btn-submit {
+    height:36px;
+    padding: 0 22px;
+    border: none;
+    background: #ab0a0a;
+    color: #ffffff;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: 0.2s;
+    box-shadow: 0 2px 6px rgba(171, 10, 10, 0.2);
+}
+
+.btn-submit:hover {
+    background: #880808;
+    transform: translateY(-1px);
+}
+
+/* Success Message Alert */
+.success-message {
+    display: none;
+    margin-top: 18px;
+    padding: 12px 16px;
+    background-color: #f0fdf4;       /* Soft light green background */
+    border: 1px solid #bbf7d0;       /* Light green border */
+    border-radius: 8px;
+    color: #166534;                  /* Dark green text */
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.success-message.active {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.success-message i {
+    font-size: 18px;
+    color: #16a34a;                  /* Accent green icon */
+    flex-shrink: 0;
+}
+
+.success-message p {
+    margin: 0;
+    line-height: 1.4;
+    text-align: left;
+}
+
+.success-message p span {
+    font-weight: 600;
+    word-break: break-all;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ========================================
+   TABLE PAGINATION FOOTER STYLES
+======================================== */
+.table-footer {
+    padding: 14px 25px;
+    border-top: 1px solid #ececec;
+    background: #fafafa;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.pagination-info {
+    font-size: 13px;
+    color: #666;
+    font-weight: 400;
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.page-numbers {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.page-btn, .page-num {
+    height: 34px;
+    min-width: 34px;
+    padding: 0 8px;
+    background: #fff;
+    border: 1px solid #dcdcdc;
+    border-radius: 6px;
+    color: #333;
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.page-btn:hover:not(:disabled), 
+.page-num:hover:not(.active) {
+    background: #f0f0f0;
+    border-color: #ccc;
+}
+
+.page-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.page-num.active {
+    background: var(--primary, #ab0a0a);
+    color: #ffffff;
+    border-color: var(--primary, #ab0a0a);
+    font-weight: 600;
+}
+
+.rows-per-page {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: #666;
+}
+
+.rows-per-page select {
+    height: 34px;
+    padding: 0 10px;
+    background: #fff;
+    border: 1px solid #dcdcdc;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.rows-per-page select:focus {
+    border-color: var(--primary, #ab0a0a);
+}
+
+
+/* =========================
+   MODAL
+========================= */
+.modal .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.modal label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #444;
+}
+
+.modal .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.modal-select {
+    width: 100%;
+    height: 40px;
+    padding: 0 15px 0 42px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    outline: none;
+    font-size: 14px;
+    color: #2d3748;
+    background-color: #fafafa;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.modal-select:focus {
+    border-color: #3182ce;
+    background-color: #ffffff;
+    box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+}
+
+/* ==========================================
+   FIXED PROFILE MODAL LAYOUT & POSITIONING
+========================================== */
+
+/* 1. MODAL CONTAINER FIX */
+.profile-modal-content {
+    max-width: 700px !important;
+    width: 92%;
+    height: 475px !important;      
+    min-height: 450px !important;  
+    padding: 28px 22px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;   
+    box-sizing: border-box;
+    border-radius: 16px;
+}
+
+/* 2. HEADER & CLOSE BUTTON FIX */
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0;      
+}
+
+.modal-title-text {
+    font-size: 18px !important;
+    font-weight: 600 !important;
+    color: #1a1a1a;
+}
+
+.modal-divider {
+    border: none;
+    border-top: 1px solid #f1f5f9;
+    margin: 12px 0 18px 0;     
+    width: 100%;
+}
+
+/* 3. PROFILE HEADER CARD (AVATAR & NAME) */
+.profile-header-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 20px;
+    background: #f8fafc;
+    border: 1px solid #f1f5f9;
+    border-radius: 14px;
+    margin-bottom: 18px;
+}
+
+.profile-avatar-box {
+    width: 64px;
+    height: 64px;
+    font-size: 24px;
+    font-weight: 700;
+    border-radius: 14px;
+    background: #ab0a0a;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.profile-header-info h4 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #0f172a;
+    margin: 0 0 4px 0;
+}
+
+/* STATUS PILL BASE DESIGN (Katulad ng sa Table) */
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px 10px;
+    border-radius: 16px;            /* Bilog ang mga gilid (pill shape) */
+    font-size: 11px;
+    font-weight: 600;
+    width: fit-content;
+    text-transform: capitalize;
+}
+
+/* 🟢 ACTIVE (GREEN) */
+.status-pill.active {
+    background-color: #dcfce7;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+}
+
+/* 🟡 PENDING (YELLOW) */
+.status-pill.pending {
+    background-color: #fef9c3;
+    color: #a16207;
+    border: 1px solid #fef08a;
+}
+
+/* 🔵 COMPLETED (BLUE) */
+.status-pill.completed {
+    background-color: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
+}
+
+/* 4. DETAILS GRID (ID, GMAIL, COURSE, COMPANY) */
+.profile-details-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+    margin-bottom: 24px;             /* Sakto lang ang lapit sa buttons */
+}
+
+.detail-card {
+    background: #f8fafc;
+    border: 1px solid #f1f5f9;
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.detail-card .icon-box {
+    width: 42px;
+    height: 42px;
+    background: #ffffff;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ab0a0a;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.detail-info {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.detail-info label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #94a3b8;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+    text-transform: uppercase;
+}
+
+.detail-info span {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+    word-break: break-word;
+    white-space: normal;
+}
+
+/* 5. BOTTOM ACTION BUTTONS */
+.profile-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    align-items: center;
+    margin-top: 0;
+    width: 100%;
+}
+
+/* Parehas na laki gamit ang flex: 1 */
+.btn-view-details,
+.btn-edit-modal {
+    flex: 1;                     /* Magiging pantay ang lapad ng dalawang button */
+    height: 44px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+}
+
+/* View Account Details (Red Theme) */
+.btn-view-details {
+    background: #ab0a0a;
+    color: #ffffff;
+    border: none;
+}
+
+.btn-view-details:hover {
+    background: #880808;
+}
+
+/* Edit Profile (Light Theme) */
+.btn-edit-modal {
+    background: #f1f5f9;
+    color: #334155;
+    border: 1px solid #cbd5e1;
+}
+
+.btn-edit-modal:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+    border-color: #94a3b8;
+}
+
+.btn-edit-modal:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+    border-color: #94a3b8;
+}

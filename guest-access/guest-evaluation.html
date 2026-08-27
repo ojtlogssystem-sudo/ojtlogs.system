@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intern Evaluation | OJT-LOGS</title>
+    <link rel="stylesheet" href="guest-evaluation.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+</head>
+<body>
+    <main class="page-shell">
+        <section class="guest-card">
+            <div class="brand"><i class="fa-solid fa-building-columns"></i><span>OJT-LOGS</span></div>
+            <div id="loadingState" class="state"><i class="fa-solid fa-spinner fa-spin"></i><p>Opening your evaluation access...</p></div>
+            <div id="errorState" class="state hidden"><i class="fa-solid fa-link-slash"></i><h1>Link unavailable</h1><p id="errorText">This guest link is invalid or has expired.</p></div>
+            <div id="evaluationContent" class="hidden">
+                <p class="eyebrow">INTERNSHIP EVALUATION</p>
+                <h1 id="companyName">Company</h1>
+                <p class="intro">Select an intern to view their submitted task history, then complete the evaluation.</p>
+                <label for="internSelect">Intern</label>
+                <select id="internSelect"><option value="">Choose an intern</option></select>
+                <section id="historyPanel" class="history-panel hidden">
+                    <div class="panel-heading"><div><h2>Submitted task history</h2><p id="historySummary">Loading task records...</p></div><i class="fa-solid fa-clock-rotate-left"></i></div>
+                    <div id="taskHistory" class="task-history"></div>
+                </section>
+                <form id="evaluationForm" class="hidden">
+                    <h2>Supervisor evaluation</h2>
+                    <p class="form-help">Rate the selected intern based on their performance during the internship.</p>
+                    <div class="rating-grid">
+                        <label>Quality of work <select name="quality" required><option value="">Rate</option><option value="5">5 – Excellent</option><option value="4">4 – Very good</option><option value="3">3 – Satisfactory</option><option value="2">2 – Needs improvement</option><option value="1">1 – Poor</option></select></label>
+                        <label>Attendance & punctuality <select name="attendance" required><option value="">Rate</option><option value="5">5 – Excellent</option><option value="4">4 – Very good</option><option value="3">3 – Satisfactory</option><option value="2">2 – Needs improvement</option><option value="1">1 – Poor</option></select></label>
+                        <label>Initiative & teamwork <select name="teamwork" required><option value="">Rate</option><option value="5">5 – Excellent</option><option value="4">4 – Very good</option><option value="3">3 – Satisfactory</option><option value="2">2 – Needs improvement</option><option value="1">1 – Poor</option></select></label>
+                    </div>
+                    <label for="comments">Comments / recommendations</label>
+                    <textarea id="comments" name="comments" rows="5" placeholder="Share feedback for the intern..." required></textarea>
+                    <button type="submit"><i class="fa-solid fa-paper-plane"></i> Submit evaluation</button>
+                </form>
+            </div>
+            <div id="successState" class="state hidden"><i class="fa-solid fa-circle-check"></i><h1>Evaluation submitted</h1><p>Thank you. Your response has been recorded and this link is now closed.</p></div>
+        </section>
+    </main>
+    <script type="module" src="guest-evaluation.js"></script>
+</body>
+</html>

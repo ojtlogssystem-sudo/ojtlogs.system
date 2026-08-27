@@ -1,0 +1,155 @@
+/* =====================================
+   STUDENT SETUP PAGE STYLES
+   ===================================== */
+
+* {
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: #f4f6f9;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.setup-card {
+    background: #fff;
+    width: 100%;
+    max-width: 420px;
+    padding: 35px 30px;
+    border-radius: 16px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+    text-align: center;
+}
+
+.logo img {
+    width: 65px;
+    height: 65px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 15px;
+}
+
+h2 {
+    font-size: 22px;
+    margin-bottom: 5px;
+    color: #222;
+    font-weight: 600;
+}
+
+p {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 20px;
+}
+
+.email-box {
+    background: #eef2f5;
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 20px;
+    font-size: 14px;
+    word-break: break-all;
+    border: 1px dashed #cbd5e1;
+}
+
+.btn-google {
+    width: 100%;
+    padding: 12px;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: 0.2s;
+    margin-bottom: 15px;
+}
+
+.btn-google:hover {
+    background: #f8f9fa;
+    border-color: #bbb;
+}
+
+.divider {
+    margin: 18px 0;
+    color: #aaa;
+    font-size: 12px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+}
+
+.divider::before, 
+.divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: #ddd;
+    margin: 0 10px;
+}
+
+.form-group {
+    text-align: left;
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #555;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    outline: none;
+    font-size: 14px;
+    transition: 0.2s;
+}
+
+.form-group input:focus {
+    border-color: #ab0a0a;
+    box-shadow: 0 0 0 3px rgba(171, 10, 10, 0.1);
+}
+
+.btn-submit {
+    width: 100%;
+    padding: 12px;
+    background: #ab0a0a;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+    margin-top: 5px;
+}
+
+.btn-submit:hover {
+    background: #880808;
+}
+
+#errorMsg {
+    color: #e74c3c;
+    font-size: 13px;
+    margin-top: 15px;
+    line-height: 1.4;
+}

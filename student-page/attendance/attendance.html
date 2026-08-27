@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance - OJT LOGS</title>
+
+    <link rel="stylesheet" href="../templated/header.css">
+    <link rel="stylesheet" href="attendance.css">
+    <link rel="stylesheet" href="../templated/sidebar.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+    
+    <!-- Flatpickr Date Range Picker CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+</head>
+
+<body>
+
+<div class="dashboard">
+    <div id="sidebar-container"></div>
+
+    <main class="main">
+        <!-- HEADER WITH GOOGLE AUTH PROFILE & DROPDOWN -->
+        <header id="header-container"></header>
+
+        <section class="dashboard-content">
+
+            <!-- QR SCANNER CARDS -->
+            <div class="qr-cards-grid">
+                
+                <!-- TIME IN CARD -->
+                <div class="qr-card">
+                    <div class="card-top-header">
+                        <div class="qr-icon-circle green-bg">
+                            <i class="fa-solid fa-right-to-bracket"></i>
+                        </div>
+                        <div class="card-header-info">
+                            <h3>QR Time In</h3>
+                            <p>Scan the QR code provided by your coordinator/company to time in.</p>
+                        </div>
+                    </div>
+
+                    <button class="scan-btn green-btn" id="time-in-scan-btn" type="button">
+                        <i class="fa-solid fa-qrcode"></i>
+                        Scan for Time In
+                    </button>
+
+                    <div class="qr-note">
+                        <i class="fa-solid fa-circle-info"></i>
+                        <span>QR scan & photo proof required.</span>
+                    </div>
+
+                    
+                </div>
+
+                <!-- TIME OUT CARD -->
+                <div class="qr-card">
+                    <div class="card-top-header">
+                        <div class="qr-icon-circle gray-bg" id="time-out-icon-box">
+                            <i class="fa-solid fa-right-from-bracket"></i>
+                        </div>
+                        <div class="card-header-info">
+                            <h3>QR Time Out</h3>
+                            <p>Scan the QR code provided by your coordinator/company to time out.</p>
+                        </div>
+                    </div>
+
+                    <button class="scan-btn disabled-btn" id="time-out-scan-btn" type="button" disabled>
+                        <i class="fa-solid fa-qrcode"></i>
+                        Scan for Time Out
+                    </button>
+
+                    <div class="qr-note">
+                        <i class="fa-solid fa-circle-info"></i>
+                        <span id="time-out-note-text">Note: 1 hour breaktime is automatically deducted from total hours.</span>
+                    </div>
+                </div>
+                
+                <div class="firebase-badge-container">
+                    <div id="firebase-timestamp-badge" class="firebase-timestamp-badge">
+                        --:-- / -- --, ----
+                    </div>
+                </div>
+            </div>
+
+            <!-- TODAY'S ATTENDANCE SUMMARY -->
+            <div class="attendance-card">
+                <div class="section-title">
+                    <div class="title-left">
+                        <span class="vertical-line red"></span>
+                        <h3>Today's Attendance</h3>
+                    </div>
+                </div>
+
+                <div class="today-summary-grid">
+                    <div class="summary-item">
+                        <span>Date</span>
+                        <h4 id="today-date">--</h4>
+                    </div>
+                    <div class="summary-item">
+                        <span>Company</span>
+                        <h4 id="today-company">--</h4>
+                    </div>
+                    <div class="summary-item">
+                        <span>Location Logged</span>
+                        <h4 id="today-location">--</h4>
+                    </div>
+                    <div class="summary-item">
+                        <span>Time In</span>
+                        <h4 class="text-green" id="today-time-in">--</h4>
+                    </div>
+                    <div class="summary-item">
+                        <span>Time Out</span>
+                        <h4 class="text-red" id="today-time-out">--</h4>
+                    </div>
+                    <div class="summary-item">
+                        <span>Status</span>
+                        <span class="status-badge" id="today-status-badge">Not Timed In</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ATTENDANCE HISTORY TABLE WITH FLATPICKR DATE FILTER -->
+            <div class="attendance-card">
+                <div class="card-header-title">
+                    <span class="vertical-line red"></span>
+                    <h3>Attendance History</h3>
+                    <a href="attendance-history.html" class="view-all">View All</a>
+                </div>
+
+                <!-- Filter Bar Wrapper -->
+                <div class="filter-header-bar">
+                    <div class="date-picker-wrapper">
+                        <i class="fa-regular fa-calendar-days icon-calendar"></i>
+                        <input type="text" id="dateRangePicker" placeholder="Select date range..." readonly>
+                    </div>
+                    <span class="recent-logs-label">Logs Date</span>
+                </div>
+
+                <!-- Dynamic History List -->
+                <div class="attendance-history-list" id="attendance-history-list">
+                    <!-- Dynamic history items rendered via Firebase JS -->
+                </div>
+            </div>
+
+        </section>
+    </main>
+</div>
+
+<!-- 1. QR CAMERA SCANNER MODAL -->
+<div class="scanner-modal" id="scanner-modal" hidden>
+    <div class="scanner-dialog">
+        <h3>Scan Company QR Code</h3>
+        <p>Point camera at the company QR provided by your coordinator.</p>
+        
+        <div class="camera-preview">
+            <div id="qr-reader"></div>
+        </div>
+
+        <p class="scanner-status" id="scanner-status">Requesting camera access…</p>
+        <p class="scanner-result" id="scanner-result" hidden></p>
+        <button class="scanner-cancel" id="scanner-cancel" type="button">Close</button>
+    </div>
+</div>
+
+<!-- 2. PHOTO PROOF MODAL (TIME IN - CAMERA CAPTURE) -->
+<div class="scanner-modal" id="photo-modal" hidden>
+    <div class="scanner-dialog">
+        <h3><i class="fa-solid fa-camera"></i> Take Selfie Photo Proof</h3>
+        <p>Live camera capture with automatic timestamp</p>
+        
+        <div class="photo-preview-wrapper">
+            <video id="photo-video" autoplay playsinline></video>
+            <canvas id="photo-canvas" hidden></canvas>
+            
+            <div class="photo-overlay-stamp">
+                <span><i class="fa-regular fa-clock"></i> <span id="stamp-datetime">--:-- --</span></span>
+                <span><i class="fa-solid fa-building"></i> <span id="stamp-location">Locating...</span></span>
+            </div>
+        </div>
+
+        <div class="modal-actions">
+            <button class="action-btn cancel-btn" id="photo-cancel" type="button">Close</button>
+            <button class="action-btn capture-btn" id="capture-photo-btn" type="button">
+                <i class="fa-solid fa-camera"></i> Complete Time In
+            </button>
+        </div>
+    </div>
+    
+</div>
+
+<!-- 3. TASK REPORT MODAL (TIME OUT) -->
+<div class="scanner-modal" id="task-modal" hidden>
+    <div class="scanner-dialog" style="max-width: 460px;">
+        <h3 style="font-size: 15px; margin-bottom: 2px;">Daily Accomplishment Report</h3>
+        <p style="font-size: 11px; margin-bottom: 16px; color: #6b7280;">Summarize your work done today before signing out.</p>
+
+        <!-- INPUT FIELDS FOR ADDING TASK -->
+        <div style="text-align: left; margin-top: 14px;">
+            <div class="form-group" style="margin-bottom: 10px;">   
+                <label style="font-size: 12px; font-weight: 600; color: #374151;">Task Title *</label>
+                <input type="text" id="task-title-input" placeholder="e.g., Networking" style="width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px; font-size: 12px; outline: none;">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 10px;">
+                <label style="font-size: 12px; font-weight: 600; color: #374151;">Task Description *</label>
+                <textarea id="task-desc-input" style="width: 100%; height: 60px; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 10px; font-size: 12px; outline: none; resize: none;" placeholder="Details of work done..."></textarea>
+            </div>
+
+            <button type="button" id="add-task-btn" style="width: 100%; padding: 10px; background: #e0f2fe; color: #0284c7; border: 1px dashed #0284c7; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s ease;">
+                <i class="fa-solid fa-plus"></i> Add Task to List
+            </button>
+        </div>
+
+        <!-- CONTAINER FOR ADDED TASKS -->
+        <div style="text-align: left; margin: 14px 0; max-height: 140px; overflow-y: auto;">
+            <label style="font-size: 12px; font-weight: 600; color: #374151; display: block; margin-bottom: 6px;">Tasks Added:</label>
+            <ul id="added-tasks-list" style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px;">
+                <!-- Dynamic tasks will be rendered here -->
+            </ul>
+        </div>
+
+        <button class="scan-btn green-btn" id="submit-task-btn" type="button" style="margin-top: 8px;">
+            <i class="fa-solid fa-check-circle"></i> Submit & Complete Time Out
+        </button>
+        <button class="scanner-cancel" id="task-cancel" type="button" style="margin-top: 8px;">Close</button>
+    </div>
+</div>
+
+<!-- 4. VIEW PHOTO PROOF MODAL (HISTORY PREVIEW) -->
+<div class="scanner-modal" id="view-photo-modal" hidden>
+    <div class="scanner-dialog view-photo-dialog">
+        <h3><i class="fa-solid fa-image"></i> Photo Proof Details</h3>
+        <p>Verification photo submitted during time-in</p>
+        
+        <div class="photo-view-container">
+            <img id="view-photo-img" src="" alt="Photo Proof">
+        </div>
+
+        <!-- DETAILS CONTAINER (DATE, TIMESTAMP, COMPANY) -->
+        <div class="photo-details-box">
+            <div class="detail-row">
+                <i class="fa-solid fa-building"></i>
+                <div>
+                    <span class="detail-label">Company</span>
+                    <h5 id="view-photo-company">--</h5>
+                </div>
+            </div>
+            <div class="detail-row">
+                <i class="fa-regular fa-calendar-days"></i>
+                <div>
+                    <span class="detail-label">Date</span>
+                    <h5 id="view-photo-date">--</h5>
+                </div>
+            </div>
+            <div class="detail-row">
+                <i class="fa-regular fa-clock"></i>
+                <div>
+                    <span class="detail-label">Time Stamp</span>
+                    <h5 id="view-photo-time">--</h5>
+                </div>
+            </div>
+
+            
+        </div>
+
+        <!-- Red Timestamp Badge Container -->
+        
+
+        <button class="scanner-cancel" id="view-photo-btn-close" type="button" style="margin-top: 14px;">Close</button>
+    </div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script type="module" src="attendance.js"></script>
+<script src="../templated/header-loader.js"></script>
+<script src="../templated/sidebar-loader.js"></script>
+</body>
+</html>

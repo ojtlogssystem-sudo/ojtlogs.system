@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task History</title>
+
+    <link rel="stylesheet" href="tasks.css?v=1.2">
+    <link rel="stylesheet" href="../templated/sidebar.css">
+    <link rel="stylesheet" href="../templated/header.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+</head>
+<body>
+
+    <div class="dashboard">
+        <div id="sidebar-container"></div>
+
+        <main class="main">
+            <header id="header-container"></header>
+
+            <!-- Task History Card -->
+            <div class="history-card">
+                <div class="card-header-title">
+                    <span class="vertical-line red"></span>
+                    <h3>Task History</h3>
+                </div>
+
+                <!-- Filter Controls Header -->
+                <div class="filter-controls">
+                    <div class="date-picker-btn" id="date-picker-btn">
+                        <i class="fa-regular fa-calendar"></i>
+                        <span id="date-range-text">This Week</span>
+                        <i class="fa-solid fa-chevron-down arrow-down"></i>
+                        <!-- Overlay input para ma-trigger ang native calendar sa click -->
+                        <input type="date" id="filter-date-input">
+                    </div>
+                    
+                    <a href="../reportform/weeklyreport.html" style="text-decoration: none;">
+                        <button class="filter-btn" id="filter-btn" type="button">
+                            <i class="fa-solid fa-file-lines"></i>
+                            <span>Weekly Reports</span>
+                        </button>
+                    </a>
+                </div>
+
+                <!-- List of Dynamic Task Cards -->
+                <div class="task-history-list" id="user-tasks-container">
+                    <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 13px;">
+                        <i class="fa-solid fa-spinner fa-spin"></i> Loading logged-in user tasks...
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../templated/sidebar-loader.js"></script>
+    <script src="../templated/header-loader.js"></script>
+
+    <!-- Functional Firebase Logic -->
+    <script type="module" src="tasks.js"></script>
+</body>
+</html>

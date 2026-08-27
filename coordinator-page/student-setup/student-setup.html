@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Account Setup | OJT-LOGS</title>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+    
+    <!-- External CSS -->
+    <link rel="stylesheet" href="student_setup.css">
+</head>
+<body>
+
+<div class="setup-card">
+    <div class="logo">
+        <img src="../images/grc-logo.jpg" alt="Logo">
+    </div>
+    <h2>Set Up Your Account</h2>
+    <p>You have been invited to join OJT-LOGS.</p>
+
+    <!-- Display Invited Email -->
+    <div class="email-box" id="invitedEmail">Loading email...</div>
+
+    <!-- Google Connect Button -->
+    <button type="button" class="btn-google" id="googleBtn">
+        <i class="fa-brands fa-google" style="color: #4285F4;"></i> Connect Google Account
+    </button>
+
+    <div class="divider">OR SET PASSWORD</div>
+
+    <!-- Password Signup Form -->
+    <form id="setupForm">
+        <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" id="fullName" placeholder="e.g. Juan Dela Cruz" required>
+        </div>
+        <div class="form-group">
+            <label>Create Password</label>
+            <input type="password" id="password" placeholder="At least 6 characters" minlength="6" required>
+        </div>
+        <button type="submit" class="btn-submit" id="saveBtn">Complete Setup & Login</button>
+    </form>
+
+    <!-- Error/Status Message -->
+    <div id="errorMsg"></div>
+</div>
+
+<!-- External JavaScript (Module) -->
+<script type="module" src="student_setup.js"></script>
+</body>
+</html>

@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics | OJT-LOGS</title>
+
+    <link rel="stylesheet" href="../sidebar/sidebar-web.css">
+    <link rel="stylesheet" href="analytics.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+</head>
+
+<body>
+
+<div class="dashboard">
+
+    <!-- SIDEBAR -->
+    <div id="sidebar-container"></div>
+
+    <!-- MAIN CONTENT -->
+    <main class="main">
+
+        <!-- HEADER -->
+        <header>
+            <div>
+                <h2>Analytics</h2>
+                <p>Monitor student performance and internship progress.</p>
+            </div>
+
+            <div class="top-right">
+                <div class="notification">
+                    <i class="fa-regular fa-bell"></i>
+                    <span class="badge">3</span>
+                </div>
+
+                <div class="profile">
+                    <div class="avatar" id="profileAvatar">MS</div>
+                    <div class="profile-info">
+                        <h4 id="profileName">Coordinator</h4>
+                        <p id="profileRole">OJT Coordinator</p>
+                    </div>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- ANALYTICS CONTENT -->
+        <div class="analytics-content">
+
+            <!-- ==========================================
+                 SUMMARY CARDS
+            =========================================== -->
+            <div class="analytics-summary">
+
+                <!-- TOTAL STUDENTS -->
+                <div class="summary-card">
+                    <div class="summary-icon blue">
+                        <i class="fa-solid fa-user-graduate"></i>
+                    </div>
+                    <div class="stat-content">
+                        <p class="title">Total Student Interns</p>
+                        <h3>0</h3>
+                        <div class="stat-footer">
+                            <span class="positive">
+                                <i class="fa-solid fa-user-check"></i> Active
+                            </span>
+                            <small>Currently monitored</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AVERAGE PROGRESS -->
+                <div class="summary-card">
+                    <div class="summary-icon green">
+                        <i class="fa-solid fa-chart-line"></i>
+                    </div>
+                    <div class="stat-content">
+                        <p class="title">Average Progress</p>
+                        <h3>0%</h3>
+                        <div class="stat-footer">
+                            <span class="positive">
+                                <i class="fa-solid fa-arrow-up"></i> Overall
+                            </span>
+                            <small>Internship progress</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AT RISK -->
+                <div class="summary-card">
+                    <div class="summary-icon red">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                    <div class="stat-content">
+                        <p class="title">At-Risk Students</p>
+                        <h3>0</h3>
+                        <div class="stat-footer">
+                            <span class="negative">
+                                <i class="fa-solid fa-circle-exclamation"></i> Needs attention
+                            </span>
+                            <small>AI prediction</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ON TRACK -->
+                <div class="summary-card">
+                    <div class="summary-icon orange">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                    <div class="stat-content">
+                        <p class="title">On-Track Students</p>
+                        <h3>0</h3>
+                        <div class="stat-footer">
+                            <span class="positive">
+                                <i class="fa-solid fa-check"></i> On track
+                            </span>
+                            <small>Current status</small>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+
+            <!-- ==========================================
+                 STUDENT PERFORMANCE TABLE
+            =========================================== -->
+            <section class="table-card">
+                <div class="table-header">
+                    <div>
+                        <h3>Student Performance Analysis</h3>
+                        <p class="section-description">View internship progress and AI-based student status from database.</p>
+                    </div>
+
+                    <div class="table-header-right">
+                        <!-- SEARCH -->
+                        <div class="search-box">
+                            <i class="fa-solid fa-search"></i>
+                            <input type="text" id="searchStudent" placeholder="Search student...">
+                        </div>
+
+                        <!-- SECTION FILTER -->
+                        <select id="sectionFilter">
+                            <option value="all">All Sections</option>
+                            <option value="3A">BSIT 3A</option>
+                            <option value="3B">BSIT 3B</option>
+                        </select>
+
+                        <!-- STATUS FILTER -->
+                        <select id="progressFilter">
+                            <option value="all">All Status</option>
+                            <option value="completed">Completed</option>
+                            <option value="ongoing">On Track</option>
+                            <option value="atrisk">At Risk</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="students-table">
+                        <thead>
+                            <tr>
+                                <th>Student Name</th>
+                                <th>Course</th>
+                                <th>Section</th>
+                                <th>Company</th>
+                                <th>Progress</th>
+                                <th>Hours</th>
+                                <th>AI Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentTable">
+                            <tr>
+                                <td colspan="8" style="text-align: center; color: #777; padding: 30px;">
+                                    Loading student records from database...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- PAGINATION -->
+                <div class="table-footer">
+                    <div class="pagination-info" id="paginationInfo">Showing 0 to 0 students</div>
+                    <div class="pagination-controls">
+                        <button class="page-btn" id="prevPageBtn" disabled><i class="fa-solid fa-chevron-left"></i></button>
+                        <div class="page-numbers" id="pageNumbers">
+                            <button class="page-num active">1</button>
+                        </div>
+                        <button class="page-btn" id="nextPageBtn" disabled><i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                    <div class="rows-per-page">
+                        <span>Rows per page:</span>
+                        <select id="rowsPerPageSelect">
+                            <option value="6" selected>6</option>
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+
+            <!-- ==========================================
+                 AI AT-RISK ANALYSIS
+            =========================================== -->
+            <section class="analytics-section">
+                <div class="section-header">
+                    <div>
+                        <h3>AI At-Risk Analysis</h3>
+                        <p class="section-description">Identify students who may need intervention based on their internship records.</p>
+                    </div>
+                </div>
+
+                <div class="ai-risk-grid">
+                    <div class="ai-card risk">
+                        <div class="ai-card-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                        <div>
+                            <p>At Risk</p>
+                            <h2 id="atRiskCountDisplay">0</h2>
+                            <span>Students needing attention</span>
+                        </div>
+                    </div>
+
+                    <div class="ai-card monitoring">
+                        <div class="ai-card-icon"><i class="fa-solid fa-eye"></i></div>
+                        <div>
+                            <p>Needs Monitoring</p>
+                            <h2 id="monitoringCountDisplay">0</h2>
+                            <span>Students to monitor</span>
+                        </div>
+                    </div>
+
+                    <div class="ai-card safe">
+                        <div class="ai-card-icon"><i class="fa-solid fa-circle-check"></i></div>
+                        <div>
+                            <p>On Track</p>
+                            <h2 id="onTrackCountDisplay">0</h2>
+                            <span>Students progressing normally</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AT RISK LIST -->
+                <div class="risk-list">
+                    <div class="subsection-title">
+                        <h4>Students Requiring Attention</h4>
+                    </div>
+
+                    <div id="riskStudentsContainer">
+                        <div style="padding: 20px; text-align: center; color: #777;">
+                            No students currently flagged as At Risk.
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+            <!-- ==========================================
+                 COMPLETION FORECAST
+            =========================================== -->
+            <section class="table-card">
+                <div class="table-header">
+                    <div>
+                        <h3>Completion Forecast</h3>
+                        <p class="section-description">Estimated internship completion based on current progress.</p>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="students-table">
+                        <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th>Progress</th>
+                                <th>Remaining Hours</th>
+                                <th>Estimated Completion</th>
+                                <th>Forecast</th>
+                            </tr>
+                        </thead>
+                        <tbody id="completionForecastTable">
+                            <tr>
+                                <td colspan="5" style="text-align: center; color: #777; padding: 20px;">
+                                    Loading forecast data...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+
+            <!-- ==========================================
+                COMPANY SKILL EXPOSURE (NAKABALIK NA)
+            ========================================== -->
+            <section class="analytics-section">
+                <div class="section-header">
+                    <div>
+                        <h3>Company Skill Exposure</h3>
+                        <p class="section-description">View the skills and tasks commonly handled by interns in each partner company.</p>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="analytics-table">
+                        <thead>
+                            <tr>
+                                <th>Company</th>
+                                <th>Primary Skill</th>
+                                <th>Skill Exposure</th>
+                                <th>Common Tasks</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>ABC Corporation</strong></td>
+                                <td><span class="skill-tag networking">Networking</span></td>
+                                <td>
+                                    <div class="company-progress">
+                                        <div class="company-progress-bar">
+                                            <div class="company-progress-fill networking-fill" style="width: 68%;"></div>
+                                        </div>
+                                        <span>68%</span>
+                                    </div>
+                                </td>
+                                <td>Network configuration, LAN setup, troubleshooting</td>
+                                <td>
+                                    <button class="company-view-btn" onclick="viewCompanySkill('ABC Corporation')">
+                                        <i class="fa-solid fa-eye"></i> View
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>XYZ Solutions</strong></td>
+                                <td><span class="skill-tag software">Software</span></td>
+                                <td>
+                                    <div class="company-progress">
+                                        <div class="company-progress-bar">
+                                            <div class="company-progress-fill software-fill" style="width: 74%;"></div>
+                                        </div>
+                                        <span>74%</span>
+                                    </div>
+                                </td>
+                                <td>Web development, software testing, documentation</td>
+                                <td>
+                                    <button class="company-view-btn" onclick="viewCompanySkill('XYZ Solutions')">
+                                        <i class="fa-solid fa-eye"></i> View
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Tech Solutions</strong></td>
+                                <td><span class="skill-tag hardware">Hardware</span></td>
+                                <td>
+                                    <div class="company-progress">
+                                        <div class="company-progress-bar">
+                                            <div class="company-progress-fill hardware-fill" style="width: 61%;"></div>
+                                        </div>
+                                        <span>61%</span>
+                                    </div>
+                                </td>
+                                <td>PC setup, hardware troubleshooting, maintenance</td>
+                                <td>
+                                    <button class="company-view-btn" onclick="viewCompanySkill('Tech Solutions')">
+                                        <i class="fa-solid fa-eye"></i> View
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Digital Systems</strong></td>
+                                <td><span class="skill-tag database">Database</span></td>
+                                <td>
+                                    <div class="company-progress">
+                                        <div class="company-progress-bar">
+                                            <div class="company-progress-fill database-fill" style="width: 55%;"></div>
+                                        </div>
+                                        <span>55%</span>
+                                    </div>
+                                </td>
+                                <td>Database encoding, SQL queries, data management</td>
+                                <td>
+                                    <button class="company-view-btn" onclick="viewCompanySkill('Digital Systems')">
+                                        <i class="fa-solid fa-eye"></i> View
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+
+            <!-- ==========================================
+                COMPANY RECOMMENDATION (AI-DRIVEN)
+            ========================================== -->
+            <section class="analytics-section">
+                <div class="section-header">
+                    <div>
+                        <h3>Company Recommendation</h3>
+                        <p class="section-description">Find partner companies that match a student's preferred skill development area.</p>
+                    </div>
+                </div>
+
+                <div class="recommendation-filter">
+                    <div class="recommendation-field">
+                        <label for="recommendStudent">Student</label>
+                        <select id="recommendStudent">
+                            <option value="">Select Student</option>
+                        </select>
+                    </div>
+
+                    <div class="recommendation-field">
+                        <label for="skillFocus">Skill Focus</label>
+                        <select id="skillFocus">
+                            <option value="">Select Skill</option>
+                            <option value="networking">Networking</option>
+                            <option value="software">Software Development</option>
+                            <option value="hardware">Hardware</option>
+                            <option value="database">Database Management</option>
+                        </select>
+                    </div>
+
+                    <button class="recommend-btn" id="recommendCompanyBtn">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Find Recommended Companies
+                    </button>
+                </div>
+
+                <div class="recommendation-results" id="recommendationResults">
+                    <div class="recommendation-company">
+                        <div class="recommendation-company-info">
+                            <div class="company-icon"><i class="fa-solid fa-building"></i></div>
+                            <div>
+                                <h4>ABC Corporation</h4>
+                                <p>Strong Networking exposure</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+</div>
+
+<script src="../sidebar/sidebar-web.js"></script>
+<script type="module" src="analytics.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Companies | OJT-LOGS</title>
+
+    <link rel="stylesheet" href="../sidebar/sidebar-web.css">
+    <link rel="stylesheet" href="companies.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+</head>
+<body>
+
+<div id="toastNotification" class="toast-notification"></div>
+
+<div class="dashboard">
+
+    <div id="sidebar-container"></div>
+
+    <!-- MAIN -->
+    <main class="main">
+
+        <!-- Header -->
+        <header>
+            <div>
+                <h2>Companies</h2>
+                <p>Manage OJT partner companies and student placements.</p>
+            </div>
+
+            <div class="top-right">
+                <div class="notification">
+                    <i class="fa-regular fa-bell"></i>
+                    <span class="badge">3</span>
+                </div>
+
+                <div class="profile">
+                    <div class="avatar" id="userAvatar">CO</div>
+                    <div class="profile-info">
+                        <h4 id="userName">Coordinator</h4>
+                        <p id="userRole">OJT Coordinator</p>
+                    </div>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- Companies Content -->
+        <div class="companies-content">
+
+    <!-- PAGE TITLE -->
+    <div class="companies-header-wrapper">
+        <div class="table-title-section">
+            <h2>Partner Companies</h2>
+            <p>View, search, and manage all OJT partner companies and student placements.</p>
+        </div>
+
+        <button class="add-btn" id="openAddCompanyBtn">
+            <i class="fa-solid fa-plus"></i>
+            Add Company
+        </button>
+    </div>
+
+
+    <!-- COMPANY DIRECTORY -->
+    <section class="company-list-card">
+
+        <!-- Toolbar -->
+        <div class="directory-toolbar">
+            <div class="toolbar-left">
+
+                <div class="search-box">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input
+                        type="text"
+                        id="searchCompany"
+                        placeholder="Search Company...">
+                </div>
+
+                <div class="custom-dropdown">
+                    <i class="fa-solid fa-filter icon-left"></i>
+
+                    <select id="companyFilter">
+                        <option value="" disabled selected hidden>Filter</option>
+                        <option value="All">All Companies</option>
+                        <option value="Active">Active</option>
+                        <option value="Full">Full</option>
+                        <option value="Inactive">Inactive</option>
+                    </select>
+
+                    <i class="fa-solid fa-chevron-down icon-right"></i>
+                </div>
+
+
+                <div class="custom-dropdown">
+                    <i class="fa-solid fa-arrow-down-short-wide icon-left"></i>
+
+                    <select id="companySort">
+                        <option value="" disabled selected hidden>Sort by</option>
+                        <option value="name-asc">Name (A-Z)</option>
+                        <option value="name-desc">Name (Z-A)</option>
+                        <option value="students-high">Most Students</option>
+                        <option value="students-low">Least Students</option>
+                    </select>
+
+                    <i class="fa-solid fa-chevron-down icon-right"></i>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- COMPANY CARDS -->
+        <div class="company-grid" id="companyGrid">
+            <p style="grid-column:1/-1; text-align:center; color:#64748b; padding:20px;">Loading...</p>
+        </div>
+
+        <!-- PAGINATION -->
+        <div class="pagination-container">
+
+            <div class="showing-text">
+                Showing 1 to 6 of 0 companies
+            </div>
+
+            <div class="pagination-controls">
+
+                <button id="prevPageBtn" class="page-btn">
+                    <i class="fa-solid fa-chevron-left"></i>
+                    Prev
+                </button>
+
+                <div id="pageNumbers" class="page-numbers"></div>
+
+                <button id="nextPageBtn" class="page-btn">
+                    Next
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+
+            </div>
+
+            <div class="rows-per-page">
+
+                <label for="rowsPerPageSelect">
+                    Rows per page:
+                </label>
+
+                <select id="rowsPerPageSelect">
+                    <option value="5">5</option>
+                    <option value="8" selected>8</option>
+                    <option value="15">15</option>
+                </select>
+
+            </div>
+
+        </div>
+
+    </section>
+</div>
+    </main>
+
+</div>
+
+<!-- MODAL 1: ADD NEW COMPANY -->
+<div id="addCompanyModal" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>Add New Partner Company</h3>
+            <span class="close-modal" id="closeAddModal">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div id="addModalAlert" class="custom-alert"></div>
+
+            <form id="addCompanyForm">
+                <div class="input-group">
+                    <label for="newCompanyName">Company Name</label>
+                    <input type="text" id="newCompanyName" placeholder="e.g. Globe Telecom" required>
+                </div>
+
+                <div class="input-group">
+                    <label>Supervisor Names</label>
+                    <div class="email-chips-container" id="addSupNameChipsContainer">
+                        <input type="text" id="addSupNameInput" class="email-chips-input" placeholder="Type name and press Enter...">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>Supervisor Emails</label>
+                    <div class="email-chips-container" id="addSupEmailChipsContainer">
+                        <input type="text" id="addSupEmailInput" class="email-chips-input" placeholder="Type email and press Enter...">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="newCompanyLocation">Location / City</label>
+                    <input type="text" id="newCompanyLocation" placeholder="e.g. Caloocan City" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="newCompanyIndustry">Industry / Tag</label>
+                    <input type="text" id="newCompanyIndustry" placeholder="e.g. Telecommunication" required>
+                </div>
+
+                <button type="submit" id="saveCompanyBtn" class="add-btn full-width" style="margin-top: 15px;">
+                    <i class="fa-solid fa-floppy-disk"></i> Save Company & Generate QR Code
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL 2: EDIT COMPANY -->
+<div id="editCompanyModal" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>Edit Partner Company</h3>
+            <span class="close-modal" id="closeEditModal">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div id="editModalAlert" class="custom-alert"></div>
+
+            <form id="editCompanyForm">
+                <input type="hidden" id="editCompanyId">
+                
+                <div class="input-group">
+                    <label for="editCompanyName">Company Name</label>
+                    <input type="text" id="editCompanyName" required>
+                </div>
+
+                <div class="input-group">
+                    <label>Supervisor Names</label>
+                    <div class="email-chips-container" id="editSupNameChipsContainer">
+                        <input type="text" id="editSupNameInput" class="email-chips-input" placeholder="Type name and press Enter...">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>Supervisor Emails</label>
+                    <div class="email-chips-container" id="editSupEmailChipsContainer">
+                        <input type="text" id="editSupEmailInput" class="email-chips-input" placeholder="Type email and press Enter...">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="editCompanyLocation">Location / City</label>
+                    <input type="text" id="editCompanyLocation" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="editCompanyIndustry">Industry / Tag</label>
+                    <input type="text" id="editCompanyIndustry" required>
+                </div>
+
+                <button type="submit" id="updateCompanyBtn" class="add-btn full-width" style="margin-top: 15px;">
+                    <i class="fa-solid fa-floppy-disk"></i> Update Company
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL 3: GENERATE & SEND QR -->
+<div id="qrModal" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>One-Time Attendance QR</h3>
+            <span class="close-modal" id="closeQrModal">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div id="alertMessage" class="custom-alert"></div>
+
+            <h4 id="qrCompanyTitle">Company Name</h4>
+            <p class="sub-text">Scan this code for student Time-In and Time-Out.</p>
+            
+            <div id="qrcode" class="qr-container"></div>
+            
+            <div class="input-group">
+                <label>Supervisor Email</label>
+                <div class="email-chips-container" id="emailChipsContainer">
+                    <input type="email" id="supervisorEmailInput" class="form-input" readonly style="background-color: #f8fafc; cursor: not-allowed;" />
+                </div>
+            </div>
+            
+            <button id="sendEmailBtn" class="add-btn full-width">
+                <i class="fa-solid fa-paper-plane"></i> Send QR to Supervisor Gmail
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL 4: SEND FINAL EVALUATION ACCESS -->
+<div id="evaluationModal" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>Send Evaluation Access</h3>
+            <span class="close-modal" id="closeEvaluationModal">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div id="evaluationAlert" class="custom-alert"></div>
+            <h4 id="evaluationCompanyTitle">Company Name</h4>
+            <p class="sub-text">This creates a guest link for the supervisor to select an intern, review task history, and complete the final evaluation.</p>
+            
+            <div class="input-group">
+                <label>Assigned Supervisor Gmail(s)</label>
+                <div class="email-chips-container" id="evalEmailChipsContainer" style="background: #f8fafc; cursor: default;"></div>
+            </div>
+
+            <p class="access-note"><i class="fa-solid fa-lock"></i> The link is sent once and expires after the evaluation is submitted.</p>
+            <button id="previewEvaluationBtn" class="preview-btn" type="button">
+                <i class="fa-regular fa-eye"></i> Preview evaluation form
+            </button>
+            <button id="sendEvaluationBtn" class="add-btn full-width">
+                <i class="fa-solid fa-paper-plane"></i> Send Guest Evaluation Link
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL 5: CUSTOM DELETE CONFIRMATION -->
+<div id="deleteConfirmModal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 400px; text-align: center;">
+        <div class="modal-header" style="justify-content: center; position: relative;">
+            <h3 style="color: #b91c1c;"><i class="fa-solid fa-triangle-exclamation"></i>Remove Company</h3>
+            <span class="close-modal" id="closeDeleteModal" style="position: absolute; right: 0; top: 0;">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p id="deleteConfirmText" class="sub-text" style="font-size: 14px; margin: 15px 0 20px; color: #334155;">
+                Are you sure you want to delete the company?
+            </p>
+            <div style="display: flex; gap: 10px;">
+                <button type="button" id="cancelDeleteBtn" class="btn-secondary-action" style="flex: 1; border-color: #cbd5e1; color: #475569;">Cancel</button>
+                <button type="button" id="confirmDeleteBtn" class="add-btn" style="flex: 1; background: #b91c1c; margin-top: 0;">Yes, Remove</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Libraries CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
+<script src="../sidebar/sidebar-web.js"></script>
+<script type="module" src="companies.js"></script>
+
+</body>
+</html>

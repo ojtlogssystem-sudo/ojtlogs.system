@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Students | OJT-LOGS</title>
+
+    <link rel="stylesheet" href="../sidebar/sidebar-web.css">
+    <link rel="stylesheet" href="students.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+    
+    <!-- EmailJS SDK -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+</head>
+
+<body>
+
+    <div class="dashboard">
+
+        <!-- SIDEBAR -->
+        <div id="sidebar-container"></div>
+
+            <!-- MAIN -->
+            <main class="main">
+                <header>
+                    <div>
+                        <h2>Students</h2>
+                        <p>Manage all student interns.</p>
+                    </div>
+
+                    <div class="top-right">
+                        <div class="notification">
+                            <i class="fa-regular fa-bell"></i>
+                            <span class="badge">3</span>
+                        </div>
+
+                        <div class="profile">
+                            <div class="avatar" id="userAvatar">MS</div>
+                            <div class="profile-info">
+                                <h4 id="userName">Coordinator</h4>
+                                <p id="userRole">OJT Coordinator</p>
+                            </div>
+                            <i class="fa-solid fa-chevron-down"></i>
+                        </div>
+                    </div>
+                </header>
+
+                <!-- STUDENTS CONTENT -->
+                <div class="students-content">
+
+                    <div class="students-header-wrapper">
+                        <div class="table-title-section">
+                            <h2>Students</h2>
+                            <p>View, search, and manage all enrolled student intern profiles and assignments.</p>
+                        </div>
+
+                        <button class="add-btn" id="addStudentBtn">
+                            <i class="fa-solid fa-user-plus"></i>
+                            Invite Student
+                        </button>
+                    </div>
+
+                    <!-- STUDENT TABLE CARD -->
+                    <section class="table-card">
+                        <div class="table-header">
+
+                            <div class="table-header-right">
+                                <div class="search-box">
+                                    <i class="fa-solid fa-search"></i>
+                                    <input type="text" id="searchStudent" placeholder="Search student...">
+                                </div>
+
+                                <select id="sortSelect">
+                                    <option value="Sort By">Sort By</option>
+                                    <option value="Name (A-Z)">Name (A-Z)</option>
+                                    <option value="Name (Z-A)">Name (Z-A)</option>
+                                    <option value="Student ID">Student ID</option>
+                                </select>
+
+                                <select id="statusFilter">
+                                    <option value="All Status">All Status</option>
+                                    <option value="Active">Active</option>
+                                    <option value="Pending">Pending</option>
+                                    <option value="Completed">Completed</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="table-container">
+                            <table class="students-table">
+                                <thead>
+                                    <tr>
+                                        <th>Photo <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
+                                        <th>Student ID <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
+                                        <th>Name <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
+                                        <th>Course <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
+                                        <th>Section <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
+                                        <th>Company <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
+                                        <th>Status <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
+                                        <th>Actions <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
+                                </thead>
+                                
+                                <tbody id="studentTable">
+                                    <tr>
+                                        <td colspan="7" style="text-align: center; padding: 25px; color: #888;">
+                                            Loading student data...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="table-footer">
+                            <div class="showing-text" id="paginationInfo">
+                                Showing 1 to 6 of 0 records
+                            </div>
+
+                            <!-- Pagination Controls -->
+                            <div class="pagination-controls">
+                                <button id="prevPageBtn" class="page-btn"><i class="fa-solid fa-chevron-left"></i> Prev</button>
+                                <div id="pageNumbers" class="page-numbers"></div>
+                                <button id="nextPageBtn" class="page-btn">Next <i class="fa-solid fa-chevron-right"></i></button>
+                            </div>
+
+                            <div class="rows-per-page">
+                                <label for="rowsPerPageSelect">Rows per page:</label>
+                                <select id="rowsPerPageSelect">
+                                    <option value="5">5</option>
+                                    <option value="8" selected>8</option>
+                                    <option value="15">15</option>
+                                </select>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </main>
+        </div>
+            <!-- INVITE STUDENT MODAL -->
+        <div class="modal" id="inviteModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>
+                        <i class="fa-solid fa-paper-plane"></i>
+                        Invite Student Intern
+                    </h3>
+                    <span class="close-modal" id="closeModal">&times;</span>
+                </div>
+
+                <form id="inviteForm">
+                    <p class="modal-description">
+                        Enter the student's Gmail address to send an invitation link:
+                    </p>
+
+                    <div class="input-with-icon">
+                        <i class="fa-regular fa-envelope"></i>
+                        <input type="email" id="studentEmail" placeholder="student@gmail.com" required>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn-cancel" id="cancelModal">Cancel</button>
+                        <button type="submit" class="btn-submit">
+                            <i class="fa-solid fa-paper-plane"></i>
+                            Send Invite
+                        </button>
+                    </div>
+                </form>
+
+                <div id="successMessage" class="success-message">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <p>Invitation sent successfully to <span id="sentEmailText"></span>!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- EDIT STUDENT MODAL -->
+        <div class="modal" id="editModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>
+                        <i class="fa-solid fa-user-pen"></i>
+                        Edit Student Details
+                    </h3>
+                    <span class="close-modal" id="closeEditModal">&times;</span>
+                </div>
+
+                <form id="editStudentForm">
+                    <input type="hidden" id="editStudentEmail">
+
+                    <p class="modal-description">
+                        Update the information for this student intern:
+                    </p>
+
+                    <div class="form-group">
+                        <label>Student ID</label>
+                        <div class="input-with-icon">
+                            <i class="fa-solid fa-id-card"></i>
+                            <input type="text" id="editStudentId" placeholder="e.g. 2024001">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <div class="input-with-icon">
+                            <i class="fa-regular fa-user"></i>
+                            <input type="text" id="editStudentName" required placeholder="Full Name">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Course</label>
+                            <div class="input-with-icon">
+                                <i class="fa-solid fa-graduation-cap"></i>
+                                <input type="text" id="editStudentCourse" placeholder="BSIT">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Section</label>
+                            <div class="input-with-icon">
+                                <i class="fa-solid fa-users"></i>
+                                <input type="text" id="editStudentSection" placeholder="3A">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Company</label>
+                        <div class="input-with-icon">
+                            <i class="fa-solid fa-building"></i>
+                            <input type="text" id="editStudentCompany" placeholder="Company Name">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Status</label>
+                        <div class="input-with-icon">
+                            <i class="fa-solid fa-list-check"></i>
+                            <select id="editStudentStatus" class="modal-select">
+                                <option value="Pending">Pending</option>
+                                <option value="Active">Active</option>
+                                <option value="Completed">Completed</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn-cancel" id="cancelEditModal">Cancel</button>
+                        <button type="submit" class="btn-submit">
+                            <i class="fa-solid fa-floppy-disk"></i>
+                            Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- VIEW STUDENT PROFILE MODAL -->
+        <div class="modal" id="viewStudentModal">
+            <div class="modal-content profile-modal-content">
+                <div class="modal-header border-none">
+                    <h3 class="modal-title-text">Student Profile</h3>
+                    <span class="close-modal" id="closeViewModal">&times;</span>
+                </div>
+
+                <!-- DIVIDER LINE SA ILALIM NG TITLE -->
+                <hr class="modal-divider">
+
+                <div class="modal-body">
+                    <div class="profile-header-card">
+                        <div class="profile-avatar-box" id="viewStudentAvatar">
+                            <!-- Dynamic Initials / Photo -->
+                        </div>
+                        <div class="profile-header-info">
+                            <h4 id="viewStudentName">Student Name</h4>
+                        
+                                <span class="status-pill pending" id="viewStudentStatus">Pending</span>
+            
+                        </div>
+                    </div>
+
+                    <div class="profile-details-grid">
+                        <div class="detail-card">
+                            <div class="icon-box"><i class="fa-solid fa-id-card"></i></div>
+                            <div class="detail-info">
+                                <label>STUDENT ID</label>
+                                <span id="viewStudentId">-</span>
+                            </div>
+                        </div>
+
+                        <div class="detail-card">
+                            <div class="icon-box"><i class="fa-solid fa-envelope"></i></div>
+                            <div class="detail-info">
+                                <label>GMAIL ADDRESS</label>
+                                <span id="viewStudentEmail">-</span>
+                            </div>
+                        </div>
+
+                        <div class="detail-card">
+                            <div class="icon-box"><i class="fa-solid fa-graduation-cap"></i></div>
+                            <div class="detail-info">
+                                <label>COURSE & SECTION</label>
+                                <span id="viewStudentCourseDetail">-</span>
+                            </div>
+                        </div>
+
+                        <div class="detail-card">
+                            <div class="icon-box"><i class="fa-solid fa-building"></i></div>
+                            <div class="detail-info">
+                                <label>COMPANY</label>
+                                <span id="viewStudentCompany">Pending Assignment</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="profile-actions">
+                        <button type="button" class="btn-view-details" onclick="window.location.href='/coordinator-page/attendance/attendance_details.html'">
+                            <i class="fa-solid fa-user-gear"></i> View Account Details
+                        </button>
+
+                        <button type="button" class="btn-edit-modal" onclick="openEditModalFromProfile()">
+                            <i class="fa-solid fa-pen-to-square"></i> Edit Profile
+                        </button>       
+                    </div>     
+                </div>
+            </div>
+        </div>
+    </div>
+        
+
+<script src="../sidebar/sidebar-web.js"></script>
+<script type="module" src="students.js"></script>
+
+</body>
+</html>

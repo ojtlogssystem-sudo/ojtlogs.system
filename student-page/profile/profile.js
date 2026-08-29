@@ -62,156 +62,362 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
+// ==========================================
 // MULTI-STEP NAVIGATION LOGIC
+// ==========================================
+
 const step1Content = document.getElementById('step1Content');
 const step2Content = document.getElementById('step2Content');
+const step3Content = document.getElementById('step3Content');
+
 const nextBtn = document.getElementById('nextBtn');
+const scheduleNextBtn = document.getElementById('scheduleNextBtn');
+
 const backBtn = document.getElementById('backBtn');
+const scheduleBackBtn = document.getElementById('scheduleBackBtn');
+
 const stepText = document.getElementById('stepText');
 const progressFill = document.getElementById('progressFill');
 const stepTitle = document.getElementById('stepTitle');
 const stepSub = document.getElementById('stepSub');
 const stepIcon = document.getElementById('stepIcon');
 
-if (nextBtn) {
-    nextBtn.addEventListener('click', () => {
-        // Validation sa Step 1
-        const fullName = document.getElementById('fullName').value.trim();
-        const studentNumber = document.getElementById('studentNumber').value.trim();
-        const companyName = document.getElementById('companyName').value.trim();
-        const section = document.getElementById('sectionSelect').value;
-        const course = document.getElementById('courseSelect').value;
 
-        if (!fullName || !studentNumber || !companyName || !section || !course) {
-            alert("Pakisagutan muna ang lahat ng kailangan sa Step 1.");
+// ==========================================
+// STEP 1 → STEP 2
+// ==========================================
+
+if (nextBtn) {
+
+    nextBtn.addEventListener('click', () => {
+
+        const fullName =
+            document.getElementById('fullName').value.trim();
+
+        const studentNumber =
+            document.getElementById('studentNumber').value.trim();
+
+        const companyName =
+            document.getElementById('companyName').value.trim();
+
+        const section =
+            document.getElementById('sectionSelect').value;
+
+        const course =
+            document.getElementById('courseSelect').value;
+
+
+        if (
+            !fullName ||
+            !studentNumber ||
+            !companyName ||
+            !section ||
+            !course
+        ) {
+
+            alert(
+                "Pakisagutan muna ang lahat ng kailangan sa Step 1."
+            );
+
             return;
         }
 
-        // Lumipat sa Step 2 (Account Security)
+
+        // Hide Step 1
         step1Content.style.display = "none";
+
+        // Show Step 2
         step2Content.style.display = "block";
 
-        stepText.textContent = "Step 2 of 2";
-        progressFill.style.width = "100%";
-        stepTitle.textContent = "Account Security";
-        stepSub.textContent = "Create a secure password to protect your student account.";
-        stepIcon.className = "fa-solid fa-lock";
+        // Update progress
+        stepText.textContent = "Step 2 of 3";
+        progressFill.style.width = "66.66%";
+
+        stepTitle.textContent = "Internship Schedule";
+
+        stepSub.textContent =
+            "Set your internship days and working hours.";
+
+        stepIcon.className =
+            "fa-regular fa-calendar";
+
     });
+
 }
 
-if (backBtn) {
-    backBtn.addEventListener('click', () => {
-        hideAlert();
-        // Bumalik sa Step 1 (Profile Information)
+
+// ==========================================
+// STEP 2 → STEP 3
+// ==========================================
+
+if (scheduleNextBtn) {
+
+    scheduleNextBtn.addEventListener('click', () => {
+
+        const selectedDays =
+            document.querySelectorAll(
+                '.day-btn.active'
+            );
+
+
+        const morningTimeIn =
+            document.getElementById(
+                'morningTimeIn'
+            ).value;
+
+        const morningTimeOut =
+            document.getElementById(
+                'morningTimeOut'
+            ).value;
+
+
+        // Check days
+        if (selectedDays.length === 0) {
+
+            alert(
+                "Please select at least one internship day."
+            );
+
+            return;
+        }
+
+
+        // Check morning schedule
+        if (
+            !morningTimeIn ||
+            !morningTimeOut
+        ) {
+
+            alert(
+                "Please set your morning Time In and Time Out."
+            );
+
+            return;
+        }
+
+
+        // Check if afternoon is enabled
+        const afternoonEnabled =
+            document.getElementById(
+                'afternoonEnabled'
+            ).checked;
+
+
+        if (afternoonEnabled) {
+
+            const afternoonTimeIn =
+                document.getElementById(
+                    'afternoonTimeIn'
+                ).value;
+
+            const afternoonTimeOut =
+                document.getElementById(
+                    'afternoonTimeOut'
+                ).value;
+
+
+            if (
+                !afternoonTimeIn ||
+                !afternoonTimeOut
+            ) {
+
+                alert(
+                    "Please set your afternoon Time In and Time Out."
+                );
+
+                return;
+            }
+
+        }
+
+
+        // Hide Step 2
         step2Content.style.display = "none";
+
+        // Show Step 3
+        step3Content.style.display = "block";
+
+
+        // Update progress
+        stepText.textContent = "Step 3 of 3";
+        progressFill.style.width = "100%";
+
+        stepTitle.textContent = "Account Security";
+
+        stepSub.textContent =
+            "Create a secure password to protect your student account.";
+
+        stepIcon.className =
+            "fa-solid fa-lock";
+
+    });
+
+}
+
+
+// ==========================================
+// STEP 2 → STEP 1
+// ==========================================
+
+if (scheduleBackBtn) {
+
+    scheduleBackBtn.addEventListener('click', () => {
+
+        step2Content.style.display = "none";
+
         step1Content.style.display = "block";
 
-        stepText.textContent = "Step 1 of 2";
-        progressFill.style.width = "50%";
-        stepTitle.textContent = "Complete Your Profile";
-        stepSub.textContent = "Please fill in the required information below to complete your account setup.";
-        stepIcon.className = "fa-regular fa-user";
+
+        stepText.textContent = "Step 1 of 3";
+
+        progressFill.style.width = "33.33%";
+
+        stepTitle.textContent =
+            "Complete Your Profile";
+
+        stepSub.textContent =
+            "Please fill in the required information below to complete your account setup.";
+
+        stepIcon.className =
+            "fa-regular fa-user";
+
     });
+
 }
 
-// Profile Image Preview
-const profileImageInput = document.getElementById('profileImage');
-const previewImage = document.getElementById('previewImage');
 
-if (profileImageInput) {
-    profileImageInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                previewImage.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
-        }
+// ==========================================
+// STEP 3 → STEP 2
+// ==========================================
+
+if (backBtn) {
+
+    backBtn.addEventListener('click', () => {
+
+        hideAlert();
+
+
+        step3Content.style.display = "none";
+
+        step2Content.style.display = "block";
+
+
+        stepText.textContent = "Step 2 of 3";
+
+        progressFill.style.width = "66.66%";
+
+        stepTitle.textContent =
+            "Internship Schedule";
+
+        stepSub.textContent =
+            "Set your internship days and working hours.";
+
+        stepIcon.className =
+            "fa-regular fa-calendar";
+
     });
+
 }
 
-// Password Show/Hide Toggle
-document.querySelectorAll('.toggle-password').forEach(icon => {
-    icon.addEventListener('click', function() {
-        const input = this.previousElementSibling.previousElementSibling;
-        if (input.type === 'password') {
-            input.type = 'text';
-            this.classList.remove('fa-eye');
-            this.classList.add('fa-eye-slash');
-        } else {
-            input.type = 'password';
-            this.classList.remove('fa-eye-slash');
-            this.classList.add('fa-eye');
-        }
+// ==========================================
+// INTERNSHIP DAYS SELECTION
+// ==========================================
+
+const dayButtons = document.querySelectorAll(".day-btn");
+
+dayButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+        button.classList.toggle("active");
     });
 });
 
-// Final Form Submit Handler
-const profileForm = document.getElementById('profileForm');
-if (profileForm) {
-    profileForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        hideAlert();
 
-        const fullName = document.getElementById('fullName').value.trim();
-        const studentNumber = document.getElementById('studentNumber').value.trim();
-        const companyName = document.getElementById('companyName').value.trim();
-        const section = document.getElementById('sectionSelect').value;
-        const course = document.getElementById('courseSelect').value;
-        const password = document.getElementById('password').value;
-        const confirmPassword = document.getElementById('confirmPassword').value;
-        const saveBtn = document.getElementById('saveProfileBtn');
+// ==========================================
+// AFTERNOON SESSION ENABLE / DISABLE
+// ==========================================
 
-        // Validation para sa Password Matches at Rules
-        if (password !== confirmPassword) {
-            showAlert("Hindi magkatugma ang Password at Confirm Password.");
-            return;
+const afternoonToggle = document.getElementById("afternoonEnabled");
+const afternoonSchedule = document.getElementById("afternoonSchedule");
+const afternoonStatus = document.getElementById("afternoonStatus");
+
+const afternoonTimeIn = document.getElementById("afternoonTimeIn");
+const afternoonTimeOut = document.getElementById("afternoonTimeOut");
+
+
+function updateAfternoonState() {
+
+    if (!afternoonToggle || !afternoonSchedule) {
+        return;
+    }
+
+    const enabled = afternoonToggle.checked;
+
+    if (enabled) {
+
+        // Show afternoon schedule
+        afternoonSchedule.style.display = "block";
+
+        // Enable time inputs
+        if (afternoonTimeIn) {
+            afternoonTimeIn.disabled = false;
         }
 
-        const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
-        if (!passwordRegex.test(password)) {
-            showAlert("The password must be at least 8 characters long, include at least 1 uppercase letter, and 1 number.");
-            return;
+        if (afternoonTimeOut) {
+            afternoonTimeOut.disabled = false;
         }
 
-        saveBtn.disabled = true;
-        saveBtn.textContent = "Saving...";
-
-        try {
-            if (currentUser) {
-                // 1. Subukang i-update ang Auth Password
-                try {
-                    await updatePassword(currentUser, password);
-                } catch (pwError) {
-                    console.warn("Could not update auth password directly:", pwError.code);
-                    // Kung 'auth/requires-recent-login', i-bypass ang password update para sa Google/existing sessions
-                    if (pwError.code !== 'auth/requires-recent-login') {
-                        throw pwError;
-                    }
-                }
-
-                // 2. I-update pa rin ang Firestore Profile Data at i-mark na Complete
-                const userDocRef = doc(db, "users", currentUser.uid);
-                await updateDoc(userDocRef, {
-                    name: fullName,
-                    studentNumber: studentNumber,
-                    companyName: companyName,
-                    section: section,
-                    course: course,
-                    isProfileComplete: true,
-                    updatedAt: new Date()
-                });
-
-                // Redirection sa Dashboard
-                window.location.href = "../student_dashboard/student_dashboard.html";
-            }
-        } catch (error) {
-            console.error("Error saving profile:", error);
-            showAlert("Nagkaroon ng error sa pag-save: " + error.message);
-        } finally {
-            saveBtn.disabled = false;
-            saveBtn.textContent = "Submit & Continue";
+        // Change status
+        if (afternoonStatus) {
+            afternoonStatus.textContent = "Enabled";
+            afternoonStatus.classList.remove("disabled");
         }
+
+    } else {
+
+        // Hide afternoon schedule
+        afternoonSchedule.style.display = "none";
+
+        // Disable time inputs
+        if (afternoonTimeIn) {
+            afternoonTimeIn.disabled = true;
+        }
+
+        if (afternoonTimeOut) {
+            afternoonTimeOut.disabled = true;
+        }
+
+        // Change status
+        if (afternoonStatus) {
+            afternoonStatus.textContent = "Disabled";
+            afternoonStatus.classList.add("disabled");
+        }
+    }
+}
+
+
+// Run when switch is clicked
+if (afternoonToggle) {
+
+    afternoonToggle.addEventListener("change", () => {
+        updateAfternoonState();
     });
+
+    // Set correct state when page loads
+    updateAfternoonState();
+}
+
+
+// ==========================================
+// GET SELECTED INTERNSHIP DAYS
+// ==========================================
+
+function getSelectedInternshipDays() {
+
+    const selectedDays = [];
+
+    document.querySelectorAll(".day-btn.active").forEach((button) => {
+        selectedDays.push(button.dataset.day);
+    });
+
+    return selectedDays;
 }

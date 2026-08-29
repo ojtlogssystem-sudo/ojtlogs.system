@@ -129,8 +129,210 @@
                     </button>
                 </div>
 
-                <!-- STEP 2: ACCOUNT SECURITY -->
+                <!-- STEP 2: INTERNSHIP SCHEDULE -->
                 <div class="profile-card step-content" id="step2Content" style="display: none;">
+
+                    <div class="card-title">
+                        <span class="vertical-line red"></span>
+                        <h2>Internship Schedule</h2>
+                    </div>
+
+                    <!-- INTERNSHIP DAYS -->
+                    <div class="schedule-section">
+
+                        <div class="schedule-label">
+                            <i class="fa-regular fa-calendar"></i>
+                            <span>Internship Days</span>
+                        </div>
+
+                        <div class="days-grid">
+
+                            <button type="button" class="day-btn" data-day="Monday">
+                                Mon
+                            </button>
+
+                            <button type="button" class="day-btn" data-day="Tuesday">
+                                Tue
+                            </button>
+
+                            <button type="button" class="day-btn" data-day="Wednesday">
+                                Wed
+                            </button>
+
+                            <button type="button" class="day-btn" data-day="Thursday">
+                                Thu
+                            </button>
+
+                            <button type="button" class="day-btn" data-day="Friday">
+                                Fri
+                            </button>
+
+                            <button type="button" class="day-btn" data-day="Saturday">
+                                Sat
+                            </button>
+
+                            <button type="button" class="day-btn" data-day="Sunday">
+                                Sun
+                            </button>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- MORNING -->
+                    <div class="schedule-session">
+
+                        <div class="session-title">
+
+                            <i class="fa-regular fa-sun"></i>
+
+                            <div>
+                                <h3>Morning</h3>
+                                <p>Set your morning working hours</p>
+                            </div>
+
+                        </div>
+
+                        <div class="time-group">
+
+                            <label>
+                                <i class="fa-regular fa-clock"></i>
+                                TIME IN
+                            </label>
+
+                            <input
+                                type="time"
+                                id="morningTimeIn"
+                                value="08:00"
+                                required
+                            >
+
+                        </div>
+
+                        <div class="time-group">
+
+                            <label>
+                                <i class="fa-regular fa-clock"></i>
+                                TIME OUT
+                            </label>
+
+                            <input
+                                type="time"
+                                id="morningTimeOut"
+                                value="12:00"
+                                required
+                            >
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- AFTERNOON TOGGLE -->
+                    <div class="afternoon-toggle-card">
+
+                        <div class="session-title">
+
+                            <i class="fa-regular fa-sun"></i>
+
+                            <div>
+                                <h3>Afternoon Session</h3>
+                                <p id="afternoonStatus">Enabled</p>
+                            </div>
+
+                        </div>
+
+                        <label class="switch">
+
+                            <input
+                                type="checkbox"
+                                id="afternoonEnabled"
+                                checked
+                            >
+
+                            <span class="slider"></span>
+
+                        </label>
+
+                    </div>
+
+
+                    <!-- AFTERNOON -->
+                    <div
+                        class="schedule-session"
+                        id="afternoonSchedule"
+                    >
+
+                        <div class="session-title">
+
+                            <i class="fa-solid fa-sun"></i>
+
+                            <div>
+                                <h3>Afternoon</h3>
+                                <p>Set your afternoon working hours</p>
+                            </div>
+
+                        </div>
+
+                        <div class="time-group">
+
+                            <label>
+                                <i class="fa-regular fa-clock"></i>
+                                TIME IN
+                            </label>
+
+                            <input
+                                type="time"
+                                id="afternoonTimeIn"
+                                value="13:00"
+                            >
+
+                        </div>
+
+                        <div class="time-group">
+
+                            <label>
+                                <i class="fa-regular fa-clock"></i>
+                                TIME OUT
+                            </label>
+
+                            <input
+                                type="time"
+                                id="afternoonTimeOut"
+                                value="17:00"
+                            >
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- BUTTONS -->
+                    <div class="step-buttons">
+
+                        <button
+                            type="button"
+                            class="continue-btn back-btn"
+                            id="scheduleBackBtn"
+                        >
+                            Back
+                        </button>
+
+                        <button
+                            type="button"
+                            class="continue-btn"
+                            id="scheduleNextBtn"
+                        >
+                            Next
+                        </button>
+
+                    </div>
+
+                </div>
+
+                <!-- STEP 3: ACCOUNT SECURITY -->
+                <div class="profile-card step-content" id="step3Content" style="display: none;">
                     <div class="card-title security-title">
                         <span class="vertical-line red"></span>
                         <h2>Account Security</h2>

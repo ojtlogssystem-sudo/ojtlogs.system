@@ -1,45 +1,1208 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Intern Evaluation | OJT-LOGS</title>
+
+    <title>OJT Evaluation Form | OJT-LOGS</title>
+
     <link rel="stylesheet" href="guest-evaluation.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Times+New+Roman&display=swap"
+        rel="stylesheet"
+    >
+
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css"
+    >
 </head>
+
 <body>
-    <main class="page-shell">
-        <section class="guest-card">
-            <div class="brand"><i class="fa-solid fa-building-columns"></i><span>OJT-LOGS</span></div>
-            <div id="loadingState" class="state"><i class="fa-solid fa-spinner fa-spin"></i><p>Opening your evaluation access...</p></div>
-            <div id="errorState" class="state hidden"><i class="fa-solid fa-link-slash"></i><h1>Link unavailable</h1><p id="errorText">This guest link is invalid or has expired.</p></div>
-            <div id="evaluationContent" class="hidden">
-                <p class="eyebrow">INTERNSHIP EVALUATION</p>
-                <h1 id="companyName">Company</h1>
-                <p class="intro">Select an intern to view their submitted task history, then complete the evaluation.</p>
-                <label for="internSelect">Intern</label>
-                <select id="internSelect"><option value="">Choose an intern</option></select>
-                <section id="historyPanel" class="history-panel hidden">
-                    <div class="panel-heading"><div><h2>Submitted task history</h2><p id="historySummary">Loading task records...</p></div><i class="fa-solid fa-clock-rotate-left"></i></div>
-                    <div id="taskHistory" class="task-history"></div>
-                </section>
-                <form id="evaluationForm" class="hidden">
-                    <h2>Supervisor evaluation</h2>
-                    <p class="form-help">Rate the selected intern based on their performance during the internship.</p>
-                    <div class="rating-grid">
-                        <label>Quality of work <select name="quality" required><option value="">Rate</option><option value="5">5 – Excellent</option><option value="4">4 – Very good</option><option value="3">3 – Satisfactory</option><option value="2">2 – Needs improvement</option><option value="1">1 – Poor</option></select></label>
-                        <label>Attendance & punctuality <select name="attendance" required><option value="">Rate</option><option value="5">5 – Excellent</option><option value="4">4 – Very good</option><option value="3">3 – Satisfactory</option><option value="2">2 – Needs improvement</option><option value="1">1 – Poor</option></select></label>
-                        <label>Initiative & teamwork <select name="teamwork" required><option value="">Rate</option><option value="5">5 – Excellent</option><option value="4">4 – Very good</option><option value="3">3 – Satisfactory</option><option value="2">2 – Needs improvement</option><option value="1">1 – Poor</option></select></label>
-                    </div>
-                    <label for="comments">Comments / recommendations</label>
-                    <textarea id="comments" name="comments" rows="5" placeholder="Share feedback for the intern..." required></textarea>
-                    <button type="submit"><i class="fa-solid fa-paper-plane"></i> Submit evaluation</button>
-                </form>
+
+<main class="page-shell">
+
+    <!-- ==========================================
+         ONLINE EVALUATION
+    ========================================== -->
+
+    <section class="guest-card" id="onlineEvaluationCard">
+
+        <div class="brand">
+            <i class="fa-solid fa-building-columns"></i>
+            <span>OJT-LOGS</span>
+        </div>
+
+
+        <!-- LOADING -->
+
+        <div id="loadingState" class="state">
+
+            <i class="fa-solid fa-spinner fa-spin"></i>
+
+            <h1>Opening evaluation access...</h1>
+
+            <p>
+                Please wait while we load the evaluation form.
+            </p>
+
+        </div>
+
+
+        <!-- ERROR -->
+
+        <div id="errorState" class="state hidden">
+
+            <i class="fa-solid fa-link-slash"></i>
+
+            <h1>Link unavailable</h1>
+
+            <p id="errorText">
+                This guest link is invalid or has expired.
+            </p>
+
+        </div>
+
+
+        <!-- EVALUATION -->
+
+        <div id="evaluationContent" class="hidden">
+
+            <p class="eyebrow">
+                ON-THE-JOB TRAINING
+            </p>
+
+            <h1>
+                OJT Evaluation Form
+            </h1>
+
+            <p class="intro">
+                Please complete the evaluation honestly and accurately.
+                Five (5) is the highest rating and one (1) is the lowest.
+            </p>
+
+
+            <!-- COMPANY -->
+
+            <div class="info-box">
+
+                <div>
+                    <span>Company</span>
+                    <strong id="companyName">Company</strong>
+                </div>
+
+                <div>
+                    <span>Intern</span>
+                    <strong id="selectedInternName">Not selected</strong>
+                </div>
+
             </div>
-            <div id="successState" class="state hidden"><i class="fa-solid fa-circle-check"></i><h1>Evaluation submitted</h1><p>Thank you. Your response has been recorded and this link is now closed.</p></div>
-        </section>
-    </main>
-    <script type="module" src="guest-evaluation.js"></script>
+
+
+            <!-- INTERN SELECT -->
+
+            <div class="field-group">
+
+                <label for="internSelect">
+                    Intern / Practicumer
+                </label>
+
+                <select id="internSelect">
+
+                    <option value="">
+                        Choose an intern
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <!-- TASK HISTORY -->
+
+            <section
+                id="historyPanel"
+                class="history-panel hidden"
+            >
+
+                <div class="panel-heading">
+
+                    <div>
+
+                        <h2>
+                            Submitted Task History
+                        </h2>
+
+                        <p id="historySummary">
+                            Loading task records...
+                        </p>
+
+                    </div>
+
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+
+                </div>
+
+                <div
+                    id="taskHistory"
+                    class="task-history"
+                ></div>
+
+            </section>
+
+
+            <!-- ==========================================
+                 EVALUATION FORM
+            ========================================== -->
+
+            <form
+                id="evaluationForm"
+                class="evaluation-form hidden"
+            >
+
+                <!-- ======================================
+                     PART I
+                ====================================== -->
+
+                <div class="form-section-title">
+
+                    <span>PART I</span>
+
+                    <h2>
+                        GENERAL ASSESSMENT
+                    </h2>
+
+                </div>
+
+
+                <p class="form-description">
+
+                    This questionnaire is designed to evaluate
+                    the student who had undergone the OJT Program
+                    of Global Reciprocal Colleges.
+
+                    Please answer the questions below as accurately
+                    and as honestly as you can by checking the
+                    appropriate rating.
+
+                    <strong>
+                        5 = Highest Score &nbsp; | &nbsp; 1 = Lowest Score
+                    </strong>
+
+                </p>
+
+
+                <!-- INTEGRATION -->
+
+                <div class="evaluation-category">
+
+                    <div class="category-header">
+
+                        <h3>
+                            Integration of Basic Theory in Practice
+                        </h3>
+
+                        <div class="rating-head">
+                            <span>1</span>
+                            <span>2</span>
+                            <span>3</span>
+                            <span>4</span>
+                            <span>5</span>
+                        </div>
+
+                    </div>
+
+
+                    <div
+                        class="question"
+                        data-question="integration_1"
+                    >
+
+                        <p>
+                            1. The trainee possesses the necessary
+                            and expected professional body of information
+                            relevant to the assigned tasks.
+                        </p>
+
+                        <div class="rating-options"></div>
+
+                    </div>
+
+
+                    <div
+                        class="question"
+                        data-question="integration_2"
+                    >
+
+                        <p>
+                            2. The trainee easily gains knowledge and
+                            understanding of any instruction, skill
+                            or work assigned.
+                        </p>
+
+                        <div class="rating-options"></div>
+
+                    </div>
+
+
+                    <div
+                        class="question"
+                        data-question="integration_3"
+                    >
+
+                        <p>
+                            3. The trainee demonstrates a fundamental
+                            knowledge of job content.
+                        </p>
+
+                        <div class="rating-options"></div>
+
+                    </div>
+
+
+                    <div
+                        class="question"
+                        data-question="integration_4"
+                    >
+
+                        <p>
+                            4. The trainee effectively uses technology
+                            relevant to the assigned tasks.
+                        </p>
+
+                        <div class="rating-options"></div>
+
+                    </div>
+
+
+                    <div
+                        class="question"
+                        data-question="integration_5"
+                    >
+
+                        <p>
+                            5. The trainee shows his/her ability to perform
+                            assigned tasks with precision, thoroughness,
+                            and professionalism.
+                        </p>
+
+                        <div class="rating-options"></div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- UNDERSTANDING PROFESSION -->
+
+                <div class="evaluation-category">
+
+                    <div class="category-header">
+
+                        <h3>
+                            Understanding of the Profession
+                        </h3>
+
+                        <div class="rating-head">
+                            <span>1</span>
+                            <span>2</span>
+                            <span>3</span>
+                            <span>4</span>
+                            <span>5</span>
+                        </div>
+
+                    </div>
+
+
+                    <div
+                        class="question"
+                        data-question="profession_1"
+                    >
+
+                        <p>
+                            1. The trainee is capable to initiate
+                            and work voluntarily.
+                        </p>
+
+                        <div class="rating-options"></div>
+
+                    </div>
+
+
+                    <div
+                        class="question"
+                        data-question="profession_2"
+                    >
+
+                        <p>
+                            2. The trainee shows respect to the authorities
+                            and follows protocol.
+                        </p>
+
+                        <div class="rating-options"></div>
+
+                    </div>
+
+
+                    <div
+                        class="question"
+                        data-question="profession_3"
+                    >
+
+                        <p>
+                            3. The trainee displays his/her capability
+                            to analyze, interpret, weigh and judge
+                            certain ideas professionally.
+                        </p>
+
+                        <div class="rating-options"></div>
+
+                    </div>
+
+
+                    <div
+                        class="question"
+                        data-question="profession_4"
+                    >
+
+                        <p>
+                            4. The trainee understands the duties and
+                            responsibilities of the job as applied to
+                            the goals of the department/company.
+                        </p>
+
+                        <div class="rating-options"></div>
+
+                    </div>
+
+
+                    <div
+                        class="question"
+                        data-question="profession_5"
+                    >
+
+                        <p>
+                            5. The trainee demonstrates a high degree
+                            of professionalism and moral values and
+                            maintains the confidentiality of all office matters.
+                        </p>
+
+                        <div class="rating-options"></div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- QUALITY AND QUANTITY -->
+
+                <div class="evaluation-category">
+
+                    <div class="category-header">
+
+                        <h3>
+                            Quality and Quantity of Work
+                        </h3>
+
+                        <div class="rating-head">
+                            <span>1</span>
+                            <span>2</span>
+                            <span>3</span>
+                            <span>4</span>
+                            <span>5</span>
+                        </div>
+
+                    </div>
+
+
+                    <div
+                        class="question"
+                        data-question="quality_1"
+                    >
+                        <p>
+                            1. The trainee displays his/her hard work,
+                            diligence and conscientiousness in the
+                            performance of the assigned tasks.
+                        </p>
+
+                        <div class="rating-options"></div>
+                    </div>
+
+
+                    <div
+                        class="question"
+                        data-question="quality_2"
+                    >
+                        <p>
+                            2. The extent on how regular the trainee
+                            reports to work on time.
+                        </p>
+
+                        <div class="rating-options"></div>
+                    </div>
+
+
+                    <div
+                        class="question"
+                        data-question="quality_3"
+                    >
+                        <p>
+                            3. The trainee assumes responsibility
+                            beyond scope of normal work duties.
+                        </p>
+
+                        <div class="rating-options"></div>
+                    </div>
+
+
+                    <div
+                        class="question"
+                        data-question="quality_4"
+                    >
+                        <p>
+                            4. The trainee organizes work to improve
+                            output and minimize rework.
+                        </p>
+
+                        <div class="rating-options"></div>
+                    </div>
+
+
+                    <div
+                        class="question"
+                        data-question="quality_5"
+                    >
+                        <p>
+                            5. The extent the trainee completes assignments
+                            and meets commitments.
+                        </p>
+
+                        <div class="rating-options"></div>
+                    </div>
+
+                </div>
+
+
+                <!-- PRACTICUMER SKILLS -->
+
+                <div class="evaluation-category">
+
+                    <div class="category-header">
+
+                        <h3>
+                            Practicumer’s skill in various program
+                            settings and areas
+                        </h3>
+
+                        <div class="rating-head">
+                            <span>1</span>
+                            <span>2</span>
+                            <span>3</span>
+                            <span>4</span>
+                            <span>5</span>
+                        </div>
+
+                    </div>
+
+
+                    <div
+                        class="question"
+                        data-question="skills_1"
+                    >
+                        <p>
+                            1. The trainee is capable of completing
+                            work under time pressure with satisfactory results.
+                        </p>
+
+                        <div class="rating-options"></div>
+                    </div>
+
+
+                    <div
+                        class="question"
+                        data-question="skills_2"
+                    >
+                        <p>
+                            2. The trainee is able to identify deficiencies
+                            in workflow or procedures.
+                        </p>
+
+                        <div class="rating-options"></div>
+                    </div>
+
+
+                    <div
+                        class="question"
+                        data-question="skills_3"
+                    >
+                        <p>
+                            3. The trainee follows job procedure and methods.
+                        </p>
+
+                        <div class="rating-options"></div>
+                    </div>
+
+
+                    <div
+                        class="question"
+                        data-question="skills_4"
+                    >
+                        <p>
+                            4. The trainee is able to adjust, accommodate
+                            and conform to the conditions of his/her workplace.
+                        </p>
+
+                        <div class="rating-options"></div>
+                    </div>
+
+
+                    <div
+                        class="question"
+                        data-question="skills_5"
+                    >
+                        <p>
+                            5. The trainee is able to convey his/her thoughts
+                            and ideas with ease and proficiency, whether
+                            verbally or in written form.
+                        </p>
+
+                        <div class="rating-options"></div>
+                    </div>
+
+                </div>
+
+
+                <!-- INTERPERSONAL -->
+
+                <div class="evaluation-category">
+
+                    <div class="category-header">
+
+                        <h3>
+                            Intrapersonal and interpersonal Skills
+                        </h3>
+
+                        <div class="rating-head">
+                            <span>1</span>
+                            <span>2</span>
+                            <span>3</span>
+                            <span>4</span>
+                            <span>5</span>
+                        </div>
+
+                    </div>
+
+
+                    <div
+                        class="question"
+                        data-question="interpersonal_1"
+                    >
+                        <p>
+                            1. The trainee is receptive to feedback
+                            and constructive criticism.
+                        </p>
+
+                        <div class="rating-options"></div>
+                    </div>
+
+
+                    <div
+                        class="question"
+                        data-question="interpersonal_2"
+                    >
+                        <p>
+                            2. The trainee focuses discussions on desired results.
+                        </p>
+
+                        <div class="rating-options"></div>
+                    </div>
+
+
+                    <div
+                        class="question"
+                        data-question="interpersonal_3"
+                    >
+                        <p>
+                            3. The trainee works effectively in groups.
+                        </p>
+
+                        <div class="rating-options"></div>
+                    </div>
+
+
+                    <div
+                        class="question"
+                        data-question="interpersonal_4"
+                    >
+                        <p>
+                            4. The trainee is able to relate with other departments.
+                        </p>
+
+                        <div class="rating-options"></div>
+                    </div>
+
+
+                    <div
+                        class="question"
+                        data-question="interpersonal_5"
+                    >
+                        <p>
+                            5. The trainee promotes and uses candid
+                            and open communications.
+                        </p>
+
+                        <div class="rating-options"></div>
+                    </div>
+
+                </div>
+
+
+                <!-- ======================================
+                     PART II
+                ====================================== -->
+
+                <div class="form-section-title">
+
+                    <span>PART II</span>
+
+                    <h2>
+                        DEVELOPMENTAL PROFILE AND RECOMMENDATIONS
+                    </h2>
+
+                </div>
+
+
+                <div class="text-question">
+
+                    <label>
+                        1. What are the trainee’s strong points?
+                    </label>
+
+                    <textarea
+                        name="strongPoints"
+                        rows="5"
+                        required
+                    ></textarea>
+
+                </div>
+
+
+                <div class="text-question">
+
+                    <label>
+                        2. What are the trainee’s significant limitations?
+                    </label>
+
+                    <textarea
+                        name="limitations"
+                        rows="5"
+                        required
+                    ></textarea>
+
+                </div>
+
+
+                <div class="text-question">
+
+                    <label>
+                        3. What can the trainee do to improve himself professionally?
+                    </label>
+
+                    <textarea
+                        name="professionalImprovement"
+                        rows="5"
+                        required
+                    ></textarea>
+
+                </div>
+
+
+                <div class="hire-question">
+
+                    <p>
+                        4. If ever the practicumer would apply for a position
+                        in your company for possible employment,
+                        would you hire him/her?
+                    </p>
+
+                    <label class="radio-label">
+
+                        <input
+                            type="radio"
+                            name="wouldHire"
+                            value="Yes"
+                            required
+                        >
+
+                        Yes
+
+                    </label>
+
+
+                    <label class="radio-label">
+
+                        <input
+                            type="radio"
+                            name="wouldHire"
+                            value="No"
+                        >
+
+                        No
+
+                    </label>
+
+                </div>
+
+
+                <!-- ======================================
+                     PART III
+                ====================================== -->
+
+                <div class="form-section-title">
+
+                    <span>PART III</span>
+
+                    <h2>
+                        EVALUATION OF THE PRACTICUM PROGRAM
+                        OF GLOBAL RECIPROCAL COLLEGES
+                    </h2>
+
+                </div>
+
+
+                <p class="form-description">
+
+                    As part of our Evaluation Process, we would like
+                    to solicit your comments and suggestions to further
+                    improve our Practicum Program.
+
+                </p>
+
+
+                <div class="evaluation-category">
+
+                    <div class="category-header">
+
+                        <h3>
+                            FACTORS
+                        </h3>
+
+                        <div class="rating-head">
+                            <span>1</span>
+                            <span>2</span>
+                            <span>3</span>
+                            <span>4</span>
+                            <span>5</span>
+                        </div>
+
+                    </div>
+
+
+                    <div
+                        class="question"
+                        data-question="program_1"
+                    >
+
+                        <p>
+                            1. Policies and procedures of the trainee
+                            practicum program.
+                        </p>
+
+                        <div class="rating-options"></div>
+
+                    </div>
+
+
+                    <div
+                        class="question"
+                        data-question="program_2"
+                    >
+
+                        <p>
+                            2. Coordination between the school and
+                            participating company/institution.
+                        </p>
+
+                        <div class="rating-options"></div>
+
+                    </div>
+
+
+                    <div
+                        class="question"
+                        data-question="program_3"
+                    >
+
+                        <p>
+                            3. Quality of the content of the evaluation sheet.
+                        </p>
+
+                        <div class="rating-options"></div>
+
+                    </div>
+
+
+                    <div
+                        class="question"
+                        data-question="program_4"
+                    >
+
+                        <p>
+                            4. Preparedness of the trainees to undergo
+                            on-job-training.
+                        </p>
+
+                        <div class="rating-options"></div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="text-question">
+
+                    <label>
+                        5. What other suggestion can you give to improve
+                        the Practicum Program of Global Reciprocal Colleges?
+                    </label>
+
+                    <textarea
+                        name="programSuggestion"
+                        rows="5"
+                        required
+                    ></textarea>
+
+                </div>
+
+
+                <!-- ======================================
+                     PRACTICUMER INFORMATION
+                ====================================== -->
+
+                <div class="details-section">
+
+                    <h3>
+                        Practicumer Information
+                    </h3>
+
+                    <div class="details-grid">
+
+                        <div>
+
+                            <label>
+                                Practicumer’s Name
+                            </label>
+
+                            <input
+                                type="text"
+                                id="practicumerName"
+                                name="practicumerName"
+                                readonly
+                            >
+
+                        </div>
+
+
+                        <div>
+
+                            <label>
+                                Position/Job in the Company
+                            </label>
+
+                            <input
+                                type="text"
+                                id="practicumerPosition"
+                                name="practicumerPosition"
+                                placeholder="Enter position/job"
+                                required
+                            >
+
+                        </div>
+
+
+                        <div>
+
+                            <label>
+                                Date Accomplished
+                            </label>
+
+                            <input
+                                type="date"
+                                id="dateAccomplished"
+                                name="dateAccomplished"
+                                required
+                            >
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- ======================================
+                     EVALUATOR
+                ====================================== -->
+
+                <div class="details-section">
+
+                    <h3>
+                        Evaluator Information
+                    </h3>
+
+                    <div class="details-grid">
+
+                        <div>
+
+                            <label>
+                                Name of Evaluator
+                            </label>
+
+                            <input
+                                type="text"
+                                id="evaluatorName"
+                                name="evaluatorName"
+                                placeholder="Supervisor name"
+                                required
+                            >
+
+                        </div>
+
+
+                        <div>
+
+                            <label>
+                                Company
+                            </label>
+
+                            <input
+                                type="text"
+                                id="evaluatorCompany"
+                                name="evaluatorCompany"
+                                readonly
+                            >
+
+                        </div>
+
+
+                        <div>
+
+                            <label>
+                                Position
+                            </label>
+
+                            <input
+                                type="text"
+                                id="evaluatorPosition"
+                                name="evaluatorPosition"
+                                placeholder="Supervisor position"
+                                required
+                            >
+
+                        </div>
+
+                    </div>
+
+                    <div class="signature-note">
+
+                        <i class="fa-solid fa-pen-nib"></i>
+
+                        <span>
+                            Signature will be provided manually after printing.
+                        </span>
+
+                    </div>
+
+                </div>
+
+
+                <!-- ACTIONS -->
+
+                <div class="form-actions">
+
+                    <button
+                        type="button"
+                        id="previewBtn"
+                        class="btn-secondary"
+                    >
+
+                        <i class="fa-solid fa-eye"></i>
+
+                        Preview
+
+                    </button>
+
+
+                    <button
+                        type="submit"
+                        id="submitEvaluationBtn"
+                        class="btn-primary"
+                    >
+
+                        <i class="fa-solid fa-floppy-disk"></i>
+
+                        Submit Evaluation
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+
+        <!-- ==========================================
+             SUCCESS
+        ========================================== -->
+
+        <div
+            id="successState"
+            class="state hidden"
+        >
+
+            <i class="fa-solid fa-circle-check success-icon"></i>
+
+            <h1>
+                Evaluation Submitted
+            </h1>
+
+            <p>
+                The evaluation has been successfully recorded.
+            </p>
+
+            <div class="success-actions">
+
+                <button
+                    type="button"
+                    id="viewSubmittedBtn"
+                    class="btn-secondary"
+                >
+
+                    <i class="fa-solid fa-file-lines"></i>
+
+                    View Evaluation
+
+                </button>
+
+
+                <button
+                    type="button"
+                    id="printAfterSubmitBtn"
+                    class="btn-primary"
+                >
+
+                    <i class="fa-solid fa-print"></i>
+
+                    Ready to Print
+
+                </button>
+
+            </div>
+
+        </div>
+
+        <div class="evaluation-footer">
+            <div class="evaluation-footer-content">
+
+                <hr class="evaluation-footer-line">
+
+                <div class="evaluation-footer-bottom-row">
+                    <div class="evaluation-footer-accent-box"></div>
+
+                    <span class="evaluation-footer-title-text">
+                        EVALUATION FORM
+                    </span>
+                </div>
+
+            </div>
+        </div>
+
+    </section>
+
+</main>
+
+
+<!-- ==========================================
+     PRINT PREVIEW MODAL
+========================================== -->
+
+<div
+    id="printModal"
+    class="print-modal hidden"
+>
+
+    <div class="print-modal-header">
+
+        <div>
+
+            <h2>
+                Evaluation Form Preview
+            </h2>
+
+            <p>
+                Review the form before printing.
+            </p>
+
+        </div>
+
+
+        <button
+            type="button"
+            id="closePrintModal"
+            class="close-print"
+        >
+
+            <i class="fa-solid fa-xmark"></i>
+
+        </button>
+
+    </div>
+
+
+    <div
+        id="printDocument"
+        class="print-document"
+    ></div>
+
+
+    <div class="print-actions">
+
+        <button
+            type="button"
+            id="closePrintBtn"
+            class="btn-secondary"
+        >
+
+            Cancel
+
+        </button>
+
+
+        <button
+            type="button"
+            id="printBtn"
+            class="btn-primary"
+        >
+
+            <i class="fa-solid fa-print"></i>
+
+            Print Evaluation
+
+        </button>
+
+    </div>
+
+</div>
+
+
+<script
+    type="module"
+    src="guest-evaluation.js"
+></script>
+
 </body>
+
 </html>

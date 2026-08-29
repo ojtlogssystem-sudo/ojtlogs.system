@@ -1,22 +1,1012 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
-:root{
-    --primary:#AB0A0A;
-    --primary-hover:#8E0909;
-    --white:#ffffff;
-    --light:#f4f6f9;
-    --text:#333333;
-    --gray:#666666;
+
+/* ==========================================
+   ROOT
+========================================== */
+
+:root {
+
+    --primary: #AB0A0A;
+    --primary-hover: #8E0909;
+
+    --white: #ffffff;
+    --light: #f4f6f9;
+
+    --text: #333333;
+    --gray: #666666;
+
+    --border: #e8e8e8;
+
 }
 
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-    font-family:'Poppins',sans-serif;
+
+/* ==========================================
+   RESET
+========================================== */
+
+* {
+
+    margin: 0;
+    padding: 0;
+
+    box-sizing: border-box;
+
+    font-family: 'Poppins', sans-serif;
+
 }
 
-body{
-    background:var(--light);
-    overflow-x:hidden;
+
+body {
+
+    background: var(--light);
+
+    overflow-x: hidden;
+
+}
+
+
+button {
+
+    border: none;
+
+    background: none;
+
+    cursor: pointer;
+
+}
+
+
+a {
+
+    text-decoration: none;
+
+    color: inherit;
+
+}
+
+
+
+/* ==========================================
+   MAIN LAYOUT
+========================================== */
+
+.dashboard {
+
+    display: flex;
+
+    flex-direction: row;
+
+    width: 100%;
+
+    min-height: 100vh;
+
+}
+
+
+.main {
+
+    flex: 1;
+
+    min-width: 0;
+
+    display: flex;
+
+    flex-direction: column;
+
+}
+
+
+
+/* ==========================================
+   PERFORMANCE CONTENT
+========================================== */
+
+.performance-content {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 16px;
+
+    padding: 16px;
+
+}
+
+
+
+/* ==========================================
+   CARD
+========================================== */
+
+.performance-card {
+
+    background: #ffffff;
+
+    border-radius: 14px;
+
+    padding: 16px;
+
+    box-shadow: 0 4px 12px rgba(0,0,0,.05);
+
+}
+
+
+
+/* ==========================================
+   SECTION TITLE
+========================================== */
+
+.section-title {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    margin-bottom: 16px;
+
+}
+
+
+.title-left {
+
+    display: flex;
+
+    align-items: flex-start;
+
+}
+
+
+.vertical-line.red {
+
+    display: inline-block;
+
+    width: 3px;
+
+    height: 17px;
+
+    background-color: var(--primary);
+
+    border-radius: 5px;
+
+    margin-right: 8px;
+
+    flex-shrink: 0;
+
+}
+
+
+.title-left h3 {
+
+    font-size: 14px;
+
+    font-weight: 600;
+
+    color: #222;
+
+    line-height: 1.4;
+
+}
+
+
+.section-description {
+
+    font-size: 10px;
+
+    color: #777;
+
+    margin-top: 3px;
+
+    line-height: 1.5;
+
+}
+
+
+
+/* ==========================================
+   OVERVIEW
+========================================== */
+
+.overview-body {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 16px;
+
+}
+
+
+.overall-score {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 14px;
+
+    flex: 1;
+
+}
+
+
+
+/* ==========================================
+   SCORE CIRCLE
+========================================== */
+
+.score-circle {
+
+    width: 92px;
+
+    height: 92px;
+
+    border-radius: 50%;
+
+    background: conic-gradient(
+        var(--primary) 0%,
+        #eeeeee 0%
+    );
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    flex-shrink: 0;
+
+}
+
+
+.score-inner {
+
+    width: 74px;
+
+    height: 74px;
+
+    border-radius: 50%;
+
+    background: #ffffff;
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    justify-content: center;
+
+}
+
+
+.score-inner strong {
+
+    font-size: 20px;
+
+    font-weight: 700;
+
+    color: var(--primary);
+
+    line-height: 1;
+
+}
+
+
+.score-inner span {
+
+    font-size: 9px;
+
+    color: #777;
+
+    margin-top: 4px;
+
+}
+
+
+.score-info {
+
+    min-width: 0;
+
+}
+
+
+.score-info h4 {
+
+    font-size: 13px;
+
+    font-weight: 600;
+
+    color: #222;
+
+    margin-bottom: 4px;
+
+}
+
+
+.score-info p {
+
+    font-size: 10px;
+
+    color: #777;
+
+    line-height: 1.5;
+
+}
+
+
+
+/* ==========================================
+   EVALUATION STATUS
+========================================== */
+
+.evaluation-status-box {
+
+    min-width: 170px;
+
+    background: #f9fafb;
+
+    border: 1px solid #eeeeee;
+
+    border-radius: 14px;
+
+    padding: 11px;
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+}
+
+
+.status-icon {
+
+    width: 38px;
+
+    height: 38px;
+
+    border-radius: 11px;
+
+    background: #fff1f1;
+
+    color: var(--primary);
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    font-size: 16px;
+
+    flex-shrink: 0;
+
+}
+
+
+.status-content {
+
+    display: flex;
+
+    flex-direction: column;
+
+}
+
+
+.status-content span {
+
+    font-size: 9px;
+
+    color: #777;
+
+}
+
+
+.status-content strong {
+
+    font-size: 11px;
+
+    color: #555;
+
+    margin-top: 2px;
+
+}
+
+
+.status-content small {
+
+    font-size: 8px;
+
+    color: #999;
+
+    margin-top: 2px;
+
+}
+
+
+
+/* ==========================================
+   PERFORMANCE BREAKDOWN
+========================================== */
+
+.breakdown-list {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 13px;
+
+}
+
+
+.performance-item {
+
+    padding: 12px;
+
+    border: 1px solid #eeeeee;
+
+    border-radius: 14px;
+
+    background: #ffffff;
+
+}
+
+
+.performance-item-header {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 12px;
+
+}
+
+
+.item-name {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    min-width: 0;
+
+}
+
+
+.item-icon {
+
+    width: 38px;
+
+    height: 38px;
+
+    border-radius: 12px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    flex-shrink: 0;
+
+    font-size: 15px;
+
+}
+
+
+.blue-icon {
+
+    background: rgba(59,130,246,.12);
+
+    color: #3b82f6;
+
+}
+
+
+.purple-icon {
+
+    background: rgba(147,51,234,.12);
+
+    color: #9333ea;
+
+}
+
+
+.orange-icon {
+
+    background: rgba(249,115,22,.12);
+
+    color: #f97316;
+
+}
+
+
+.green-icon {
+
+    background: rgba(34,197,94,.12);
+
+    color: #22c55e;
+
+}
+
+
+.item-name h4 {
+
+    font-size: 11px;
+
+    font-weight: 600;
+
+    color: #222;
+
+    line-height: 1.4;
+
+}
+
+
+.item-name p {
+
+    font-size: 8px;
+
+    color: #888;
+
+    margin-top: 2px;
+
+    line-height: 1.4;
+
+}
+
+
+.performance-item-header > strong {
+
+    font-size: 11px;
+
+    color: #333;
+
+    white-space: nowrap;
+
+}
+
+
+
+/* ==========================================
+   RATING PROGRESS
+========================================== */
+
+.rating-progress {
+
+    width: 100%;
+
+    height: 7px;
+
+    background: #eeeeee;
+
+    border-radius: 20px;
+
+    overflow: hidden;
+
+    margin-top: 10px;
+
+}
+
+
+.rating-progress-fill {
+
+    height: 100%;
+
+    width: 0%;
+
+    border-radius: 20px;
+
+    background: #3b82f6;
+
+    transition: width .3s ease;
+
+}
+
+
+.purple-fill {
+
+    background: #9333ea;
+
+}
+
+
+.orange-fill {
+
+    background: #f97316;
+
+}
+
+
+.green-fill {
+
+    background: #22c55e;
+
+}
+
+
+
+/* ==========================================
+   EVALUATION DETAILS
+========================================== */
+
+.evaluation-details {
+
+    display: grid;
+
+    grid-template-columns: repeat(2, 1fr);
+
+    gap: 10px;
+
+}
+
+
+.detail-box {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 9px;
+
+    padding: 11px;
+
+    background: #f9fafb;
+
+    border-radius: 14px;
+
+    border: 1px solid #f0f0f0;
+
+}
+
+
+.detail-icon {
+
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff1f1;
+    color: var(--primary);
+    font-size: 13px;
+    flex-shrink: 0;
+
+}
+
+
+.detail-box div:last-child {
+
+    min-width: 0;
+
+}
+
+
+.detail-box span {
+
+    display: block;
+
+    font-size: 8px;
+
+    color: #888;
+
+    margin-bottom: 2px;
+
+}
+
+
+.detail-box strong {
+
+    display: block;
+
+    font-size: 10px;
+
+    font-weight: 600;
+
+    color: #333;
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+}
+
+
+
+/* ==========================================
+   VIEW EVALUATION
+========================================== */
+
+.evaluation-action {
+
+    margin-top: 14px;
+
+    padding-top: 13px;
+
+    border-top: 1px solid #eeeeee;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 12px;
+
+}
+
+
+.view-evaluation-btn {
+
+    height: 38px;
+
+    padding: 0 15px;
+
+    border-radius: 12px;
+
+    background: var(--primary);
+
+    color: #ffffff;
+
+    font-size: 10px;
+
+    font-weight: 600;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    gap: 7px;
+
+    transition: .2s ease;
+
+}
+
+
+.view-evaluation-btn:not(:disabled):hover {
+
+    background: var(--primary-hover);
+
+}
+
+
+.view-evaluation-btn:disabled {
+
+    background: #eeeeee;
+
+    color: #999;
+
+    cursor: not-allowed;
+
+}
+
+
+#evaluation-action-note {
+
+    font-size: 8px;
+
+    color: #999;
+
+    line-height: 1.4;
+
+    text-align: right;
+
+    max-width: 230px;
+
+}
+
+
+
+/* ==========================================
+   FEEDBACK
+========================================== */
+
+.feedback-content {
+
+    min-height: 115px;
+
+}
+
+
+.feedback-empty {
+
+    min-height: 115px;
+
+    border: 1px dashed #dddddd;
+
+    border-radius: 14px;
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    justify-content: center;
+
+    text-align: center;
+
+    padding: 15px;
+
+}
+
+
+.feedback-icon {
+
+    width: 38px;
+
+    height: 38px;
+
+    border-radius: 50%;
+
+    background: #fff1f1;
+
+    color: var(--primary);
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    font-size: 16px;
+
+    margin-bottom: 7px;
+
+}
+
+
+.feedback-empty h4 {
+
+    font-size: 11px;
+
+    font-weight: 600;
+
+    color: #444;
+
+}
+
+
+.feedback-empty p {
+
+    font-size: 8px;
+
+    color: #999;
+
+    max-width: 300px;
+
+    margin-top: 3px;
+
+    line-height: 1.5;
+
+}
+
+
+
+/* ==========================================
+   RESPONSIVE
+========================================== */
+
+@media (max-width: 700px) {
+
+    .overview-body {
+
+        flex-direction: column;
+
+        align-items: stretch;
+
+    }
+
+
+    .evaluation-status-box {
+
+        width: 100%;
+
+    }
+
+
+    .evaluation-action {
+
+        flex-direction: column;
+
+        align-items: stretch;
+
+    }
+
+
+    #evaluation-action-note {
+
+        max-width: none;
+
+        text-align: left;
+
+    }
+
+}
+
+
+@media (max-width: 430px) {
+
+    .performance-content {
+
+        padding: 12px;
+
+        gap: 12px;
+
+    }
+
+
+    .performance-card {
+
+        padding: 14px;
+
+        border-radius: 14px;
+
+    }
+
+
+    .score-circle {
+
+        width: 82px;
+
+        height: 82px;
+
+    }
+
+
+    .score-inner {
+
+        width: 66px;
+
+        height: 66px;
+
+    }
+
+
+    .score-inner strong {
+
+        font-size: 18px;
+
+    }
+
+
+    .item-name h4 {
+
+        font-size: 10px;
+
+    }
+
+
+    .item-name p {
+
+        font-size: 7px;
+
+    }
+
+
+    .evaluation-details {
+
+        grid-template-columns: 1fr;
+
+    }
+
 }

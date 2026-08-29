@@ -272,8 +272,7 @@ async function fetchAndDisplayPendingInvitations() {
 
                 combinedRows += `
                     <tr>
-                        <td>${data.email || "N/A"}</td>
-                        <td>${data.section || "BSIT"}</td>
+                        <td>${data.email || "-"}</td>
                         <td>${dateSent}</td>
                         <td><span class="badge-pending">Invite Sent</span></td>
                     </tr>

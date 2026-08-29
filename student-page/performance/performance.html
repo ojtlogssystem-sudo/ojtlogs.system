@@ -1,36 +1,569 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Dashboard</title>
 
-    <link rel="stylesheet" href="student_dashboard.css">
-    <link rel="stylesheet" href="/templated/header.css">
-    <link rel="stylesheet" href="/templated/sidebar.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+    <title>Performance - OJT LOGS</title>
+
+    <!-- Existing Theme -->
+    <link rel="stylesheet" href="performance.css">
+
+    <!-- Shared Header / Sidebar -->
+    <link rel="stylesheet" href="../templated/header.css">
+    <link rel="stylesheet" href="../templated/sidebar.css">
+
+    <!-- Poppins -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet"
+    >
+
+    <!-- Font Awesome -->
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css"
+    >
 </head>
 
 <body>
-    <div class="dashboard">
-        <div id="sidebar-container"></div>
 
-        <main class="main">
-            <header id="header-container"></header>
+<div class="dashboard">
 
-        </main>
-    </div>
+    <!-- SIDEBAR -->
+    <div id="sidebar-container"></div>
 
-<script src="/templated/sidebar-loader.js"></script>
-<script src="/templated/header-loader.js"></script>
 
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-    loadSidebar("Performance");
-    loadHeader("Performance");
-});
-</script>
+    <!-- MAIN -->
+    <main class="main">
+
+        <!-- HEADER -->
+        <header id="header-container"></header>
+
+
+        <!-- CONTENT -->
+        <section class="performance-content">
+
+
+            <!-- ==========================================
+                 PERFORMANCE OVERVIEW
+            =========================================== -->
+
+            <div class="performance-card overview-card">
+
+                <div class="section-title">
+
+                    <div class="title-left">
+
+                        <span class="vertical-line red"></span>
+
+                        <div>
+                            <h3>Performance Overview</h3>
+
+                            <p class="section-description">
+                                View your internship performance based on your supervisor's evaluation.
+                            </p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="overview-body">
+
+                    <!-- SCORE -->
+                    <div class="overall-score">
+
+                        <div class="score-circle">
+
+                            <div class="score-inner">
+
+                                <strong id="overall-score">
+                                    --
+                                </strong>
+
+                                <span>
+                                    Overall
+                                </span>
+
+                            </div>
+
+                        </div>
+
+                        <div class="score-info">
+
+                            <h4 id="performance-status">
+                                Evaluation Pending
+                            </h4>
+
+                            <p id="performance-description">
+                                Your supervisor evaluation will appear here once it has been submitted.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- EVALUATION STATUS -->
+                    <div class="evaluation-status-box">
+
+                        <div class="status-icon">
+                            <i class="fa-regular fa-clipboard"></i>
+                        </div>
+
+                        <div class="status-content">
+
+                            <span>
+                                Supervisor Evaluation
+                            </span>
+
+                            <strong id="evaluation-status">
+                                Not Yet Available
+                            </strong>
+
+                            <small id="evaluation-date">
+                                Waiting for evaluation
+                            </small>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- ==========================================
+                 PERFORMANCE BREAKDOWN
+            =========================================== -->
+
+            <div class="performance-card">
+
+                <div class="section-title">
+
+                    <div class="title-left">
+
+                        <span class="vertical-line red"></span>
+
+                        <div>
+                            <h3>Performance Breakdown</h3>
+
+                            <p class="section-description">
+                                Summary of the ratings given by your supervisor.
+                            </p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="breakdown-list">
+
+
+                    <!-- THEORY -->
+                    <div class="performance-item">
+
+                        <div class="performance-item-header">
+
+                            <div class="item-name">
+
+                                <div class="item-icon blue-icon">
+                                    <i class="fa-solid fa-book-open"></i>
+                                </div>
+
+                                <div>
+                                    <h4>
+                                        Integration of Basic Theory in Practice
+                                    </h4>
+
+                                    <p>
+                                        Application of knowledge and technology to assigned tasks.
+                                    </p>
+                                </div>
+
+                            </div>
+
+                            <strong id="theory-score">
+                                --/5
+                            </strong>
+
+                        </div>
+
+
+                        <div class="rating-progress">
+
+                            <div
+                                class="rating-progress-fill"
+                                id="theory-progress"
+                                style="width: 0%;"
+                            ></div>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- PROFESSION -->
+                    <div class="performance-item">
+
+                        <div class="performance-item-header">
+
+                            <div class="item-name">
+
+                                <div class="item-icon purple-icon">
+                                    <i class="fa-solid fa-user-tie"></i>
+                                </div>
+
+                                <div>
+                                    <h4>
+                                        Understanding of the Profession
+                                    </h4>
+
+                                    <p>
+                                        Professionalism, initiative, responsibility, and workplace conduct.
+                                    </p>
+                                </div>
+
+                            </div>
+
+                            <strong id="profession-score">
+                                --/5
+                            </strong>
+
+                        </div>
+
+
+                        <div class="rating-progress">
+
+                            <div
+                                class="rating-progress-fill purple-fill"
+                                id="profession-progress"
+                                style="width: 0%;"
+                            ></div>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- QUALITY -->
+                    <div class="performance-item">
+
+                        <div class="performance-item-header">
+
+                            <div class="item-name">
+
+                                <div class="item-icon orange-icon">
+                                    <i class="fa-solid fa-list-check"></i>
+                                </div>
+
+                                <div>
+                                    <h4>
+                                        Quality and Quantity of Work
+                                    </h4>
+
+                                    <p>
+                                        Work quality, diligence, attendance, responsibility, and task completion.
+                                    </p>
+                                </div>
+
+                            </div>
+
+                            <strong id="quality-score">
+                                --/5
+                            </strong>
+
+                        </div>
+
+
+                        <div class="rating-progress">
+
+                            <div
+                                class="rating-progress-fill orange-fill"
+                                id="quality-progress"
+                                style="width: 0%;"
+                            ></div>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- SKILLS -->
+                    <div class="performance-item">
+
+                        <div class="performance-item-header">
+
+                            <div class="item-name">
+
+                                <div class="item-icon green-icon">
+                                    <i class="fa-solid fa-lightbulb"></i>
+                                </div>
+
+                                <div>
+                                    <h4>
+                                        Skills in Various Program Settings
+                                    </h4>
+
+                                    <p>
+                                        Adaptability, procedures, problem identification, and communication.
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+                            <strong id="skills-score">
+                                --/5
+                            </strong>
+
+                        </div>
+
+
+                        <div class="rating-progress">
+
+                            <div
+                                class="rating-progress-fill green-fill"
+                                id="skills-progress"
+                                style="width: 0%;"
+                            ></div>
+
+                        </div>
+
+                    </div>
+
+
+                </div>
+
+            </div>
+
+
+
+            <!-- ==========================================
+                 EVALUATION DETAILS
+            =========================================== -->
+
+            <div class="performance-card">
+
+                <div class="section-title">
+
+                    <div class="title-left">
+
+                        <span class="vertical-line red"></span>
+
+                        <div>
+
+                            <h3>Supervisor Evaluation</h3>
+
+                            <p class="section-description">
+                                Details about your submitted performance evaluation.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="evaluation-details">
+
+
+                    <!-- SUPERVISOR -->
+                    <div class="detail-box">
+
+                        <div class="detail-icon">
+                            <i class="fa-solid fa-user-tie"></i>
+                        </div>
+
+                        <div>
+
+                            <span>
+                                Evaluated By
+                            </span>
+
+                            <strong id="supervisor-name">
+                                --
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- COMPANY -->
+                    <div class="detail-box">
+
+                        <div class="detail-icon">
+                            <i class="fa-solid fa-building"></i>
+                        </div>
+
+                        <div>
+
+                            <span>
+                                Company
+                            </span>
+
+                            <strong id="evaluation-company">
+                                --
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- DATE -->
+                    <div class="detail-box">
+
+                        <div class="detail-icon">
+                            <i class="fa-regular fa-calendar"></i>
+                        </div>
+
+                        <div>
+
+                            <span>
+                                Evaluation Date
+                            </span>
+
+                            <strong id="evaluation-date-detail">
+                                --
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- RATING -->
+                    <div class="detail-box">
+
+                        <div class="detail-icon">
+                            <i class="fa-solid fa-star"></i>
+                        </div>
+
+                        <div>
+
+                            <span>
+                                Rating
+                            </span>
+
+                            <strong id="evaluation-rating">
+                                -- / 5
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- VIEW EVALUATION BUTTON -->
+
+                <div class="evaluation-action">
+
+                    <button
+                        type="button"
+                        id="view-evaluation-btn"
+                        class="view-evaluation-btn"
+                        disabled
+                    >
+
+                        <i class="fa-regular fa-eye"></i>
+
+                        View Evaluation
+
+                    </button>
+
+                    <p id="evaluation-action-note">
+                        Your completed evaluation will be available here after your supervisor submits it.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- ==========================================
+                 SUPERVISOR FEEDBACK
+            =========================================== -->
+
+            <div class="performance-card feedback-card">
+
+                <div class="section-title">
+
+                    <div class="title-left">
+
+                        <span class="vertical-line red"></span>
+
+                        <div>
+
+                            <h3>Supervisor Feedback</h3>
+
+                            <p class="section-description">
+                                Comments and recommendations from your supervisor.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div
+                    class="feedback-content"
+                    id="supervisor-feedback"
+                >
+
+                    <div class="feedback-empty">
+
+                        <div class="feedback-icon">
+                            <i class="fa-regular fa-comment-dots"></i>
+                        </div>
+
+                        <h4>
+                            No feedback yet
+                        </h4>
+
+                        <p>
+                            Supervisor comments will appear here once your evaluation has been completed.
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+        </section>
+
+    </main>
+
+</div>
+
+
+<!-- SHARED LOADERS -->
+
+<script src="../templated/sidebar.js"></script>
+<script src="../templated/header.js"></script>
+<script type="module" src="performance.js"></script>
 
 </body>
+
 </html>

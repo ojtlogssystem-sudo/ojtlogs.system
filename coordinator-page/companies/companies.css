@@ -933,3 +933,166 @@ body{
 .toast-notification.error {
     background-color: #ef4444; /* Kulay pula kapag error */
 }
+
+/* ========================================
+   SUPERVISOR LIST
+======================================== */
+
+.supervisor-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 3px;
+    max-width: 100%;
+}
+
+.supervisor-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+}
+
+.supervisor-icon {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+
+    background: #fde8e8;
+    color: #b91c1c;
+
+    font-size: 10px;
+}
+
+.supervisor-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: #334155;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}   
+
+/* ==========================================
+   SUPERVISOR DISPLAY
+========================================== */
+
+.supervisor-display {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    min-width: 0;
+    margin-top: 6px;
+    height: 28px;
+}
+
+
+/* ==========================================
+   SUPERVISOR AVATAR
+========================================== */
+
+.supervisor-avatar {
+    width: 27px;
+    height: 27px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    border: 2px solid #fff;
+    flex-shrink: 0;
+    position: relative;
+}
+
+
+/* Avatar overlap */
+
+.supervisor-avatar + .supervisor-avatar {
+    margin-left: -7px;
+}
+
+
+/* ==========================================
+   SOFT AVATAR COLORS
+========================================== */
+
+.supervisor-color-0 {
+    background: #e8e7ff;
+    color: #5148b8;
+}
+
+.supervisor-color-1 {
+    background: #dff7eb;
+    color: #16804a;
+}
+
+.supervisor-color-2 {
+    background: #fff0c9;
+    color: #a66a00;
+}
+
+
+/* ==========================================
+   MORE SUPERVISORS
+========================================== */
+
+.supervisor-more {
+    width: 27px;
+    height: 27px;
+    margin-left: -7px;
+    border-radius: 50%;
+    background: #fde7e7;
+    border: 2px solid #fff;
+    color: #ab0a0a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    flex-shrink: 0;
+    z-index: 3;
+}
+
+
+/* ==========================================
+   PRIMARY SUPERVISOR NAME
+========================================== */
+
+.primary-supervisor {
+    margin-left: 10px;
+
+    font-size: 12px;
+
+    font-weight: 600;
+
+    color: #334155;
+
+    max-width: 145px;
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+}
+
+
+/* ==========================================
+   NO SUPERVISOR
+========================================== */
+
+.no-supervisor {
+    font-size: 12px;
+
+    color: #94a3b8;
+
+    font-weight: 500;
+}

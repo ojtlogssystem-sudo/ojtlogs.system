@@ -118,6 +118,55 @@ document.addEventListener("DOMContentLoaded", () => {
                         const status = s.status ? s.status.trim().toLowerCase() : "";
                         return status === "completed" || status === "finished" || status === "done";
                     }).length;
+
+                    // ==========================================
+                    // SUPERVISOR DISPLAY
+                    // ==========================================
+
+                    const supervisorList =
+                        Array.isArray(data.supervisorNames) &&
+                        data.supervisorNames.length > 0
+                            ? data.supervisorNames
+                            : (
+                                data.supervisorName
+                                    ? data.supervisorName
+                                        .split(",")
+                                        .map(name => name.trim())
+                                        .filter(Boolean)
+                                    : []
+                            );
+
+
+                    // Get initials
+                    function getSupervisorInitials(name) {
+
+                        if (!name) return "";
+
+                        const parts =
+                            name.trim().split(/\s+/);
+
+                        if (parts.length === 1) {
+                            return parts[0]
+                                .substring(0, 2)
+                                .toUpperCase();
+                        }
+
+                        return (
+                            parts[0].charAt(0) +
+                            parts[parts.length - 1].charAt(0)
+                        ).toUpperCase();
+
+                    }
+
+
+                    const visibleSupervisors =
+                        supervisorList.slice(0, 2);
+
+                    const remainingSupervisors =
+                        Math.max(
+                            supervisorList.length - 2,
+                            0
+                        );
                     
                     const cardHtml = `
                         <div class="company-card" data-id="${companyId}" data-name="${data.companyName || ''}">
@@ -125,9 +174,70 @@ document.addEventListener("DOMContentLoaded", () => {
                                 <div class="company-brand">
                                     <div class="brand-icon red"><i class="fa-solid fa-building"></i></div>
                                     <div class="brand-info">
-                                        <h3>${data.companyName}</h3>
-                                        <p class="supervisor-label">Supervisor</p>
-                                        <p class="supervisor-name">${data.supervisorName || 'N/A'}</p>
+
+                                        <h3>
+                                            ${data.companyName}
+                                        </h3>
+
+                                        <p class="supervisor-label">
+                                            Supervisor
+                                        </p>
+
+                                        <div class="supervisor-display">
+
+                                            ${
+                                                visibleSupervisors.length > 0
+                                                ? visibleSupervisors.map((name, index) => `
+
+                                                    <span
+                                                        class="supervisor-avatar supervisor-color-${index}">
+
+                                                        ${getSupervisorInitials(name)}
+
+                                                    </span>
+
+                                                `).join("")
+                                                : `
+
+                                                    <span class="no-supervisor">
+                                                        No supervisor
+                                                    </span>
+
+                                                `
+                                            }
+
+
+                                            ${
+                                                remainingSupervisors > 0
+                                                ? `
+
+                                                    <span
+                                                        class="supervisor-more">
+
+                                                        +${remainingSupervisors}
+
+                                                    </span>
+
+                                                `
+                                                : ""
+                                            }
+
+
+                                            ${
+                                                visibleSupervisors.length > 0
+                                                ? `
+
+                                                    <span
+                                                        class="primary-supervisor">
+
+                                                        ${visibleSupervisors[0]}
+
+                                                    </span>
+
+                                                `
+                                                : ""
+                                            }
+                                        </div>
                                     </div>
                                 </div>
                                 <button class="more-btn" type="button"><i class="fa-solid fa-ellipsis-vertical"></i></button>

@@ -1,0 +1,781 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background: #f5f6f8;
+    color: #111827;
+}
+
+.page-container {
+    width: 100%;
+    padding: 30px 35px 45px;
+}
+
+/* ========================================
+   BACK TO DASHBOARD
+======================================== */
+
+.back-button-container {
+    margin-bottom: 18px;
+}
+
+.back-btn {
+    height: 35px;
+
+    padding: 0 20px;
+
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+
+    background: #ffffff;
+
+    border: 1px solid #e5e7eb;
+    border-radius: 9px;
+
+    color: #111827;
+
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+
+    cursor: pointer;
+
+    box-shadow: 0 2px 7px rgba(0, 0, 0, 0.04);
+
+    transition: all 0.2s ease;
+}
+
+.back-btn i {
+    font-size: 14px;
+    color: #111827;
+}
+
+.back-btn:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+
+    transform: translateX(-2px);
+}
+
+.back-btn:active {
+    transform: translateX(0);
+}
+
+/* ========================================
+   PAGE HEADER
+======================================== */
+
+.page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 25px;
+}
+
+.page-header h1 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+.page-header p {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.print-btn {
+    border: none;
+    background: #AB0A0A;
+    color: #fff;
+    padding: 8px 18px;
+    margin-top: 60px;
+    border-radius: 9px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.print-btn:hover {
+    background: #8E0909;
+}
+
+
+/* ========================================
+   COMPLETED SUMMARY CARDS
+======================================== */
+
+.completed-summary-cards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(280px, 1fr));
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+
+/* SAME STYLE AS DASHBOARD STAT CARD */
+
+.completed-stat-card {
+    background: #ffffff;
+    border-radius: 18px;
+    padding: 20px 22px 20px 26px;
+    position: relative;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+
+    transition: all 0.25s ease;
+
+    box-shadow: 0 2px 8px rgba(171, 10, 10, 0.04);
+
+    min-height: 120px;
+
+    border: 1px solid #e0e0e0c3;
+
+    transform: translateZ(0);
+}
+
+
+/* RED LEFT ACCENT */
+
+.completed-stat-card::before {
+    content: '';
+
+    position: absolute;
+
+    left: 0;
+    top: 50%;
+
+    transform: translateY(-50%);
+
+    height: 42px;
+    width: 3.5px;
+
+    background-color: #ab0a0a;
+
+    border-radius: 0 4px 4px 0;
+
+    box-shadow: 2px 0 6px rgba(171, 10, 10, 0.4);
+
+    transition: all 0.3s ease;
+}
+
+
+/* HOVER */
+
+.completed-stat-card:hover {
+    transform: translateY(-3px);
+
+    box-shadow:
+        0 8px 18px rgba(171, 10, 10, 0.12);
+
+    border-color: #f7aab0;
+}
+
+
+.completed-stat-card:hover::before {
+    height: 80px;
+    width: 4px;
+
+    box-shadow:
+        0 0 8px rgba(171, 10, 10, 0.8),
+        0 0 2px rgba(171, 10, 10, 0.4);
+}
+
+
+/* ========================================
+   ICON
+======================================== */
+
+.completed-stat-card .stat-icon {
+    position: absolute;
+
+    top: 18px;
+    right: 18px;
+
+    width: 38px;
+    height: 38px;
+
+    border-radius: 8px;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    font-size: 16px;
+
+    background: #fde8e8;
+    color: #ab0a0a;
+}
+
+
+/* ========================================
+   CONTENT
+======================================== */
+
+.completed-stat-card .stat-content {
+    width: 100%;
+}
+
+.completed-stat-card .stat-content .title {
+    font-size: 13px;
+    font-weight: 500;
+    color: #666;
+    margin-bottom: 6px;
+    padding-right: 40px;
+}
+
+.completed-stat-card .stat-content h2 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1a1a1a;
+    line-height: 1.1;
+    margin-bottom: 12px;
+}
+
+/* ========================================
+   FOOTER
+======================================== */
+
+.completed-stat-card .stat-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.completed-stat-card .stat-footer small {
+    font-size: 12px;
+    color: #999;
+}
+
+.completed-stat-card .positive {
+    color: #27ae60;
+
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.completed-stat-card .positive i {
+    font-size: 11px;
+    margin-right: 4px;
+}
+
+/* ========================================
+   TABLE CARD
+======================================== */
+
+.table-card {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+.table-header {
+    padding: 20px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.table-header h2 {
+    font-size: 18px;
+    margin-bottom: 3px;
+}
+
+.table-header p {
+    color: #6b7280;
+    font-size: 12px;
+}
+
+
+/* SEARCH */
+
+.search-box {
+    width: 280px;
+    height: 42px;
+
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    padding: 0 13px;
+}
+
+.search-box i {
+    color: #9ca3af;
+}
+
+.search-box input {
+    width: 100%;
+    border: none;
+    outline: none;
+
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px;
+}
+
+
+/* ========================================
+   TABLE
+======================================== */
+
+.table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+thead {
+    background: #fafafa;
+}
+
+th {
+    padding: 13px 15px;
+    text-align: left;
+
+    font-size: 12px;
+    font-weight: 600;
+    color: #4b5563;
+
+    white-space: nowrap;
+}
+
+td {
+    padding: 15px;
+
+    border-top: 1px solid #f0f0f0;
+
+    font-size: 13px;
+    color: #374151;
+
+    white-space: nowrap;
+}
+
+.student-name {
+    font-weight: 600;
+    color: #111827;
+}
+
+.completed-status {
+    display: inline-block;
+
+    padding: 5px 12px;
+
+    border-radius: 20px;
+
+    background: #dcfce7;
+    color: #16a34a;
+
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.loading-row,
+.empty-row {
+    text-align: center;
+    padding: 35px;
+    color: #9ca3af;
+}
+
+
+@media print {
+
+    /* ========================================
+       GENERAL PRINT SETTINGS
+    ======================================== */
+
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    html,
+    body {
+        width: 100%;
+        min-height: 100%;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        font-family: Arial, sans-serif;
+    }
+
+
+    /* ========================================
+       HIDE NORMAL SCREEN CONTENT
+    ======================================== */
+
+    .page-header,
+    .completed-summary-cards,
+    .table-card,
+    .search-box,
+    .print-btn {
+        display: none !important;
+        visibility: hidden !important;
+    }
+
+
+    /* ========================================
+       MAIN CONTAINER
+    ======================================== */
+
+    .page-container {
+        display: block !important;
+
+        width: 100% !important;
+
+        margin: 0 !important;
+        padding: 0 !important;
+
+        background: #ffffff !important;
+    }
+
+
+    /* ========================================
+       SHOW PRINT REPORT ONLY
+    ======================================== */
+
+    .print-report {
+        display: block !important;
+        visibility: visible !important;
+
+        width: 100% !important;
+
+        margin: 0 !important;
+        padding: 0 !important;
+
+        background: #ffffff !important;
+    }
+
+
+    /* ========================================
+       PRINT HEADER
+    ======================================== */
+
+    .print-header {
+        width: 100%;
+        position: relative;
+        text-align: left;
+        padding-bottom: 12px;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #ab0a0a;
+    }
+
+
+    .print-header h1 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 700;
+        color: #111111;
+    }
+
+
+    .print-header p {
+        margin: 3px 0 0;
+
+        font-size: 12px;
+
+        color: #555555;
+    }
+
+
+    /* DATE */
+
+    .print-date {
+        position: absolute;
+
+        right: 0;
+        top: 0;
+
+        text-align: right;
+    }
+
+
+    .print-date-label {
+        display: block;
+
+        font-size: 9px;
+
+        color: #777777;
+
+        text-transform: uppercase;
+
+        margin-bottom: 3px;
+    }
+
+
+    .print-date-value {
+        font-size: 11px;
+
+        font-weight: 600;
+
+        color: #111111;
+    }
+
+
+    /* ========================================
+       SUMMARY BOXES
+    ======================================== */
+
+    .print-summary {
+        display: grid;
+
+        grid-template-columns:
+            repeat(4, 1fr);
+
+        width: 100%;
+
+        border: 1px solid #f0dede;
+
+        border-radius: 7px;
+
+        overflow: hidden;
+
+        margin-bottom: 25px;
+    }
+
+
+    .print-summary-box {
+        min-height: 65px;
+
+        padding: 10px 12px;
+
+        background: #ffffff;
+
+        border-right: 1px solid #f0dede;
+    }
+
+
+    .print-summary-box:last-child {
+        border-right: none;
+    }
+
+
+    .print-summary-box.highlight {
+        background: #ab0a0a !important;
+
+        color: #ffffff !important;
+    }
+
+
+    .print-summary-label {
+        display: block;
+
+        font-size: 8px;
+
+        text-transform: uppercase;
+
+        letter-spacing: 0.8px;
+
+        margin-bottom: 4px;
+
+        color: #888888;
+    }
+
+
+    .highlight .print-summary-label {
+        color: #f7caca;
+    }
+
+
+    .print-summary-value {
+        font-size: 19px;
+
+        font-weight: 700;
+
+        color: #111111;
+    }
+
+
+    .highlight .print-summary-value {
+        color: #ffffff;
+    }
+
+
+    .print-summary-unit {
+        font-size: 9px;
+
+        font-weight: 400;
+
+        color: #111111;
+    }
+
+
+    .highlight .print-summary-unit {
+        color: #ffffff;
+    }
+
+
+    /* ========================================
+       SECTION TITLE
+    ======================================== */
+
+    .print-section-title {
+        font-size: 10px;
+
+        font-weight: 700;
+
+        color: #666666;
+
+        text-transform: uppercase;
+
+        letter-spacing: 0.5px;
+
+        margin-bottom: 7px;
+    }
+
+
+    /* ========================================
+       PRINT STUDENTS TABLE
+    ======================================== */
+
+    .print-student-table {
+        width: 100%;
+
+        border-collapse: collapse;
+
+        table-layout: fixed;
+
+        margin: 0;
+    }
+
+
+    .print-student-table th {
+        background: #fdf2f2 !important;
+
+        color: #555555;
+
+        font-size: 8px;
+
+        font-weight: 600;
+
+        text-align: left;
+
+        padding: 7px 6px;
+
+        border-bottom: 1px solid #efdada;
+    }
+
+
+    .print-student-table td {
+        font-size: 8.5px;
+
+        color: #222222;
+
+        padding: 7px 6px;
+
+        border-bottom: 1px solid #f1eeee;
+
+        vertical-align: middle;
+    }
+
+
+    .print-student-table tr:nth-child(even) td {
+        background: #fffafa !important;
+    }
+
+
+    .print-student-table .hours {
+        font-weight: 600;
+
+        color: #ab0a0a;
+    }
+
+
+    .print-completed {
+        color: #16a34a;
+
+        font-weight: 600;
+    }
+
+
+    /* ========================================
+       TOTAL RENDERED HOURS
+    ======================================== */
+
+    .print-total {
+        display: flex;
+
+        justify-content: space-between;
+
+        align-items: center;
+
+        width: 100%;
+
+        padding: 10px 12px;
+
+        background: #fdf2f2 !important;
+
+        border-bottom-left-radius: 7px;
+
+        border-bottom-right-radius: 7px;
+
+        font-size: 10px;
+
+        font-weight: 700;
+
+        box-sizing: border-box;
+    }
+
+
+    .print-total-hours {
+        color: #ab0a0a;
+
+        font-size: 12px;
+    }
+
+
+    /* ========================================
+       PRINT FOOTER
+    ======================================== */
+
+    .print-footer {
+        width: 100%;
+
+        margin-top: 35px;
+
+        display: flex;
+
+        justify-content: space-between;
+
+        align-items: center;
+
+        font-size: 9px;
+
+        color: #777777;
+    }
+
+
+    /* ========================================
+       PAGE SETTINGS
+    ======================================== */
+
+    @page {
+        size: A4 portrait;
+
+        margin: 15mm;
+    }
+
+}

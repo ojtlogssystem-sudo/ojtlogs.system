@@ -1,17 +1,16 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { 
     getAuth, 
     onAuthStateChanged 
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { 
     getFirestore, 
-    doc, 
-    getDoc, 
     collection, 
     query, 
     where, 
-    onSnapshot 
+    onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { loadHeader } from "../templated/header-loader.js";
 
 // FIREBASE CONFIGURATION
 const firebaseConfig = {
@@ -25,7 +24,10 @@ const firebaseConfig = {
     measurementId: "G-DJ3JW7QH27"
 };
 
-const app = initializeApp(firebaseConfig);
+// Guarded init: header-loader.js also initializes the default Firebase app,
+// and whichever module's top-level code runs first "wins" — this avoids a
+// duplicate-app error regardless of import order.
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
 const auth = getAuth(app);
 const db = getFirestore(app);
 
@@ -36,8 +38,9 @@ document.addEventListener("DOMContentLoaded", () => {
     // 1. Load Sidebar at i-highlight ang "Tasks"
     loadSidebar("Tasks");
 
-    // 2. Load Header at i-setup ang pamagat
-    loadHeader("Task History");
+    // 2. Load Header at i-setup ang pamagat (shared header now also handles
+    // the profile avatar/name and the notification bell on its own).
+    loadHeader("Task History", { autoLoadProfile: true });
 
     // Date Picker Logic
     const dateInput = document.getElementById("filter-date-input");
@@ -65,7 +68,6 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        await updateProfileInHeader(user);
         fetchUserTasks(user.uid);
     });
 });
@@ -136,94 +138,10 @@ function initSidebarEvents() {
     });
 }
 
-// --- HEADER & PROFILE FUNCTIONS ---
-
-async function loadHeader(title) {
-    try {
-        const response = await fetch("../templated/header.html");
-        const data = await response.text();
-        
-        const headerContainer = document.getElementById("header-container");
-        if (headerContainer) {
-            headerContainer.innerHTML = data;
-        }
-
-        const pageTitle = document.getElementById("page-title");
-        if (pageTitle) {
-            pageTitle.textContent = title;
-        }
-
-        if (auth.currentUser) {
-            await updateProfileInHeader(auth.currentUser);
-        }
-
-        initHeaderEvents();
-    } catch (err) {
-        console.error("Error loading header:", err);
-    }
-}
-
-function initHeaderEvents() {
-    document.addEventListener("click", (e) => {
-        const mobileMenuBtn = e.target.closest("#mobile-menu");
-        const sidebar = document.getElementById("sidebar") || document.querySelector(".sidebar");
-
-        if (mobileMenuBtn && sidebar) {
-            e.stopPropagation();
-            sidebar.classList.toggle("show");
-            return;
-        }
-
-        if (sidebar && sidebar.classList.contains("show")) {
-            if (!sidebar.contains(e.target)) {
-                sidebar.classList.remove("show");
-            }
-        }
-    });
-}
-
-function getInitials(fullName) {
-    if (!fullName) return "ST";
-    const nameParts = fullName.trim().split(" ").filter(part => part.length > 0);
-    
-    if (nameParts.length === 1) {
-        return nameParts[0].charAt(0).toUpperCase();
-    }
-    
-    const firstName = nameParts[0];
-    const lastName = nameParts[nameParts.length - 1];
-    
-    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-}
-
-async function updateProfileInHeader(user) {
-    const avatarEl = document.querySelector(".avatar");
-    
-    try {
-        let fullName = user.displayName || "";
-        const userRef = doc(db, "users", user.uid);
-        const userSnap = await getDoc(userRef);
-
-        if (userSnap.exists()) {
-            const student = userSnap.data();
-            if (student.lastName && student.firstName) {
-                fullName = `${student.firstName} ${student.lastName}`.trim();
-            } else if (student.fullName) {
-                fullName = student.fullName;
-            }
-        }
-
-        if (!fullName) fullName = "Student Intern";
-
-        const initials = getInitials(fullName);
-        if (avatarEl) {
-            avatarEl.textContent = initials;
-        }
-    } catch (error) {
-        console.error("Error updating header profile:", error);
-        if (avatarEl) avatarEl.textContent = "ST";
-    }
-}
+// --- HEADER, NOTIFICATIONS & PROFILE ---
+// All handled globally now by the shared header (see header-loader.js's
+// loadHeader/loadNotifications/updateHeaderProfile), loaded above with
+// { autoLoadProfile: true }.
 
 // --- TASKS FETCHING & RENDERING LOGIC ---
 

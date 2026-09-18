@@ -604,7 +604,7 @@ document.addEventListener("click", (e) => {
                     );
                 }
 
-                showModalAlert("evaluationAlert", `Na-send na ang link gamit ang EmailJS! I-check ang Gmail.`, "success");
+                showModalAlert("evaluationAlert", `The link has been sent via email! Please check your Gmail.`, "success");
                 
                 setTimeout(() => {
                     if (evaluationModal) evaluationModal.classList.remove("active");

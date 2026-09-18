@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Profile - OJT-LOGS</title>
 
-    <link rel="stylesheet" href="/templated/header.css">
-    <link rel="stylesheet" href="/templated/sidebar.css">
+    <link rel="stylesheet" href="../templated/header.css">
+    <link rel="stylesheet" href="../templated/sidebar.css">
     <link rel="stylesheet" href="edit-profile.css">
 
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -52,12 +52,24 @@
                             <i class="fa-regular fa-user"></i>
                         </div>
                     </div>
-                    
+
                     <div class="form-group">
                         <div class="input-box">
                             <input type="text" id="studentNumber" required placeholder=" ">
                             <label for="studentNumber">Student Number</label>
                             <i class="fa-regular fa-id-card"></i>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="select-label" for="genderInput">Gender</label>
+                        <div class="select-box">
+                            <select id="genderInput" required>
+                                <option value="" disabled>Select Gender</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                            </select>
+                            <i class="fa-solid fa-chevron-down"></i>
                         </div>
                     </div>
 
@@ -77,27 +89,23 @@
                         </div>
                     </div>
 
+                    <!-- COURSE (fixed - naka-set lang sa BSIT, kapareho ng profile.html) -->
                     <div class="form-group">
-                        <label class="select-label">Section</label>
-                        <div class="select-box">
-                            <select id="sectionSelect" required>
-                                <option value="" disabled>Select your section</option>
-                                <option value="401">401</option>
-                                <option value="402">402</option>
-                                <option value="403">403</option>
-                            </select>
-                            <i class="fa-solid fa-chevron-down"></i>
+                        <div class="input-box">
+                            <input type="text" id="courseInput" value="BSIT" readonly style="background-color: #f5f5f5; cursor: not-allowed;">
+                            <label for="courseInput">Course</label>
+                            <i class="fa-solid fa-graduation-cap"></i>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label class="select-label">Course</label>
+                        <label class="select-label" for="sectionSelect">Section</label>
                         <div class="select-box">
-                            <select id="courseSelect" required>
-                                <option value="" disabled>Select your course</option>
-                                <option value="BSIT">BSIT</option>
-                                <option value="BSBA">BSBA</option>
-                                <option value="BSE">BSE</option>
+                            <select id="sectionSelect" required>
+                                <option value="" disabled>Select your section</option>
+                                <option value="403">403</option>
+                                <option value="405">405</option>
+                                <option value="406">406</option>
                             </select>
                             <i class="fa-solid fa-chevron-down"></i>
                         </div>
@@ -114,16 +122,22 @@
     </main>
 </div>
 
-<script src="/templated/header-loader.js"></script>
-<script src="/templated/sidebar-loader.js"></script>
-<script type="module" src="edit-profile.js"></script>
+<!-- SUCCESS POPUP (lalabas pagkatapos ma-save ang profile) -->
+<div class="success-modal-overlay" id="successModalOverlay">
+    <div class="success-modal">
+        <div class="success-modal-icon">
+            <i class="fa-solid fa-check"></i>
+        </div>
+        <h3>Profile Updated</h3>
+        <p>Your profile information has been saved successfully.</p>
+    </div>
+</div>
 
-<script>
-    document.addEventListener("DOMContentLoaded", () => {
-        if (typeof loadHeader === "function") loadHeader("Edit Profile");
-        if (typeof loadSidebar === "function") loadSidebar("Settings");
-    });
-</script>
+<!-- sidebar-loader.js is a classic (non-module) script — defines loadSidebar globally -->
+<script src="../templated/sidebar-loader.js"></script>
+<!-- edit-profile.js is a module: it imports loadHeader directly and also
+     handles the DOMContentLoaded wiring for both header and sidebar -->
+<script type="module" src="edit-profile.js"></script>
 
 </body>
 </html>

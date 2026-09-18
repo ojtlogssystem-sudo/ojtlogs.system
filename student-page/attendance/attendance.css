@@ -715,6 +715,11 @@ header h2{
     color: #9ca3af;
 }
 
+.status-badge.no-duty {
+    background: #fff7ed;
+    color: #ea580c;
+}
+
 /* Photo Proof Modal Container & Live Video */
 .photo-preview-wrapper {
     position: relative;
@@ -903,12 +908,15 @@ header h2{
     margin: 0;
 }
 
-/* CSS para sa Red Timestamp Badge */
+/* CSS para sa Red Timestamp Badge — FIXED sa ibabang-kanang bahagi ng screen
+   para permanenteng makikita kahit mag-scroll ang user. */
 .firebase-badge-container {
-    display: flex;
-    justify-content: flex-end; /* Para mapunta sa kanan ang badge */
-    margin-top: 15px;
-    margin-bottom: 10px;
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 9999;
+    margin: 0; /* di na kailangan ang dating spacing sa loob ng grid */
+    pointer-events: none; /* huwag i-block ang mga button/click sa ilalim nito */
 }
 
 .firebase-timestamp-badge {
@@ -921,4 +929,6 @@ header h2{
     border: 3px solid #000000; /* Makapal na black border na nakita sa picture */
     border-radius: 12px; /* Rounded corners */
     display: inline-block;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); /* Para lumitaw/lumutang sa ibabaw ng content */
+    pointer-events: auto;
 }

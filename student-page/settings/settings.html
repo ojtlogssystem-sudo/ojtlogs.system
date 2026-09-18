@@ -80,6 +80,20 @@
                     </div>
 
                     <div class="settings-list">
+                        <!-- Schedule -->
+                        <a href="../edit-schedule/schedule-settings.html" class="settings-item">
+                            <div class="icon-circle">
+                                <i class="fa-regular fa-calendar-days"></i>
+                            </div>
+                            <div class="item-info">
+                                <h4>Schedule</h4>
+                                <p>Manage your internship days, modality, and work hours</p>
+                            </div>
+                            <i class="fa-solid fa-chevron-right arrow-icon"></i>
+                        </a>
+
+                        <div class="item-divider"></div>
+
                         <!-- Language -->
                         <div class="settings-item">
                             <div class="icon-circle">
@@ -116,17 +130,6 @@
 
     <!-- Pinalitan ang / ng ../ -->
     <script src="../templated/sidebar-loader.js"></script>
-    <script src="../templated/header-loader.js"></script>
-
-    <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            if (typeof loadSidebar === "function") {
-                loadSidebar("Settings");
-            }
-            if (typeof loadHeader === "function") {
-                loadHeader("Settings");
-            }
-        });
-    </script>
+    <script type="module" src="settings.js"></script>
 </body>
 </html>

@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Privacy Settings | OJT-LOGS</title>
+
+    <!-- Shared Layout -->
+    <link rel="stylesheet" href="../sidebar/sidebar-web.css">
+    <!-- Page CSS -->
+    <link rel="stylesheet" href="privacy-settings.css">
+
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+
+</head>
+
+<body>
+
+<div class="dashboard">
+
+<!-- ===================== SIDEBAR ===================== -->
+
+<div id="sidebar-container"></div>
+
+<!-- ===================== MAIN CONTENT ===================== -->
+
+<main class="main">
+
+<header>
+
+    <div>
+        <h2>Privacy Settings</h2>
+        <p>Control what others see and how your information is used.</p>
+    </div>
+
+    <div class="top-right">
+
+        <div class="notification">
+            <i class="fa-regular fa-bell"></i>
+            <span class="badge">3</span>
+        </div>
+
+        <div class="profile" id="profileMenuTrigger">
+
+            <div class="avatar" id="profileAvatar">CO</div>
+
+            <div class="profile-info">
+                <h4 id="profileName">Loading...</h4>
+                <p id="profileRole">Coordinator</p>
+            </div>
+
+            <i class="fa-solid fa-chevron-down" id="profileChevron"></i>
+
+            <!-- PROFILE DROPDOWN -->
+
+            <div class="profile-menu" id="profileMenu">
+
+                <div class="profile-menu-head">
+
+                    <div class="avatar avatar-sm" id="menuAvatar">CO</div>
+
+                    <div class="profile-menu-id">
+                        <h5 id="menuName">Loading...</h5>
+                        <span id="menuEmail">&mdash;</span>
+                    </div>
+
+                </div>
+
+                <button type="button" class="profile-menu-item" id="showProfileBtn">
+                    <i class="fa-solid fa-circle-user"></i>
+                    Show profile
+                </button>
+
+                <button type="button" class="profile-menu-item item-danger" id="logoutBtn">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    Log out
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</header>
+
+<section class="settings-page">
+
+    <!-- ============ PROFILE VISIBILITY ============ -->
+
+    <div class="settings-card">
+
+        <div class="card-header">
+            <div>
+                <h3>
+                    <i class="fa-solid fa-eye"></i>
+                    Profile visibility
+                </h3>
+                <p>Choose what students and other coordinators can see. Changes save right away.</p>
+            </div>
+        </div>
+
+        <div class="setting-list">
+
+            <div class="setting-row privacy-toggle">
+                <div class="setting-text">
+                    <h4>Show my email to students</h4>
+                    <p>Students can contact you directly from their portal.</p>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" data-key="showEmail">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-row privacy-toggle">
+                <div class="setting-text">
+                    <h4>Show my phone number</h4>
+                    <p>Your number appears on your coordinator profile.</p>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" data-key="showPhone">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-row privacy-toggle">
+                <div class="setting-text">
+                    <h4>Show my profile photo</h4>
+                    <p>When off, your initials are shown instead.</p>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" data-key="showPhoto">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-row privacy-toggle">
+                <div class="setting-text">
+                    <h4>List me in the coordinator directory</h4>
+                    <p>Removing yourself hides your profile from search and browse lists.</p>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" data-key="listedInDirectory">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-row privacy-toggle">
+                <div class="setting-text">
+                    <h4>Show when I'm active</h4>
+                    <p>Displays your last-seen status beside your name.</p>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" data-key="activityStatus">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ============ DATA & ANALYTICS ============ -->
+
+    <div class="settings-card">
+
+        <div class="card-header">
+            <div>
+                <h3>
+                    <i class="fa-solid fa-chart-line"></i>
+                    Data and analytics
+                </h3>
+                <p>How OJT-LOGS uses your activity inside the system.</p>
+            </div>
+        </div>
+
+        <div class="setting-list">
+
+            <div class="setting-row privacy-toggle">
+                <div class="setting-text">
+                    <h4>Use my activity to improve risk predictions</h4>
+                    <p>Anonymized usage data helps tune the at-risk student model.</p>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" data-key="analyticsConsent">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-row privacy-toggle">
+                <div class="setting-text">
+                    <h4>Share my dashboard stats with admins</h4>
+                    <p>Admins see your approval counts and response times.</p>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" data-key="shareStatsWithAdmin">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-row privacy-toggle">
+                <div class="setting-text">
+                    <h4>Keep a sign-in history</h4>
+                    <p>Records the date and device of each sign-in so you can spot unusual access.</p>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" data-key="loginHistory">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ============ SIGN-IN ACTIVITY ============ -->
+
+    <div class="settings-card">
+
+        <div class="card-header">
+            <div>
+                <h3>
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    Sign-in activity
+                </h3>
+                <p>Check this if you think someone else used your account.</p>
+            </div>
+        </div>
+
+        <div class="setting-list">
+
+            <div class="setting-row">
+                <div class="setting-text">
+                    <h4>This session</h4>
+                    <p>
+                        Last sign-in <strong id="lastSignIn">—</strong>
+                    </p>
+                    <p class="uid-line" id="deviceInfo">Device: —</p>
+                </div>
+                <div class="setting-action">
+                    <button type="button" class="btn btn-secondary" id="signOutBtn">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                        Sign out
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ============ YOUR DATA ============ -->
+
+    <div class="settings-card">
+
+        <div class="card-header">
+            <div>
+                <h3>
+                    <i class="fa-solid fa-folder-open"></i>
+                    Your data
+                </h3>
+                <p>Get a copy of your information or ask for it to be corrected or removed.</p>
+            </div>
+        </div>
+
+        <div class="setting-list">
+
+            <div class="setting-row">
+                <div class="setting-text">
+                    <h4>Download my data</h4>
+                    <p>A JSON copy of your account, profile, and privacy preferences.</p>
+                </div>
+                <div class="setting-action">
+                    <button type="button" class="btn btn-secondary" id="downloadData">
+                        <i class="fa-solid fa-download"></i>
+                        Download
+                    </button>
+                </div>
+            </div>
+
+            <div class="setting-row">
+                <div class="setting-text">
+                    <h4>Request a data correction</h4>
+                    <p>Ask an administrator to fix information you can't edit yourself, like your role.</p>
+                </div>
+                <div class="setting-action">
+                    <button type="button" class="btn btn-secondary" id="requestCorrection">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                        Request
+                    </button>
+                </div>
+            </div>
+
+            <div class="setting-row danger-row">
+                <div class="setting-text">
+                    <h4>Request data deletion</h4>
+                    <p>
+                        An administrator reviews the request. Records tied to student
+                        OJT compliance are kept as required by the school.
+                    </p>
+                </div>
+                <div class="setting-action">
+                    <button type="button" class="btn btn-danger" id="requestDeletion">
+                        <i class="fa-solid fa-trash-can"></i>
+                        Request deletion
+                    </button>
+                </div>
+            </div>
+
+            <div class="setting-row">
+                <div class="setting-text">
+                    <h4>Privacy notice</h4>
+                    <p>
+                        <span id="consentStatus">Not yet acknowledged</span>
+                    </p>
+                </div>
+                <div class="setting-action">
+                    <button type="button" class="btn btn-primary" id="acknowledgePolicy">
+                        <i class="fa-solid fa-circle-check"></i>
+                        I acknowledge
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+</main>
+
+</div>
+
+<!-- TOAST -->
+
+<div class="toast" id="toast">
+    <i class="fa-solid fa-circle-check" id="toastIcon"></i>
+    <span id="toastMessage">Changes saved.</span>
+</div>
+
+<script src="../sidebar/sidebar-web.js"></script>
+<script type="module" src="privacy-settings.js"></script>
+
+</body>
+</html>

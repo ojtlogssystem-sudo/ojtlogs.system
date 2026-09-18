@@ -76,6 +76,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // 3. TUKUYIN ANG DAPAT I-LOAD NA USER ID:
         const activeStudentUid = targetStudentId || user.uid;
         currentUserId = activeStudentUid;
+        await loadStudentReportInformation(activeStudentUid);
 
         // 4. ITAGO ANG SUBMIT REPORT BUTTON SA COORDINATOR
         if (submitBtn) {
@@ -107,6 +108,49 @@ document.addEventListener("DOMContentLoaded", () => {
         submitBtn.addEventListener("click", submitWeeklyReport);
     }
 });
+
+// ========================================
+// LOAD STUDENT DETAILS FOR WEEKLY REPORT
+// ========================================
+async function loadStudentReportInformation(userId) {
+    try {
+        const studentRef = doc(db, "users", userId);
+        const studentSnap = await getDoc(studentRef);
+
+        if (!studentSnap.exists()) {
+            console.error("Student details not found.");
+            return;
+        }
+
+        const studentData = studentSnap.data();
+
+        // Get the actual student details from Firebase
+        const studentName = studentData.fullName || studentData.name;
+        const studentSection = studentData.section;
+        const companyName = studentData.companyName || studentData.company;
+
+        // Display Name
+        const nameElement = document.getElementById("report-student-name");
+        if (nameElement) {
+            nameElement.textContent = studentName || "";
+        }
+
+        // Display Section
+        const sectionElement = document.getElementById("report-section");
+        if (sectionElement) {
+            sectionElement.textContent = studentSection || "";
+        }
+
+        // Display Company Name
+        const companyElement = document.getElementById("report-company");
+        if (companyElement) {
+            companyElement.textContent = companyName || "";
+        }
+
+    } catch (error) {
+        console.error("Error loading student report information:", error);
+    }
+}
 
 function loadAccomplishmentReport(userId) {
     const tableBody = document.getElementById("report-table-body");
@@ -200,8 +244,8 @@ async function submitWeeklyReport() {
         let userData = {
             fullName: "Student",
             section: "BSIT 401",
-            company: "N/A",
-            supervisor: "N/A"
+            company: "-",
+            supervisor: "-"
         };
 
         const userDocRef = doc(db, "users", currentUserId);
@@ -212,10 +256,11 @@ async function submitWeeklyReport() {
             userData = {
                 fullName: u.fullName || u.name || "Student",
                 section: u.section || "BSIT 401",
-                company: u.company || "N/A",
-                supervisor: u.supervisor || "N/A"
+                company: u.company || "-",
+                supervisor: u.supervisor || "-"
             };
         }
+        
 
         // 2. Kunin ang pinaka-unang petsa at pinakahuling petsa para sa Week Range
         const firstDate = currentLogs[0].formattedDate || currentLogs[0].date || "N/A";

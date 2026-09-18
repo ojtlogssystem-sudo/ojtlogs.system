@@ -32,6 +32,33 @@
         Telefax: (02)361-63-30; (02) 452-29-45
     </div>
 
+
+    <div class="report-information">
+            <div class="report-info-row">
+                <div class="report-info-item">
+                    <span class="report-info-label">Name:</span>
+                    <span id="report-student-name" class="report-info-value"></span>
+                </div>
+
+                <div class="report-info-item">
+                    <span class="report-info-label">Company Name:</span>
+                    <span id="report-company" class="report-info-value"></span>
+                </div>
+            </div>
+
+            <div class="report-info-row">
+                <div class="report-info-item">
+                    <span class="report-info-label">Section:</span>
+                    <span id="report-section" class="report-info-value"></span>
+                </div>
+
+                <div class="report-info-item">
+                    <span class="report-info-label">Date:</span>
+                    <span class="report-date-line"></span>
+                </div>
+            </div>
+        </div>
+
     <div class="title-bar">
         ACCOMPLISHMENT REPORT
     </div>
@@ -64,16 +91,50 @@
         </tfoot>
     </table>
 
+    <div class="supervisor-notes">
+        <div class="notes-title">Supervisor's Notes:</div>
+        <div class="notes-box"></div>
+    </div>
+
+
     <div class="footer-section">
-        <div class="footer-content">
+    <div class="footer-content">
+
+        <!-- SUPERVISOR CERTIFICATION -->
+        <div class="supervisor-certification">
+            <p class="certification-text">
+                I certify that the above information is true and correct.
+            </p>
+        </div>
+
+        <!-- SUPERVISOR SIGNATURE -->
+        <div class="supervisor-signature">
+
+            <div class="signature-box">
+                <div class="signature-line"></div>
+
+                <div class="signature-label">
+                    Supervisor's Signature over Printed Name
+                </div>
+            </div>
+        </div>
+
+        <!-- WEEKLY ACCOMPLISHMENT -->
+        <div class="weekly-accomplishment-fixed">
             <hr class="footer-line">
+
             <div class="footer-bottom-row">
                 <div class="footer-accent-box"></div>
-                <span class="footer-title-text">WEEKLY ACCOMPLISHMENT</span>
+
+                <span class="footer-title-text">
+                    WEEKLY ACCOMPLISHMENT
+                </span>
             </div>
         </div>
     </div>
+</div>
 
+</div>
     <!-- FIREBASE MODULE LOGIC -->
     <script type="module" src="weeklyreport.js"></script>
 

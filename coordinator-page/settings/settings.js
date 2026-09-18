@@ -1,382 +1,902 @@
 /* ==========================================
    SETTINGS PAGE
-   OJT-LOGS
+   OJT-LOGS  |  Firebase Connected
+   ==========================================
+   Loaded as: <script type="module" src="settings.js"></script>
 ========================================== */
 
-document.addEventListener("DOMContentLoaded", () => {
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 
-    /* ==========================================
-       PROFILE ELEMENTS
-    ========================================== */
+import {
+    getAuth,
+    onAuthStateChanged,
+    signOut,
+    EmailAuthProvider,
+    reauthenticateWithCredential,
+    updatePassword,
+    updateEmail,
+    verifyBeforeUpdateEmail,
+    sendEmailVerification,
+    sendPasswordResetEmail
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-    const fullName = document.getElementById("fullName");
-    const email = document.getElementById("email");
-    const phone = document.getElementById("phone");
+import {
+    getFirestore,
+    doc,
+    getDoc,
+    setDoc,
+    serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-    const saveProfile = document.getElementById("saveProfile");
-    const cancelProfile = document.getElementById("cancelProfile");
 
-    const previewImage = document.getElementById("previewImage");
-    const imageUpload = document.getElementById("imageUpload");
+/* ==========================================
+   FIREBASE CONFIGURATION
+   (same project as dashboard.js)
+========================================== */
 
-    const profileName = document.getElementById("profileName");
-    const profileAvatar = document.getElementById("profileAvatar");
+const firebaseConfig = {
+    apiKey: "AIzaSyDvMQyEHIIJTW4etj4VQHjjIzd8oB2geJ8",
+    authDomain: "ojt-logs-e1892.firebaseapp.com",
+    databaseURL: "https://ojt-logs-e1892-default-rtdb.firebaseio.com",
+    projectId: "ojt-logs-e1892",
+    storageBucket: "ojt-logs-e1892.firebasestorage.app",
+    messagingSenderId: "1012575426857",
+    appId: "1:1012575426857:web:c2d6dbcdc0dc0ad965ff38"
+};
 
-    /* ==========================================
-       DEFAULT PROFILE
-    ========================================== */
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-    const defaultProfile = {
-        fullName: "John Doe",
-        email: "coordinator@grc.edu.ph",
-        phone: "+63 912 345 6789",
-        image: "../images/profile.png"
+const LOGIN_PAGE = "../coordinator_login/coordinator_login.html";
+
+
+/* ==========================================
+   STATE
+========================================== */
+
+let currentUser = null;
+let currentData = {};
+
+
+/* ==========================================
+   SMALL HELPERS
+========================================== */
+
+const $ = (id) => document.getElementById(id);
+
+let toastTimer = null;
+
+function showToast(message, type = "success") {
+
+    const toast = $("toast");
+    const toastMessage = $("toastMessage");
+    const toastIcon = $("toastIcon");
+
+    if (!toast) return;
+
+    toastMessage.textContent = message;
+
+    toast.classList.remove("toast-error", "toast-success");
+    toast.classList.add(type === "error" ? "toast-error" : "toast-success");
+
+    if (toastIcon) {
+        toastIcon.className =
+            type === "error"
+                ? "fa-solid fa-circle-exclamation"
+                : "fa-solid fa-circle-check";
+    }
+
+    toast.classList.add("show");
+
+    clearTimeout(toastTimer);
+
+    toastTimer = setTimeout(() => {
+        toast.classList.remove("show");
+    }, 3000);
+}
+
+
+function setBusy(button, busy, busyLabel = "Saving...") {
+
+    if (!button) return;
+
+    if (busy) {
+        button.dataset.originalHtml = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML =
+            `<i class="fa-solid fa-spinner fa-spin"></i> ${busyLabel}`;
+    } else {
+        button.disabled = false;
+        if (button.dataset.originalHtml) {
+            button.innerHTML = button.dataset.originalHtml;
+        }
+    }
+}
+
+
+function getInitials(name) {
+
+    return (name || "")
+        .split(" ")
+        .filter(n => n.length > 0)
+        .map(n => n[0])
+        .join("")
+        .substring(0, 2)
+        .toUpperCase() || "CO";
+}
+
+
+/*
+    Firebase error codes are not user friendly,
+    so map the common ones to plain language.
+*/
+
+function readableError(error) {
+
+    const map = {
+        "auth/wrong-password": "Current password is incorrect.",
+        "auth/invalid-credential": "Current password is incorrect.",
+        "auth/too-many-requests": "Too many attempts. Try again later.",
+        "auth/requires-recent-login": "Please sign in again to continue.",
+        "auth/email-already-in-use": "That email is already in use.",
+        "auth/invalid-email": "That email address is not valid.",
+        "auth/weak-password": "Password must be at least 8 characters.",
+        "auth/network-request-failed": "No internet connection.",
+        "permission-denied": "You do not have permission to save this."
     };
 
-    /* ==========================================
-       LOAD SAVED PROFILE
-    ========================================== */
+    return map[error?.code] || "Something went wrong. Please try again.";
+}
 
-    function loadProfile() {
 
-        const saved = JSON.parse(localStorage.getItem("ojtProfile"));
+/* ==========================================
+   AUTH GATE
+========================================== */
 
-        if (!saved) {
+onAuthStateChanged(auth, async (user) => {
 
-            updateProfile(defaultProfile);
-
-            return;
-        }
-
-        updateProfile(saved);
-
+    if (!user) {
+        window.location.href = LOGIN_PAGE;
+        return;
     }
 
-    /* ==========================================
-       UPDATE UI
-    ========================================== */
+    currentUser = user;
 
-    function updateProfile(data) {
+    try {
 
-        fullName.value = data.fullName;
-        email.value = data.email;
-        phone.value = data.phone;
+        const snap = await getDoc(doc(db, "users", user.uid));
 
-        previewImage.src = data.image;
+        currentData = snap.exists() ? snap.data() : {};
 
-        profileName.textContent = data.fullName;
+        renderProfile();
+        renderAccount();
 
-        const initials = data.fullName
-            .split(" ")
-            .map(word => word.charAt(0))
-            .join("")
-            .substring(0, 2)
-            .toUpperCase();
+    } catch (error) {
 
-        profileAvatar.textContent = initials;
+        console.error("Error loading settings:", error);
+        showToast("Could not load your settings.", "error");
 
     }
-
-    /* ==========================================
-       SAVE PROFILE
-    ========================================== */
-
-    saveProfile.addEventListener("click", () => {
-
-        const profile = {
-
-            fullName: fullName.value.trim(),
-            email: email.value.trim(),
-            phone: phone.value.trim(),
-            image: previewImage.src
-
-        };
-
-        localStorage.setItem(
-            "ojtProfile",
-            JSON.stringify(profile)
-        );
-
-        profileName.textContent = profile.fullName;
-
-        const initials = profile.fullName
-            .split(" ")
-            .map(word => word.charAt(0))
-            .join("")
-            .substring(0, 2)
-            .toUpperCase();
-
-        profileAvatar.textContent = initials;
-
-        showToast("Profile updated successfully.");
-
-    });
-
-    /* ==========================================
-       CANCEL CHANGES
-    ========================================== */
-
-    cancelProfile.addEventListener("click", () => {
-
-        loadProfile();
-
-        showToast("Changes cancelled.");
-
-    });
-
-    /* ==========================================
-       IMAGE PREVIEW
-    ========================================== */
-
-    imageUpload.addEventListener("change", e => {
-
-        const file = e.target.files[0];
-
-        if (!file) return;
-
-        const reader = new FileReader();
-
-        reader.onload = function(event) {
-
-            previewImage.src = event.target.result;
-
-        };
-
-        reader.readAsDataURL(file);
-
-    });
-
-    /* ==========================================
-       TOAST
-    ========================================== */
-
-    function showToast(message) {
-
-        const toast = document.getElementById("toast");
-        const toastMessage = document.getElementById("toastMessage");
-
-        toastMessage.textContent = message;
-
-        toast.classList.add("show");
-
-        setTimeout(() => {
-
-            toast.classList.remove("show");
-
-        }, 3000);
-
-    }
-
-    /* ==========================================
-       INITIALIZE
-    ========================================== */
-
-    loadProfile();
 
 });
-    /* ==========================================
-       PASSWORD ELEMENTS
-    ========================================== */
 
-    const currentPassword = document.getElementById("currentPassword");
-    const newPassword = document.getElementById("newPassword");
-    const confirmPassword = document.getElementById("confirmPassword");
 
-    const updatePassword = document.getElementById("updatePassword");
+/* ==========================================
+   RENDER: PROFILE
+========================================== */
 
-    const strengthFill = document.getElementById("strengthFill");
-    const strengthText = document.getElementById("strengthText");
-    const passwordMatch = document.getElementById("passwordMatch");
+function renderProfile() {
 
-    const toggleButtons = document.querySelectorAll(".toggle-password");
+    const name =
+        currentData.name ||
+        currentData.fullName ||
+        currentUser.displayName ||
+        "";
 
-    /* ==========================================
-       SHOW / HIDE PASSWORD
-    ========================================== */
+    const role =
+        currentData.role ||
+        currentData.position ||
+        "Coordinator";
 
-    toggleButtons.forEach(button => {
+    $("fullName").value = name;
+    $("email").value = currentUser.email || "";
+    $("phone").value = currentData.phone || "";
+    $("position").value = role;
 
-        button.addEventListener("click", () => {
+    $("previewImage").src =
+        currentData.photoBase64 ||
+        currentData.photoURL ||
+        currentUser.photoURL ||
+        "../images/profile.png";
 
-            const target = document.getElementById(
-                button.dataset.target
+    // Header widget + dropdown
+    paintHeader(name, role, $("previewImage").src);
+}
+
+
+/* ==========================================
+   RENDER: ACCOUNT
+========================================== */
+
+function renderAccount() {
+
+    $("accountEmail").textContent = currentUser.email || "—";
+
+    const badge = $("verifiedBadge");
+
+    if (currentUser.emailVerified) {
+        badge.className = "status-pill pill-success";
+        badge.innerHTML = `<i class="fa-solid fa-circle-check"></i> Verified`;
+        $("resendVerification").style.display = "none";
+    } else {
+        badge.className = "status-pill pill-warning";
+        badge.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Not verified`;
+        $("resendVerification").style.display = "inline-flex";
+    }
+
+    const created = currentUser.metadata?.creationTime;
+    const lastLogin = currentUser.metadata?.lastSignInTime;
+
+    const fmt = (value) =>
+        value
+            ? new Date(value).toLocaleString("en-PH", {
+                  dateStyle: "medium",
+                  timeStyle: "short"
+              })
+            : "—";
+
+    $("accountCreated").textContent = fmt(created);
+    $("lastSignIn").textContent = fmt(lastLogin);
+    $("accountUid").textContent = currentUser.uid;
+}
+
+
+/* ==========================================
+   SAVE PROFILE
+========================================== */
+
+$("saveProfile").addEventListener("click", async () => {
+
+    const name = $("fullName").value.trim();
+    const phone = $("phone").value.trim();
+
+    if (name === "") {
+        showToast("Full name cannot be empty.", "error");
+        $("fullName").focus();
+        return;
+    }
+
+    const button = $("saveProfile");
+    setBusy(button, true);
+
+    try {
+
+        const payload = {
+            name: name,
+            fullName: name,          // dashboard.js reads either field
+            phone: phone,
+            email: currentUser.email,
+            updatedAt: serverTimestamp()
+        };
+
+        if ($("previewImage").dataset.changed === "true") {
+            payload.photoBase64 = $("previewImage").src;
+        }
+
+        await setDoc(
+            doc(db, "users", currentUser.uid),
+            payload,
+            { merge: true }
+        );
+
+        currentData = { ...currentData, ...payload };
+
+        $("previewImage").dataset.changed = "false";
+
+        paintHeader(
+            name,
+            currentData.role || currentData.position || "Coordinator",
+            $("previewImage").src
+        );
+
+        showToast("Profile saved.");
+
+    } catch (error) {
+
+        console.error("Save profile error:", error);
+        showToast(readableError(error), "error");
+
+    } finally {
+
+        setBusy(button, false);
+
+    }
+
+});
+
+
+$("cancelProfile").addEventListener("click", () => {
+
+    $("previewImage").dataset.changed = "false";
+    renderProfile();
+    showToast("Changes discarded.");
+
+});
+
+
+/* ==========================================
+   PHOTO UPLOAD
+   ------------------------------------------
+   The image is resized to 256px and stored as
+   a compressed data URL on the user document,
+   so no Firebase Storage rules are needed.
+========================================== */
+
+$("imageUpload").addEventListener("change", (e) => {
+
+    const file = e.target.files[0];
+
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+        showToast("Please choose an image file.", "error");
+        return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+        showToast("Image must be smaller than 5 MB.", "error");
+        return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = (event) => {
+
+        const img = new Image();
+
+        img.onload = () => {
+
+            const size = 256;
+            const canvas = document.createElement("canvas");
+
+            canvas.width = size;
+            canvas.height = size;
+
+            const ctx = canvas.getContext("2d");
+
+            // center crop to a square
+            const min = Math.min(img.width, img.height);
+            const sx = (img.width - min) / 2;
+            const sy = (img.height - min) / 2;
+
+            ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
+
+            const preview = $("previewImage");
+
+            preview.src = canvas.toDataURL("image/jpeg", 0.85);
+            preview.dataset.changed = "true";
+
+            showToast("Photo ready. Click Save changes to apply.");
+
+        };
+
+        img.src = event.target.result;
+
+    };
+
+    reader.readAsDataURL(file);
+
+    e.target.value = "";
+
+});
+
+
+/* ==========================================
+   PASSWORD: SHOW / HIDE
+========================================== */
+
+document.querySelectorAll(".toggle-password").forEach((button) => {
+
+    button.addEventListener("click", () => {
+
+        const target = $(button.dataset.target);
+        const icon = button.querySelector("i");
+
+        if (!target) return;
+
+        const hidden = target.type === "password";
+
+        target.type = hidden ? "text" : "password";
+
+        icon.classList.toggle("fa-eye", !hidden);
+        icon.classList.toggle("fa-eye-slash", hidden);
+
+    });
+
+});
+
+
+/* ==========================================
+   PASSWORD STRENGTH
+========================================== */
+
+const strengthLevels = [
+    { width: "20%", color: "#dc2626", label: "Weak" },
+    { width: "20%", color: "#dc2626", label: "Weak" },
+    { width: "40%", color: "#f59e0b", label: "Fair" },
+    { width: "60%", color: "#eab308", label: "Good" },
+    { width: "80%", color: "#22c55e", label: "Strong" },
+    { width: "100%", color: "#16a34a", label: "Very strong" }
+];
+
+$("newPassword").addEventListener("input", () => {
+
+    const password = $("newPassword").value;
+    const fill = $("strengthFill");
+    const text = $("strengthText");
+
+    if (password === "") {
+        fill.style.width = "0";
+        text.textContent = "Password strength";
+        return;
+    }
+
+    let score = 0;
+
+    if (password.length >= 8) score++;
+    if (/[A-Z]/.test(password)) score++;
+    if (/[a-z]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
+    if (/[^A-Za-z0-9]/.test(password)) score++;
+
+    const level = strengthLevels[score];
+
+    fill.style.width = level.width;
+    fill.style.background = level.color;
+    text.textContent = level.label;
+
+});
+
+
+/* ==========================================
+   PASSWORD MATCH
+========================================== */
+
+$("confirmPassword").addEventListener("input", () => {
+
+    const match = $("passwordMatch");
+    const confirmValue = $("confirmPassword").value;
+
+    if (confirmValue === "") {
+        match.textContent = "";
+        return;
+    }
+
+    const isMatch = $("newPassword").value === confirmValue;
+
+    match.textContent = isMatch
+        ? "Passwords match"
+        : "Passwords do not match";
+
+    match.style.color = isMatch ? "#16a34a" : "#dc2626";
+
+});
+
+
+/* ==========================================
+   UPDATE PASSWORD (Firebase Auth)
+========================================== */
+
+$("updatePassword").addEventListener("click", async () => {
+
+    const current = $("currentPassword").value;
+    const next = $("newPassword").value;
+    const confirm = $("confirmPassword").value;
+
+    if (!current || !next || !confirm) {
+        showToast("Fill in all password fields.", "error");
+        return;
+    }
+
+    if (next !== confirm) {
+        showToast("Passwords do not match.", "error");
+        return;
+    }
+
+    if (next.length < 8) {
+        showToast("Password must be at least 8 characters.", "error");
+        return;
+    }
+
+    if (next === current) {
+        showToast("New password must be different.", "error");
+        return;
+    }
+
+    const button = $("updatePassword");
+    setBusy(button, true, "Updating...");
+
+    try {
+
+        const credential = EmailAuthProvider.credential(
+            currentUser.email,
+            current
+        );
+
+        await reauthenticateWithCredential(currentUser, credential);
+
+        await updatePassword(currentUser, next);
+
+        await setDoc(
+            doc(db, "users", currentUser.uid),
+            { passwordUpdatedAt: serverTimestamp() },
+            { merge: true }
+        );
+
+        $("currentPassword").value = "";
+        $("newPassword").value = "";
+        $("confirmPassword").value = "";
+
+        $("strengthFill").style.width = "0";
+        $("strengthText").textContent = "Password strength";
+        $("passwordMatch").textContent = "";
+
+        showToast("Password updated.");
+
+    } catch (error) {
+
+        console.error("Update password error:", error);
+        showToast(readableError(error), "error");
+
+    } finally {
+
+        setBusy(button, false);
+
+    }
+
+});
+
+
+/* ==========================================
+   ACCOUNT: CHANGE EMAIL
+========================================== */
+
+$("changeEmailBtn").addEventListener("click", () => {
+
+    const box = $("emailChangeBox");
+    const isOpen = box.style.display === "block";
+
+    box.style.display = isOpen ? "none" : "block";
+
+    if (!isOpen) $("newEmail").focus();
+
+});
+
+
+$("confirmEmailChange").addEventListener("click", async () => {
+
+    const newEmail = $("newEmail").value.trim();
+    const password = $("emailPassword").value;
+
+    if (!newEmail || !password) {
+        showToast("Enter your new email and current password.", "error");
+        return;
+    }
+
+    if (newEmail === currentUser.email) {
+        showToast("That is already your email.", "error");
+        return;
+    }
+
+    const button = $("confirmEmailChange");
+    setBusy(button, true, "Sending...");
+
+    try {
+
+        const credential = EmailAuthProvider.credential(
+            currentUser.email,
+            password
+        );
+
+        await reauthenticateWithCredential(currentUser, credential);
+
+        /*
+            verifyBeforeUpdateEmail sends a confirmation link
+            first. The address only changes once the link is
+            opened, which is required when email enumeration
+            protection is enabled on the project.
+        */
+
+        try {
+            await verifyBeforeUpdateEmail(currentUser, newEmail);
+            showToast("Verification link sent to " + newEmail);
+        } catch (inner) {
+            await updateEmail(currentUser, newEmail);
+            await setDoc(
+                doc(db, "users", currentUser.uid),
+                { email: newEmail, updatedAt: serverTimestamp() },
+                { merge: true }
             );
+            showToast("Email updated.");
+            renderAccount();
+        }
 
-            const icon = button.querySelector("i");
+        $("newEmail").value = "";
+        $("emailPassword").value = "";
+        $("emailChangeBox").style.display = "none";
 
-            if (target.type === "password") {
+    } catch (error) {
 
-                target.type = "text";
+        console.error("Change email error:", error);
+        showToast(readableError(error), "error");
 
-                icon.classList.remove("fa-eye");
-                icon.classList.add("fa-eye-slash");
+    } finally {
 
-            } else {
+        setBusy(button, false);
 
-                target.type = "password";
+    }
 
-                icon.classList.remove("fa-eye-slash");
-                icon.classList.add("fa-eye");
+});
 
-            }
 
-        });
+$("cancelEmailChange").addEventListener("click", () => {
+
+    $("newEmail").value = "";
+    $("emailPassword").value = "";
+    $("emailChangeBox").style.display = "none";
+
+});
+
+
+/* ==========================================
+   ACCOUNT: VERIFICATION + RESET LINK
+========================================== */
+
+$("resendVerification").addEventListener("click", async () => {
+
+    const button = $("resendVerification");
+    setBusy(button, true, "Sending...");
+
+    try {
+        await sendEmailVerification(currentUser);
+        showToast("Verification email sent.");
+    } catch (error) {
+        showToast(readableError(error), "error");
+    } finally {
+        setBusy(button, false);
+    }
+
+});
+
+
+$("sendResetLink").addEventListener("click", async () => {
+
+    const button = $("sendResetLink");
+    setBusy(button, true, "Sending...");
+
+    try {
+        await sendPasswordResetEmail(auth, currentUser.email);
+        showToast("Reset link sent to " + currentUser.email);
+    } catch (error) {
+        showToast(readableError(error), "error");
+    } finally {
+        setBusy(button, false);
+    }
+
+});
+
+
+/* ==========================================
+   SESSION: SIGN OUT
+========================================== */
+
+document.addEventListener("click", async (e) => {
+
+    const trigger = e.target.closest("#signOutBtn, #logoutBtn");
+
+    if (!trigger) return;
+
+    e.preventDefault();
+
+    try {
+        await signOut(auth);
+        window.location.href = LOGIN_PAGE;
+    } catch (error) {
+        console.error("Sign out error:", error);
+        showToast("Could not sign out.", "error");
+    }
+
+});
+
+
+/* ==========================================
+   DANGER ZONE: DEACTIVATE ACCOUNT
+   ------------------------------------------
+   Flags the account instead of deleting it,
+   so OJT records stay intact for auditing.
+========================================== */
+
+$("deactivateAccount").addEventListener("click", async () => {
+
+    const confirmed = window.confirm(
+        "Deactivate your account? You will be signed out and an " +
+        "administrator has to restore access before you can log in again."
+    );
+
+    if (!confirmed) return;
+
+    const button = $("deactivateAccount");
+    setBusy(button, true, "Deactivating...");
+
+    try {
+
+        await setDoc(
+            doc(db, "users", currentUser.uid),
+            {
+                accountStatus: "deactivated",
+                deactivatedAt: serverTimestamp()
+            },
+            { merge: true }
+        );
+
+        await signOut(auth);
+
+        window.location.href = LOGIN_PAGE;
+
+    } catch (error) {
+
+        console.error("Deactivate error:", error);
+        showToast(readableError(error), "error");
+        setBusy(button, false);
+
+    }
+
+});
+
+
+/* ==========================================
+   ENTER KEY SUPPORT
+========================================== */
+
+document.addEventListener("keydown", (e) => {
+
+    if (e.key !== "Enter") return;
+
+    const active = document.activeElement;
+
+    if (!active || active.tagName !== "INPUT") return;
+
+    if (["currentPassword", "newPassword", "confirmPassword"].includes(active.id)) {
+        $("updatePassword").click();
+    }
+
+    if (["fullName", "phone"].includes(active.id)) {
+        $("saveProfile").click();
+    }
+
+    if (["newEmail", "emailPassword"].includes(active.id)) {
+        $("confirmEmailChange").click();
+    }
+
+});
+
+
+/* ==========================================
+   HEADER AVATAR
+   ------------------------------------------
+   Shows the saved photo when there is one,
+   and falls back to initials otherwise.
+========================================== */
+
+function paintAvatar(element, photo, name) {
+
+    if (!element) return;
+
+    const initials = getInitials(name);
+
+    if (photo) {
+
+        element.innerHTML = "";
+
+        const img = document.createElement("img");
+
+        img.alt = name || "Profile photo";
+        img.src = photo;
+
+        // If the stored image is broken, drop back to initials.
+        img.onerror = () => {
+            element.textContent = initials;
+        };
+
+        element.appendChild(img);
+
+    } else {
+
+        element.textContent = initials;
+
+    }
+
+}
+
+
+function paintHeader(name, role, photo) {
+
+    const nameEl = document.getElementById("profileName");
+    const roleEl = document.getElementById("profileRole");
+
+    if (nameEl) nameEl.textContent = name || "OJT Coordinator";
+    if (roleEl) roleEl.textContent = role || "Coordinator";
+
+    paintAvatar(document.getElementById("profileAvatar"), photo, name);
+    paintAvatar(document.getElementById("menuAvatar"), photo, name);
+
+    const menuName = document.getElementById("menuName");
+    const menuEmail = document.getElementById("menuEmail");
+
+    if (menuName) menuName.textContent = name || "OJT Coordinator";
+    if (menuEmail) menuEmail.textContent = currentUser?.email || "";
+
+}
+
+
+/* ==========================================
+   PROFILE DROPDOWN
+========================================== */
+
+(function initProfileMenu() {
+
+    const trigger = document.getElementById("profileMenuTrigger");
+
+    if (!trigger) return;
+
+    trigger.addEventListener("click", (e) => {
+
+        // Clicks on the menu items handle themselves.
+        if (e.target.closest(".profile-menu")) return;
+
+        trigger.classList.toggle("open");
 
     });
 
-    /* ==========================================
-       PASSWORD STRENGTH
-    ========================================== */
+    document.addEventListener("click", (e) => {
 
-    newPassword.addEventListener("input", () => {
-
-        const password = newPassword.value;
-
-        let score = 0;
-
-        if (password.length >= 8) score++;
-        if (/[A-Z]/.test(password)) score++;
-        if (/[a-z]/.test(password)) score++;
-        if (/[0-9]/.test(password)) score++;
-        if (/[^A-Za-z0-9]/.test(password)) score++;
-
-        switch (score) {
-
-            case 0:
-            case 1:
-
-                strengthFill.style.width = "20%";
-                strengthFill.style.background = "#dc2626";
-                strengthText.textContent = "Weak";
-
-                break;
-
-            case 2:
-
-                strengthFill.style.width = "40%";
-                strengthFill.style.background = "#f59e0b";
-                strengthText.textContent = "Fair";
-
-                break;
-
-            case 3:
-
-                strengthFill.style.width = "60%";
-                strengthFill.style.background = "#eab308";
-                strengthText.textContent = "Good";
-
-                break;
-
-            case 4:
-
-                strengthFill.style.width = "80%";
-                strengthFill.style.background = "#22c55e";
-                strengthText.textContent = "Strong";
-
-                break;
-
-            case 5:
-
-                strengthFill.style.width = "100%";
-                strengthFill.style.background = "#16a34a";
-                strengthText.textContent = "Very Strong";
-
-                break;
-
+        if (!trigger.contains(e.target)) {
+            trigger.classList.remove("open");
         }
 
     });
-
-    /* ==========================================
-       PASSWORD MATCH
-    ========================================== */
-
-    confirmPassword.addEventListener("input", () => {
-
-        if (confirmPassword.value === "") {
-
-            passwordMatch.textContent = "";
-
-            return;
-
-        }
-
-        if (newPassword.value === confirmPassword.value) {
-
-            passwordMatch.textContent = "✓ Passwords match";
-            passwordMatch.style.color = "#16a34a";
-
-        } else {
-
-            passwordMatch.textContent = "✗ Passwords do not match";
-            passwordMatch.style.color = "#dc2626";
-
-        }
-
-    });
-
-    /* ==========================================
-       UPDATE PASSWORD
-    ========================================== */
-
-    updatePassword.addEventListener("click", () => {
-
-        if (
-            currentPassword.value.trim() === "" ||
-            newPassword.value.trim() === "" ||
-            confirmPassword.value.trim() === ""
-        ) {
-
-            showToast("Please complete all password fields.");
-
-            return;
-
-        }
-
-        if (newPassword.value !== confirmPassword.value) {
-
-            showToast("Passwords do not match.");
-
-            return;
-
-        }
-
-        if (newPassword.value.length < 8) {
-
-            showToast("Password must be at least 8 characters.");
-
-            return;
-
-        }
-
-        currentPassword.value = "";
-        newPassword.value = "";
-        confirmPassword.value = "";
-
-        strengthFill.style.width = "0";
-        strengthText.textContent = "Password Strength";
-        passwordMatch.textContent = "";
-
-        showToast("Password updated successfully.");
-
-    });
-
-    /* ==========================================
-       ENTER KEY SUPPORT
-    ========================================== */
 
     document.addEventListener("keydown", (e) => {
 
-        if (e.key !== "Enter") return;
-
-        if (
-            document.activeElement === currentPassword ||
-            document.activeElement === newPassword ||
-            document.activeElement === confirmPassword
-        ) {
-
-            updatePassword.click();
-
+        if (e.key === "Escape") {
+            trigger.classList.remove("open");
         }
 
     });
+
+})();
+
+
+/* ==========================================
+   MENU: SHOW PROFILE
+   ------------------------------------------
+   Already on this page, so scroll to the
+   profile card and flash it.
+========================================== */
+
+document.getElementById("showProfileBtn")?.addEventListener("click", () => {
+
+    document.getElementById("profileMenuTrigger")?.classList.remove("open");
+
+    const card = document.querySelector(".settings-card");
+
+    if (!card) return;
+
+    card.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    card.classList.add("flash");
+
+    setTimeout(() => card.classList.remove("flash"), 1200);
+
+});

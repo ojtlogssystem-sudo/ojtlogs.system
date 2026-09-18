@@ -50,8 +50,9 @@
         <div class="attendance-content">
 
             <!-- Back Button -->
-            <a href="todays_attendance.html" class="back-btn-header">
-                <i class="fa-solid fa-arrow-left"></i> Back to Attendance Records
+            <a href="#" class="back-btn-header" id="backBtn">
+                <i class="fa-solid fa-arrow-left"></i>
+                <span id="backBtnText">Back</span>
             </a>
 
             <!-- TWO-COLUMN GRID LAYOUT -->
@@ -313,6 +314,49 @@
                     <button class="modal-secondary-btn" type="button" data-close-modal="rejectAttendanceModal">Cancel</button>
                     <button class="modal-danger-btn" type="button" id="confirmRejectBtn">
                         <i class="fa-solid fa-xmark"></i> Reject Attendance
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- EXCUSE ATTENDANCE MODAL -->
+        <div class="attendance-modal" id="excuseAttendanceModal" aria-hidden="true">
+            <div class="modal-overlay" data-close-modal="excuseAttendanceModal"></div>
+            <div class="attendance-modal-box excuse-modal-box" role="dialog" aria-modal="true" aria-labelledby="excuseAttendanceTitle">
+                <div class="modal-header">
+                    <div>
+                        <h3 id="excuseAttendanceTitle">Excuse Attendance</h3>
+                        <p>This will mark the student as excused for the selected day.</p>
+                    </div>
+                    <button class="modal-close" type="button" data-close-modal="excuseAttendanceModal" aria-label="Close">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="selected-date-box">
+                        <i class="fa-regular fa-calendar"></i>
+                        <div>
+                            <small>Attendance Date</small>
+                            <strong id="excuseAttendanceDate">—</strong>
+                        </div>
+                    </div>
+
+                    <label class="excuse-reason-label">
+                        <span>Reason for Excuse</span>
+                        <textarea id="excuseReason" rows="3" placeholder="e.g. Approved leave, medical reason, company-sanctioned absence..."></textarea>
+                    </label>
+
+                    <div class="adjustment-note">
+                        <i class="fa-solid fa-circle-info"></i>
+                        <span>The student will not be counted as absent for this day once excused.</span>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="modal-secondary-btn" type="button" data-close-modal="excuseAttendanceModal">Cancel</button>
+                    <button class="modal-excuse-btn" type="button" id="confirmExcuseBtn">
+                        <i class="fa-solid fa-user-check"></i> Excuse Student
                     </button>
                 </div>
             </div>

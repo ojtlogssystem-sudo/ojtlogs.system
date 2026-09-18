@@ -17,7 +17,7 @@
 }
 
 body{
-    background: url("/images/bg.png") no-repeat center bottom;
+    background: url("/images/login-st-bg.png") no-repeat center bottom;
     background-size: cover;
     min-height: 100vh;
     display: flex;

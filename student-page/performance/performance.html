@@ -558,10 +558,78 @@
 </div>
 
 
+<!-- ==========================================
+     VIEW EVALUATION - PRINT PREVIEW MODAL
+========================================== -->
+
+<div
+    id="printModal"
+    class="print-modal hidden"
+>
+
+    <div class="print-modal-header">
+
+        <div>
+
+            <h2>Evaluation Form</h2>
+
+            <p>Your completed OJT evaluation, as submitted by your supervisor.</p>
+
+        </div>
+
+
+        <button
+            type="button"
+            id="closePrintModal"
+            class="close-print"
+        >
+
+            <i class="fa-solid fa-xmark"></i>
+
+        </button>
+
+    </div>
+
+
+    <div
+        id="printDocument"
+        class="print-document"
+    ></div>
+
+
+    <div class="print-actions">
+
+        <button
+            type="button"
+            id="closePrintBtn"
+            class="btn-secondary"
+        >
+
+            Close
+
+        </button>
+
+
+        <button
+            type="button"
+            id="printBtn"
+            class="btn-primary"
+        >
+
+            <i class="fa-solid fa-print"></i>
+
+            Print Evaluation
+
+        </button>
+
+    </div>
+
+</div>
+
+
 <!-- SHARED LOADERS -->
 
-<script src="../templated/sidebar.js"></script>
-<script src="../templated/header.js"></script>
+<script src="../templated/sidebar-loader.js"></script>
 <script type="module" src="performance.js"></script>
 
 </body>

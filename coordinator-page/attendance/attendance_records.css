@@ -355,7 +355,7 @@
 ======================================== */
 .status {
     display: inline-block;
-    padding: 4px 11px;
+    padding: 3px 11px;
     border-radius: 14px;
     font-size: 11px;
     font-weight: 600;
@@ -412,79 +412,115 @@
 .edit-btn:hover { background: #269c52; }
 
 /* ========================================
-   TABLE FOOTER & PAGINATION
+   STUDENT TABLE FOOTER / PAGINATION
+   DASHBOARD STYLE
 ======================================== */
+
 .table-footer {
-    padding: 14px 25px;
+    padding: 12px 20px;
     border-top: 1px solid #ececec;
     background: #fafafa;
+
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 15px;
+
+    gap: 12px;
     flex-wrap: wrap;
-    margin-top: auto; /* PERMANENTENG IDIDIKIT SA DULO */
+
+    margin-top: auto;
 }
 
-.pagination-info {
-    font-size: 13px;
-    color: #666;
+.showing-text {
+    font-size: 11px;
+    color: #888;
+    font-weight: 400;
 }
 
 .pagination-controls {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
 }
 
 .page-numbers {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
 }
 
-.page-btn, .page-num {
-    height: 34px;
-    min-width: 34px;
-    padding: 0 8px;
+.page-btn,
+.page-num {
+    height: 30px;
+    min-width: 30px;
+    padding: 0 7px;
+
     background: #fff;
-    border: 1px solid #dcdcdc;
+    border: 1px solid #e5e5e5;
     border-radius: 6px;
-    color: #333;
-    font-size: 13px;
+
+    color: #666;
+
+    font-size: 11px;
     font-weight: 500;
+
     display: flex;
     align-items: center;
     justify-content: center;
+
     cursor: pointer;
+
     transition: all 0.2s ease;
 }
 
 .page-num.active {
-    background: var(--primary, #ab0a0a);
-    color: #ffffff;
-    border-color: var(--primary, #ab0a0a);
+    background: #ab0a0a;
+    color: #fff;
+    border-color: #ab0a0a;
     font-weight: 600;
+}
+
+.page-btn:hover:not(:disabled),
+.page-num:hover:not(.active) {
+    border-color: #d5d5d5;
+    background: #fff;
+    color: #ab0a0a;
+}
+
+.page-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
 }
 
 .rows-per-page {
     display: flex;
     align-items: center;
-    gap: 10px;
-    font-size: 13px;
-    color: #666;
+    gap: 8px;
+
+    font-size: 11px;
+    color: #888;
 }
 
 .rows-per-page select {
-    height: 34px;
-    padding: 0 10px;
+    height: 30px;
+
+    padding: 0 8px;
+
     background: #fff;
-    border: 1px solid #dcdcdc;
+    border: 1px solid #e5e5e5;
     border-radius: 6px;
-    font-size: 13px;
-    font-weight: 600;
-    color: #333;
+
+    font-size: 11px;
+    font-weight: 500;
+
+    color: #666;
+
     outline: none;
+    cursor: pointer;
+}
+
+.rows-per-page select:focus {
+    border-color: #ab0a0a;
 }
 
 /* ========================================

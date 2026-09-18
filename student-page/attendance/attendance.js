@@ -1,8 +1,7 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { 
     getAuth, 
-    onAuthStateChanged,
-    signOut 
+    onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { 
     getFirestore, 
@@ -18,6 +17,7 @@ import {
     limit, 
     serverTimestamp 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { loadHeader, getInitials } from "../templated/header-loader.js";
 
 // FIREBASE CONFIGURATION (OJT-LOGS Project Credentials)
 const firebaseConfig = {
@@ -31,7 +31,10 @@ const firebaseConfig = {
     measurementId: "G-DJ3JW7QH27"
 };
 
-const app = initializeApp(firebaseConfig);
+// Guarded init: header-loader.js also initializes the default Firebase app,
+// and whichever module's top-level code runs first "wins" — this avoids a
+// duplicate-app error regardless of import order.
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
 const auth = getAuth(app);
 const db = getFirestore(app);
 const attendanceRef = collection(db, "attendance");
@@ -39,6 +42,32 @@ const companiesRef = collection(db, "companies");
 
 let fullAttendanceHistory = [];
 let initialClockInterval = null;
+let todayNoDutyReason = null;
+
+/* ==========================================
+   TODAY'S NO-DUTY CHECK (Suspension / Holiday)
+   Reads from the same "calendar_exceptions"
+   collection the header notification bell and
+   the dashboard calendar already use.
+========================================== */
+async function getTodayNoDutyReason(dateStr) {
+    try {
+        const q = query(
+            collection(db, "calendar_exceptions"),
+            where("date", "==", dateStr)
+        );
+        const snap = await getDocs(q);
+
+        if (!snap.empty) {
+            const data = snap.docs[0].data();
+            return data.reason || data.title || "No Duty / Excused";
+        }
+    } catch (error) {
+        console.warn("Could not check calendar exceptions:", error);
+    }
+
+    return null;
+}
 
 /* ==========================================
    NTP TIME FETCHER (Reliable Internet & Firebase Synchronized Time)
@@ -94,47 +123,11 @@ async function startInitialLiveClock() {
     initialClockInterval = setInterval(updateClock, 1000);
 }
 
-async function loadHeader(title) {
-    try {
-        const response = await fetch("../templated/header.html");
-        const data = await response.text();
-        
-        const headerContainer = document.getElementById("header-container");
-        if (headerContainer) {
-            headerContainer.innerHTML = data;
-        }
-
-        const pageTitle = document.getElementById("page-title");
-        if (pageTitle) {
-            pageTitle.textContent = title;
-        }
-
-        if (auth.currentUser) {
-            await updateProfileInHeader(auth.currentUser);
-        }
-
-        initHeaderEvents();
-    } catch (err) {
-        console.error("Error loading header:", err);
-    }
-}
-
 /* ==========================================
-   INITIALS EXTRACTOR
+   NOTIFICATION BELL
+   Now handled globally by the shared header (see header-loader.js's
+   loadNotifications, called automatically inside loadHeader()).
 ========================================== */
-function getInitials(fullName) {
-    if (!fullName) return "ST";
-    const nameParts = fullName.trim().split(" ").filter(part => part.length > 0);
-    
-    if (nameParts.length === 1) {
-        return nameParts[0].charAt(0).toUpperCase();
-    }
-    
-    const firstName = nameParts[0];
-    const lastName = nameParts[nameParts.length - 1];
-    
-    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-}
 
 // Custom Toast Notification
 function showToast(message, type = "success") {
@@ -196,8 +189,12 @@ function showToast(message, type = "success") {
     }, 3500);
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    loadHeader("Attendance");
+document.addEventListener("DOMContentLoaded", async () => {
+    // Header markup (bell, avatar, dropdowns) is injected async — anything
+    // that targets its elements (notifications, mobile-menu wiring) has to
+    // wait for it first. autoLoadProfile lets the shared header populate the
+    // avatar/name itself since this page has no richer profile loader of its own.
+    await loadHeader("Attendance", { autoLoadProfile: true });
 
     fetch("../templated/sidebar.html?v=" + new Date().getTime())
         .then(response => response.ok ? response.text() : Promise.reject())
@@ -208,7 +205,6 @@ document.addEventListener("DOMContentLoaded", () => {
         })
         .catch(err => console.error("Error loading sidebar:", err));
 
-    setupMobileMenuToggle();
     initFlatpickrFilter();
 
     // I-display agad ang tamang oras mula sa internet/server ngayong araw sa pag-load pa lang ng pahina
@@ -377,25 +373,6 @@ function initSidebar(activeMenuName) {
     }
 }
 
-function setupMobileMenuToggle() {
-    document.addEventListener("click", (e) => {
-        const mobileBtn = e.target.closest("#mobile-menu");
-        const sidebar = document.getElementById("sidebar");
-
-        if (mobileBtn && sidebar) {
-            e.stopPropagation();
-            sidebar.classList.toggle("show");
-            return;
-        }
-
-        if (sidebar && sidebar.classList.contains("show")) {
-            if (!sidebar.contains(e.target)) {
-                sidebar.classList.remove("show");
-            }
-        }
-    });
-}
-
 function updateRedTimestampBadge(timeIn, dateString) {
     const badge = document.getElementById("firebase-timestamp-badge");
     if (badge) {
@@ -414,6 +391,7 @@ function initAttendanceSystem(currentUser) {
     const timeOutScanBtn = document.getElementById("time-out-scan-btn");
     const timeOutIconBox = document.getElementById("time-out-icon-box");
     const timeOutNoteText = document.getElementById("time-out-note-text");
+    const timeInNoteText = document.getElementById("time-in-note-text");
 
     const scannerModal = document.getElementById("scanner-modal");
     const scannerStatus = document.getElementById("scanner-status");
@@ -437,7 +415,7 @@ function initAttendanceSystem(currentUser) {
     let qrScanner = null;
     let scanMode = null; 
     let photoStream = null;
-    let currentLocationStr = "Fetching Location...";
+    let currentLocationStr = "Company Grounds";
     let clockInterval = null;
 
     refreshAttendanceUI();
@@ -456,6 +434,11 @@ function initAttendanceSystem(currentUser) {
     };
 
     const openQRScanner = async (mode) => {
+        if (todayNoDutyReason) {
+            showToast(`No duty today — ${todayNoDutyReason}`, "info");
+            return;
+        }
+
         const now = await getCurrentNTPTime();
         const todayStr = getLocalYYYYMMDD(now);
         const latestToday = fullAttendanceHistory.find(i => i.date === todayStr);
@@ -588,25 +571,11 @@ function initAttendanceSystem(currentUser) {
     };
 
     const fetchGeolocation = () => {
-        if (stampLocation) stampLocation.textContent = "Locating Company...";
-        if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    currentLocationStr = `Company GPS: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
-                    if (stampLocation) stampLocation.textContent = currentLocationStr;
-                },
-                () => {
-                    const compName = localStorage.getItem("verified_company_name") || "Company Grounds";
-                    currentLocationStr = `${compName}`;
-                    if (stampLocation) stampLocation.textContent = currentLocationStr;
-                },
-                { enableHighAccuracy: true, timeout: 5000 }
-            );
-        } else {
-            const compName = localStorage.getItem("verified_company_name") || "Company Grounds";
-            currentLocationStr = `${compName}`;
-            if (stampLocation) stampLocation.textContent = currentLocationStr;
-        }
+        // Wala nang GPS/geolocation fetching — direkta na lang ilalagay
+        // ang pangalan ng company na naka-assign (naka-verify) sa user.
+        const compName = localStorage.getItem("verified_company_name") || "Company Grounds";
+        currentLocationStr = compName;
+        if (stampLocation) stampLocation.textContent = currentLocationStr;
     };
 
     capturePhotoBtn?.addEventListener("click", async () => {
@@ -868,7 +837,9 @@ function initAttendanceSystem(currentUser) {
 
         const now = await getCurrentNTPTime();
         const todayStr = getLocalYYYYMMDD(now);
-        
+
+        todayNoDutyReason = await getTodayNoDutyReason(todayStr);
+
         if (todayDate) todayDate.textContent = formatLocalDateDisplay(now);
 
         let historyMap = new Map();
@@ -943,6 +914,25 @@ function initAttendanceSystem(currentUser) {
 
                 updateRedTimestampBadge(latestToday.timeIn, latestToday.formattedDate || formatLocalDateDisplay(now));
 
+            } else if (todayNoDutyReason) {
+                if (todayCompany) todayCompany.textContent = "--";
+                if (todayLocation) todayLocation.textContent = "--";
+                if (todayTimeIn) todayTimeIn.textContent = "--";
+                if (todayTimeOut) todayTimeOut.textContent = "--";
+
+                if (todayStatusBadge) {
+                    todayStatusBadge.textContent = "No Duty";
+                    todayStatusBadge.className = "status-badge no-duty";
+                }
+
+                if (timeInScanBtn) { timeInScanBtn.disabled = true; timeInScanBtn.className = "scan-btn disabled-btn"; }
+                if (timeOutScanBtn) { timeOutScanBtn.disabled = true; timeOutScanBtn.className = "scan-btn disabled-btn"; }
+                if (timeOutIconBox) timeOutIconBox.className = "qr-icon-circle gray-bg";
+
+                const noDutyNote = `No duty today — ${todayNoDutyReason}`;
+                if (timeInNoteText) timeInNoteText.textContent = noDutyNote;
+                if (timeOutNoteText) timeOutNoteText.textContent = noDutyNote;
+
             } else {
                 if (todayCompany) todayCompany.textContent = "--";
                 if (todayLocation) todayLocation.textContent = "--";
@@ -957,6 +947,7 @@ function initAttendanceSystem(currentUser) {
                 if (timeInScanBtn) { timeInScanBtn.disabled = latestToday && latestToday.status === "Absent"; timeInScanBtn.className = timeInScanBtn.disabled ? "scan-btn disabled-btn" : "scan-btn green-btn"; }
                 if (timeOutScanBtn) { timeOutScanBtn.disabled = true; timeOutScanBtn.className = "scan-btn disabled-btn"; }
                 if (timeOutIconBox) timeOutIconBox.className = "qr-icon-circle gray-bg";
+                if (timeInNoteText) timeInNoteText.textContent = "QR scan & photo proof required.";
                 if (timeOutNoteText) timeOutNoteText.textContent = "Note: 1 hour breaktime is automatically deducted from total hours.";
             }
         }

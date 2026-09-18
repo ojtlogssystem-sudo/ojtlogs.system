@@ -17,8 +17,10 @@ import {
     query,
     where,
     orderBy,
+    limit,
     updateDoc,
-    getDocs
+    getDocs,
+    deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // ==========================================
@@ -55,7 +57,45 @@ const db = getFirestore(app);
 let allStudents = [];
 let filteredStudents = [];
 let currentPage = 1;
-let rowsPerPage = 8;
+let rowsPerPage = 6;
+let studentToDelete = null;
+
+// GLOBAL STATE FOR NOTIFICATIONS (weekly report submissions)
+let studentNameMap = {};
+let notifItems = [];
+let notifLastSeenAt = 0;
+let notifStorageKey = "coordinatorNotifLastSeen";
+let notifUnsubscribe = null;
+
+// ==========================================
+// TOAST NOTIFICATION (pumapalit sa alert())
+// ==========================================
+function showToast(message, type = "success", duration = 3000) {
+    const container = document.getElementById("toastContainer");
+    if (!container) return;
+
+    const icons = {
+        success: "fa-solid fa-circle-check",
+        error: "fa-solid fa-circle-exclamation",
+        info: "fa-solid fa-circle-info"
+    };
+
+    const toast = document.createElement("div");
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `<i class="${icons[type] || icons.success}"></i><span>${message}</span>`;
+
+    container.appendChild(toast);
+
+    // Trigger ang fade/slide in
+    requestAnimationFrame(() => {
+        toast.classList.add("show");
+    });
+
+    setTimeout(() => {
+        toast.classList.remove("show");
+        toast.addEventListener("transitionend", () => toast.remove(), { once: true });
+    }, duration);
+}
 
 // Helper function para kumuha ng initials ng pangalan
 function getInitials(fullName) {
@@ -63,6 +103,22 @@ function getInitials(fullName) {
     const nameParts = fullName.trim().split(" ").filter(part => part.length > 0);
     if (nameParts.length === 1) return nameParts[0].charAt(0).toUpperCase();
     return `${nameParts[0].charAt(0)}${nameParts[nameParts.length - 1].charAt(0)}`.toUpperCase();
+}
+
+// Helper function para i-convert ang 24-hour time papuntang 12-hour format na may AM/PM
+function formatTime12Hour(timeStr) {
+    if (!timeStr) return timeStr;
+    const match = String(timeStr).trim().match(/^(\d{1,2}):(\d{2})/);
+    if (!match) return timeStr;
+
+    let hours = parseInt(match[1], 10);
+    const minutes = match[2];
+    const period = hours >= 12 ? "PM" : "AM";
+
+    hours = hours % 12;
+    if (hours === 0) hours = 12;
+
+    return `${hours}:${minutes} ${period}`;
 }
 
 // ==========================================
@@ -73,17 +129,32 @@ document.addEventListener("DOMContentLoaded", () => {
         if (user) {
             await loadUserData(user);
             listenToStudentData(); 
+            startWeeklyReportNotifications(user.uid);
         } else {
             window.location.href = "../login/login.html";
         }
     });
 
-    initDropdownAndLogout();
-    initStudentTableFilters();
-    initPaginationControls();
-    initInviteModal();
-    initEditModal();
+    // Each init runs in its own try/catch so that if one of
+    // them throws, it doesn't stop the rest from wiring up.
+    safeInit(initDropdownAndLogout, "initDropdownAndLogout");
+    safeInit(initStudentTableFilters, "initStudentTableFilters");
+    safeInit(initPaginationControls, "initPaginationControls");
+    safeInit(initInviteModal, "initInviteModal");
+    safeInit(initEditModal, "initEditModal");
+    safeInit(initDeleteModalListeners, "initDeleteModalListeners");
+    safeInit(initExportCsv, "initExportCsv");
+    safeInit(initProfileMenu, "initProfileMenu");
+    safeInit(initNotificationDropdown, "initNotificationDropdown");
 });
+
+function safeInit(fn, label) {
+    try {
+        fn();
+    } catch (error) {
+        console.error(`Error running ${label}:`, error);
+    }
+}
 
 /* ==========================================
    FETCH LOGGED-IN COORDINATOR PROFILE DATA
@@ -92,6 +163,7 @@ async function loadUserData(user) {
     try {
         let fullName = user.displayName || localStorage.getItem("user_fullname") || "";
         let role = "OJT Coordinator";
+        let photo = user.photoURL || null;
 
         const userRef = doc(db, "users", user.uid);
         const userSnap = await getDoc(userRef);
@@ -104,13 +176,13 @@ async function loadUserData(user) {
                 fullName = userData.fullName || userData.name;
             }
             if (userData.role) role = userData.role;
+
+            // Profile photo, if the coordinator uploaded one in
+            // Account Settings (saved as photoBase64 or photoURL).
+            photo = userData.photoBase64 || userData.photoURL || photo;
         }
 
         if (!fullName) fullName = "Mark Daniel Beato";
-
-        const initials = getInitials(fullName);
-        const avatarCircle = document.getElementById("userAvatar");
-        if (avatarCircle) avatarCircle.textContent = initials;
 
         const userNameEl = document.getElementById("userName");
         if (userNameEl) userNameEl.textContent = fullName;
@@ -118,9 +190,301 @@ async function loadUserData(user) {
         const userRoleEl = document.getElementById("userRole");
         if (userRoleEl) userRoleEl.textContent = role;
 
+        paintAvatar(document.getElementById("userAvatar"), photo, fullName);
+        paintAvatar(document.getElementById("menuAvatar"), photo, fullName);
+
+        const menuNameEl = document.getElementById("menuName");
+        if (menuNameEl) menuNameEl.textContent = fullName;
+
+        const menuEmailEl = document.getElementById("menuEmail");
+        if (menuEmailEl) menuEmailEl.textContent = user.email || "—";
+
     } catch (error) {
         console.error("Error fetching coordinator profile:", error);
     }
+}
+
+/* ==========================================
+   AVATAR RENDERING
+   (shows the saved photo when there is one,
+   falls back to initials otherwise)
+========================================== */
+function paintAvatar(element, photo, name) {
+    if (!element) return;
+
+    const initials = getInitials(name);
+
+    if (photo) {
+        element.innerHTML = "";
+
+        const img = document.createElement("img");
+        img.alt = name || "Profile photo";
+        img.src = photo;
+
+        // If the stored image is broken, drop back to initials.
+        img.onerror = () => {
+            element.textContent = initials;
+        };
+
+        element.appendChild(img);
+    } else {
+        element.textContent = initials;
+    }
+}
+
+/* ==========================================
+   PROFILE DROPDOWN
+========================================== */
+function initProfileMenu() {
+    const trigger = document.getElementById("profileMenuTrigger");
+    if (!trigger) return;
+
+    trigger.addEventListener("click", (e) => {
+        // Clicks on the menu items handle themselves.
+        if (e.target.closest(".profile-menu")) return;
+
+        trigger.classList.toggle("open");
+
+        // Close the notification dropdown if it's open.
+        document.getElementById("notifBell")?.classList.remove("open");
+    });
+
+    document.addEventListener("click", (e) => {
+        if (!trigger.contains(e.target)) {
+            trigger.classList.remove("open");
+        }
+    });
+
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+            trigger.classList.remove("open");
+        }
+    });
+
+    // "Account settings" -> go to the settings page.
+    const showProfileBtn = document.getElementById("showProfileBtn");
+    if (showProfileBtn) {
+        showProfileBtn.addEventListener("click", () => {
+            window.location.href = "../settings/settings.html";
+        });
+    }
+}
+
+/* ==========================================
+   NOTIFICATIONS: STUDENT NAME LOOKUP
+========================================== */
+async function buildStudentNameMap() {
+    try {
+        const usersRef = collection(db, "users");
+        const studentQuery = query(usersRef, where("role", "==", "student"));
+        const snapshot = await getDocs(studentQuery);
+
+        const map = {};
+
+        snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            const name = data.name || data.fullName || data.email || "A student";
+
+            map[docSnap.id] = name;
+            if (data.uid) map[String(data.uid).trim()] = name;
+            if (data.email) map[String(data.email).toLowerCase().trim()] = name;
+        });
+
+        studentNameMap = map;
+    } catch (error) {
+        console.error("Error building student name map for notifications:", error);
+    }
+}
+
+function getStudentNameForReport(data) {
+    const studentId = data.userId || data.studentId;
+    const possibleEmail = (data.email || data.studentEmail || "").toLowerCase().trim();
+
+    return (
+        studentNameMap[studentId] ||
+        studentNameMap[possibleEmail] ||
+        "A student"
+    );
+}
+
+/* ==========================================
+   NOTIFICATIONS: RELATIVE TIME
+========================================== */
+function notifTimeAgo(ms) {
+    if (!ms) return "";
+
+    const diffSec = Math.floor((Date.now() - ms) / 1000);
+    if (diffSec < 60) return "Just now";
+
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin}m ago`;
+
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr}h ago`;
+
+    const diffDay = Math.floor(diffHr / 24);
+    if (diffDay < 7) return `${diffDay}d ago`;
+
+    return new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+/* ==========================================
+   NOTIFICATIONS: RENDER LIST + BADGE
+========================================== */
+function renderNotifications() {
+    const listEl = document.getElementById("notifList");
+    const badgeEl = document.getElementById("notifBadge");
+
+    if (!listEl) return;
+
+    if (notifItems.length === 0) {
+        listEl.innerHTML = '<div class="notif-empty">No report submissions yet.</div>';
+    } else {
+        listEl.innerHTML = notifItems.map((item) => {
+            const unread = item.timestamp > notifLastSeenAt;
+
+            return `
+                <div class="notif-item ${unread ? "unread" : ""}" data-report-id="${item.id}">
+                    <div class="notif-icon">
+                        <i class="fa-solid fa-file-circle-check"></i>
+                    </div>
+                    <div class="notif-text">
+                        <p><strong>${item.studentName}</strong> submitted a weekly report.</p>
+                        <span>${notifTimeAgo(item.timestamp)}</span>
+                    </div>
+                    ${unread ? '<span class="notif-dot"></span>' : ""}
+                </div>
+            `;
+        }).join("");
+    }
+
+    const unreadCount = notifItems.filter((item) => item.timestamp > notifLastSeenAt).length;
+
+    if (badgeEl) {
+        if (unreadCount > 0) {
+            badgeEl.textContent = unreadCount > 9 ? "9+" : String(unreadCount);
+            badgeEl.style.display = "flex";
+        } else {
+            badgeEl.style.display = "none";
+        }
+    }
+}
+
+function markNotificationsRead() {
+    notifLastSeenAt = Date.now();
+
+    try {
+        localStorage.setItem(notifStorageKey, String(notifLastSeenAt));
+    } catch (error) {
+        console.error("Could not save notif read state:", error);
+    }
+
+    renderNotifications();
+}
+
+/* ==========================================
+   NOTIFICATIONS: LIVE LISTENER
+   Watches the "weekly_reports" collection so new
+   student submissions show up right away, without
+   needing to refresh the page.
+========================================== */
+async function startWeeklyReportNotifications(uid) {
+    notifStorageKey = `coordinatorNotifLastSeen_${uid}`;
+    notifLastSeenAt = Number(localStorage.getItem(notifStorageKey)) || 0;
+
+    await buildStudentNameMap();
+
+    const reportsRef = collection(db, "weekly_reports");
+    const notifQuery = query(reportsRef, orderBy("submittedAt", "desc"), limit(20));
+
+    if (notifUnsubscribe) {
+        notifUnsubscribe();
+    }
+
+    notifUnsubscribe = onSnapshot(
+        notifQuery,
+        (snapshot) => {
+            notifItems = snapshot.docs.map((docSnap) => {
+                const data = docSnap.data();
+                const rawDate = data.submittedAt;
+
+                const timestamp = rawDate?.seconds
+                    ? rawDate.seconds * 1000
+                    : (rawDate ? new Date(rawDate).getTime() : 0);
+
+                return {
+                    id: docSnap.id,
+                    studentName: getStudentNameForReport(data),
+                    timestamp: timestamp || 0
+                };
+            });
+
+            renderNotifications();
+        },
+        (error) => {
+            console.error("Error listening for report notifications:", error);
+        }
+    );
+}
+
+/* ==========================================
+   NOTIFICATIONS: BELL DROPDOWN
+========================================== */
+function initNotificationDropdown() {
+    const bell = document.getElementById("notifBell");
+    const markBtn = document.getElementById("notifMarkReadBtn");
+
+    if (!bell) return;
+
+    bell.addEventListener("click", (e) => {
+        if (e.target.closest("#notifMarkReadBtn")) return;
+
+        const clickedItem = e.target.closest(".notif-item");
+        if (clickedItem) {
+            bell.classList.remove("open");
+            document.getElementById("studentTable")
+                ?.closest("table")
+                ?.scrollIntoView({ behavior: "smooth", block: "center" });
+            return;
+        }
+
+        const isOpening = !bell.classList.contains("open");
+        bell.classList.toggle("open");
+
+        // Close the profile dropdown if it's open.
+        document.getElementById("profileMenuTrigger")?.classList.remove("open");
+
+        if (isOpening) {
+            renderNotifications();
+
+            // Give the user a moment to see what's new
+            // before quietly marking it all as read.
+            setTimeout(() => {
+                if (bell.classList.contains("open")) {
+                    markNotificationsRead();
+                }
+            }, 1500);
+        }
+    });
+
+    if (markBtn) {
+        markBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            markNotificationsRead();
+        });
+    }
+
+    document.addEventListener("click", (e) => {
+        if (!bell.contains(e.target)) {
+            bell.classList.remove("open");
+        }
+    });
+
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+            bell.classList.remove("open");
+        }
+    });
 }
 
 /* ==========================================
@@ -133,7 +497,6 @@ function listenToStudentData() {
     const invitesRef = collection(db, "invitations");
     const invitesQuery = query(invitesRef, orderBy("createdAt", "desc"));
 
-    // Listener sa pagbabago ng alinman sa dalawang collection
     onSnapshot(usersQuery, async () => {
         await refreshAndRenderStudents();
     });
@@ -155,28 +518,24 @@ async function refreshAndRenderStudents() {
 
         const studentMap = new Map();
 
-        // 1. Unang kuhanin ang Invitations (Pending)
         invitesSnapshot.forEach((docSnap) => {
             const data = docSnap.data();
             const emailKey = (data.email || "").toLowerCase().trim();
             if (!emailKey) return;
 
-            const rawName = emailKey.split("@")[0].replace(".", " ");
-            const displayName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
-
             studentMap.set(emailKey, {
                 photo: null,
                 studentId: "-",
-                name: displayName,
+                name: "",
                 email: data.email,
-                course: data.course || "-",
-                section: data.section || "-",
+                section: "",
                 company: data.company || "Pending Assignment",
-                status: data.status || "Pending"
+                status: data.status || "Pending",
+                profileDone: false,
+                schedule: null
             });
         });
 
-        // 2. I-overwrite gamit ang Users collection data
         usersSnapshot.forEach((docSnap) => {
             const userData = docSnap.data();
             const emailKey = (userData.email || "").toLowerCase().trim();
@@ -184,33 +543,61 @@ async function refreshAndRenderStudents() {
 
             const existingData = studentMap.get(emailKey) || {};
 
-            const isComplete = userData.isProfileComplete === true || userData.profileCompleted === true;
-            const status = isComplete ? "Active" : (userData.status || existingData.status || "Pending");
+            const isProfileDone = userData.isProfileComplete === true || userData.profileCompleted === true;
 
-            const fullName = userData.fullName || userData.name || 
-                (userData.firstName ? `${userData.firstName} ${userData.lastName}` : existingData.name || "Student Intern");
-            
             const rawStudentNumber = userData.studentNumber || userData.studentId || existingData.studentId;
-            const studentNumber = (status === "Active" && rawStudentNumber) ? rawStudentNumber : "-";
 
-            const courseCode = userData.course || existingData.course || "BSIT";
-            const studentSection = userData.section || existingData.section || "N/A";
-            const company = userData.companyName || userData.company || existingData.company || "Pending Assignment";
-            const profilePic = userData.photo || userData.profilePic || userData.photoURL || userData.image || userData.avatar || existingData.photo;
+            const userCourse = userData.course || "";
+            const userSection = userData.section || "";
+            let combinedSection = "";
+
+            if (isProfileDone && userSection) {
+                combinedSection = userSection.toLowerCase().startsWith(userCourse.toLowerCase())
+                    ? userSection
+                    : `${userCourse} ${userSection}`.trim();
+            }
+
+            const rawCompany = userData.companyName || userData.company || existingData.company;
+            const hasCompany = !!rawCompany;
+            const company = rawCompany || "Pending Assignment";
+
+            // Fully "Active" lang kapag: (1) tapos na sa profile setup steps,
+            // (2) may student number na, at (3) may assigned company na.
+            // "Completed" is a manual, final status coordinators set themselves,
+            // so once that's saved, keep it as-is regardless of the checks above.
+            const isMarkedCompleted = (userData.status || "").toLowerCase() === "completed";
+            const isFullyActive = isProfileDone && !!rawStudentNumber && hasCompany;
+
+            const status = isMarkedCompleted
+                ? "Completed"
+                : (isFullyActive ? "Active" : "Pending");
+
+            // Hanggat hindi pa tapos ang profile setup ng student, itago muna ang
+            // photo, student ID, name, course, at section sa table (blangko lang).
+            const fullName = isProfileDone
+                ? (userData.fullName || userData.name ||
+                    (userData.firstName ? `${userData.firstName} ${userData.lastName}` : existingData.name || "Student Intern"))
+                : "";
+
+            const studentNumber = (isProfileDone && rawStudentNumber) ? rawStudentNumber : "-";
+            const profilePic = isProfileDone
+                ? (userData.photo || userData.profilePic || userData.photoURL || userData.image || userData.avatar || existingData.photo)
+                : null;
 
             studentMap.set(emailKey, {
+                docId: docSnap.id,
                 photo: profilePic,
                 studentId: studentNumber,
                 name: fullName,
                 email: userData.email || existingData.email,
-                course: courseCode,
-                section: studentSection,
+                section: combinedSection,
                 company: company,
-                status: status
+                status: status,
+                profileDone: isProfileDone,
+                schedule: userData.schedule || null
             });
         });
 
-        // I-set sa global array at i-render
         allStudents = Array.from(studentMap.values());
         applyFiltersAndPagination();
 
@@ -227,18 +614,17 @@ function applyFiltersAndPagination() {
     const statusVal = (document.getElementById("statusFilter")?.value || "All Status").toLowerCase();
     const sortVal = document.getElementById("sortSelect")?.value || "Sort By";
 
-    // Filter Logic
     filteredStudents = allStudents.filter(student => {
         const matchesSearch = student.name.toLowerCase().includes(searchVal) ||
                               student.email.toLowerCase().includes(searchVal) ||
-                              student.studentId.toLowerCase().includes(searchVal);
+                              student.studentId.toLowerCase().includes(searchVal) ||
+                              student.section.toLowerCase().includes(searchVal);
         
         const matchesStatus = (statusVal === "all status") || (student.status.toLowerCase() === statusVal);
         
         return matchesSearch && matchesStatus;
     });
 
-    // Sort Logic
     if (sortVal === "Name (A-Z)") {
         filteredStudents.sort((a, b) => a.name.localeCompare(b.name));
     } else if (sortVal === "Name (Z-A)") {
@@ -250,19 +636,84 @@ function applyFiltersAndPagination() {
     renderTablePage();
 }
 
+// Hinihiwalay ang Course (e.g. "BSIT") at Section number (e.g. "403") mula sa isang string tulad ng "BSIT 403"
+function splitCourseSection(sectionStr) {
+    const str = (sectionStr || "").trim();
+    if (!str) return { course: "-", section: "-" };
+
+    const match = str.match(/^([A-Za-z]+)\s*(.*)$/);
+    if (match) {
+        const course = match[1] || "-";
+        const section = match[2] ? match[2].trim() : "-";
+        return { course, section: section || "-" };
+    }
+    return { course: str, section: "-" };
+}
+
+/* ==========================================
+   EXPORT STUDENT LIST TO CSV
+========================================== */
+function escapeCSVValue(value) {
+    const str = String(value ?? "");
+    if (/[",\n]/.test(str)) {
+        return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+}
+
+function exportStudentsToCSV() {
+    if (!filteredStudents || filteredStudents.length === 0) {
+        showToast("No student records to export.", "error");
+        return;
+    }
+
+    const headers = ["Student ID", "Name", "Email", "Course", "Section", "Company", "Status"];
+
+    const rows = filteredStudents.map((student) => {
+        const { course, section } = splitCourseSection(student.section);
+        const displayName = student.profileDone ? student.name : "-";
+
+        return [
+            student.studentId,
+            displayName,
+            student.email || "-",
+            course,
+            section,
+            student.company,
+            student.status
+        ].map(escapeCSVValue).join(",");
+    });
+
+    const csvContent = [headers.join(","), ...rows].join("\r\n");
+
+    // Prepend BOM so Excel reads UTF-8 special characters correctly
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const timestamp = new Date().toISOString().slice(0, 10);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `students_${timestamp}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    showToast("Student list exported successfully!", "success");
+}
+
+function initExportCsv() {
+    const exportBtn = document.getElementById("exportCsvBtn");
+    if (exportBtn) {
+        exportBtn.addEventListener("click", exportStudentsToCSV);
+    }
+}
+
 function renderTablePage() {
     const tableBody = document.getElementById("studentTable");
     if (!tableBody) return;
 
     tableBody.innerHTML = "";
-
-    // Dito direktang kinokontrol ng JS ang height ng table container para WALANG BAKANTE pababa
-    const tableContainer = tableBody.closest('.table-container') || tableBody.closest('.card') || tableBody.parentElement;
-    if (tableContainer) {
-        tableContainer.style.height = "auto";
-        tableContainer.style.minHeight = "0px";
-        tableContainer.style.display = "block";
-    }
 
     if (filteredStudents.length === 0) {
         tableBody.innerHTML = `
@@ -281,7 +732,6 @@ function renderTablePage() {
 
     if (currentPage > totalPages) currentPage = totalPages || 1;
 
-    // Slice para makuha lang ang eksaktong 6 rows
     const startIndex = (currentPage - 1) * rowsPerPage;
     const endIndex = Math.min(startIndex + rowsPerPage, totalRecords);
     const paginatedItems = filteredStudents.slice(startIndex, endIndex);
@@ -289,10 +739,13 @@ function renderTablePage() {
     paginatedItems.forEach((student) => {
         const row = document.createElement("tr");
         const statusClass = student.status.toLowerCase();
+        const profileDone = !!student.profileDone;
         const initials = getInitials(student.name);
 
         let photoMarkup = "";
-        if (student.photo && student.photo.trim() !== "") {
+        if (!profileDone) {
+            photoMarkup = `<div class="student-avatar-fallback"></div>`;
+        } else if (student.photo && student.photo.trim() !== "") {
             photoMarkup = `
                 <div class="photo-wrapper">
                     <img src="${student.photo}" class="student-photo" alt="Student Profile" 
@@ -305,25 +758,36 @@ function renderTablePage() {
             photoMarkup = `<div class="student-avatar-fallback">${initials}</div>`;
         }
 
+        const { course: courseCode, section: sectionNum } = splitCourseSection(student.section);
+        const displayName = profileDone ? student.name : "-";
+
         row.innerHTML = `
             <td>${photoMarkup}</td>
             <td>${student.studentId}</td>
             <td>
-                <strong>${student.name}</strong><br>
+                <strong>${displayName}</strong><br>
                 <small style="color:#777;">${student.email}</small>
             </td>
-            <td>${student.course}</td>
-            <td>${student.section}</td>
+            <td>${courseCode}</td>
+            <td>${sectionNum}</td>
             <td>${student.company}</td>
             <td><span class="status ${statusClass}">${student.status}</span></td>
             <td class="actions">
                 <button class="action-btn view-btn"><i class="fa-solid fa-eye"></i></button>
-                <button class="action-btn archive-btn"><i class="fa-solid fa-box-archive"></i></button>
+                <button class="action-btn archive-btn"><i class="fa-solid fa-trash"></i></button>
             </td>
         `;
 
         tableBody.appendChild(row);
     });
+
+    const emptySlots = rowsPerPage - paginatedItems.length;
+    for (let i = 0; i < emptySlots; i++) {
+        const emptyRow = document.createElement("tr");
+        emptyRow.className = "empty-slot-row";
+        emptyRow.innerHTML = `<td colspan="8">&nbsp;</td>`;
+        tableBody.appendChild(emptyRow);
+    }
 
     attachActionEvents();
     updatePaginationUI(startIndex + 1, endIndex, totalRecords);
@@ -426,7 +890,7 @@ function initStudentTableFilters() {
 }
 
 /* ==========================================
-   ATTACH ACTION EVENTS (VIEW, EDIT, ARCHIVE)
+   ATTACH ACTION EVENTS (VIEW, EDIT, DELETE)
 ========================================== */
 function attachActionEvents() {
     const tableBody = document.getElementById("studentTable");
@@ -449,33 +913,85 @@ function attachActionEvents() {
             const studentName = nameContainer.querySelector("strong") ? nameContainer.querySelector("strong").innerText : "";
             const studentEmail = nameContainer.querySelector("small") ? nameContainer.querySelector("small").innerText : "";
             
-            const course = row.children[3].textContent.trim();
-            const section = row.children[4].textContent.trim();
+            const courseCode = row.children[3].textContent.trim();
+            const sectionNum = row.children[4].textContent.trim();
+            const section = [courseCode, sectionNum].filter(v => v && v !== "-").join(" ");
             const company = row.children[5].textContent.trim();
             const status = row.children[6].textContent.trim();
 
-            const fullCourseSection = `${course} ${section !== '-' ? section : ''}`.trim();
-
-            // Populate View Profile Modal Elements
             const nameEl = document.getElementById("viewStudentName");
             const emailEl = document.getElementById("viewStudentEmail");
             const idEl = document.getElementById("viewStudentId");
             const courseDetailEl = document.getElementById("viewStudentCourseDetail");
             const companyEl = document.getElementById("viewStudentCompany");
+            const scheduleEl = document.getElementById("viewStudentSchedule");
 
             if (nameEl) nameEl.textContent = studentName;
             if (emailEl) emailEl.textContent = studentEmail;
             if (idEl) idEl.textContent = studentId;
-            if (courseDetailEl) courseDetailEl.textContent = fullCourseSection;
+            if (courseDetailEl) courseDetailEl.textContent = section;
             if (companyEl) companyEl.textContent = company;
             
+            const cleanEmail = studentEmail.toLowerCase().trim();
+            const currentStudent = allStudents.find(s => s.email && s.email.toLowerCase().trim() === cleanEmail);
+
+            if (scheduleEl) {
+                if (currentStudent && currentStudent.schedule) {
+                    const sched = currentStudent.schedule;
+
+                    let daysArray = null;
+                    if (Array.isArray(sched.days)) {
+                        daysArray = sched.days;
+                    } else if (sched.days && typeof sched.days === 'object') {
+                        daysArray = Object.values(sched.days);
+                    }
+                    const normalizedDays = (daysArray || []).map(d => String(d).toLowerCase().trim());
+
+                    const weekDays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+                    const dayChipsHtml = weekDays.map(day => {
+                        const isActive = normalizedDays.includes(day.toLowerCase()) || normalizedDays.includes(day.slice(0, 3).toLowerCase());
+                        return `<span class="day-chip ${isActive ? 'active' : ''}">${day.slice(0, 1)}</span>`;
+                    }).join("");
+
+                    let timeBadges = [];
+
+                    const mIn = sched.morning?.timeIn || sched.morning?.time_in || sched.morning?.start;
+                    const mOut = sched.morning?.timeOut || sched.morning?.timeout || sched.morning?.time_out || sched.morning?.end;
+                    const isMorningActive = sched.morning?.morningEnabled !== false && sched.morning?.enabled !== false;
+
+                    if (mIn && mOut && isMorningActive) {
+                        timeBadges.push(`<span class="schedule-badge morning">Morning: ${formatTime12Hour(mIn)} - ${formatTime12Hour(mOut)}</span>`);
+                    }
+
+                    const aIn = sched.afternoon?.timeIn || sched.afternoon?.time_in || sched.afternoon?.start;
+                    const aOut = sched.afternoon?.timeOut || sched.afternoon?.timeout || sched.afternoon?.time_out || sched.afternoon?.end;
+                    const isAfternoonActive = sched.afternoon?.afternoonEnabled !== false && sched.afternoon?.enabled !== false;
+
+                    if (aIn && aOut && isAfternoonActive) {
+                        timeBadges.push(`<span class="schedule-badge afternoon"> Afternoon: ${formatTime12Hour(aIn)} - ${formatTime12Hour(aOut)}</span>`);
+                    }
+
+                    if (timeBadges.length > 0) {
+                        scheduleEl.innerHTML = `
+                            <div class="schedule-badges">${timeBadges.join("")}</div>
+                            <div class="schedule-days-row">
+                                <div class="day-chips">${dayChipsHtml}</div>
+                            </div>
+                        `;
+                    } else {
+                        scheduleEl.textContent = sched.shift ? `Shift: ${sched.shift}` : "Schedule format incomplete";
+                    }
+                } else {
+                    scheduleEl.textContent = "No schedule assigned yet";
+                }
+            }
+
             const elStatus = document.getElementById("viewStudentStatus");
             if (elStatus) {
                 elStatus.textContent = status;
                 elStatus.className = `status-pill ${status.toLowerCase()}`;
             }
 
-            // Avatar / Profile Picture Handle
             const avatarBox = document.getElementById("viewStudentAvatar");
             if (avatarBox) {
                 if (photoImg && photoImg.src && photoImg.style.display !== "none") {
@@ -485,19 +1001,19 @@ function attachActionEvents() {
                 }
             }
 
-            // Show View Modal
             const viewModal = document.getElementById("viewStudentModal");
             if (viewModal) viewModal.classList.add("active");
             return;
         }
 
-        // 2. ARCHIVE BUTTON CLICK
+        // 2. ARCHIVE / DELETE BUTTON CLICK
         if (btn.classList.contains("archive-btn")) {
             e.stopPropagation();
-            let name = row.children[2].querySelector("strong") ? row.children[2].querySelector("strong").innerText : "student";
-            if (confirm("Are you sure you want to remove/archive " + name + "?")) {
-                row.remove();
-            }
+            const email = row.children[2].querySelector("small") ? row.children[2].querySelector("small").innerText.trim() : "";
+            studentToDelete = { email, row };
+
+            const deleteModal = document.getElementById("deleteConfirmModal");
+            if (deleteModal) deleteModal.classList.add("active");
             return;
         }
     };
@@ -505,9 +1021,98 @@ function attachActionEvents() {
     initViewModalCloseListeners();
 }
 
+/* ==========================================
+   DELETE CONFIRMATION MODAL LOGIC
+========================================== */
+function initDeleteModalListeners() {
+    const deleteModal = document.getElementById("deleteConfirmModal");
+    const cancelDeleteBtn = document.getElementById("cancelDeleteBtn");
+    const confirmDeleteBtn = document.getElementById("confirmDeleteBtn");
+
+    const closeDeleteModal = () => {
+        if (deleteModal) deleteModal.classList.remove("active");
+        studentToDelete = null;
+    };
+
+    if (cancelDeleteBtn) cancelDeleteBtn.onclick = closeDeleteModal;
+
+    if (deleteModal) {
+        deleteModal.onclick = (e) => {
+            if (e.target === deleteModal) closeDeleteModal();
+        };
+    }
+
+    if (confirmDeleteBtn) {
+        confirmDeleteBtn.onclick = async () => {
+            if (!studentToDelete) return;
+            const { email, row } = studentToDelete;
+
+            try {
+                const userSnapshot = await getDocs(query(collection(db, "users"), where("email", "==", email)));
+                userSnapshot.forEach(async (documentSnap) => {
+                    await deleteDoc(doc(db, "users", documentSnap.id));
+                });
+
+                const inviteSnapshot = await getDocs(query(collection(db, "invitations"), where("email", "==", email)));
+                inviteSnapshot.forEach(async (documentSnap) => {
+                    await deleteDoc(doc(db, "invitations", documentSnap.id));
+                });
+
+                if (row) row.remove();
+                closeDeleteModal();
+            } catch (error) {
+                console.error("Error sa pag-delete ng student:", error);
+            }
+        };
+    }
+}
+
+/* ==========================================
+   EDIT MODAL LOGIC & SUBMISSION
+========================================== */
+// Nag-uupdate ng visual state (label at disabled state) ng Morning toggle
+function updateMorningToggleUI() {
+    const checkbox = document.getElementById("editMorningEnabled");
+    const statusText = document.getElementById("morningToggleStatusText");
+    const morningCard = document.getElementById("morningTimeCard");
+    if (!checkbox) return;
+
+    const isEnabled = checkbox.checked;
+
+    if (statusText) {
+        statusText.textContent = isEnabled ? "Enabled" : "Disabled";
+        statusText.classList.toggle("enabled", isEnabled);
+        statusText.classList.toggle("disabled", !isEnabled);
+    }
+
+    if (morningCard) {
+        morningCard.classList.toggle("schedule-disabled", !isEnabled);
+    }
+}
+
+// Nag-uupdate ng visual state (label at disabled state) ng Afternoon toggle
+function updateAfternoonToggleUI() {
+    const checkbox = document.getElementById("editAfternoonEnabled");
+    const statusText = document.getElementById("afternoonToggleStatusText");
+    const afternoonCard = document.getElementById("afternoonTimeCard");
+    if (!checkbox) return;
+
+    const isEnabled = checkbox.checked;
+
+    if (statusText) {
+        statusText.textContent = isEnabled ? "Enabled" : "Disabled";
+        statusText.classList.toggle("enabled", isEnabled);
+        statusText.classList.toggle("disabled", !isEnabled);
+    }
+
+    if (afternoonCard) {
+        afternoonCard.classList.toggle("schedule-disabled", !isEnabled);
+    }
+}
+
 function initEditModal() {
     const editModal = document.getElementById("editModal");
-    const closeEditModal = document.getElementById("closeEditModal");
+    const closeEditModal = document.getElementById("closeEditModalBtn");
     const cancelEditModal = document.getElementById("cancelEditModal");
 
     const hideModal = () => {
@@ -521,19 +1126,93 @@ function initEditModal() {
             if (e.target === editModal) hideModal();
         };
     }
+
+    // Morning Session toggle listener
+    const morningToggle = document.getElementById("editMorningEnabled");
+    if (morningToggle) {
+        morningToggle.addEventListener("change", updateMorningToggleUI);
+    }
+
+    // Afternoon Session toggle listener
+    const afternoonToggle = document.getElementById("editAfternoonEnabled");
+    if (afternoonToggle) {
+        afternoonToggle.addEventListener("change", updateAfternoonToggleUI);
+    }
+
+    const editStudentForm = document.getElementById("editStudentForm");
+    if (editStudentForm) {
+        editStudentForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const studentEmail = document.getElementById("editStudentEmail").value.trim();
+            if (!studentEmail) return;
+
+            const name = document.getElementById("editStudentName").value.trim();
+            const studentId = document.getElementById("editStudentId").value.trim();
+            const section = document.getElementById("editStudentSection").value.trim();
+            const company = document.getElementById("editStudentCompany").value.trim();
+            const status = document.getElementById("editStudentStatus").value;
+
+            // Kunin ang mga in-input na oras mula sa modal inputs
+            const morningIn = document.getElementById("editMorningIn")?.value || "";
+            const morningOut = document.getElementById("editMorningOut")?.value || "";
+            const morningEnabled = document.getElementById("editMorningEnabled")?.checked ?? true;
+            const afternoonIn = document.getElementById("editAfternoonIn")?.value || "";
+            const afternoonOut = document.getElementById("editAfternoonOut")?.value || "";
+            const afternoonEnabled = document.getElementById("editAfternoonEnabled")?.checked ?? true;
+
+            const selectedDays = [];
+            document.querySelectorAll('input[name="editDays"]:checked').forEach(cb => {
+                selectedDays.push(cb.value);
+            });
+
+            try {
+                const usersSnapshot = await getDocs(query(collection(db, "users"), where("email", "==", studentEmail)));
+                
+                if (!usersSnapshot.empty) {
+                    usersSnapshot.forEach(async (documentSnap) => {
+                        const userDocRef = doc(db, "users", documentSnap.id);
+                        await updateDoc(userDocRef, {
+                            fullName: name,
+                            studentNumber: studentId,
+                            section: section,
+                            companyName: company,
+                            status: status,
+                            "schedule.days": selectedDays,
+                            "schedule.morning": {
+                                timeIn: morningIn,
+                                timeOut: morningOut,
+                                morningEnabled: morningEnabled
+                            },
+                            "schedule.afternoon": {
+                                timeIn: afternoonIn,
+                                timeOut: afternoonOut,
+                                afternoonEnabled: afternoonEnabled
+                            },
+                            updatedAt: new Date().toISOString()
+                        });
+                    });
+                }
+
+                hideModal();
+                await refreshAndRenderStudents();
+                showToast("Student profile updated successfully!", "success");
+            } catch (error) {
+                console.error("Error updating profile:", error);
+                showToast("Failed to update student profile.", "error");
+            }
+        });
+    }
 }
 
 function initViewModalCloseListeners() {
     const viewModal = document.getElementById("viewStudentModal");
     const closeViewModal = document.getElementById("closeViewModal");
-    const cancelViewModal = document.getElementById("cancelViewModal");
 
     const hideViewModal = () => {
         if (viewModal) viewModal.classList.remove("active");
     };
 
     if (closeViewModal) closeViewModal.onclick = hideViewModal;
-    if (cancelViewModal) cancelViewModal.onclick = hideViewModal;
     
     if (viewModal) {
         viewModal.onclick = (e) => {
@@ -611,52 +1290,103 @@ function initInviteModal() {
 
             } catch (error) {
                 console.error("Error inviting student:", error);
-                alert("Failed to send invite: " + error.message);
             }
         });
     }
 }
 
-// Ilagay ito sa pinakailalim ng students.js
-
 window.openEditModalFromProfile = function() {
-    // 1. Isara muna ang View Profile Modal
     const viewModal = document.getElementById("viewStudentModal");
     if (viewModal) viewModal.classList.remove("active");
 
-    // 2. Kuhanin ang data mula sa View Profile Modal elements
     const studentEmail = document.getElementById("viewStudentEmail")?.textContent.trim() || "";
     const studentName = document.getElementById("viewStudentName")?.textContent.trim() || "";
     const studentId = document.getElementById("viewStudentId")?.textContent.trim() || "";
-    const courseSectionText = document.getElementById("viewStudentCourseDetail")?.textContent.trim() || "";
+    const sectionText = document.getElementById("viewStudentCourseDetail")?.textContent.trim() || "";
     const company = document.getElementById("viewStudentCompany")?.textContent.trim() || "";
     const status = document.getElementById("viewStudentStatus")?.textContent.trim() || "Pending";
 
-    // Hatiin ang Course at Section
-    const parts = courseSectionText.split(" ");
-    const course = parts[0] && parts[0] !== "-" ? parts[0] : "";
-    const section = parts.slice(1).join(" ") || "";
-
-    // 3. I-populate ang inputs sa Edit Student Modal
     if (document.getElementById("editStudentEmail")) document.getElementById("editStudentEmail").value = studentEmail;
     if (document.getElementById("editStudentId")) document.getElementById("editStudentId").value = (studentId === "-") ? "" : studentId;
     if (document.getElementById("editStudentName")) document.getElementById("editStudentName").value = studentName;
-    if (document.getElementById("editStudentCourse")) document.getElementById("editStudentCourse").value = course;
-    if (document.getElementById("editStudentSection")) document.getElementById("editStudentSection").value = (section === "-") ? "" : section;
+    if (document.getElementById("editStudentSection")) document.getElementById("editStudentSection").value = (sectionText === "-") ? "" : sectionText;
     if (document.getElementById("editStudentCompany")) document.getElementById("editStudentCompany").value = (company === "Pending Assignment") ? "" : company;
     
-    // Set Status Dropdown value
     const editStatusSelect = document.getElementById("editStudentStatus");
     if (editStatusSelect) {
         const matchingOption = Array.from(editStatusSelect.options).find(
             opt => opt.value.toLowerCase() === status.toLowerCase()
         );
-        if (matchingOption) {
-            editStatusSelect.value = matchingOption.value;
-        }
+        if (matchingOption) editStatusSelect.value = matchingOption.value;
     }
 
-    // 4. Buksan ang Edit Modal
+    // Populate schedule details & times mula sa current loaded student state
+    const currentStudent = allStudents.find(s => s.email && s.email.toLowerCase().trim() === studentEmail.toLowerCase().trim());
+    if (currentStudent && currentStudent.schedule) {
+        const sched = currentStudent.schedule;
+
+        // Ilagay ang Morning Times
+        if (sched.morning) {
+            const mIn = sched.morning.timeIn || sched.morning.time_in || sched.morning.start || "";
+            const mOut = sched.morning.timeOut || sched.morning.timeout || sched.morning.time_out || sched.morning.end || "";
+            if (document.getElementById("editMorningIn")) document.getElementById("editMorningIn").value = mIn;
+            if (document.getElementById("editMorningOut")) document.getElementById("editMorningOut").value = mOut;
+
+            const morningEnabled = sched.morning.morningEnabled !== false && sched.morning.enabled !== false;
+            const morningToggleCheckbox = document.getElementById("editMorningEnabled");
+            if (morningToggleCheckbox) morningToggleCheckbox.checked = morningEnabled;
+        } else {
+            if (document.getElementById("editMorningIn")) document.getElementById("editMorningIn").value = "";
+            if (document.getElementById("editMorningOut")) document.getElementById("editMorningOut").value = "";
+
+            const morningToggleCheckbox = document.getElementById("editMorningEnabled");
+            if (morningToggleCheckbox) morningToggleCheckbox.checked = true;
+        }
+        updateMorningToggleUI();
+
+        // Ilagay ang Afternoon Times
+        if (sched.afternoon) {
+            const aIn = sched.afternoon.timeIn || sched.afternoon.time_in || sched.afternoon.start || "";
+            const aOut = sched.afternoon.timeOut || sched.afternoon.timeout || sched.afternoon.time_out || sched.afternoon.end || "";
+            if (document.getElementById("editAfternoonIn")) document.getElementById("editAfternoonIn").value = aIn;
+            if (document.getElementById("editAfternoonOut")) document.getElementById("editAfternoonOut").value = aOut;
+
+            const afternoonEnabled = sched.afternoon.afternoonEnabled !== false && sched.afternoon.enabled !== false;
+            const toggleCheckbox = document.getElementById("editAfternoonEnabled");
+            if (toggleCheckbox) toggleCheckbox.checked = afternoonEnabled;
+        } else {
+            if (document.getElementById("editAfternoonIn")) document.getElementById("editAfternoonIn").value = "";
+            if (document.getElementById("editAfternoonOut")) document.getElementById("editAfternoonOut").value = "";
+
+            const toggleCheckbox = document.getElementById("editAfternoonEnabled");
+            if (toggleCheckbox) toggleCheckbox.checked = true;
+        }
+        updateAfternoonToggleUI();
+
+        let daysArray = [];
+        if (Array.isArray(sched.days)) {
+            daysArray = sched.days.map(d => String(d).slice(0, 3));
+        } else if (sched.days && typeof sched.days === 'object') {
+            daysArray = Object.values(sched.days).map(d => String(d).slice(0, 3));
+        }
+
+        document.querySelectorAll('input[name="editDays"]').forEach(cb => {
+            cb.checked = daysArray.some(d => d.toLowerCase() === cb.value.toLowerCase());
+        });
+    } else {
+        if (document.getElementById("editMorningIn")) document.getElementById("editMorningIn").value = "";
+        if (document.getElementById("editMorningOut")) document.getElementById("editMorningOut").value = "";
+        if (document.getElementById("editAfternoonIn")) document.getElementById("editAfternoonIn").value = "";
+        if (document.getElementById("editAfternoonOut")) document.getElementById("editAfternoonOut").value = "";
+        const morningToggleCheckbox = document.getElementById("editMorningEnabled");
+        if (morningToggleCheckbox) morningToggleCheckbox.checked = true;
+        updateMorningToggleUI();
+        const toggleCheckbox = document.getElementById("editAfternoonEnabled");
+        if (toggleCheckbox) toggleCheckbox.checked = true;
+        updateAfternoonToggleUI();
+        document.querySelectorAll('input[name="editDays"]').forEach(cb => cb.checked = false);
+    }
+
     const editModal = document.getElementById("editModal");
     if (editModal) editModal.classList.add("active");
 };
@@ -666,11 +1396,8 @@ window.viewFullAccountDetails = function() {
     const studentName = document.getElementById("viewStudentName")?.textContent.trim() || "";
     const studentId = document.getElementById("viewStudentId")?.textContent.trim() || "";
 
-    if (!studentEmail || studentEmail === "-") {
-        alert("Walang valid na email account ang estudyanteng ito.");
-        return;
-    }
+    if (!studentEmail || studentEmail === "-") return;
     
-    const targetUrl = `attendance_details.html?email=${encodeURIComponent(studentEmail)}&name=${encodeURIComponent(studentName)}&id=${encodeURIComponent(studentId)}`;
-    window.location.href = targetUrl;
+    const targetUrl = `/coordinator-page/attendance/attendance_details.html?email=${encodeURIComponent(studentEmail)}&name=${encodeURIComponent(studentName)}&id=${encodeURIComponent(studentId)}&from=students`;
+window.location.href = targetUrl;
 };

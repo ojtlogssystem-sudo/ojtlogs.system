@@ -123,6 +123,13 @@ export async function updateHeaderProfile(user) {
    so the pill can instantly repaint on other pages/reloads
    while the authoritative calculation is still in flight.
 ========================================== */
+// Same "Xh Ym" formatting used by the dashboard's Hours Completed card, so the
+// pill/panel never shows raw decimals like 31.816666666666666.
+function hoursToHM(hoursFloat) {
+    const totalMinutes = Math.round((hoursFloat || 0) * 60);
+    return `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`;
+}
+
 export function updateHeaderCompletionEstimate(payload) {
     const pill = document.getElementById("ai-completion-pill");
     const textEl = document.getElementById("ai-completion-text");
@@ -141,7 +148,7 @@ export function updateHeaderCompletionEstimate(payload) {
     pill.classList.toggle("completed", !!isDone);
 
     if (isDone) {
-        textEl.textContent = `OJT complete! ${completed}/${required} hrs`;
+        textEl.textContent = `OJT complete! ${hoursToHM(completed)} / ${required} hrs`;
     } else if (estimatedDate) {
         textEl.textContent = `Est. finish: ${estimatedDate}`;
     } else {
@@ -153,15 +160,15 @@ export function updateHeaderCompletionEstimate(payload) {
 
         if (isDone) {
             panelBody.innerHTML = `
-                <div class="ai-suggestion-row"><span>Hours completed</span><strong>${completed} / ${required} hrs</strong></div>
+                <div class="ai-suggestion-row"><span>Hours completed</span><strong>${hoursToHM(completed)} / ${required} hrs</strong></div>
                 <p class="ai-suggestion-note">🎉 You've hit your required OJT hours. Nice work!</p>
             `;
         } else if (estimatedDate) {
             panelBody.innerHTML = `
-                <div class="ai-suggestion-row"><span>Hours completed</span><strong>${completed} / ${required} hrs</strong></div>
-                <div class="ai-suggestion-row"><span>Remaining</span><strong>${remaining} hrs</strong></div>
-                <div class="ai-suggestion-row"><span>Your avg. per duty day</span><strong>${avgHoursPerDay} hrs</strong></div>
-                <p class="ai-suggestion-note">Based on your average of ${avgHoursPerDay} hrs across ${dutyDaysLogged} duty ${dutyDaysLogged === 1 ? "day" : "days"} so far, you're on track to finish around <strong>${estimatedDate}</strong> (weekdays only).</p>
+                <div class="ai-suggestion-row"><span>Hours completed</span><strong>${hoursToHM(completed)} / ${required} hrs</strong></div>
+                <div class="ai-suggestion-row"><span>Remaining</span><strong>${hoursToHM(remaining)}</strong></div>
+                <div class="ai-suggestion-row"><span>Your avg. per duty day</span><strong>${hoursToHM(avgHoursPerDay)}</strong></div>
+                <p class="ai-suggestion-note">Based on your average of ${hoursToHM(avgHoursPerDay)} across ${dutyDaysLogged} duty ${dutyDaysLogged === 1 ? "day" : "days"} so far, you're on track to finish around <strong>${estimatedDate}</strong> (weekdays only).</p>
             `;
         } else {
             panelBody.innerHTML = `<p class="ai-suggestion-empty">Time in/out on a few duty days first — the estimate is based on your own average hours per day.</p>`;

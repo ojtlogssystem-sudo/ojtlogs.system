@@ -1375,301 +1375,92 @@ table thead th i {
 }
 
 /* ==========================================
-   HEADER: NOTIFICATION BELL + PROFILE DROPDOWN
-   (mirrors dashboard.css / settings.css so every
-   coordinator page looks and behaves the same way)
+   DASHBOARD COLOR THEME
+   Status badges + action buttons ay same na
+   ng kulay ng icons sa dashboard stat cards
+   (#fde8e8 background / #ab0a0a icon at text)
 ========================================== */
 
-.notification,
-.profile {
-    position: relative;
+.status.active,
+.status.pending,
+.status.completed,
+.status-pill.active,
+.status-pill.pending,
+.status-pill.completed {
+    background: #fde8e8;
+    color: #ab0a0a;
+    border: 1px solid #f5c2c2;
 }
 
-/*
-   Defensive overrides: the shared sidebar-web.css already styles
-   .notification / .profile as small icon boxes and may set
-   overflow:hidden on them (common for clipping badge circles),
-   which would silently hide our dropdowns and make them look
-   "unclickable". These rules force them to behave as proper
-   dropdown containers no matter what the shared stylesheet does.
-*/
-#notifBell,
-#profileMenuTrigger {
-    position: relative !important;
-    overflow: visible !important;
-    cursor: pointer !important;
-    z-index: 10;
+.action-btn,
+.view-btn,
+.edit-btn,
+.archive-btn {
+    background: #fde8e8;
+    color: #ab0a0a;
 }
 
-#notifBell .notification {
-    overflow: visible !important;
+.action-btn i {
+    color: inherit;
 }
 
-/* ---------- Avatar photo support ---------- */
-
-.avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 50%;
-    display: block;
+.view-btn:hover,
+.edit-btn:hover,
+.archive-btn:hover {
+    background: #ab0a0a;
+    color: #fff;
 }
 
-.avatar-sm {
-    width: 36px;
-    height: 36px;
-    min-width: 36px;
-    border-radius: 50%;
-    overflow: hidden;
+
+/* ==========================================
+   PROFILE GENDER (kanan, sa dulo ng profile
+   header card - sa tabi ng name at status)
+========================================== */
+
+.profile-gender {
+    margin-left: auto;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #AB0A0A;
-    color: #ffffff;
-    font-size: 13px;
-    font-weight: 700;
-}
-
-#profileChevron {
-    transition: transform 0.2s ease;
-}
-
-.profile.open #profileChevron {
-    transform: rotate(180deg);
-}
-
-/* ---------- Profile dropdown ---------- */
-
-.profile-menu {
-    position: absolute;
-    top: calc(100% + 10px);
-    right: 0;
-    min-width: 232px;
-    background: #ffffff;
-    border: 1px solid #E2E8F0;
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
-    padding: 6px;
-    z-index: 3000;
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(-6px);
-    transition: opacity .18s ease, transform .18s ease, visibility .18s;
-}
-
-.profile.open .profile-menu {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
-}
-
-.profile-menu-head {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px;
-    border-bottom: 1px solid #F1F5F9;
-    margin-bottom: 6px;
-}
-
-.profile-menu-id {
-    min-width: 0;
-}
-
-.profile-menu-id h5 {
-    font-size: 13px;
-    font-weight: 700;
-    color: #0F172A;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.profile-menu-id span {
-    font-size: 11.5px;
-    color: #64748B;
-    display: block;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 180px;
-}
-
-.profile-menu-item {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 9px 10px;
-    border: none;
-    background: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 600;
-    color: #0F172A;
-    text-align: left;
-    transition: background .15s ease, color .15s ease;
-}
-
-.profile-menu-item i {
-    font-size: 13px;
-    color: #64748B;
-    width: 16px;
-    text-align: center;
-}
-
-.profile-menu-item:hover {
-    background: #F1F5F9;
-}
-
-.profile-menu-item:hover i {
-    color: #AB0A0A;
-}
-
-.profile-menu-item.item-danger {
-    color: #991B1B;
-}
-
-.profile-menu-item.item-danger i {
-    color: #991B1B;
-}
-
-.profile-menu-item.item-danger:hover {
-    background: #FEE2E2;
-}
-
-/* ---------- Notification bell + dropdown ---------- */
-
-.notification {
-    cursor: pointer;
-    user-select: none;
-}
-
-.notif-menu {
-    position: absolute;
-    top: calc(100% + 10px);
-    right: 0;
-    width: 320px;
-    max-width: 90vw;
-    background: #ffffff;
-    border: 1px solid #E2E8F0;
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
-    z-index: 3000;
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(-6px);
-    transition: opacity .18s ease, transform .18s ease, visibility .18s;
-}
-
-#notifBell.open .notif-menu {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
-}
-
-.notif-menu-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 14px;
-    border-bottom: 1px solid #F1F5F9;
-}
-
-.notif-menu-head h5 {
-    font-size: 13.5px;
-    font-weight: 700;
-    color: #0F172A;
-}
-
-.notif-clear-btn {
-    background: none;
-    border: none;
-    color: #AB0A0A;
-    font-size: 11.5px;
-    font-weight: 600;
-    cursor: pointer;
-    padding: 2px 4px;
-}
-
-.notif-clear-btn:hover {
-    text-decoration: underline;
-}
-
-.notif-list {
-    max-height: 320px;
-    overflow-y: auto;
-    padding: 6px;
-}
-
-.notif-empty {
-    padding: 24px 10px;
-    text-align: center;
-    font-size: 12.5px;
-    color: #64748B;
-}
-
-.notif-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 10px;
-    border-radius: 8px;
-    cursor: pointer;
-    position: relative;
-    transition: background .15s ease;
-}
-
-.notif-item:hover {
-    background: #F1F5F9;
-}
-
-.notif-item.unread {
-    background: #FEF2F2;
-}
-
-.notif-item.unread:hover {
-    background: #FEE2E2;
-}
-
-.notif-icon {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
     flex-shrink: 0;
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    background: #FEE2E2;
-    color: #AB0A0A;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12.5px;
 }
 
-.notif-text p {
-    font-size: 12.5px;
-    color: #0F172A;
-    line-height: 1.4;
-    margin: 0 0 3px 0;
-}
-
-.notif-text span {
+.profile-gender-label {
     font-size: 11px;
-    color: #64748B;
+    font-weight: 700;
+    color: #94a3b8;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
 }
 
-.notif-dot {
-    position: absolute;
-    top: 12px;
-    right: 10px;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #AB0A0A;
+.profile-gender-value {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 16px;
+    background: #fde8e8;
+    color: #ab0a0a;
+    border: 1px solid #f5c2c2;
+    font-size: 12.5px;
+    font-weight: 600;
+    white-space: nowrap;
 }
 
-@media (max-width: 768px) {
-    .notif-menu {
-        width: 280px;
+.profile-gender-value i {
+    font-size: 12px;
+}
+
+@media (max-width: 480px) {
+    .profile-header-card {
+        flex-wrap: wrap;
+    }
+
+    .profile-gender {
+        width: 100%;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
     }
 }

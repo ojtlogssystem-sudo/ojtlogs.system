@@ -1,63 +1,9 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-
 import {
-    getFirestore,
-    collection,
-    getDocs,
-    doc,
-    getDoc
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-import {
-    getAuth,
-    onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-
-
-// =====================================================
-// FIREBASE CONFIG
-// =====================================================
-
-const firebaseConfig = {
-
-    apiKey: "AIzaSyDvMQyEHIIJTW4etj4VQHjjIzd8oB2geJ8",
-
-    authDomain:
-        "ojt-logs-e1892.firebaseapp.com",
-
-    databaseURL:
-        "https://ojt-logs-e1892-default-rtdb.firebaseio.com",
-
-    projectId:
-        "ojt-logs-e1892",
-
-    storageBucket:
-        "ojt-logs-e1892.firebasestorage.app",
-
-    messagingSenderId:
-        "1012575426857",
-
-    appId:
-        "1:1012575426857:web:c2d6dbcdc0dc0ad965ff38",
-
-    measurementId:
-        "G-DJ3JW7QH27"
-
-};
-
-
-const app = initializeApp(firebaseConfig);
-
-const db = getFirestore(app);
-
-const auth = getAuth(app);
-
-
-const attendanceRef =
-    collection(db, "attendance");
-
-const usersRef =
-    collection(db, "users");
+    loadScheduledUsers,
+    subscribeAttendance,
+    buildTodayRows,
+    escapeHtml
+} from "./attendance_shared.js";
 
 
 // =====================================================
@@ -66,630 +12,158 @@ const usersRef =
 
 document.addEventListener("DOMContentLoaded", () => {
 
+    const attendanceTable = document.getElementById("attendanceTable");
+    const searchInput = document.getElementById("attendanceSearch");
+    const sectionFilter = document.getElementById("sectionFilter");
+    const statusFilter = document.getElementById("statusFilter");
+    const paginationInfo = document.getElementById("paginationInfo");
+    const prevPageBtn = document.getElementById("prevPageBtn");
+    const nextPageBtn = document.getElementById("nextPageBtn");
+    const pageNumbers = document.getElementById("pageNumbers");
+    const rowsPerPageSelect = document.getElementById("rowsPerPageSelect");
 
-    const attendanceTable =
-        document.getElementById("attendanceTable");
+    const currentDateEl = document.getElementById("currentDate");
+    const currentTimeEl = document.getElementById("currentTime");
 
-    const searchInput =
-        document.getElementById("attendanceSearch");
-
-    const sectionFilter =
-        document.getElementById("sectionFilter");
-
-    const statusFilter =
-        document.getElementById("statusFilter");
-
-    const paginationInfo =
-        document.getElementById("paginationInfo");
-
-    const prevPageBtn =
-        document.getElementById("prevPageBtn");
-
-    const nextPageBtn =
-        document.getElementById("nextPageBtn");
-
-    const pageNumbers =
-        document.getElementById("pageNumbers");
-
-    const rowsPerPageSelect =
-        document.getElementById("rowsPerPageSelect");
-
-
-    let allRecords = [];
-
+    let scheduledUsers = [];      // lahat ng student na may valid na schedule
+    let attendanceDocs = [];      // raw attendance docs (realtime)
+    let allRecords = [];          // rows para sa ngayong araw
     let filteredRecords = [];
 
-    let usersMap = {};
-
+    let dataReady = false;
     let currentPage = 1;
-
     let rowsPerPage = 6;
-
+    let lastRebuiltMinute = -1;
 
 
     // =================================================
-    // INITIALS
+    // LIVE DATE & TIME
     // =================================================
 
-    function getInitials(name) {
+    function tickClock() {
 
-        if (!name || typeof name !== "string") {
-            return "CO";
+        const now = new Date();
+
+        if (currentDateEl) {
+            currentDateEl.textContent =
+                now.toLocaleDateString("en-US", {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric"
+                });
         }
 
-        const words =
-            name.trim().split(/\s+/);
-
-        if (words.length === 1) {
-            return words[0]
-                .charAt(0)
-                .toUpperCase();
+        if (currentTimeEl) {
+            currentTimeEl.textContent =
+                now.toLocaleTimeString("en-US", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit"
+                });
         }
 
-        return (
-            words[0].charAt(0) +
-            words[words.length - 1].charAt(0)
-        ).toUpperCase();
+        // Kada bagong minuto, i-recompute ang status
+        // (hal. Pending -> Absent kapag lampas na sa schedule)
+        const minuteKey = now.getHours() * 60 + now.getMinutes();
 
+        if (dataReady && minuteKey !== lastRebuiltMinute) {
+            rebuild();
+        }
     }
 
 
-
     // =================================================
-    // PROFILE
-    // =================================================
-
-    function syncUserProfile() {
-
-        const profileNameEl =
-            document.getElementById("profileName");
-
-        const profileAvatarEl =
-            document.getElementById("profileAvatar");
-
-        const profileRoleEl =
-            document.getElementById("profileRole");
-
-
-        onAuthStateChanged(auth, async (user) => {
-
-            if (user) {
-
-                try {
-
-                    const snapshot =
-                        await getDocs(usersRef);
-
-                    let foundUser = null;
-
-
-                    snapshot.forEach((docSnap) => {
-
-                        const data =
-                            docSnap.data();
-
-                        if (
-                            data.email === user.email ||
-                            docSnap.id === user.uid
-                        ) {
-
-                            foundUser = data;
-
-                        }
-
-                    });
-
-
-                    const displayName =
-                        foundUser?.name ||
-                        foundUser?.fullName ||
-                        user.displayName ||
-                        user.email ||
-                        "Coordinator";
-
-
-                    const displayRole =
-                        foundUser?.role ||
-                        foundUser?.userType ||
-                        "OJT Coordinator";
-
-
-                    if (profileNameEl) {
-                        profileNameEl.textContent =
-                            displayName;
-                    }
-
-
-                    if (profileRoleEl) {
-                        profileRoleEl.textContent =
-                            displayRole;
-                    }
-
-
-                    if (profileAvatarEl) {
-
-                        profileAvatarEl.textContent =
-                            getInitials(displayName);
-
-                    }
-
-
-                } catch (error) {
-
-                    console.error(
-                        "Error loading profile:",
-                        error
-                    );
-
-                }
-
-            }
-
-        });
-
-    }
-
-
-
-    // =================================================
-    // TOTAL STUDENTS
-    // =================================================
-
-    async function fetchTotalStudents() {
-
-        try {
-
-            const snapshot =
-                await getDocs(usersRef);
-
-            let total =
-                0;
-
-
-            snapshot.forEach((docSnap) => {
-
-                const data =
-                    docSnap.data();
-
-                const role =
-                    (
-                        data.role ||
-                        data.userType ||
-                        ""
-                    ).toLowerCase();
-
-
-                if (
-                    role === "student" ||
-                    role === "" ||
-                    !data.role
-                ) {
-
-                    total++;
-
-                }
-
-            });
-
-
-            const cards =
-                document.querySelectorAll(
-                    ".attendance-summary .stat-content h3"
-                );
-
-
-            if (cards.length >= 1) {
-
-                cards[0].textContent =
-                    total;
-
-            }
-
-        } catch (error) {
-
-            console.error(
-                "Error counting students:",
-                error
-            );
-
-        }
-
-    }
-
-
-
-    // =================================================
-    // LOAD USERS
+    // LOAD STUDENTS + SCHEDULES
     // =================================================
 
     async function loadUsers() {
 
-        const usersSnapshot =
-            await getDocs(usersRef);
+        scheduledUsers = await loadScheduledUsers();
 
-
-        usersMap = {};
-
-
-        usersSnapshot.forEach((userDoc) => {
-
-            const userData =
-                userDoc.data();
-
-
-            const userInfo = {
-
-                id: userDoc.id,
-
-                name:
-                    userData.name ||
-                    userData.fullName ||
-                    "Student User",
-
-                email:
-                    userData.email ||
-                    "",
-
-                course:
-                    userData.course ||
-                    "BSIT",
-
-                section:
-                    userData.section ||
-                    "N/A",
-
-                company:
-                    userData.companyName ||
-                    userData.company ||
-                    userData.company_name ||
-                    "N/A"
-
-            };
-
-
-            usersMap[userDoc.id] =
-                userInfo;
-
-
-            if (userData.email) {
-
-                usersMap[
-                    userData.email.toLowerCase()
-                ] = userInfo;
-
-            }
-
-        });
-
-    }
-
-
-
-    // =================================================
-    // LOAD ATTENDANCE
-    // =================================================
-
-    async function loadAttendanceRecords() {
-
-        if (!attendanceTable) {
+        if (!sectionFilter) {
             return;
         }
 
-
-        try {
-
-            await loadUsers();
-
-
-            const attendanceSnapshot =
-                await getDocs(attendanceRef);
-
-
-            allRecords = [];
-
-
-            const sectionsSet =
-                new Set();
-
-
-            attendanceSnapshot.forEach((docSnap) => {
-
-                const data =
-                    docSnap.data();
-
-
-                let userDetail =
-                    null;
-
-
-                // Match by userId
-
-                if (
-                    data.userId &&
-                    usersMap[data.userId]
-                ) {
-
-                    userDetail =
-                        usersMap[data.userId];
-
-                }
-
-
-                // Match by email
-
-                else if (
-                    data.userEmail &&
-                    usersMap[
-                        data.userEmail.toLowerCase()
-                    ]
-                ) {
-
-                    userDetail =
-                        usersMap[
-                            data.userEmail.toLowerCase()
-                        ];
-
-                }
-
-
-                const studentName =
-                    userDetail?.name ||
-                    data.userName ||
-                    "Unknown Student";
-
-
-                const studentEmail =
-                    userDetail?.email ||
-                    data.userEmail ||
-                    "No Email";
-
-
-                const course =
-                    userDetail?.course ||
-                    data.course ||
-                    "BSIT";
-
-
-                const section =
-                    userDetail?.section ||
-                    data.section ||
-                    "N/A";
-
-
-                const company =
-                    userDetail?.company ||
-                    data.companyName ||
-                    data.company ||
-                    data.company_name ||
-                    "N/A";
-
-
-                if (section !== "N/A") {
-                    sectionsSet.add(section);
-                }
-
-
-                const photoProof =
-                    data.photoProof ||
-                    data.photoURL ||
-                    data.photoUrl ||
-                    data.photo ||
-                    data.imageUrl ||
-                    data.imageURL ||
-                    "";
-
-
-                allRecords.push({
-
-                    id:
-                        docSnap.id,
-
-                    userId:
-                        data.userId ||
-                        userDetail?.id ||
-                        "",
-
-                    studentName,
-
-                    studentEmail,
-
-                    course,
-
-                    section,
-
-                    company,
-
-                    timeIn:
-                        data.timeIn ||
-                        "--",
-
-                    timeOut:
-                        data.timeOut ||
-                        "--",
-
-                    totalHours:
-                        data.todayHours ||
-                        (
-                            data.hoursRendered
-                                ? `${data.hoursRendered} hrs`
-                                : "0h 0m"
-                        ),
-
-                    status:
-                        data.status ||
-                        "Present",
-
-                    photoProof,
-
-                    date:
-                        data.formattedDate ||
-                        data.date ||
-                        "N/A",
-
-                    rawTimestamp:
-                        data.timestamp ||
-                        data.createdAt ||
-                        0
-
-                });
-
-            });
-
-
-
-            // =================================================
-            // SECTION FILTER
-            // =================================================
-
-            if (sectionFilter) {
-
-                sectionFilter.innerHTML =
-                    `<option value="All Sections">
-                        All Sections
-                    </option>`;
-
-
-                [...sectionsSet]
-                    .sort()
-                    .forEach((section) => {
-
-                        sectionFilter.innerHTML +=
-                            `<option value="${section}">
-                                ${section}
-                            </option>`;
-
-                    });
-
-            }
-
-
-            // INITIAL DISPLAY
-
-            filterAttendance();
-
-
-        } catch (error) {
-
-            console.error(
-                "Error loading attendance records:",
-                error
-            );
-
-
-            attendanceTable.innerHTML = `
-
-                <tr>
-
-                    <td
-                        colspan="10"
-                        style="
-                            text-align:center;
-                            color:#e74c3c;
-                            padding:30px;
-                        ">
-
-                        Unable to load attendance records.
-
-                    </td>
-
-                </tr>
-
-            `;
-
+        const sections = [
+            ...new Set(
+                scheduledUsers
+                    .map((user) => user.section)
+                    .filter((section) => section !== "N/A")
+            )
+        ].sort();
+
+        const previous = sectionFilter.value;
+
+        sectionFilter.innerHTML =
+            `<option value="All Sections">All Sections</option>`;
+
+        sections.forEach((section) => {
+            sectionFilter.innerHTML +=
+                `<option value="${escapeHtml(section)}">${escapeHtml(section)}</option>`;
+        });
+
+        if (sections.includes(previous)) {
+            sectionFilter.value = previous;
         }
 
     }
 
+
+    // =================================================
+    // BUILD TODAY'S ROWS (schedule-based)
+    // =================================================
+
+    function rebuild() {
+
+        const now = new Date();
+
+        lastRebuiltMinute = now.getHours() * 60 + now.getMinutes();
+
+        allRecords = buildTodayRows(scheduledUsers, attendanceDocs, now);
+
+        applyFilters(true);
+        updateSummaryCards();
+    }
 
 
     // =================================================
     // FILTER
     // =================================================
 
-    function filterAttendance() {
+    function applyFilters(keepPage = false) {
 
-        const keyword =
-            searchInput
-                ? searchInput.value
-                    .toLowerCase()
-                    .trim()
-                : "";
+        const keyword = searchInput ? searchInput.value.toLowerCase().trim() : "";
+        const section = sectionFilter ? sectionFilter.value.toLowerCase() : "all sections";
+        const status = statusFilter ? statusFilter.value.toLowerCase() : "all status";
 
+        filteredRecords = allRecords.filter((item) => {
 
-        const section =
-            sectionFilter
-                ? sectionFilter.value.toLowerCase()
-                : "all sections";
+            const matchSearch =
+                item.studentName.toLowerCase().includes(keyword) ||
+                item.studentEmail.toLowerCase().includes(keyword) ||
+                item.company.toLowerCase().includes(keyword);
 
+            const matchSection =
+                section === "all sections" ||
+                item.section.toLowerCase() === section;
 
-        const status =
-            statusFilter
-                ? statusFilter.value.toLowerCase()
-                : "all status";
+            const matchStatus =
+                status === "all status" ||
+                item.status.toLowerCase() === status;
 
+            return matchSearch && matchSection && matchStatus;
 
-        filteredRecords =
-            allRecords.filter((item) => {
+        });
 
+        const totalPages = Math.max(1, Math.ceil(filteredRecords.length / rowsPerPage));
 
-                const name =
-                    (item.studentName || "")
-                        .toLowerCase();
-
-
-                const email =
-                    (item.studentEmail || "")
-                        .toLowerCase();
-
-
-                const company =
-                    (item.company || "")
-                        .toLowerCase();
-
-
-                const itemSection =
-                    (item.section || "")
-                        .toLowerCase();
-
-
-                const itemStatus =
-                    (item.status || "")
-                        .toLowerCase();
-
-
-                const matchSearch =
-                    name.includes(keyword) ||
-                    email.includes(keyword) ||
-                    company.includes(keyword);
-
-
-                const matchSection =
-                    section === "all sections" ||
-                    itemSection === section;
-
-
-                const matchStatus =
-                    status === "all status" ||
-                    itemStatus.includes(status);
-
-
-                return (
-                    matchSearch &&
-                    matchSection &&
-                    matchStatus
-                );
-
-            });
-
-
-        currentPage = 1;
+        currentPage = keepPage
+            ? Math.min(currentPage, totalPages)
+            : 1;
 
         renderTable();
-
-        updateSummaryCards();
-
     }
-
 
 
     // =================================================
@@ -702,278 +176,88 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-
         if (filteredRecords.length === 0) {
 
+            const dayName = new Date().toLocaleDateString("en-US", { weekday: "long" });
+
             attendanceTable.innerHTML = `
-
                 <tr>
-
-                    <td
-                        colspan="10"
-                        style="
-                            text-align:center;
-                            color:#777;
-                            padding:30px;
-                        ">
-
-                        No attendance records found.
-
+                    <td colspan="10" style="text-align:center; color:#777; padding:30px;">
+                        ${allRecords.length === 0
+                            ? `No students are scheduled today (${dayName}).`
+                            : "No attendance records found."}
                     </td>
-
-                </tr>
-
-            `;
-
+                </tr>`;
 
             if (paginationInfo) {
-
-                paginationInfo.textContent =
-                    "Showing 0 to 0 of 0 records";
-
+                paginationInfo.textContent = "Showing 0 to 0 of 0 records";
             }
 
-
             updatePagination();
-
             return;
-
         }
 
 
+        const start = (currentPage - 1) * rowsPerPage;
+        const end = Math.min(start + rowsPerPage, filteredRecords.length);
 
-        const start =
-            (currentPage - 1) *
-            rowsPerPage;
+        attendanceTable.innerHTML = filteredRecords
+            .slice(start, end)
+            .map((item) => {
 
-
-        const end =
-            Math.min(
-                start + rowsPerPage,
-                filteredRecords.length
-            );
-
-
-        const pageRecords =
-            filteredRecords.slice(
-                start,
-                end
-            );
-
-
-
-        attendanceTable.innerHTML =
-            pageRecords.map((item) => {
-
-
-                let statusClass =
-                    "present";
-
-
-                const statusText =
-                    item.status ||
-                    "Present";
-
-
-                const lowerStatus =
-                    statusText.toLowerCase();
-
-
-                if (lowerStatus.includes("late")) {
-
-                    statusClass =
-                        "late";
-
-                }
-
-                else if (
-                    lowerStatus.includes("absent")
-                ) {
-
-                    statusClass =
-                        "absent";
-
-                }
-
-                else if (
-                    lowerStatus.includes("reject")
-                ) {
-
-                    statusClass =
-                        "rejected";
-
-                }
-
-
-
-                const photo =
-                    item.photoProof;
-
+                const statusClass = item.status.toLowerCase();
 
                 return `
-
                     <tr>
-
-
-                        <!-- STUDENT -->
-
                         <td>
-
-                            <strong>
-                                ${item.studentName}
-                            </strong>
-
+                            <strong>${escapeHtml(item.studentName)}</strong>
                             <br>
-
-                            <small
-                                style="color:#777;">
-
-                                ${item.studentEmail}
-
+                            <small style="color:#777;">${escapeHtml(item.studentEmail)}</small>
+                            <br>
+                            <small style="color:#aaa;">
+                                <i class="fa-regular fa-calendar-check"></i>
+                                ${escapeHtml(item.scheduleText)}
                             </small>
-
                         </td>
 
-
-
-                        <!-- COURSE -->
-
-                        <td>
-                            ${item.course}
-                        </td>
-
-
-
-                        <!-- SECTION -->
-
-                        <td>
-                            ${item.section}
-                        </td>
-
-
-
-                        <!-- COMPANY -->
-
-                        <td>
-                            ${item.company}
-                        </td>
-
-
-
-                        <!-- TIME IN -->
-
-                        <td>
-                            ${item.timeIn}
-                        </td>
-
-
-
-                        <!-- TIME OUT -->
-
-                        <td>
-                            ${item.timeOut}
-                        </td>
-
-
-
-                        <!-- HOURS -->
-
-                        <td>
-                            ${item.totalHours}
-                        </td>
-
-
-
-                        <!-- PHOTO -->
+                        <td>${escapeHtml(item.course)}</td>
+                        <td>${escapeHtml(item.section)}</td>
+                        <td>${escapeHtml(item.company)}</td>
+                        <td>${escapeHtml(item.timeIn)}</td>
+                        <td>${escapeHtml(item.timeOut)}</td>
+                        <td>${escapeHtml(item.totalHours)}</td>
 
                         <td class="photo-proof-cell">
-
-                            ${
-                                photo
-                                ? `
-
-                                    <button
-                                        type="button"
-                                        class="photo-proof-btn"
-                                        data-photo="${photo}">
-
-                                        <i
-                                            class="fa-solid fa-image">
-                                        </i>
-
-                                        View
-
-                                    </button>
-
-                                `
-                                : `
-
-                                    <span class="no-photo-proof">
-
-                                        No Photo
-
-                                    </span>
-
-                                `
-                            }
-
+                            ${item.photoProof
+                                ? `<button type="button" class="photo-proof-btn"
+                                        data-photo="${escapeHtml(item.photoProof)}">
+                                        <i class="fa-solid fa-image"></i> View
+                                   </button>`
+                                : `<span class="no-photo-proof">No Photo</span>`}
                         </td>
-
-
-
-                        <!-- STATUS -->
 
                         <td>
-
-                            <span
-                                class="status ${statusClass}">
-
-                                ${statusText}
-
-                            </span>
-
+                            <span class="status ${statusClass}">${item.status}</span>
                         </td>
-
-
-
-                        <!-- ACTION -->
 
                         <td class="actions">
-
-                            <button
-                                class="action-btn view-btn"
-                                data-id="${item.userId || item.id}"
+                            <button class="action-btn view-btn"
+                                data-id="${escapeHtml(item.userId || item.id)}"
                                 title="View Details">
-
-                                <i
-                                    class="fa-solid fa-eye">
-                                </i>
-
+                                <i class="fa-regular fa-eye"></i> View
                             </button>
-
                         </td>
-
-
-                    </tr>
-
-                `;
+                    </tr>`;
 
             }).join("");
 
-
-
         if (paginationInfo) {
-
             paginationInfo.textContent =
                 `Showing ${start + 1} to ${end} of ${filteredRecords.length} records`;
-
         }
 
-
         updatePagination();
-
     }
-
 
 
     // =================================================
@@ -982,482 +266,342 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function updatePagination() {
 
-        const totalPages =
-            Math.max(
-                1,
-                Math.ceil(
-                    filteredRecords.length /
-                    rowsPerPage
-                )
-            );
+        const totalPages = Math.max(1, Math.ceil(filteredRecords.length / rowsPerPage));
 
-
-        if (prevPageBtn) {
-
-            prevPageBtn.disabled =
-                currentPage <= 1;
-
-        }
-
-
-        if (nextPageBtn) {
-
-            nextPageBtn.disabled =
-                currentPage >= totalPages;
-
-        }
-
+        if (prevPageBtn) prevPageBtn.disabled = currentPage <= 1;
+        if (nextPageBtn) nextPageBtn.disabled = currentPage >= totalPages;
 
         if (!pageNumbers) {
             return;
         }
 
-
         pageNumbers.innerHTML = "";
 
+        for (let page = 1; page <= totalPages; page++) {
 
-        for (
-            let page = 1;
-            page <= totalPages;
-            page++
-        ) {
+            const button = document.createElement("button");
 
-            const button =
-                document.createElement("button");
-
-
-            button.className =
-                "page-num";
-
+            button.className = "page-num";
 
             if (page === currentPage) {
-
-                button.classList.add(
-                    "active"
-                );
-
+                button.classList.add("active");
             }
 
+            button.textContent = page;
 
-            button.textContent =
-                page;
+            button.addEventListener("click", () => {
+                currentPage = page;
+                renderTable();
+            });
 
-
-            button.addEventListener(
-                "click",
-                () => {
-
-                    currentPage =
-                        page;
-
-                    renderTable();
-
-                }
-            );
-
-
-            pageNumbers.appendChild(
-                button
-            );
-
+            pageNumbers.appendChild(button);
         }
-
     }
 
 
-
     // =================================================
-    // SUMMARY CARDS
+    // SUMMARY CARDS (based on today's schedule)
     // =================================================
 
     function updateSummaryCards() {
 
-        const cards =
-            document.querySelectorAll(
-                ".attendance-summary .stat-content h3"
-            );
+        const total = allRecords.length;
 
+        const count = (status) =>
+            allRecords.filter((r) => r.status === status).length;
 
-        if (cards.length < 4) {
-            return;
-        }
+        const present = count("Present");
+        const late = count("Late");
+        const absent = count("Absent");
+        const pending = count("Pending");
 
+        const pct = (value) =>
+            total ? `${Math.round((value / total) * 100)}%` : "0%";
 
-        // TODAY ONLY
+        const set = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        };
 
-        const today =
-            new Date();
+        set("statScheduled", total);
+        set("statPending", `${pending} pending`);
 
+        set("statPresent", present);
+        set("statPresentPct", pct(present));
 
-        const todayString =
-            today.toLocaleDateString(
-                "en-US"
-            );
+        set("statLate", late);
+        set("statLatePct", pct(late));
 
-
-        let presentCount = 0;
-
-        let lateCount = 0;
-
-        let absentCount = 0;
-
-
-
-        allRecords.forEach((record) => {
-
-            let isToday = false;
-
-
-            if (record.date) {
-
-                const recordDate =
-                    new Date(record.date);
-
-
-                if (
-                    !isNaN(
-                        recordDate.getTime()
-                    )
-                ) {
-
-                    isToday =
-                        recordDate.toLocaleDateString(
-                            "en-US"
-                        ) === todayString;
-
-                }
-
-            }
-
-
-            // If date cannot be parsed,
-            // use records that have attendance time.
-
-            if (
-                !isToday &&
-                record.timeIn === "--"
-            ) {
-
-                return;
-
-            }
-
-
-            const status =
-                (
-                    record.status ||
-                    ""
-                ).toLowerCase();
-
-
-            if (
-                status === "present" ||
-                status === "active" ||
-                status === "completed"
-            ) {
-
-                presentCount++;
-
-            }
-
-            else if (
-                status === "late"
-            ) {
-
-                lateCount++;
-
-            }
-
-            else if (
-                status === "absent"
-            ) {
-
-                absentCount++;
-
-            }
-
-        });
-
-
-
-        cards[1].textContent =
-            presentCount;
-
-
-        cards[2].textContent =
-            lateCount;
-
-
-        cards[3].textContent =
-            absentCount;
-
+        set("statAbsent", absent);
+        set("statAbsentPct", pct(absent));
     }
-
 
 
     // =================================================
     // EVENTS
     // =================================================
 
-    if (searchInput) {
-
-        searchInput.addEventListener(
-            "input",
-            filterAttendance
-        );
-
-    }
-
-
-    if (sectionFilter) {
-
-        sectionFilter.addEventListener(
-            "change",
-            filterAttendance
-        );
-
-    }
-
-
-    if (statusFilter) {
-
-        statusFilter.addEventListener(
-            "change",
-            filterAttendance
-        );
-
-    }
-
+    if (searchInput) searchInput.addEventListener("input", () => applyFilters());
+    if (sectionFilter) sectionFilter.addEventListener("change", () => applyFilters());
+    if (statusFilter) statusFilter.addEventListener("change", () => applyFilters());
 
     if (rowsPerPageSelect) {
-
-        rowsPerPageSelect.addEventListener(
-            "change",
-            () => {
-
-                rowsPerPage =
-                    parseInt(
-                        rowsPerPageSelect.value
-                    );
-
-                currentPage = 1;
-
-                renderTable();
-
-            }
-        );
-
+        rowsPerPageSelect.addEventListener("change", () => {
+            rowsPerPage = parseInt(rowsPerPageSelect.value, 10);
+            currentPage = 1;
+            renderTable();
+        });
     }
-
 
     if (prevPageBtn) {
-
-        prevPageBtn.addEventListener(
-            "click",
-            () => {
-
-                if (currentPage > 1) {
-
-                    currentPage--;
-
-                    renderTable();
-
-                }
-
+        prevPageBtn.addEventListener("click", () => {
+            if (currentPage > 1) {
+                currentPage--;
+                renderTable();
             }
-        );
-
+        });
     }
-
 
     if (nextPageBtn) {
-
-        nextPageBtn.addEventListener(
-            "click",
-            () => {
-
-                const totalPages =
-                    Math.ceil(
-                        filteredRecords.length /
-                        rowsPerPage
-                    );
-
-
-                if (
-                    currentPage <
-                    totalPages
-                ) {
-
-                    currentPage++;
-
-                    renderTable();
-
-                }
-
+        nextPageBtn.addEventListener("click", () => {
+            const totalPages = Math.ceil(filteredRecords.length / rowsPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderTable();
             }
-        );
-
+        });
     }
 
 
-
-    // =================================================
     // VIEW DETAILS
-    // =================================================
+    document.addEventListener("click", (event) => {
 
-    document.addEventListener(
-        "click",
-        (event) => {
+        const button = event.target.closest(".view-btn");
 
-            const button =
-                event.target.closest(
-                    ".view-btn"
-                );
-
-
-            if (!button) {
-                return;
-            }
-
-
-            const id =
-                button.getAttribute(
-                    "data-id"
-                );
-
-
-            if (id) {
-
-                window.location.href =
-                    `attendance_details.html?id=${id}`;
-
-            }
-
+        if (!button) {
+            return;
         }
-    );
+
+        const id = button.getAttribute("data-id");
+
+        if (id) {
+            window.location.href = `attendance_details.html?id=${id}`;
+        }
+
+    });
 
 
-
-    // =================================================
     // PHOTO PROOF
-    // =================================================
+    document.addEventListener("click", (event) => {
 
-    document.addEventListener(
-        "click",
-        (event) => {
+        const button = event.target.closest(".photo-proof-btn");
 
-            const button =
-                event.target.closest(
-                    ".photo-proof-btn"
-                );
-
-
-            if (!button) {
-                return;
-            }
-
-
-            const photo =
-                button.getAttribute(
-                    "data-photo"
-                );
-
-
-            if (!photo) {
-                return;
-            }
-
-
-            const modal =
-                document.getElementById(
-                    "photoProofModal"
-                );
-
-
-            const image =
-                document.getElementById(
-                    "photoProofImage"
-                );
-
-
-            if (!modal || !image) {
-                return;
-            }
-
-
-            image.src =
-                photo;
-
-
-            modal.classList.add(
-                "show"
-            );
-
+        if (!button) {
+            return;
         }
-    );
 
+        const photo = button.getAttribute("data-photo");
+        const modal = document.getElementById("photoProofModal");
+        const image = document.getElementById("photoProofImage");
+
+        if (!photo || !modal || !image) {
+            return;
+        }
+
+        image.src = photo;
+        modal.classList.add("show");
+
+    });
 
 
     // CLOSE PHOTO MODAL
+    document.addEventListener("click", (event) => {
 
-    document.addEventListener(
-        "click",
-        (event) => {
+        const closeButton = event.target.closest("#photoProofClose");
+        const modal = document.getElementById("photoProofModal");
+        const image = document.getElementById("photoProofImage");
 
-            const closeButton =
-                event.target.closest(
-                    "#photoProofClose"
-                );
+        if (closeButton || event.target === modal) {
 
-
-            const modal =
-                document.getElementById(
-                    "photoProofModal"
-                );
-
-
-            const image =
-                document.getElementById(
-                    "photoProofImage"
-                );
-
-
-            if (
-                closeButton ||
-                event.target === modal
-            ) {
-
-                if (modal) {
-
-                    modal.classList.remove(
-                        "show"
-                    );
-
-                }
-
-
-                if (image) {
-
-                    image.src =
-                        "";
-
-                }
-
-            }
+            if (modal) modal.classList.remove("show");
+            if (image) image.src = "";
 
         }
-    );
 
+    });
+
+
+    // =================================================
+    // CARD POPUPS
+    //
+    // Bawat summary card ay may sariling page na
+    // nilo-load sa iframe at lumalabas bilang popup
+    // (kagaya ng stat cards sa dashboard).
+    // =================================================
+
+    const listModal = document.getElementById("attendanceListModal");
+    const listFrame = document.getElementById("attendanceListFrame");
+    const listModalTitle = document.getElementById("attendanceListModalTitle");
+    const listModalIcon = document.getElementById("attendanceListModalIcon");
+    const listModalClose = document.getElementById("closeAttendanceListModalBtn");
+
+    const cardPopups = [
+        {
+            card: "scheduledCard",
+            title: "Scheduled Today",
+            icon: "fa-solid fa-users",
+            src: "attendance_scheduled.html"
+        },
+        {
+            card: "presentCard",
+            title: "Present Today",
+            icon: "fa-solid fa-user-check",
+            src: "attendance_present.html"
+        },
+        {
+            card: "lateCard",
+            title: "Late Today",
+            icon: "fa-solid fa-clock",
+            src: "attendance_late.html"
+        },
+        {
+            card: "absentCard",
+            title: "Absent Today",
+            icon: "fa-solid fa-user-xmark",
+            src: "attendance_absent.html"
+        }
+    ];
+
+    function openListPopup(config) {
+
+        if (!listModal || !listFrame) {
+            return;
+        }
+
+        if (listModalTitle) listModalTitle.textContent = config.title;
+        if (listModalIcon) listModalIcon.className = config.icon;
+
+        // I-set ang src pagbukas lang para laging bago ang data
+        listFrame.src = config.src;
+
+        listModal.classList.add("show");
+
+        document.body.style.overflow = "hidden";
+    }
+
+    function closeListPopup() {
+
+        if (!listModal || !listFrame) {
+            return;
+        }
+
+        listModal.classList.remove("show");
+
+        listFrame.src = "about:blank";
+
+        document.body.style.overflow = "";
+    }
+
+    cardPopups.forEach((config) => {
+
+        const card = document.getElementById(config.card);
+
+        if (!card) {
+            return;
+        }
+
+        card.addEventListener("click", () => openListPopup(config));
+
+        card.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                openListPopup(config);
+            }
+        });
+
+    });
+
+    if (listModalClose) {
+        listModalClose.addEventListener("click", closeListPopup);
+    }
+
+    if (listModal) {
+        listModal.addEventListener("click", (event) => {
+            if (event.target === listModal) {
+                closeListPopup();
+            }
+        });
+    }
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && listModal && listModal.classList.contains("show")) {
+            closeListPopup();
+        }
+    });
+
+    // Message galing sa loob ng popup (hal. "Back" button)
+    window.addEventListener("message", (event) => {
+        if (event.data && event.data.type === "closeAttendanceListModal") {
+            closeListPopup();
+        }
+    });
 
 
     // =================================================
     // RUN
     // =================================================
 
-    syncUserProfile();
+    tickClock();
 
-    fetchTotalStudents();
+    setInterval(tickClock, 1000);
 
-    loadAttendanceRecords();
+
+    (async function init() {
+
+        try {
+
+            await loadUsers();
+
+            // Realtime: lalabas agad ang bagong time-in / time-out
+            subscribeAttendance(
+                (docs) => {
+
+                    attendanceDocs = docs;
+
+                    dataReady = true;
+
+                    rebuild();
+
+                },
+                (error) => {
+
+                    console.error("Attendance listener error:", error);
+
+                    attendanceTable.innerHTML = `
+                        <tr>
+                            <td colspan="10" style="text-align:center; color:#e74c3c; padding:30px;">
+                                Unable to load attendance records.
+                            </td>
+                        </tr>`;
+
+                }
+            );
+
+        } catch (error) {
+
+            console.error("Error loading attendance:", error);
+
+            if (attendanceTable) {
+                attendanceTable.innerHTML = `
+                    <tr>
+                        <td colspan="10" style="text-align:center; color:#e74c3c; padding:30px;">
+                            Unable to load attendance records.
+                        </td>
+                    </tr>`;
+            }
+
+        }
+
+    })();
 
 });

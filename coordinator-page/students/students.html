@@ -9,6 +9,9 @@
     <link rel="stylesheet" href="../sidebar/sidebar-web.css">
     <link rel="stylesheet" href="students.css">
 
+    <!-- Shared Coordinator Header CSS -->
+    <link rel="stylesheet" href="../header/header.css">
+
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
     
@@ -25,81 +28,17 @@
 
             <!-- MAIN -->
             <main class="main">
-                <header>
-                    <div>
-                        <h2>Students</h2>
-                        <p>Manage all student interns.</p>
-                    </div>
-
-                    <div class="top-right">
-                        <!-- Notification -->
-                        <!--
-                            Kept as its own "notif-wrap" element rather than
-                            nesting the dropdown straight inside the old
-                            .notification bell icon, because the shared
-                            sidebar-web.css style for .notification clips
-                            overflow on that box, which would hide the
-                            dropdown and make the bell feel unclickable.
-                        -->
-                        <div class="notif-wrap" id="notifBell">
-
-                            <div class="notification" id="notifTrigger">
-                                <i class="fa-regular fa-bell"></i>
-                                <span class="badge" id="notifBadge" style="display:none;">0</span>
-                            </div>
-
-                            <!-- NOTIFICATION DROPDOWN -->
-                            <div class="notif-menu" id="notifMenu">
-
-                                <div class="notif-menu-head">
-                                    <h5>Notifications</h5>
-                                    <button type="button" class="notif-clear-btn" id="notifMarkReadBtn">
-                                        Mark all as read
-                                    </button>
-                                </div>
-
-                                <div class="notif-list" id="notifList">
-                                    <div class="notif-empty">No report submissions yet.</div>
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                        <!-- Profile -->
-                        <div class="profile" id="profileMenuTrigger">
-                            <div class="avatar" id="userAvatar">MS</div>
-                            <div class="profile-info">
-                                <h4 id="userName">Coordinator</h4>
-                                <p id="userRole">OJT Coordinator</p>
-                            </div>
-                            <i class="fa-solid fa-chevron-down" id="profileChevron"></i>
-
-                            <!-- PROFILE DROPDOWN -->
-                            <div class="profile-menu" id="profileMenu">
-
-                                <div class="profile-menu-head">
-                                    <div class="avatar avatar-sm" id="menuAvatar">MS</div>
-                                    <div class="profile-menu-id">
-                                        <h5 id="menuName">Loading...</h5>
-                                        <span id="menuEmail">&mdash;</span>
-                                    </div>
-                                </div>
-
-                                <button type="button" class="profile-menu-item" id="showProfileBtn">
-                                    <i class="fa-solid fa-circle-user"></i>
-                                    Account settings
-                                </button>
-
-                                <button type="button" class="profile-menu-item item-danger" id="logoutBtn">
-                                    <i class="fa-solid fa-right-from-bracket"></i>
-                                    Log out
-                                </button>
-
-                            </div>
-                        </div>
-                    </div>
-                </header>
+                <!-- =================================================
+                     HEADER
+                     (Loaded from ../header/header.html by
+                     ../header/header.js - iisang file na lang ang
+                     ie-edit kapag may babaguhin sa header.)
+                ================================================== -->
+                <header
+                    id="header-container"
+                    data-page-title="Students"
+                    data-page-subtitle="Manage all student interns."
+                ></header>
 
                 <!-- STUDENTS CONTENT -->
                 <div class="students-content">
@@ -145,6 +84,12 @@
                                     <option value="Active">Active</option>
                                     <option value="Pending">Pending</option>
                                     <option value="Completed">Completed</option>
+                                </select>
+
+                                <!-- Year filter (base sa student number) -
+                                     awtomatikong pinupunan ng students.js -->
+                                <select id="yearFilter">
+                                    <option value="All Years">All Years</option>
                                 </select>
                             </div>
                         </div>
@@ -263,11 +208,26 @@
                         <!-- Basic Information Section -->
                         <div class="form-section-title">Basic Information</div>
 
-                        <div class="form-group" style="margin-bottom: 16px;">
-                            <label>Student ID</label>
-                            <div class="input-with-icon">
-                                <i class="fa-solid fa-id-card"></i>
-                                <input type="text" id="editStudentId" placeholder="e.g. 2024001">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Student ID</label>
+                                <div class="input-with-icon">
+                                    <i class="fa-solid fa-id-card"></i>
+                                    <input type="text" id="editStudentId" placeholder="e.g. 2024001">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Gender</label>
+                                <div class="input-with-icon">
+                                    <i class="fa-solid fa-venus-mars"></i>
+                                    <select id="editStudentGender" class="modal-select">
+                                        <option value="">Not specified</option>
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
@@ -428,6 +388,15 @@
                             <h4 id="viewStudentName">Student Name</h4>
                             <span class="status-pill pending" id="viewStudentStatus">Pending</span>
                         </div>
+
+                        <!-- GENDER (nasa kanan, sa dulo ng profile header) -->
+                        <div class="profile-gender">
+                            <span class="profile-gender-label">Gender</span>
+                            <span class="profile-gender-value" id="viewStudentGenderBox">
+                                <i class="fa-solid fa-venus-mars" id="viewStudentGenderIcon"></i>
+                                <span id="viewStudentGender">Not specified</span>
+                            </span>
+                        </div>
                     </div>
 
                     <div class="profile-details-grid">
@@ -509,6 +478,7 @@
     <div class="toast-container" id="toastContainer"></div>
 
 <script src="../sidebar/sidebar-web.js"></script>
+<script type="module" src="../header/header.js"></script>
 <script type="module" src="students.js"></script>
 
 </body>

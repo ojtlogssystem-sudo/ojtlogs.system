@@ -1,0 +1,96 @@
+<!--
+    ================================================================
+    SHARED COORDINATOR HEADER (partial)
+    ================================================================
+    Hindi ito isang buong page — piraso lang ito ng HTML na kinukuha
+    (fetch) ni header.js at ini-inject sa loob ng:
+
+        <header id="header-container" ...></header>
+
+    na nasa bawat page. Kapag may babaguhin sa itsura/istruktura ng
+    header (hal. bagong menu item, bagong icon), DITO lang mag-edit -
+    awtomatiko nang makikita ang bago sa LAHAT ng page na gumagamit
+    nito. Huwag nang gagawa ng sarili-sariling <header> markup sa
+    bawat individual na page.
+================================================================= -->
+
+<div>
+    <h2 id="headerPageTitle">Dashboard</h2>
+    <p id="headerPageSubtitle">
+        Welcome back, <span id="welcomeName">Coordinator</span>.
+    </p>
+</div>
+
+<div class="top-right">
+
+    <!-- Notification -->
+    <!--
+        Wrapped in its own "notif-wrap" element (instead of putting the
+        dropdown straight inside the .notification bell icon) because
+        the shared sidebar-web.css style for .notification clips/hides
+        overflow, which would silently hide the dropdown. The dropdown
+        lives OUTSIDE that clipped box, as a sibling, so it can show up.
+    -->
+    <div class="notif-wrap" id="notifBell">
+
+        <div class="notification" id="notifTrigger">
+            <i class="fa-regular fa-bell"></i>
+            <span class="badge" id="notifBadge" style="display:none;">0</span>
+        </div>
+
+        <!-- NOTIFICATION DROPDOWN -->
+        <div class="notif-menu" id="notifMenu">
+
+            <div class="notif-menu-head">
+                <h5>Notifications</h5>
+                <button type="button" class="notif-clear-btn" id="notifMarkReadBtn">
+                    Mark all as read
+                </button>
+            </div>
+
+            <div class="notif-list" id="notifList">
+                <div class="notif-empty">No report submissions yet.</div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Profile -->
+    <div class="profile" id="profileMenuTrigger">
+
+        <div class="avatar" id="userAvatar">CO</div>
+
+        <div class="profile-info">
+            <h4 id="userName">Coordinator</h4>
+            <p id="userRole">OJT Coordinator</p>
+        </div>
+
+        <i class="fa-solid fa-chevron-down" id="profileChevron"></i>
+
+        <!-- PROFILE DROPDOWN -->
+        <div class="profile-menu" id="profileMenu">
+
+            <div class="profile-menu-head">
+                <div class="avatar avatar-sm" id="menuAvatar">CO</div>
+                <div class="profile-menu-id">
+                    <h5 id="menuName">Loading...</h5>
+                    <span id="menuEmail">&mdash;</span>
+                </div>
+            </div>
+
+            <button type="button" class="profile-menu-item" id="showProfileBtn">
+                <i class="fa-solid fa-circle-user"></i>
+                Account settings
+            </button>
+
+            <button type="button" class="profile-menu-item item-danger" id="logoutBtn">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                Log out
+            </button>
+
+        </div>
+
+    </div>
+
+</div>

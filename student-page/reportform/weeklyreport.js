@@ -91,6 +91,17 @@ document.addEventListener("DOMContentLoaded", () => {
         if (backBtn) {
             backBtn.addEventListener("click", (e) => {
                 e.preventDefault();
+
+                // Kapag nakabukas bilang popup (iframe) sa coordinator
+                // dashboard, isara lang ang popup imbes na mag-redirect.
+                if (window.parent !== window) {
+                    window.parent.postMessage(
+                        { type: "closeWeeklyReportModal" },
+                        window.location.origin
+                    );
+                    return;
+                }
+
                 if (isCoordinator || targetStudentId) {
                     window.location.href = "/coordinator-page/dashboard/dashboard.html";
                 } else {

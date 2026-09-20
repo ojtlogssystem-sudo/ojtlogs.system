@@ -13,6 +13,9 @@
     <!-- Dashboard CSS -->
     <link rel="stylesheet" href="dashboard.css">
 
+    <!-- Shared Coordinator Header CSS -->
+    <link rel="stylesheet" href="../header/header.css">
+
     <!-- Analytics CSS -->
     <link rel="stylesheet" href="/coordinator-page/analytics/analytics.css">
 
@@ -46,115 +49,17 @@
 
         <!-- =================================================
              HEADER
+             (Loaded from ../header/header.html by
+             ../header/header.js - iisang file na lang ang
+             ie-edit kapag may babaguhin sa header, dito o sa
+             ibang coordinator page.)
         ================================================== -->
-        <header>
+        <header
+            id="header-container"
+            data-page-title="Dashboard"
+            data-page-subtitle="Welcome back, {name}."
+        ></header>
 
-            <div>
-                <h2>Dashboard</h2>
-
-                <p>
-                    Welcome back,
-                    <span id="welcomeName">Coordinator</span>.
-                </p>
-            </div>
-
-
-            <div class="top-right">
-
-                <!-- Notification -->
-                <!--
-                    Wrapped in its own "notif-wrap" element (instead of
-                    putting the dropdown straight inside the old .notification
-                    bell icon) because the shared sidebar-web.css style for
-                    .notification clips/hides overflow on that element, which
-                    was silently hiding the dropdown and making the bell feel
-                    unclickable. The dropdown now lives OUTSIDE that clipped
-                    box, as a sibling, so it can actually show up.
-                -->
-                <div class="notif-wrap" id="notifBell">
-
-                    <div class="notification" id="notifTrigger">
-
-                        <i class="fa-regular fa-bell"></i>
-
-                        <span class="badge" id="notifBadge" style="display:none;">0</span>
-
-                    </div>
-
-                    <!-- NOTIFICATION DROPDOWN -->
-                    <div class="notif-menu" id="notifMenu">
-
-                        <div class="notif-menu-head">
-                            <h5>Notifications</h5>
-                            <button type="button" class="notif-clear-btn" id="notifMarkReadBtn">
-                                Mark all as read
-                            </button>
-                        </div>
-
-                        <div class="notif-list" id="notifList">
-                            <div class="notif-empty">No report submissions yet.</div>
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-                <!-- Profile -->
-                <div class="profile" id="profileMenuTrigger">
-
-                    <div
-                        class="avatar"
-                        id="userAvatar"
-                    >
-                        CO
-                    </div>
-
-                    <div class="profile-info">
-
-                        <h4 id="userName">
-                            Coordinator
-                        </h4>
-
-                        <p id="userRole">
-                            OJT Coordinator
-                        </p>
-
-                    </div>
-
-                    <i class="fa-solid fa-chevron-down" id="profileChevron"></i>
-
-                    <!-- PROFILE DROPDOWN -->
-                    <div class="profile-menu" id="profileMenu">
-
-                        <div class="profile-menu-head">
-
-                            <div class="avatar avatar-sm" id="menuAvatar">CO</div>
-
-                            <div class="profile-menu-id">
-                                <h5 id="menuName">Loading...</h5>
-                                <span id="menuEmail">&mdash;</span>
-                            </div>
-
-                        </div>
-
-                        <button type="button" class="profile-menu-item" id="showProfileBtn">
-                            <i class="fa-solid fa-circle-user"></i>
-                            Account settings
-                        </button>
-
-                        <button type="button" class="profile-menu-item item-danger" id="logoutBtn">
-                            <i class="fa-solid fa-right-from-bracket"></i>
-                            Log out
-                        </button>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-        </header>
 
 
 
@@ -183,17 +88,15 @@
                         0
                     </h2>
 
-                    <div class="stat-footer">
 
-                        <span class="positive">
-                            <i class="fa-solid fa-arrow-up"></i>
-                            Active
-                        </span>
-
-                        <small>
-                            System Registered
-                        </small>
-
+                    <div class="stat-note muted" id="totalInternsNote">
+                        <div class="stat-note-header">
+                            <i class="fa-solid fa-user-plus"></i>
+                            <span class="stat-note-title">No Registered Interns Yet</span>
+                        </div>
+                        <p>
+                            Students will appear here once they register.
+                        </p>
                     </div>
 
                 </div>
@@ -222,17 +125,14 @@
                         0
                     </h2>
 
-                    <div class="stat-footer">
-
-                        <span class="positive">
-                            <i class="fa-solid fa-arrow-up"></i>
-                            On Track
-                        </span>
-
-                        <small>
-                            Currently Ongoing
-                        </small>
-
+                    <div class="stat-note muted" id="activeInternsNote">
+                        <div class="stat-note-header">
+                            <i class="fa-solid fa-user-clock"></i>
+                            <span class="stat-note-title">No Active Interns Yet</span>
+                        </div>
+                        <p>
+                            Interns will show up here once they start their internship.
+                        </p>
                     </div>
 
                 </div>
@@ -263,20 +163,15 @@
                         0
                     </h2>
 
-                    <div class="stat-footer">
 
-                        <span class="positive">
-
-                            <i class="fa-solid fa-arrow-up"></i>
-
-                            Finished
-
-                        </span>
-
-                        <small>
-                            Rendered Hours
-                        </small>
-
+                    <div class="stat-note muted" id="completedNote">
+                        <div class="stat-note-header">
+                            <i class="fa-solid fa-clipboard-list"></i>
+                            <span class="stat-note-title">No Completions Yet</span>
+                        </div>
+                        <p>
+                            Students who finish their required hours will appear here.
+                        </p>
                     </div>
 
                 </div>
@@ -306,21 +201,16 @@
                     <h3 id="atRiskStudentsCount">
                         0
                     </h3>
+ 
 
-                    <div class="stat-footer">
-
-                        <span class="negative">
-
-                            <i class="fa-solid fa-circle-exclamation"></i>
-
-                            Needs attention
-
-                        </span>
-
-                        <small>
-                            AI prediction
-                        </small>
-
+                    <div class="stat-note success" id="atRiskNote">
+                        <div class="stat-note-header">
+                            <i class="fa-solid fa-circle-check"></i>
+                            <span class="stat-note-title">All Clear</span>
+                        </div>
+                        <p>
+                            No students are currently flagged as at-risk.
+                        </p>
                     </div>
 
                 </div>
@@ -349,76 +239,18 @@
                         0
                     </h2>
 
-                    <div class="stat-footer">
-
-                        <span class="positive">
-                            <i class="fa-solid fa-arrow-up"></i>
-                            Graduated
-                        </span>
-
-                        <small>
-                            System Recorded
-                        </small>
-
+                    <div class="stat-note muted" id="graduatedNote">
+                        <div class="stat-note-header">
+                            <i class="fa-solid fa-graduation-cap"></i>
+                            <span class="stat-note-title">No Graduates Yet</span>
+                        </div>
+                        <p>
+                            Graduated students will be recorded here.
+                        </p>
                     </div>
 
                 </div>
 
-            </div>
-
-        </section>
-
-
-
-        <!-- =================================================
-             CARD ACTION BANNERS
-             Short status / action notes, one for each of
-             the 4 main stat cards above (left to right).
-        ================================================== -->
-        <section class="cards-info">
-
-            <!-- for Total Registered Interns -->
-            <div class="info-banner success">
-                <div class="info-banner-header">
-                    <i class="fa-solid fa-user-check"></i>
-                    Currently Active
-                </div>
-                <p>
-                    Monitor student progress and internship status.
-                </p>
-            </div>
-
-            <!-- for Active Interns -->
-            <div class="info-banner success">
-                <div class="info-banner-header">
-                    <i class="fa-solid fa-check"></i>
-                    Progressing Normally
-                </div>
-                <p>
-                    Continue regular monitoring and support.
-                </p>
-            </div>
-
-            <!-- for Completed -->
-            <div class="info-banner success">
-                <div class="info-banner-header">
-                    <i class="fa-solid fa-arrow-up"></i>
-                    Needs Improvement
-                </div>
-                <p>
-                    Review students with low internship progress.
-                </p>
-            </div>
-
-            <!-- for At-Risk Students -->
-            <div class="info-banner danger">
-                <div class="info-banner-header">
-                    <i class="fa-solid fa-circle-exclamation"></i>
-                    Needs Intervention
-                </div>
-                <p>
-                    Review flagged students and address their risk factors.
-                </p>
             </div>
 
         </section>
@@ -454,6 +286,18 @@
 
 
                         <div class="table-header-right">
+
+
+                            <!-- Search (name, student ID, section, company, week) -->
+                            <div class="report-search-box">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input
+                                    type="text"
+                                    id="reportSearchInput"
+                                    placeholder="Search name, ID, company..."
+                                    autocomplete="off"
+                                >
+                            </div>
 
 
                             <!-- Section Filter -->
@@ -1107,6 +951,52 @@
         </div>
 
         <!-- =================================================
+             WEEKLY REPORT MODAL
+             (Loads student-page/reportform/weeklyreport.html
+             inside an iframe - same UI, pero popup na lang
+             imbes na bagong tab)
+        ================================================== -->
+        <div
+            class="modal-overlay"
+            id="weeklyReportModal"
+        >
+
+            <div class="modal-card completed-students-modal-card">
+
+                <div class="modal-header">
+
+                    <h3>
+                        <i
+                            class="fa-solid fa-file-lines"
+                            style="color: #AB0A0A;"
+                        ></i>
+                        Weekly Accomplishment Report
+                    </h3>
+
+                    <button
+                        class="close-btn"
+                        id="closeWeeklyReportModalBtn"
+                        type="button"
+                    >
+                        &times;
+                    </button>
+
+                </div>
+
+                <div class="modal-body completed-students-modal-body">
+
+                    <iframe
+                        id="weeklyReportFrame"
+                        title="Weekly Accomplishment Report"
+                    ></iframe>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- =================================================
              REGISTERED STUDENTS MODAL
         ================================================== -->
         <div
@@ -1245,6 +1135,9 @@
 
 <!-- Sidebar -->
 <script src="../sidebar/sidebar-web.js"></script>
+
+<!-- Shared Coordinator Header -->
+<script type="module" src="../header/header.js"></script>
 
 <!-- Dashboard JS -->
 <script type="module" src="dashboard.js"></script>

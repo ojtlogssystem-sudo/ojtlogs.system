@@ -31,6 +31,33 @@ const usersRef = collection(db, "users");
 const attendanceRef = collection(db, "attendance");
 
 // Generates First Initial + Last Initial
+// Mirrors student_dashboard.js's calculateHoursFromTime() exactly, so any
+// record lacking a saved todayHours string is treated the same on both pages.
+function calculateHoursFromTime(timeIn, timeOut) {
+    if (!timeIn || !timeOut || timeIn === "--" || timeOut === "--") return 0;
+    try {
+        const parseToMinutes = (timeStr) => {
+            let parts = timeStr.trim().split(" ");
+            let time = parts[0];
+            let modifier = parts[1] ? parts[1].toUpperCase() : "";
+            let [hours, minutes] = time.split(":").map(Number);
+
+            if (modifier === "PM" && hours < 12) hours += 12;
+            if (modifier === "AM" && hours === 12) hours = 0;
+            return (hours * 60) + (minutes || 0);
+        };
+
+        const inMinutes = parseToMinutes(timeIn);
+        const outMinutes = parseToMinutes(timeOut);
+
+        if (outMinutes <= inMinutes) return 0;
+        return (outMinutes - inMinutes) / 60;
+    } catch (e) {
+        console.error("Error parsing time string:", e);
+        return 0;
+    }
+}
+
 function getInitials(name) {
     if (!name || typeof name !== 'string') return 'N/A';
     const cleanName = name.replace(/\b[A-Za-z]\.\b/g, '').trim();
@@ -62,7 +89,7 @@ document.addEventListener("DOMContentLoaded", () => {
     backBtn.href = "../students/students.html";
     backBtnText.textContent = "Back to Students";
     } else {
-        backBtn.href = "attendance_records.html";
+        backBtn.href = "../attendance/attendance_records.html";
         backBtnText.textContent = "Back to Attendance Records";
     }
 
@@ -170,7 +197,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 allAttSnapshot.forEach(docSnap => {
                     const data = docSnap.data();
                     const isSameUserId = targetUserId && (data.userId === targetUserId || data.uid === targetUserId);
-                    const isSameEmail = studentEmail && data.userEmail && (data.userEmail.toLowerCase() === studentEmail.toLowerCase());
+                    // Only fall back to matching by email when the record has NO
+                    // userId/uid at all. Previously this was an independent OR,
+                    // so any record whose email happened to match — even if its
+                    // userId pointed to a different account — got counted too,
+                    // inflating this page's total above the student dashboard's
+                    // (which strictly queries by userId only). Matching this way
+                    // keeps both pages summing the exact same set of records.
+                    const hasOwnerId = !!(data.userId || data.uid);
+                    const isSameEmail = !hasOwnerId && studentEmail && data.userEmail && (data.userEmail.toLowerCase() === studentEmail.toLowerCase());
 
                     if (isSameUserId || isSameEmail) {
                         allStudentAttendance.push({ id: docSnap.id, ...data });
@@ -279,6 +314,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 const matchMins = r.todayHours.match(/(\d+)\s*m/i);
                 if (matchHours) totalMinutes += parseInt(matchHours[1]) * 60;
                 if (matchMins) totalMinutes += parseInt(matchMins[1]);
+            } else if (r.timeIn && r.timeOut && r.timeOut !== "--") {
+                // Same fallback as student_dashboard.js: recreate the net
+                // (1hr break deducted) minutes for older records saved
+                // before todayHours existed, instead of silently counting
+                // them as 0 like this page used to.
+                const rawHours = calculateHoursFromTime(r.timeIn, r.timeOut);
+                totalMinutes += Math.max(0, Math.round(rawHours * 60) - 60);
             } else if (r.hoursRendered) {
                 totalMinutes += parseFloat(r.hoursRendered) * 60;
             }

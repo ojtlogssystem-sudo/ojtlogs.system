@@ -1,0 +1,308 @@
+/* ================================================================
+   SHARED COORDINATOR HEADER STYLES
+   ================================================================
+   Ginagamit sa LAHAT ng coordinator page (dashboard, attendance,
+   students, atbp.) sa pamamagitan ng:
+
+       <link rel="stylesheet" href="../header/header.css">
+
+   Ang pangkalahatang layout ng <header> (padding, flex spacing,
+   .top-right positioning) ay galing pa rin sa shared na
+   sidebar-web.css - dito lang dapat ilagay ang mga estilo na
+   SPECIFIC sa notification bell + profile dropdown widgets, para
+   iisang file lang ang babaguhin kapag may ia-adjust dito.
+================================================================= */
+
+.notification,
+.profile {
+    position: relative;
+}
+
+/*
+   Defensive overrides: the shared sidebar-web.css already styles
+   .notification / .profile as small icon boxes and may set
+   overflow:hidden on them (common for clipping badge circles),
+   which would silently hide our dropdowns and make them look
+   "unclickable". These rules force them to behave as proper
+   dropdown containers no matter what the shared stylesheet does.
+*/
+#notifBell,
+#profileMenuTrigger {
+    position: relative !important;
+    overflow: visible !important;
+    cursor: pointer !important;
+    z-index: 10;
+}
+
+#notifBell .notification {
+    overflow: visible !important;
+}
+
+/* ---------- Avatar photo support ---------- */
+
+.avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    display: block;
+}
+
+.avatar-sm {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #AB0A0A;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+#profileChevron {
+    transition: transform 0.2s ease;
+}
+
+.profile.open #profileChevron {
+    transform: rotate(180deg);
+}
+
+/* ---------- Profile dropdown ---------- */
+
+.profile-menu {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    min-width: 232px;
+    background: #ffffff;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+    padding: 6px;
+    z-index: 3000;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-6px);
+    transition: opacity .18s ease, transform .18s ease, visibility .18s;
+}
+
+.profile.open .profile-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.profile-menu-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border-bottom: 1px solid #F1F5F9;
+    margin-bottom: 6px;
+}
+
+.profile-menu-id {
+    min-width: 0;
+}
+
+.profile-menu-id h5 {
+    font-size: 13px;
+    font-weight: 700;
+    color: #0F172A;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.profile-menu-id span {
+    font-size: 11.5px;
+    color: #64748B;
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+}
+
+.profile-menu-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border: none;
+    background: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: #0F172A;
+    text-align: left;
+    transition: background .15s ease, color .15s ease;
+}
+
+.profile-menu-item i {
+    font-size: 13px;
+    color: #64748B;
+    width: 16px;
+    text-align: center;
+}
+
+.profile-menu-item:hover {
+    background: #F1F5F9;
+}
+
+.profile-menu-item:hover i {
+    color: #AB0A0A;
+}
+
+.profile-menu-item.item-danger {
+    color: #991B1B;
+}
+
+.profile-menu-item.item-danger i {
+    color: #991B1B;
+}
+
+.profile-menu-item.item-danger:hover {
+    background: #FEE2E2;
+}
+
+/* ---------- Notification bell + dropdown ---------- */
+
+.notification {
+    cursor: pointer;
+    user-select: none;
+}
+
+.notif-menu {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 320px;
+    max-width: 90vw;
+    background: #ffffff;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+    z-index: 3000;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-6px);
+    transition: opacity .18s ease, transform .18s ease, visibility .18s;
+}
+
+#notifBell.open .notif-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.notif-menu-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border-bottom: 1px solid #F1F5F9;
+}
+
+.notif-menu-head h5 {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #0F172A;
+}
+
+.notif-clear-btn {
+    background: none;
+    border: none;
+    color: #AB0A0A;
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 2px 4px;
+}
+
+.notif-clear-btn:hover {
+    text-decoration: underline;
+}
+
+.notif-list {
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 6px;
+}
+
+.notif-empty {
+    padding: 24px 10px;
+    text-align: center;
+    font-size: 12.5px;
+    color: #64748B;
+}
+
+.notif-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    position: relative;
+    transition: background .15s ease;
+}
+
+.notif-item:hover {
+    background: #F1F5F9;
+}
+
+.notif-item.unread {
+    background: #FEF2F2;
+}
+
+.notif-item.unread:hover {
+    background: #FEE2E2;
+}
+
+.notif-icon {
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #FEE2E2;
+    color: #AB0A0A;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12.5px;
+}
+
+.notif-text p {
+    font-size: 12.5px;
+    color: #0F172A;
+    line-height: 1.4;
+    margin: 0 0 3px 0;
+}
+
+.notif-text span {
+    font-size: 11px;
+    color: #64748B;
+}
+
+.notif-dot {
+    position: absolute;
+    top: 12px;
+    right: 10px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #AB0A0A;
+}
+
+@media (max-width: 768px) {
+    .notif-menu {
+        width: 280px;
+    }
+}

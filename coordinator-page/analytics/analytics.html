@@ -7,6 +7,7 @@
     <title>Analytics | OJT-LOGS</title>
 
     <link rel="stylesheet" href="../sidebar/sidebar-web.css">
+    <link rel="stylesheet" href="../header/header.css">
     <link rel="stylesheet" href="analytics.css">
 
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -25,137 +26,15 @@
     <!-- MAIN CONTENT -->
     <main class="main">
 
-        <!-- HEADER -->
-        <header>
-            <div>
-                <h2>Analytics</h2>
-                <p>Monitor student performance and internship progress.</p>
-            </div>
-
-            <div class="top-right">
-                <div class="notification">
-                    <i class="fa-regular fa-bell"></i>
-                    <span class="badge">3</span>
-                </div>
-
-                <div class="profile">
-                    <div class="avatar" id="profileAvatar">MS</div>
-                    <div class="profile-info">
-                        <h4 id="profileName">Coordinator</h4>
-                        <p id="profileRole">OJT Coordinator</p>
-                    </div>
-                    <i class="fa-solid fa-chevron-down"></i>
-                </div>
-            </div>
-        </header>
+        <!-- HEADER (shared: ../header/header.js + header.html) -->
+        <header
+            id="header-container"
+            data-page-title="Analytics"
+            data-page-subtitle="Monitor student performance and internship progress."
+        ></header>
 
         <!-- ANALYTICS CONTENT -->
         <div class="analytics-content">
-
-            <!-- ==========================================
-                 SUMMARY CARDS
-            =========================================== -->
-            <div class="analytics-summary">
-                <div class="summary-card">
-                    <div class="summary-icon blue">
-                        <i class="fa-solid fa-user-graduate"></i>
-                    </div>
-
-                    <div class="stat-content">
-                        <p class="title">Total Registered Interns</p>
-
-                        <h3>0</h3>
-
-                        <div class="stat-footer">
-                            <span class="positive">
-                                <i class="fa-solid fa-user-check"></i>
-                                <span id="totalStudentsInterpretation">
-                                    Currently Active
-                                </span>
-                            </span>
-
-                            <small id="totalStudentsDescription">
-                                Monitor student progress and internship status.
-                            </small>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="summary-card">
-                    <div class="summary-icon green">
-                        <i class="fa-solid fa-chart-line"></i>
-                    </div>
-
-                    <div class="stat-content">
-                        <p class="title">Average Progress</p>
-
-                        <h3>0%</h3>
-
-                        <div class="stat-footer">
-                            <span class="positive">
-                                <i class="fa-solid fa-arrow-up"></i>
-                                <span id="progressInterpretation">
-                                    Needs Improvement
-                                </span>
-                            </span>
-
-                            <small id="progressDescription">
-                                Review students with low internship progress.
-                            </small>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="summary-card">
-                    <div class="summary-icon red">
-                        <i class="fa-solid fa-triangle-exclamation"></i>
-                    </div>
-
-                    <div class="stat-content">
-                        <p class="title">At-Risk Students</p>
-
-                        <h3>0</h3>
-
-                        <div class="stat-footer">
-                            <span class="negative">
-                                <i class="fa-solid fa-circle-exclamation"></i>
-                                <span id="riskInterpretation">
-                                    Needs Intervention
-                                </span>
-                            </span>
-
-                            <small id="riskDescription">
-                                Review flagged students and address their risk factors.
-                            </small>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="summary-card">
-                    <div class="summary-icon orange">
-                        <i class="fa-solid fa-circle-check"></i>
-                    </div>
-
-                    <div class="stat-content">
-                        <p class="title">On-Track Students</p>
-
-                        <h3>0</h3>
-
-                        <div class="stat-footer">
-                            <span class="positive">
-                                <i class="fa-solid fa-check"></i>
-                                <span id="onTrackInterpretation">
-                                    Progressing Normally
-                                </span>
-                            </span>
-
-                            <small id="onTrackDescription">
-                                Continue regular monitoring and support.
-                            </small>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             <!-- ==========================================
                  STUDENT PERFORMANCE TABLE
@@ -173,16 +52,16 @@
                             <input type="text" id="searchStudent" placeholder="Search student...">
                         </div>
 
+                        <!-- Sections are filled in by analytics.js from the student records -->
                         <select id="sectionFilter">
                             <option value="all">All Sections</option>
-                            <option value="3A">BSIT 3A</option>
-                            <option value="3B">BSIT 3B</option>
                         </select>
 
                         <select id="progressFilter">
                             <option value="all">All Status</option>
                             <option value="completed">Completed</option>
-                            <option value="ongoing">On Track</option>
+                            <option value="ontrack">On Track</option>
+                            <option value="monitoring">Needs Monitoring</option>
                             <option value="atrisk">At Risk</option>
                         </select>
                     </div>
@@ -198,13 +77,14 @@
                                 <th>Company</th>
                                 <th>Progress</th>
                                 <th>Hours</th>
+                                <th>Absences</th>
                                 <th>AI Status</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
                         <tbody id="studentTable">
                             <tr>
-                                <td colspan="8" style="text-align: center; color: #777; padding: 30px;">
+                                <td colspan="9" style="text-align: center; color: #777; padding: 30px;">
                                     Loading student records from database...
                                 </td>
                             </tr>
@@ -280,15 +160,26 @@
 
                     <div class="chart-card">
                         <h4 class="chart-card-title">Graduated Students by Batch (Bar Graph)</h4>
+                        <p class="chart-card-desc">
+                            Registered students per batch compared with those who completed the
+                            required OJT hours. The batch is the year at the start of the Student ID
+                            (e.g. 2023-01-22112 is batch 2023). Only batches with registered students are shown.
+                        </p>
                         <div class="chart-canvas-wrapper">
                             <canvas id="graduatesByBatchChart"></canvas>
+                            <p class="chart-empty" id="graduatesByBatchEmpty">Loading batch data...</p>
                         </div>
                     </div>
 
                     <div class="chart-card">
                         <h4 class="chart-card-title">Student Status Distribution (Pie Graph)</h4>
+                        <p class="chart-card-desc">
+                            Share of all registered students by AI status: At Risk (behind on hours
+                            or too many absences), Needs Monitoring, and On Track (including completed).
+                        </p>
                         <div class="chart-canvas-wrapper">
                             <canvas id="riskStatusPieChart"></canvas>
+                            <p class="chart-empty" id="riskStatusPieEmpty">Loading student data...</p>
                         </div>
                     </div>
 
@@ -441,6 +332,7 @@
 </div>
 
 <script src="../sidebar/sidebar-web.js"></script>
+<script type="module" src="../header/header.js"></script>
 <script type="module" src="analytics.js"></script>
 
 </body>

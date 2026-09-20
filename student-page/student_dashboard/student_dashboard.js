@@ -32,10 +32,21 @@ const db = getFirestore(app);
 let studentRequiredHours = 600;
 let calendarController = null;
 
+// Converts an exact decimal hours value (e.g. 31.816666...) into an exact
+// "Xh Ym" string (e.g. "31h 49m") by rounding only to the nearest minute,
+// never to the nearest 0.1 hour. Used for the "Hours Completed" display so
+// it always matches the true logged time down to the minute.
+function hoursToHM(hoursFloat) {
+    const totalMinutes = Math.round((hoursFloat || 0) * 60);
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    return `${h}h ${m}m`;
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
     const modalOverlay = document.getElementById("activities-modal-overlay");
     if (modalOverlay) {
-        modalOverlay.style.display = "none";
+        modalOverlay.classList.remove("show");
     }
 
     fetch("../templated/sidebar.html")
@@ -63,6 +74,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (user) {
             await loadStudentData(user);
             listenToStudentAttendance(user.uid);
+            listenToActivities(user.uid);
         } else {
             window.location.href = "../student_login/student_login.html";
         }
@@ -127,6 +139,10 @@ async function loadStudentData(user) {
                 statusHeader.textContent = "At Risk";
                 statusHeader.style.color = "#ef4444";
                 if (statusElem) statusElem.style.color = "#ef4444";
+            } else if (displayStatus.toLowerCase().includes("monitoring")) {
+                statusHeader.textContent = "Needs Monitoring";
+                statusHeader.style.color = "#f59e0b";
+                if (statusElem) statusElem.style.color = "#f59e0b";
             } else if (displayStatus.toLowerCase().includes("completed")) {
                 statusHeader.textContent = "Completed";
                 statusHeader.style.color = "#22c55e";
@@ -173,7 +189,7 @@ function listenToStudentAttendance(userId) {
         let todayTimeOut = "--";
         let todayRendered = "0h 0m";
         let todayStatus = "";
-        let totalCompletedHours = 0;
+        let totalCompletedMinutes = 0; // exact minutes, matching attendance_details.js's calculateOverview()
         const dailyHoursMap = {};
 
         const now = new Date();
@@ -184,15 +200,34 @@ function listenToStudentAttendance(userId) {
 
         snapshot.forEach((docSnap) => {
             const data = docSnap.data();
-            let dailyHours = 0;
+            let netMinutes = 0;
 
-            if (data.timeIn && data.timeOut && data.timeOut !== "--") {
-                dailyHours = calculateHoursFromTime(data.timeIn, data.timeOut);
+            // Mirror attendance_details.js's calculateOverview() exactly, so the
+            // student dashboard's total always matches the coordinator's total:
+            // parse the actual net minutes (break already deducted, NOT capped
+            // to 0/8) out of the todayHours string attendance.js saved, e.g.
+            // "7h 40m (Under 8 Hours, 1hr break deducted)" -> 7h 40m, counted
+            // in full even though it's under 8 hours. hoursRendered is only a
+            // 0-or-8 pass/fail flag for attendance status, not a true hours
+            // total, so it's never used here for the sum. Everything is kept
+            // in whole minutes (not float hours) until the very end, so there's
+            // no rounding drift between this total and the coordinator's.
+            if (data.todayHours) {
+                const matchHours = data.todayHours.match(/(\d+)\s*h/i);
+                const matchMins = data.todayHours.match(/(\d+)\s*m/i);
+                if (matchHours) netMinutes += parseInt(matchHours[1]) * 60;
+                if (matchMins) netMinutes += parseInt(matchMins[1]);
+            } else if (data.timeIn && data.timeOut && data.timeOut !== "--") {
+                // Fallback for older records saved before todayHours existed:
+                // recreate the same net (break-deducted) figure manually.
+                const rawHours = calculateHoursFromTime(data.timeIn, data.timeOut);
+                netMinutes = Math.max(0, Math.round(rawHours * 60) - 60);
             } else if (data.hoursRendered) {
-                dailyHours = parseFloat(data.hoursRendered) || 0;
+                netMinutes = Math.round((parseFloat(data.hoursRendered) || 0) * 60);
             }
 
-            totalCompletedHours += dailyHours;
+            const dailyHours = netMinutes / 60;
+            totalCompletedMinutes += netMinutes;
 
             // Track completed hours per calendar date (e.g. "2026-01-01" -> 8)
             // so the calendar can show how many hours were rendered on a
@@ -207,21 +242,33 @@ function listenToStudentAttendance(userId) {
                 if (data.status) todayStatus = data.status;
 
                 if (todayTimeIn !== "--" && todayTimeOut !== "--") {
-                    let dHours = calculateHoursFromTime(todayTimeIn, todayTimeOut);
-                    let hrs = Math.floor(dHours);
-                    let mins = Math.round((dHours - hrs) * 60);
-                    todayRendered = `${hrs}h ${mins}m`;
+                    if (data.todayHours) {
+                        // Use the string attendance.js already formatted, which
+                        // reflects the 1-hour break deduction (e.g. "8h 0m (1hr break deducted)").
+                        todayRendered = data.todayHours;
+                    } else {
+                        // Fallback for older records without todayHours saved:
+                        // apply the same 1-hour break deduction manually.
+                        let rawHours = calculateHoursFromTime(todayTimeIn, todayTimeOut);
+                        let netMinutes = Math.max(0, Math.round(rawHours * 60) - 60);
+                        let hrs = Math.floor(netMinutes / 60);
+                        let mins = netMinutes % 60;
+                        todayRendered = `${hrs}h ${mins}m`;
+                    }
                 }
             }
         });
 
         updateTodayAttendanceUI(todayTimeIn, todayTimeOut, todayRendered, todayStatus);
 
-        const roundedCompleted = Math.round(totalCompletedHours * 10) / 10;
-        const remainingHours = Math.max(0, studentRequiredHours - roundedCompleted);
-        const percentage = Math.min(100, Math.round((roundedCompleted / studentRequiredHours) * 100));
+        // Exact hours completed, kept at full precision (no 0.1-hour
+        // rounding) so "Hours Completed" can be displayed down to the
+        // minute (e.g. "31h 49m") instead of a lossy "31.8 hours".
+        const completedHoursExact = totalCompletedMinutes / 60;
+        const remainingHours = Math.max(0, studentRequiredHours - completedHoursExact);
+        const percentage = Math.min(100, Math.round((completedHoursExact / studentRequiredHours) * 100));
 
-        updateHoursUI(roundedCompleted, studentRequiredHours, remainingHours, percentage);
+        updateHoursUI(completedHoursExact, studentRequiredHours, remainingHours, percentage);
 
         // Push the per-day hours into the calendar so duty days display how
         // many hours were rendered that day (e.g. "8h" under Jan 1).
@@ -231,12 +278,12 @@ function listenToStudentAttendance(userId) {
 
         // AI-style projection of the OJT completion date, based on the
         // student's own average hours-per-duty-day so far.
-        const estimate = estimateCompletionDate(roundedCompleted, studentRequiredHours, dailyHoursMap);
+        const estimate = estimateCompletionDate(completedHoursExact, studentRequiredHours, dailyHoursMap);
         updateHeaderCompletionEstimate(estimate);
 
         try {
             const userRef = doc(db, "users", userId);
-            await updateDoc(userRef, { completedHours: roundedCompleted });
+            await updateDoc(userRef, { completedHours: completedHoursExact });
         } catch (updateErr) {
             console.warn("Could not sync completed hours to profile:", updateErr);
         }
@@ -257,7 +304,7 @@ function estimateCompletionDate(completedHours, requiredHours, dailyHoursMap) {
         return { completed: completedHours, required: requiredHours, remaining: 0, isDone: true, estimatedDate: null };
     }
 
-    const remainingHours = Math.round((requiredHours - completedHours) * 10) / 10;
+    const remainingHours = Math.max(0, requiredHours - completedHours);
     const workedDates = Object.keys(dailyHoursMap).filter(d => dailyHoursMap[d] > 0);
 
     if (workedDates.length === 0) {
@@ -296,7 +343,7 @@ function estimateCompletionDate(completedHours, requiredHours, dailyHoursMap) {
         completed: completedHours,
         required: requiredHours,
         remaining: remainingHours,
-        avgHoursPerDay: Math.round(avgHoursPerDutyDay * 10) / 10,
+        avgHoursPerDay: avgHoursPerDutyDay,
         dutyDaysLogged: workedDates.length,
         isDone: false,
         estimatedDate
@@ -314,8 +361,16 @@ function estimateCompletionDate(completedHours, requiredHours, dailyHoursMap) {
 ========================================== */
 
 function updateHoursUI(completed, required, remaining, percentage) {
+    // "Hours Completed" is shown as an exact "Xh Ym" string (rounded only to
+    // the nearest minute), never as a rounded decimal like "31.8 hours".
+    const completedLabel = hoursToHM(completed);
+    // Remaining/required stay in decimal-hours form (unaffected by this
+    // change); only rounded here for a tidy display, not in the underlying
+    // calculation used for percentage/estimates.
+    const remainingDisplay = Math.round(remaining * 10) / 10;
+
     const completedHeader = document.querySelector(".summary-card.green h2");
-    if (completedHeader) completedHeader.textContent = `${completed} hours`;
+    if (completedHeader) completedHeader.textContent = completedLabel;
 
     const progressFill = document.querySelector(".green-fill");
     if (progressFill) progressFill.style.width = `${percentage}%`;
@@ -327,7 +382,7 @@ function updateHoursUI(completed, required, remaining, percentage) {
     if (requiredHeader) requiredHeader.textContent = `${required} hours`;
 
     const remainingSub = document.querySelector(".card-sub");
-    if (remainingSub) remainingSub.textContent = `${remaining} hours remaining`;
+    if (remainingSub) remainingSub.textContent = `${remainingDisplay} hours remaining`;
 
     const circlePercentage = document.querySelector(".circle h1");
     if (circlePercentage) circlePercentage.textContent = `${percentage}%`;
@@ -337,8 +392,8 @@ function updateHoursUI(completed, required, remaining, percentage) {
 
     const detailItems = document.querySelectorAll(".detail-item strong");
     if (detailItems.length >= 2) {
-        detailItems[0].textContent = `${completed} hrs`;
-        detailItems[1].textContent = `${remaining} hrs`;
+        detailItems[0].textContent = completedLabel;
+        detailItems[1].textContent = `${remainingDisplay} hrs`;
     }
 
     const requiredBoxVal = document.querySelector(".required-value");
@@ -414,25 +469,155 @@ function updateTodayAttendanceUI(timeIn, timeOut, totalToday, status = "") {
     }
 }
 
+/* ==========================================
+   RECENT ACTIVITY + "VIEW ALL" MODAL
+   One live Firestore subscription feeds BOTH the 3-item preview
+   on the dashboard card and the full list inside the modal, so
+   the two can never drift apart or double-charge reads.
+========================================== */
+const RECENT_ACTIVITY_LIMIT = 3;
+let allActivityLogs = [];
+
+function listenToActivities(userId) {
+    const attendanceQuery = query(collection(db, "attendance"), where("userId", "==", userId));
+
+    onSnapshot(attendanceQuery, (snapshot) => {
+        const logs = [];
+
+        snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+
+            if (data.timeIn) {
+                logs.push({
+                    title: "Time In Recorded",
+                    subtitle: `${data.date || "Recent"} \u2022 ${data.timeIn}`,
+                    type: "timein",
+                    durationText: "Logged In",
+                    sortDate: data.date || "",
+                    sortTime: data.timeIn || ""
+                });
+            }
+
+            if (data.timeOut && data.timeOut !== "--") {
+                let sessionHoursText = "Completed";
+                if (data.todayHours) {
+                    // Reuse the exact string attendance.js saved (break already deducted).
+                    sessionHoursText = data.todayHours;
+                } else if (data.timeIn) {
+                    const rawHours = calculateHoursFromTime(data.timeIn, data.timeOut);
+                    const netMinutes = Math.max(0, Math.round(rawHours * 60) - 60);
+                    sessionHoursText = `${Math.floor(netMinutes / 60)}h ${netMinutes % 60}m`;
+                }
+
+                logs.push({
+                    title: "Time Out Recorded",
+                    subtitle: `${data.date || "Recent"} \u2022 ${data.timeOut}`,
+                    type: "timeout",
+                    durationText: sessionHoursText,
+                    sortDate: data.date || "",
+                    sortTime: data.timeOut || ""
+                });
+            }
+        });
+
+        // Newest first; Time Out sits above its own Time In on the same day.
+        logs.sort((a, b) => {
+            const dateDiff = new Date(b.sortDate) - new Date(a.sortDate);
+            if (dateDiff !== 0 && !isNaN(dateDiff)) return dateDiff;
+            if (a.type === b.type) return 0;
+            return a.type === "timeout" ? -1 : 1;
+        });
+
+        allActivityLogs = logs;
+
+        renderActivityList(
+            document.getElementById("recent-activity-list"),
+            logs.slice(0, RECENT_ACTIVITY_LIMIT)
+        );
+
+        // Keep the modal in sync if it happens to be open right now.
+        const modalOverlay = document.getElementById("activities-modal-overlay");
+        if (modalOverlay && modalOverlay.classList.contains("show")) {
+            renderActivityList(document.getElementById("all-activities-list"), logs);
+        }
+    });
+}
+
+function renderActivityList(listEl, activities) {
+    if (!listEl) return;
+
+    if (!activities || activities.length === 0) {
+        listEl.innerHTML = `
+            <div class="activity-item">
+                <div class="activity-info">
+                    <h4>No activity history found</h4>
+                    <p>Your records will appear here.</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    listEl.innerHTML = "";
+
+    activities.forEach(act => {
+        const item = document.createElement("div");
+        item.className = "activity-item";
+
+        let iconClass = "fa-solid fa-right-to-bracket";
+        let colorClass = "green";
+
+        if (act.type === "timeout") {
+            iconClass = "fa-solid fa-right-from-bracket";
+            colorClass = "blue";
+        } else if (act.type === "task") {
+            iconClass = "fa-solid fa-list-check";
+            colorClass = "blue";
+        } else if (act.type === "photo") {
+            iconClass = "fa-solid fa-camera";
+            colorClass = "orange";
+        }
+
+        item.innerHTML = `
+            <div class="activity-icon ${colorClass}">
+                <i class="${iconClass}"></i>
+            </div>
+            <div class="activity-info">
+                <h4>${act.title}</h4>
+                <p>${act.subtitle}</p>
+            </div>
+            <span class="activity-duration">${act.durationText}</span>
+        `;
+
+        listEl.appendChild(item);
+    });
+}
+
 function initModalFetchAndLoad() {
     const viewAllBtn = document.getElementById("view-all-btn");
     const modalOverlay = document.getElementById("activities-modal-overlay");
     const explicitCloseBtn = document.getElementById("explicit-close-btn");
 
-    if (viewAllBtn && modalOverlay) {
+    const openModal = () => {
+        if (!modalOverlay) return;
+        modalOverlay.classList.add("show");
+        document.body.style.overflow = "hidden";
+        renderActivityList(document.getElementById("all-activities-list"), allActivityLogs);
+    };
+
+    const closeModal = () => {
+        if (!modalOverlay) return;
+        modalOverlay.classList.remove("show");
+        document.body.style.overflow = "";
+    };
+
+    if (viewAllBtn) {
         viewAllBtn.addEventListener("click", (e) => {
             e.preventDefault();
             e.stopPropagation();
-            modalOverlay.style.display = "flex";
-            if (auth.currentUser) {
-                loadModalActivities(auth.currentUser.uid);
-            }
+            openModal();
         });
     }
-
-    const closeModal = () => {
-        if (modalOverlay) modalOverlay.style.display = "none";
-    };
 
     if (explicitCloseBtn) {
         explicitCloseBtn.addEventListener("click", (e) => {
@@ -443,98 +628,14 @@ function initModalFetchAndLoad() {
     }
 
     if (modalOverlay) {
+        // Click on the dimmed backdrop (not the card) closes it.
         modalOverlay.addEventListener("click", (e) => {
             if (e.target === modalOverlay) closeModal();
         });
     }
-}
 
-function loadModalActivities(userId) {
-    const attendanceQuery = query(collection(db, "attendance"), where("userId", "==", userId));
-
-    onSnapshot(attendanceQuery, (snapshot) => {
-        let activityLogs = [];
-
-        snapshot.forEach((docSnap) => {
-            const data = docSnap.data();
-
-            if (data.timeIn) {
-                activityLogs.push({
-                    title: "Time In Recorded",
-                    subtitle: `${data.date || "Recent"} • ${data.timeIn}`,
-                    type: "timein",
-                    durationText: "Logged In",
-                    sortDate: data.date || ""
-                });
-            }
-
-            if (data.timeOut && data.timeOut !== "--") {
-                let sessionHoursText = "Completed";
-                if (data.timeIn) {
-                    let dHours = calculateHoursFromTime(data.timeIn, data.timeOut);
-                    let hrs = Math.floor(dHours);
-                    let mins = Math.round((dHours - hrs) * 60);
-                    sessionHoursText = `${hrs}h ${mins}m`;
-                }
-
-                activityLogs.push({
-                    title: "Time Out Recorded",
-                    subtitle: `${data.date || "Recent"} • ${data.timeOut}`,
-                    type: "timeout",
-                    durationText: sessionHoursText,
-                    sortDate: data.date || ""
-                });
-            }
-        });
-
-        activityLogs.sort((a, b) => new Date(b.sortDate) - new Date(a.sortDate));
-
-        const modalList = document.getElementById("all-activities-list");
-        if (!modalList) return;
-
-        modalList.innerHTML = "";
-
-        if (activityLogs.length === 0) {
-            modalList.innerHTML = `
-                <div class="activity-item">
-                    <div class="activity-info">
-                        <h4>No activity history found</h4>
-                        <p>Your records will appear here.</p>
-                    </div>
-                </div>
-            `;
-            return;
-        }
-
-        activityLogs.forEach(act => {
-            const item = document.createElement("div");
-            item.className = "activity-item";
-
-            let iconClass = "fa-solid fa-right-to-bracket";
-            let colorClass = "green";
-
-            if (act.type === "timeout") {
-                iconClass = "fa-solid fa-right-from-bracket";
-                colorClass = "blue";
-            }
-
-            item.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 14px;">
-                    <div class="activity-icon ${colorClass}">
-                        <i class="${iconClass}"></i>
-                    </div>
-                    <div class="activity-info">
-                        <h4>${act.title}</h4>
-                        <p>${act.subtitle}</p>
-                    </div>
-                </div>
-                <span style="font-size: 13px; font-weight: 600; color: #64748b;">
-                    ${act.durationText}
-                </span>
-            `;
-
-            modalList.appendChild(item);
-        });
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeModal();
     });
 }
 

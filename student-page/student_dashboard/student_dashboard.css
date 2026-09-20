@@ -467,6 +467,7 @@ button{
 /* =========================================
    MODAL POP-UP STYLES (PARA SA VIEW ALL)
    ========================================= */
+/* Hidden by default; JS toggles .show so the modal never flashes on load. */
 .modal-overlay {
     position: fixed !important;
     top: 0 !important;
@@ -474,11 +475,16 @@ button{
     width: 100vw !important;
     height: 100vh !important;
     background-color: rgba(0, 0, 0, 0.5) !important;
-    display: flex !important;
+    display: none !important;
     justify-content: center !important;
     align-items: center !important;
     z-index: 99999 !important;
     backdrop-filter: blur(4px);
+    padding: 16px;
+}
+
+.modal-overlay.show {
+    display: flex !important;
 }
 
 #modal-container-wrapper .modal-content {
@@ -946,3 +952,32 @@ button{
 /* Note: .notification / .notification-badge styling now lives entirely
    in the shared ../templated/header.css so the dashboard's header stays
    in sync with every other page instead of keeping its own copy. */
+
+/* "View All" trigger in the Recent Activity header */
+.view-all-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: #0284c7;
+    font-family: inherit;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.view-all-btn:hover {
+    text-decoration: underline;
+}
+
+.activity-duration {
+    font-size: 13px;
+    font-weight: 600;
+    color: #64748b;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 5px 10px;
+    margin-left: auto;
+    flex-shrink: 0;
+    white-space: nowrap;
+}

@@ -71,7 +71,7 @@ header {
     position: absolute;
     top: 36px;
     right: -10px;
-    width: 260px;
+    width: min(260px, calc(100vw - 24px));
     background: #fff;
     border: 1px solid #eee;
     border-radius: 14px;
@@ -153,8 +153,54 @@ header {
     }
     .ai-suggestion-panel {
         right: -60px;
-        width: 240px;
     }
+}
+
+/* On phones both dropdowns are pinned to the viewport (not to their
+   trigger) and sized down, so the whole card — including its text —
+   always stays fully visible instead of running off the screen. */
+@media (max-width: 600px) {
+    .notification-panel,
+    .ai-suggestion-panel {
+        position: fixed;
+        top: 66px;
+        right: 8px;
+        left: auto;
+        width: min(78vw, 260px);
+        max-width: none;
+    }
+
+    .notification-panel {
+        max-height: min(60vh, 320px);
+    }
+
+    .notification-panel-header {
+        padding: 12px 14px;
+    }
+
+    .notification-panel-header h4 {
+        font-size: 14px;
+    }
+
+    .notif-item {
+        padding: 10px 14px;
+    }
+
+    .notif-empty {
+        padding: 22px 14px;
+        font-size: 12.5px;
+    }
+}
+
+/* Keeps the header row itself from overflowing: the title ellipsises and
+   the AI pill shrinks before anything can push the avatar off-screen. */
+.header-left {
+    min-width: 0;
+}
+
+.ai-suggestion {
+    min-width: 0;
+    flex-shrink: 1;
 }
 
 .top-right {
@@ -199,12 +245,15 @@ header {
     align-items: center;
 }
 
+/* Anchored to the bell, but never wider than the screen and never
+   allowed to spill past the viewport edge (body has overflow-x:hidden,
+   so anything that overflows would just get cut off). */
 .notification-panel {
     position: absolute;
     top: 36px;
     right: -10px;
-    width: 320px;
-    max-height: 380px;
+    width: min(320px, calc(100vw - 24px));
+    max-height: min(380px, calc(100vh - 110px));
     overflow-y: auto;
     background: #fff;
     border: 1px solid #eee;

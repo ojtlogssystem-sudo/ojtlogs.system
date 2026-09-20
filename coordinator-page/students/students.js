@@ -1,7 +1,7 @@
 // ==========================================
 // 1. FIREBASE IMPORTS (v10 Modular SDK)
 // ==========================================
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { 
     getAuth, 
     onAuthStateChanged,
@@ -49,7 +49,8 @@ const firebaseConfig = {
     appId: "1:1012575426857:web:c2d6dbcdc0dc0ad965ff38"
 };
 
-const app = initializeApp(firebaseConfig);
+// Reuse the app kung na-initialize na ng shared ../header/header.js
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
@@ -59,13 +60,6 @@ let filteredStudents = [];
 let currentPage = 1;
 let rowsPerPage = 6;
 let studentToDelete = null;
-
-// GLOBAL STATE FOR NOTIFICATIONS (weekly report submissions)
-let studentNameMap = {};
-let notifItems = [];
-let notifLastSeenAt = 0;
-let notifStorageKey = "coordinatorNotifLastSeen";
-let notifUnsubscribe = null;
 
 // ==========================================
 // TOAST NOTIFICATION (pumapalit sa alert())
@@ -125,27 +119,23 @@ function formatTime12Hour(timeStr) {
 // 4. MAIN APP LOGIC
 // ==========================================
 document.addEventListener("DOMContentLoaded", () => {
-    onAuthStateChanged(auth, async (user) => {
+    // (Profile menu, notification bell, at logout ay hawak na ng
+    // shared header - see ../header/header.js. Ito rin ang nagre-
+    // redirect papuntang login kapag walang naka-login.)
+    onAuthStateChanged(auth, (user) => {
         if (user) {
-            await loadUserData(user);
-            listenToStudentData(); 
-            startWeeklyReportNotifications(user.uid);
-        } else {
-            window.location.href = "../login/login.html";
+            listenToStudentData();
         }
     });
 
     // Each init runs in its own try/catch so that if one of
     // them throws, it doesn't stop the rest from wiring up.
-    safeInit(initDropdownAndLogout, "initDropdownAndLogout");
     safeInit(initStudentTableFilters, "initStudentTableFilters");
     safeInit(initPaginationControls, "initPaginationControls");
     safeInit(initInviteModal, "initInviteModal");
     safeInit(initEditModal, "initEditModal");
     safeInit(initDeleteModalListeners, "initDeleteModalListeners");
     safeInit(initExportCsv, "initExportCsv");
-    safeInit(initProfileMenu, "initProfileMenu");
-    safeInit(initNotificationDropdown, "initNotificationDropdown");
 });
 
 function safeInit(fn, label) {
@@ -154,337 +144,6 @@ function safeInit(fn, label) {
     } catch (error) {
         console.error(`Error running ${label}:`, error);
     }
-}
-
-/* ==========================================
-   FETCH LOGGED-IN COORDINATOR PROFILE DATA
-========================================== */
-async function loadUserData(user) {
-    try {
-        let fullName = user.displayName || localStorage.getItem("user_fullname") || "";
-        let role = "OJT Coordinator";
-        let photo = user.photoURL || null;
-
-        const userRef = doc(db, "users", user.uid);
-        const userSnap = await getDoc(userRef);
-
-        if (userSnap.exists()) {
-            const userData = userSnap.data();
-            if (userData.firstName && userData.lastName) {
-                fullName = `${userData.firstName} ${userData.middleName ? userData.middleName + ' ' : ''}${userData.lastName}`.trim();
-            } else if (userData.fullName || userData.name) {
-                fullName = userData.fullName || userData.name;
-            }
-            if (userData.role) role = userData.role;
-
-            // Profile photo, if the coordinator uploaded one in
-            // Account Settings (saved as photoBase64 or photoURL).
-            photo = userData.photoBase64 || userData.photoURL || photo;
-        }
-
-        if (!fullName) fullName = "Mark Daniel Beato";
-
-        const userNameEl = document.getElementById("userName");
-        if (userNameEl) userNameEl.textContent = fullName;
-
-        const userRoleEl = document.getElementById("userRole");
-        if (userRoleEl) userRoleEl.textContent = role;
-
-        paintAvatar(document.getElementById("userAvatar"), photo, fullName);
-        paintAvatar(document.getElementById("menuAvatar"), photo, fullName);
-
-        const menuNameEl = document.getElementById("menuName");
-        if (menuNameEl) menuNameEl.textContent = fullName;
-
-        const menuEmailEl = document.getElementById("menuEmail");
-        if (menuEmailEl) menuEmailEl.textContent = user.email || "—";
-
-    } catch (error) {
-        console.error("Error fetching coordinator profile:", error);
-    }
-}
-
-/* ==========================================
-   AVATAR RENDERING
-   (shows the saved photo when there is one,
-   falls back to initials otherwise)
-========================================== */
-function paintAvatar(element, photo, name) {
-    if (!element) return;
-
-    const initials = getInitials(name);
-
-    if (photo) {
-        element.innerHTML = "";
-
-        const img = document.createElement("img");
-        img.alt = name || "Profile photo";
-        img.src = photo;
-
-        // If the stored image is broken, drop back to initials.
-        img.onerror = () => {
-            element.textContent = initials;
-        };
-
-        element.appendChild(img);
-    } else {
-        element.textContent = initials;
-    }
-}
-
-/* ==========================================
-   PROFILE DROPDOWN
-========================================== */
-function initProfileMenu() {
-    const trigger = document.getElementById("profileMenuTrigger");
-    if (!trigger) return;
-
-    trigger.addEventListener("click", (e) => {
-        // Clicks on the menu items handle themselves.
-        if (e.target.closest(".profile-menu")) return;
-
-        trigger.classList.toggle("open");
-
-        // Close the notification dropdown if it's open.
-        document.getElementById("notifBell")?.classList.remove("open");
-    });
-
-    document.addEventListener("click", (e) => {
-        if (!trigger.contains(e.target)) {
-            trigger.classList.remove("open");
-        }
-    });
-
-    document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") {
-            trigger.classList.remove("open");
-        }
-    });
-
-    // "Account settings" -> go to the settings page.
-    const showProfileBtn = document.getElementById("showProfileBtn");
-    if (showProfileBtn) {
-        showProfileBtn.addEventListener("click", () => {
-            window.location.href = "../settings/settings.html";
-        });
-    }
-}
-
-/* ==========================================
-   NOTIFICATIONS: STUDENT NAME LOOKUP
-========================================== */
-async function buildStudentNameMap() {
-    try {
-        const usersRef = collection(db, "users");
-        const studentQuery = query(usersRef, where("role", "==", "student"));
-        const snapshot = await getDocs(studentQuery);
-
-        const map = {};
-
-        snapshot.forEach((docSnap) => {
-            const data = docSnap.data();
-            const name = data.name || data.fullName || data.email || "A student";
-
-            map[docSnap.id] = name;
-            if (data.uid) map[String(data.uid).trim()] = name;
-            if (data.email) map[String(data.email).toLowerCase().trim()] = name;
-        });
-
-        studentNameMap = map;
-    } catch (error) {
-        console.error("Error building student name map for notifications:", error);
-    }
-}
-
-function getStudentNameForReport(data) {
-    const studentId = data.userId || data.studentId;
-    const possibleEmail = (data.email || data.studentEmail || "").toLowerCase().trim();
-
-    return (
-        studentNameMap[studentId] ||
-        studentNameMap[possibleEmail] ||
-        "A student"
-    );
-}
-
-/* ==========================================
-   NOTIFICATIONS: RELATIVE TIME
-========================================== */
-function notifTimeAgo(ms) {
-    if (!ms) return "";
-
-    const diffSec = Math.floor((Date.now() - ms) / 1000);
-    if (diffSec < 60) return "Just now";
-
-    const diffMin = Math.floor(diffSec / 60);
-    if (diffMin < 60) return `${diffMin}m ago`;
-
-    const diffHr = Math.floor(diffMin / 60);
-    if (diffHr < 24) return `${diffHr}h ago`;
-
-    const diffDay = Math.floor(diffHr / 24);
-    if (diffDay < 7) return `${diffDay}d ago`;
-
-    return new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-/* ==========================================
-   NOTIFICATIONS: RENDER LIST + BADGE
-========================================== */
-function renderNotifications() {
-    const listEl = document.getElementById("notifList");
-    const badgeEl = document.getElementById("notifBadge");
-
-    if (!listEl) return;
-
-    if (notifItems.length === 0) {
-        listEl.innerHTML = '<div class="notif-empty">No report submissions yet.</div>';
-    } else {
-        listEl.innerHTML = notifItems.map((item) => {
-            const unread = item.timestamp > notifLastSeenAt;
-
-            return `
-                <div class="notif-item ${unread ? "unread" : ""}" data-report-id="${item.id}">
-                    <div class="notif-icon">
-                        <i class="fa-solid fa-file-circle-check"></i>
-                    </div>
-                    <div class="notif-text">
-                        <p><strong>${item.studentName}</strong> submitted a weekly report.</p>
-                        <span>${notifTimeAgo(item.timestamp)}</span>
-                    </div>
-                    ${unread ? '<span class="notif-dot"></span>' : ""}
-                </div>
-            `;
-        }).join("");
-    }
-
-    const unreadCount = notifItems.filter((item) => item.timestamp > notifLastSeenAt).length;
-
-    if (badgeEl) {
-        if (unreadCount > 0) {
-            badgeEl.textContent = unreadCount > 9 ? "9+" : String(unreadCount);
-            badgeEl.style.display = "flex";
-        } else {
-            badgeEl.style.display = "none";
-        }
-    }
-}
-
-function markNotificationsRead() {
-    notifLastSeenAt = Date.now();
-
-    try {
-        localStorage.setItem(notifStorageKey, String(notifLastSeenAt));
-    } catch (error) {
-        console.error("Could not save notif read state:", error);
-    }
-
-    renderNotifications();
-}
-
-/* ==========================================
-   NOTIFICATIONS: LIVE LISTENER
-   Watches the "weekly_reports" collection so new
-   student submissions show up right away, without
-   needing to refresh the page.
-========================================== */
-async function startWeeklyReportNotifications(uid) {
-    notifStorageKey = `coordinatorNotifLastSeen_${uid}`;
-    notifLastSeenAt = Number(localStorage.getItem(notifStorageKey)) || 0;
-
-    await buildStudentNameMap();
-
-    const reportsRef = collection(db, "weekly_reports");
-    const notifQuery = query(reportsRef, orderBy("submittedAt", "desc"), limit(20));
-
-    if (notifUnsubscribe) {
-        notifUnsubscribe();
-    }
-
-    notifUnsubscribe = onSnapshot(
-        notifQuery,
-        (snapshot) => {
-            notifItems = snapshot.docs.map((docSnap) => {
-                const data = docSnap.data();
-                const rawDate = data.submittedAt;
-
-                const timestamp = rawDate?.seconds
-                    ? rawDate.seconds * 1000
-                    : (rawDate ? new Date(rawDate).getTime() : 0);
-
-                return {
-                    id: docSnap.id,
-                    studentName: getStudentNameForReport(data),
-                    timestamp: timestamp || 0
-                };
-            });
-
-            renderNotifications();
-        },
-        (error) => {
-            console.error("Error listening for report notifications:", error);
-        }
-    );
-}
-
-/* ==========================================
-   NOTIFICATIONS: BELL DROPDOWN
-========================================== */
-function initNotificationDropdown() {
-    const bell = document.getElementById("notifBell");
-    const markBtn = document.getElementById("notifMarkReadBtn");
-
-    if (!bell) return;
-
-    bell.addEventListener("click", (e) => {
-        if (e.target.closest("#notifMarkReadBtn")) return;
-
-        const clickedItem = e.target.closest(".notif-item");
-        if (clickedItem) {
-            bell.classList.remove("open");
-            document.getElementById("studentTable")
-                ?.closest("table")
-                ?.scrollIntoView({ behavior: "smooth", block: "center" });
-            return;
-        }
-
-        const isOpening = !bell.classList.contains("open");
-        bell.classList.toggle("open");
-
-        // Close the profile dropdown if it's open.
-        document.getElementById("profileMenuTrigger")?.classList.remove("open");
-
-        if (isOpening) {
-            renderNotifications();
-
-            // Give the user a moment to see what's new
-            // before quietly marking it all as read.
-            setTimeout(() => {
-                if (bell.classList.contains("open")) {
-                    markNotificationsRead();
-                }
-            }, 1500);
-        }
-    });
-
-    if (markBtn) {
-        markBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            markNotificationsRead();
-        });
-    }
-
-    document.addEventListener("click", (e) => {
-        if (!bell.contains(e.target)) {
-            bell.classList.remove("open");
-        }
-    });
-
-    document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") {
-            bell.classList.remove("open");
-        }
-    });
 }
 
 /* ==========================================
@@ -532,6 +191,7 @@ async function refreshAndRenderStudents() {
                 company: data.company || "Pending Assignment",
                 status: data.status || "Pending",
                 profileDone: false,
+                gender: "",
                 schedule: null
             });
         });
@@ -594,16 +254,112 @@ async function refreshAndRenderStudents() {
                 company: company,
                 status: status,
                 profileDone: isProfileDone,
+                gender: normalizeGender(userData.gender || userData.sex || existingData.gender),
                 schedule: userData.schedule || null
             });
         });
 
         allStudents = Array.from(studentMap.values());
+        populateYearFilter();
         applyFiltersAndPagination();
 
     } catch (error) {
         console.error("Error refreshing students list:", error);
     }
+}
+
+/* ==========================================
+   GENDER (profile)
+   Kinukuha sa "gender" field ng user sa Firestore
+   (o "sex" bilang fallback).
+========================================== */
+function normalizeGender(value) {
+    const v = String(value || "").trim();
+    if (!v) return "";
+
+    const lower = v.toLowerCase();
+    if (lower === "m" || lower === "male") return "Male";
+    if (lower === "f" || lower === "female") return "Female";
+
+    return v.charAt(0).toUpperCase() + v.slice(1);
+}
+
+// Ipinapakita sa kanan ng profile header card
+function setViewStudentGender(gender) {
+    const textEl = document.getElementById("viewStudentGender");
+    const iconEl = document.getElementById("viewStudentGenderIcon");
+    if (!textEl) return;
+
+    const value = normalizeGender(gender);
+    textEl.textContent = value || "Not specified";
+
+    if (iconEl) {
+        const lower = value.toLowerCase();
+        const iconClass = lower === "male"
+            ? "fa-mars"
+            : (lower === "female" ? "fa-venus" : "fa-venus-mars");
+        iconEl.className = `fa-solid ${iconClass}`;
+    }
+}
+
+// Pino-populate ang gender select sa Edit modal
+function setEditStudentGender(gender) {
+    const select = document.getElementById("editStudentGender");
+    if (!select) return;
+
+    const value = normalizeGender(gender);
+
+    // Kung may ibang value na wala sa listahan, idagdag para hindi mawala.
+    if (value && !Array.from(select.options).some(opt => opt.value === value)) {
+        const extra = document.createElement("option");
+        extra.value = value;
+        extra.textContent = value;
+        select.appendChild(extra);
+    }
+
+    select.value = value;
+}
+
+/* ==========================================
+   YEAR FILTER (base sa Student Number)
+   Sinusuportahan ang mga format tulad ng:
+   "2023001", "2023-0001", "23-0001"
+========================================== */
+function getStudentYear(studentNumber) {
+    const s = String(studentNumber || "").trim();
+    if (!s || s === "-") return "";
+
+    // 4-digit na taon sa unahan (hal. 2023001 / 2023-0001)
+    const full = s.match(/^((?:19|20)\d{2})/);
+    if (full) return full[1];
+
+    // 2-digit na taon sa unahan na may separator (hal. 23-0001)
+    const short = s.match(/^(\d{2})\D/);
+    if (short) return String(2000 + parseInt(short[1], 10));
+
+    return "";
+}
+
+// Binubuo ang listahan ng years mula sa mga student (pinakabago muna)
+// at pinapanatili ang kasalukuyang napili kung nandoon pa rin.
+function populateYearFilter() {
+    const yearSelect = document.getElementById("yearFilter");
+    if (!yearSelect) return;
+
+    const previous = yearSelect.value || "All Years";
+
+    const years = Array.from(
+        new Set(
+            allStudents
+                .map(student => getStudentYear(student.studentId))
+                .filter(Boolean)
+        )
+    ).sort((a, b) => b.localeCompare(a));
+
+    yearSelect.innerHTML = `<option value="All Years">All Years</option>` +
+        years.map(year => `<option value="${year}">${year}</option>`).join("");
+
+    yearSelect.value = years.includes(previous) ? previous : "All Years";
 }
 
 /* ==========================================
@@ -613,6 +369,7 @@ function applyFiltersAndPagination() {
     const searchVal = (document.getElementById("searchStudent")?.value || "").toLowerCase();
     const statusVal = (document.getElementById("statusFilter")?.value || "All Status").toLowerCase();
     const sortVal = document.getElementById("sortSelect")?.value || "Sort By";
+    const yearVal = document.getElementById("yearFilter")?.value || "All Years";
 
     filteredStudents = allStudents.filter(student => {
         const matchesSearch = student.name.toLowerCase().includes(searchVal) ||
@@ -622,7 +379,10 @@ function applyFiltersAndPagination() {
         
         const matchesStatus = (statusVal === "all status") || (student.status.toLowerCase() === statusVal);
         
-        return matchesSearch && matchesStatus;
+        // Year filter: base sa taon na nasa student number
+        const matchesYear = (yearVal === "All Years") || (getStudentYear(student.studentId) === yearVal);
+
+        return matchesSearch && matchesStatus && matchesYear;
     });
 
     if (sortVal === "Name (A-Z)") {
@@ -856,28 +616,13 @@ function initPaginationControls() {
 }
 
 /* ==========================================
-   LOGOUT & FILTERS
+   FILTERS
 ========================================== */
-function initDropdownAndLogout() {
-    document.addEventListener("click", async (e) => {
-        const logoutBtn = e.target.closest("#logoutBtn");
-        if (logoutBtn) {
-            e.preventDefault();
-            try {
-                await signOut(auth);
-                localStorage.clear();
-                window.location.href = "../login/login.html";
-            } catch (err) {
-                console.error("Logout error:", err);
-            }
-        }
-    });
-}
-
 function initStudentTableFilters() {
     const searchInput = document.getElementById("searchStudent");
     const statusFilter = document.getElementById("statusFilter");
     const sortSelect = document.getElementById("sortSelect");
+    const yearFilter = document.getElementById("yearFilter");
 
     const triggerFilter = () => {
         currentPage = 1;
@@ -887,6 +632,7 @@ function initStudentTableFilters() {
     if (searchInput) searchInput.addEventListener("keyup", triggerFilter);
     if (statusFilter) statusFilter.addEventListener("change", triggerFilter);
     if (sortSelect) sortSelect.addEventListener("change", triggerFilter);
+    if (yearFilter) yearFilter.addEventListener("change", triggerFilter);
 }
 
 /* ==========================================
@@ -934,6 +680,9 @@ function attachActionEvents() {
             
             const cleanEmail = studentEmail.toLowerCase().trim();
             const currentStudent = allStudents.find(s => s.email && s.email.toLowerCase().trim() === cleanEmail);
+
+            // Gender (nasa kanan ng profile header)
+            setViewStudentGender(currentStudent ? currentStudent.gender : "");
 
             if (scheduleEl) {
                 if (currentStudent && currentStudent.schedule) {
@@ -1151,6 +900,7 @@ function initEditModal() {
             const section = document.getElementById("editStudentSection").value.trim();
             const company = document.getElementById("editStudentCompany").value.trim();
             const status = document.getElementById("editStudentStatus").value;
+            const gender = document.getElementById("editStudentGender")?.value || "";
 
             // Kunin ang mga in-input na oras mula sa modal inputs
             const morningIn = document.getElementById("editMorningIn")?.value || "";
@@ -1177,6 +927,7 @@ function initEditModal() {
                             section: section,
                             companyName: company,
                             status: status,
+                            gender: gender,
                             "schedule.days": selectedDays,
                             "schedule.morning": {
                                 timeIn: morningIn,
@@ -1322,6 +1073,7 @@ window.openEditModalFromProfile = function() {
 
     // Populate schedule details & times mula sa current loaded student state
     const currentStudent = allStudents.find(s => s.email && s.email.toLowerCase().trim() === studentEmail.toLowerCase().trim());
+    setEditStudentGender(currentStudent ? currentStudent.gender : "");
     if (currentStudent && currentStudent.schedule) {
         const sched = currentStudent.schedule;
 

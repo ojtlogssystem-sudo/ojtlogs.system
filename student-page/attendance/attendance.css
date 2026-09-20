@@ -402,6 +402,11 @@ header h2{
     color: #3b82f6;
     font-size: 12px;
     font-weight: 500;
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: inherit;
+    cursor: pointer;
 }
 
 .card-header-title .view-all:hover {
@@ -509,6 +514,16 @@ header h2{
     color: #22c55e;
 }
 
+.att-icon-box.red-bg {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.att-icon-box.blue-bg {
+    background: #eff6ff;
+    color: #3b82f6;
+}
+
 .att-date-info h4 {
     font-size: 14px;
     font-weight: 700;
@@ -542,6 +557,16 @@ header h2{
 .badge-status.orange { 
     background: #fff7eb; 
     color: #f97316; 
+}
+
+.badge-status.red {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.badge-status.blue {
+    background: #eff6ff;
+    color: #3b82f6;
 }
 
 /* Card Divider & Bottom Info */
@@ -718,6 +743,21 @@ header h2{
 .status-badge.no-duty {
     background: #fff7ed;
     color: #ea580c;
+}
+
+.status-badge.active {
+    background: #eff6ff;
+    color: #3b82f6;
+}
+
+.status-badge.late {
+    background: #fff7eb;
+    color: #f97316;
+}
+
+.status-badge.absent {
+    background: #fef2f2;
+    color: #dc2626;
 }
 
 /* Photo Proof Modal Container & Live Video */
@@ -920,15 +960,15 @@ header h2{
 }
 
 .firebase-timestamp-badge {
-    background-color: #8B0000; /* Dark Red color */
-    color: #ffffff; /* White text */
+    background-color: transparent; /* Transparent background */
+    color: #dc2626; /* Red text */
     font-family: Arial, sans-serif;
     font-size: 13px;
     font-weight: bold;
     padding: 8px 16px;
-    border: 3px solid #000000; /* Makapal na black border na nakita sa picture */
+    border: 2px solid #dc2626; /* Red border */
     border-radius: 12px; /* Rounded corners */
     display: inline-block;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); /* Para lumitaw/lumutang sa ibabaw ng content */
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15); /* Para lumitaw/lumutang sa ibabaw ng content */
     pointer-events: auto;
 }

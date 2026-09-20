@@ -2,7 +2,9 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import firebase_admin
 from firebase_admin import credentials, firestore
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+from collections import Counter
+import re
 import numpy as np
 from sklearn.linear_model import LinearRegression
 
@@ -28,55 +30,295 @@ db = firestore.client()
 # ==========================================
 # 1. ENDPOINT PARA SA AT-RISK PREDICTION
 # ==========================================
+# ==========================================
+# ATTENDANCE SETTINGS
+# ==========================================
+
+# Pangalan ng Firestore collection(s) kung saan naka-save ang
+# attendance. Kung iba ang pangalan sa Firebase mo (ex.
+# "attendanceRecords"), idagdag lang dito. Puwedeng i-check
+# ang tamang pangalan sa http://localhost:5000/api/debug-attendance
+ATTENDANCE_COLLECTIONS = ['attendance']
+
+# Kung sa attendance collection mo ay PRESENT lang ang sine-save
+# (walang "Absent" record kapag hindi pumasok), gawing True para
+# ituring na absent ang bawat weekday (Mon-Fri) mula sa simula ng
+# OJT hanggang kahapon na WALANG kahit anong attendance record.
+# Naka-False bilang default para hindi magkamali ng flag sa mga
+# estudyanteng hindi naka-schedule sa ilang araw.
+COUNT_MISSING_WEEKDAYS_AS_ABSENT = False
+
+# Mga petsa (YYYY-MM-DD) na walang duty (holiday / walang pasok)
+# - hindi ito ibibilang na absent kapag naka-True ang nasa itaas.
+NON_DUTY_DATES = set()
+
+# Philippine time (UTC+8) - para hindi magkamali ng petsa kapag
+# Firestore Timestamp (UTC) ang naka-save sa attendance.
+PH_TZ = timezone(timedelta(hours=8))
+
+# Mga field na puwedeng pagkunan ng petsa ng attendance record
+ATTENDANCE_DATE_FIELDS = (
+    'date', 'attendanceDate', 'dateString', 'day',
+    'timestamp', 'createdAt', 'timeIn'
+)
+
+# Mga field na puwedeng naglalaman ng status (Present/Absent/Late)
+ATTENDANCE_STATUS_FIELDS = (
+    'status', 'attendanceStatus', 'attendance_status'
+)
+
+# Mga field na puwedeng nagsasabi kung SINONG estudyante ang
+# nagmamay-ari ng attendance record
+ATTENDANCE_OWNER_FIELDS = (
+    'studentUid', 'studentUID', 'studentId', 'studentID',
+    'studentNumber', 'uid', 'userId', 'userUid', 'student_id',
+    'email', 'studentEmail'
+)
+
+
+def _norm(value):
+    """Lowercase + trim para hindi maapektuhan ng espasyo/capitalization."""
+    if value is None:
+        return None
+    text = str(value).strip().lower()
+    return text or None
+
+
+def _to_date_str(value):
+    """
+    Ginagawang 'YYYY-MM-DD' ang kahit anong date-like value
+    (Firestore Timestamp, datetime, ISO string, MM/DD/YYYY, atbp.)
+    Returns None kung hindi mabasa.
+    """
+    if value is None or value == '':
+        return None
+
+    if isinstance(value, datetime):
+        if value.tzinfo is not None:
+            value = value.astimezone(PH_TZ)
+        return value.strftime('%Y-%m-%d')
+
+    text = str(value).strip()
+
+    iso = re.match(r'^(\d{4})-(\d{2})-(\d{2})', text)
+    if iso:
+        return f"{iso.group(1)}-{iso.group(2)}-{iso.group(3)}"
+
+    for fmt in ('%m/%d/%Y', '%B %d, %Y', '%b %d, %Y', '%d %B %Y', '%d %b %Y'):
+        try:
+            return datetime.strptime(text, fmt).strftime('%Y-%m-%d')
+        except ValueError:
+            continue
+
+    return None
+
+
+def _record_date(rec):
+    """Unang mababasang petsa mula sa mga posibleng date field."""
+    for field in ATTENDANCE_DATE_FIELDS:
+        parsed = _to_date_str(rec.get(field))
+        if parsed:
+            return parsed
+    return None
+
+
 def _is_absent_record(rec):
     """
-    Flexible reader para sa iba't ibang posibleng
-    schema ng 'attendance' collection:
-      - status / attendanceStatus na field na naglalaman
-        ng salitang "absent"
-      - boolean na field na 'present' (False = absent)
+    Flexible reader para sa iba't ibang posibleng schema ng
+    attendance collection:
+      - status / attendanceStatus / attendance_status na
+        naglalaman ng salitang "absent"
+      - boolean na 'isAbsent' / 'absent' (True = absent)
+      - boolean na 'present' (False = absent)
     """
-    status = str(
-        rec.get('status') or rec.get('attendanceStatus') or ''
-    ).strip().lower()
+    for field in ATTENDANCE_STATUS_FIELDS:
+        status = _norm(rec.get(field))
+        if status:
+            return 'absent' in status
 
-    if status:
-        return 'absent' in status
+    for field in ('isAbsent', 'absent'):
+        if isinstance(rec.get(field), bool):
+            return rec[field] is True
 
-    if 'present' in rec:
-        return rec.get('present') is False
+    if isinstance(rec.get('present'), bool):
+        return rec['present'] is False
 
     return False
 
 
 def _load_attendance_records():
     """
-    Kinukuha lahat ng attendance records nang isang beses
-    (parang ginawa na rin sa /api/company-skill-exposure
-    endpoint para sa tasks), tapos i-filter/i-count later
-    per-student. Mas mabilis kaysa mag-query per student.
+    Kinukuha lahat ng attendance records nang isang beses,
+    tapos i-filter/i-count later per-student. Mas mabilis
+    kaysa mag-query per student.
     """
-    try:
-        attendance_ref = db.collection('attendance').stream()
-        return [{"id": doc.id, **doc.to_dict()} for doc in attendance_ref]
-    except Exception as attendance_error:
-        print(f"[predict-risk] Failed to load attendance: {attendance_error}")
-        return []
+    records = []
+    for collection_name in ATTENDANCE_COLLECTIONS:
+        try:
+            for doc in db.collection(collection_name).stream():
+                records.append({"id": doc.id, **doc.to_dict()})
+        except Exception as attendance_error:
+            print(
+                f"[predict-risk] Failed to load '{collection_name}': "
+                f"{attendance_error}"
+            )
+    return records
 
 
-def _count_absences(attendance_records, student_doc_id, student_id_value, student_name):
-    count = 0
+def _get_student_records(attendance_records, student_doc_id, student_id_value,
+                         student_name, student_email=None):
+    """
+    Kinukuha lahat ng attendance record na pag-aari ng partikular
+    na estudyante. Tinitingnan ang doc ID, student number, email,
+    at (bilang huling panlaban) ang pangalan.
+    """
+    keys = {
+        k for k in (
+            _norm(student_doc_id),
+            _norm(student_id_value),
+            _norm(student_email),
+        ) if k
+    }
+    name_key = _norm(student_name)
+
+    matched = []
     for rec in attendance_records:
-        matches_student = (
-            rec.get('studentUid') == student_doc_id or
-            rec.get('studentId') == student_doc_id or
-            rec.get('studentId') == student_id_value or
-            rec.get('studentUid') == student_id_value or
-            (rec.get('studentName') and rec.get('studentName') == student_name)
-        )
-        if matches_student and _is_absent_record(rec):
-            count += 1
-    return count
+        owner_keys = {_norm(rec.get(f)) for f in ATTENDANCE_OWNER_FIELDS}
+        owner_keys.discard(None)
+
+        if keys & owner_keys:
+            matched.append(rec)
+        elif name_key and _norm(rec.get('studentName') or rec.get('name')) == name_key:
+            matched.append(rec)
+
+    return matched
+
+
+def _weekdays_between(start_date, end_date):
+    """Lahat ng Mon-Fri (YYYY-MM-DD) mula start_date hanggang end_date (kasama)."""
+    days = []
+    current = start_date
+    while current <= end_date:
+        if current.weekday() < 5:
+            days.append(current.strftime('%Y-%m-%d'))
+        current += timedelta(days=1)
+    return days
+
+
+def _summarize_attendance(matched_records, start_date=None, today=None):
+    """
+    Ibinabalik ang:
+      - absent_count: bilang ng absent na araw (unique per petsa,
+        kaya hindi nadodoble kung may duplicate record sa isang araw)
+      - consecutive: bilang ng magkakasunod na absent simula sa
+        pinakahuling duty day pabalik ("hindi nagpaparamdam")
+      - record_count: ilang attendance record ang nakita para sa
+        estudyante (0 = wala pang nababasang attendance)
+    """
+    absent_dates = set()
+    present_dates = set()
+    undated_absences = 0
+
+    for rec in matched_records:
+        rec_date = _record_date(rec)
+        if _is_absent_record(rec):
+            if rec_date:
+                absent_dates.add(rec_date)
+            else:
+                undated_absences += 1
+        elif rec_date:
+            present_dates.add(rec_date)
+
+    # Kapag may Present at Absent sa iisang araw, Present ang panalo
+    absent_dates -= present_dates
+
+    if COUNT_MISSING_WEEKDAYS_AS_ABSENT and start_date and today:
+        # Hindi kasama ang ngayong araw dahil hindi pa tapos ang duty
+        yesterday = today.date() - timedelta(days=1)
+        for day in _weekdays_between(start_date.date(), yesterday):
+            if (
+                day not in present_dates
+                and day not in absent_dates
+                and day not in NON_DUTY_DATES
+            ):
+                absent_dates.add(day)
+
+    # Streak: pinakabagong petsa pabalik hanggang sa unang Present
+    duty_days = sorted(absent_dates | present_dates, reverse=True)
+    consecutive = 0
+    for day in duty_days:
+        if day in absent_dates:
+            consecutive += 1
+        else:
+            break
+
+    return {
+        "absent_count": len(absent_dates) + undated_absences,
+        "consecutive": consecutive,
+        "record_count": len(matched_records),
+    }
+
+
+# ==========================================
+# BATCH NG ESTUDYANTE - BASE SA STUDENT ID
+#
+# Ginagamit sa "Graduated Students by Batch" chart. Ang unang
+# 4 na digit (taon) ng Student ID ang batch ng estudyante:
+#     2023-01-22112  ->  batch 2023
+#     2026-21-01233  ->  batch 2026
+# Kung walang mabasang taon sa ID, saka lang hahanapin ang
+# mismong batch field sa document (kung meron).
+# ==========================================
+STUDENT_ID_FIELDS = (
+    'studentId', 'studentID', 'studentNumber', 'idNumber',
+    'schoolId', 'studentNo', 'id_number'
+)
+
+BATCH_FIELDS = (
+    'batch', 'batchYear', 'batch_year',
+    'schoolYear', 'school_year',
+    'academicYear', 'academic_year', 'sy'
+)
+
+
+def _get_student_id_raw(data):
+    """Ang totoong student ID mula sa Firestore (walang doc.id fallback)."""
+    for field in STUDENT_ID_FIELDS:
+        value = data.get(field)
+        if value not in (None, ''):
+            return str(value).strip()
+    return None
+
+
+def _batch_from_student_id(student_id):
+    """'2023-01-22112' -> '2023'. Returns None kung walang taon sa umpisa ng ID."""
+    if not student_id:
+        return None
+    match = re.match(r'^\s*((?:19|20)\d{2})\s*[-/\s]\s*\d', str(student_id))
+    return match.group(1) if match else None
+
+
+def _get_batch_label(data):
+    batch = _batch_from_student_id(_get_student_id_raw(data))
+    if batch:
+        return batch
+
+    for field in BATCH_FIELDS:
+        value = data.get(field)
+        if value not in (None, ''):
+            return str(value).strip()
+
+    # Walang mabasang batch - hindi isasama sa bar graph
+    return ""
+
+
+def _is_graduated(data, ai_status):
+    """Graduated = may explicit na flag, o natapos na ang required OJT hours."""
+    if data.get('graduated') is True or data.get('isGraduated') is True:
+        return True
+    if 'graduated' in str(data.get('status') or '').lower():
+        return True
+    return ai_status == "Completed"
 
 
 @app.route('/api/predict-risk', methods=['GET'])
@@ -108,8 +350,15 @@ def predict_student_risk():
         # basehan ng At Risk / Needs Monitoring, lalo na
         # sa unang linggo ng OJT kung saan halos wala pang
         # laman ang completed hours ng lahat ng estudyante.
-        ABSENCE_MONITORING_THRESHOLD = 2   # konting absent -> Needs Monitoring
-        ABSENCE_RISK_THRESHOLD = 5         # maraming absent -> At Risk
+        ABSENCE_MONITORING_THRESHOLD = 5   # 5+ absences -> Needs Monitoring
+        ABSENCE_RISK_THRESHOLD = 8         # 8+ absences (maraming) -> At Risk
+
+        # "Hindi nagpaparamdam" - magkakasunod na Absent record
+        # simula sa pinaka-huling duty day pabalik. Kahit hindi pa
+        # umabot ng 8 total absences, kapag 3+ sunod-sunod nang
+        # walang time-in, ituturing na ring At Risk (parang biglang
+        # nawalan ng communication/showed up ang estudyante).
+        CONSECUTIVE_ABSENCE_RISK_THRESHOLD = 3
 
         # Pangalan lang para di masira ang ibang reference
         # sa baba (backward-compat na variable name).
@@ -193,20 +442,23 @@ def predict_student_risk():
 
                 progress_percentage = min(round((completed_hours / target_hours) * 100), 100)
 
-                student_id_value = (
-                    data.get('studentId') or
-                    data.get('studentID') or
-                    data.get('studentNumber') or
-                    data.get('idNumber') or
-                    data.get('schoolId') or
-                    data.get('studentNo') or
-                    data.get('id_number') or
-                    doc.id[:7]
-                )
+                student_id_value = _get_student_id_raw(data) or doc.id[:7]
 
-                absent_count = _count_absences(
-                    attendance_records, doc.id, student_id_value, name
+                # ==========================================
+                # ATTENDANCE - BASAHIN ANG ABSENCES
+                # ==========================================
+                student_records = _get_student_records(
+                    attendance_records, doc.id, student_id_value,
+                    name, data.get('email')
                 )
+                attendance_summary = _summarize_attendance(
+                    student_records,
+                    start_date=start_date,
+                    today=today_date
+                )
+                absent_count = attendance_summary["absent_count"]
+                consecutive_absences = attendance_summary["consecutive"]
+                attendance_record_count = attendance_summary["record_count"]
 
                 # ==========================================
                 # AI STATUS - COMBINED NA BASEHAN:
@@ -240,7 +492,10 @@ def predict_student_risk():
                     projected_total_hours < target_hours
                 )
 
-                is_attendance_risk = absent_count >= ABSENCE_RISK_THRESHOLD
+                is_attendance_risk = (
+                    absent_count >= ABSENCE_RISK_THRESHOLD or
+                    consecutive_absences >= CONSECUTIVE_ABSENCE_RISK_THRESHOLD
+                )
                 is_attendance_monitor = (
                     not is_attendance_risk and
                     absent_count >= ABSENCE_MONITORING_THRESHOLD
@@ -252,11 +507,18 @@ def predict_student_risk():
 
                 elif is_attendance_risk:
                     ai_status = "At Risk"
-                    risk_reason = (
-                        f"May {absent_count} naitalang absence na - masyado nang "
-                        f"madalas hindi pumasok sa duty, kailangan na ng agarang "
-                        f"aksyon mula sa coordinator."
-                    )
+                    if consecutive_absences >= CONSECUTIVE_ABSENCE_RISK_THRESHOLD:
+                        risk_reason = (
+                            f"{consecutive_absences} sunod-sunod na araw na walang "
+                            f"time-in ang estudyante - parang hindi na nagpaparamdam, "
+                            f"kailangan na ng agarang follow-up mula sa coordinator."
+                        )
+                    else:
+                        risk_reason = (
+                            f"May {absent_count} naitalang absence na - masyado nang "
+                            f"madalas hindi pumasok sa duty, kailangan na ng agarang "
+                            f"aksyon mula sa coordinator."
+                        )
 
                 elif is_hours_at_risk:
                     ai_status = "At Risk"
@@ -306,6 +568,9 @@ def predict_student_risk():
                         f"Regular din sa pagpasok ({absent_count} absence lang)."
                     )
 
+                batch_label = _get_batch_label(data)
+                graduated = _is_graduated(data, ai_status)
+
                 record_data = {
                     "id": doc.id,
                     "name": name,
@@ -318,6 +583,10 @@ def predict_student_risk():
                     "targetHours": target_hours,
                     "deadline": coordinator_deadline,
                     "absentCount": absent_count,
+                    "consecutiveAbsences": consecutive_absences,
+                    "attendanceRecords": attendance_record_count,
+                    "batch": batch_label,
+                    "graduated": graduated,
                     "aiStatus": ai_status,
                     "riskReason": risk_reason
                 }
@@ -338,6 +607,10 @@ def predict_student_risk():
                     "progressPercentage": progress_percentage,
                     "predictedTotalHours": int(projected_total_hours),
                     "absentCount": absent_count,
+                    "consecutiveAbsences": consecutive_absences,
+                    "attendanceRecords": attendance_record_count,
+                    "batch": batch_label,
+                    "graduated": graduated,
                     "aiStatus": ai_status,
                     "riskReason": risk_reason,
                     "lastUpdated": firestore.SERVER_TIMESTAMP
@@ -357,6 +630,89 @@ def predict_student_risk():
 
         return jsonify({"status": "success", "data": student_predictions})
 
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# ==========================================
+# 1.B DEBUG - ATTENDANCE READER
+#
+# Buksan sa browser: http://localhost:5000/api/debug-attendance
+# Ipapakita nito kung anong collection/field ang nababasa,
+# ilang attendance record ang na-match sa bawat estudyante,
+# at ilan ang absent - para madaling malaman kung bakit
+# 0 ang absences ng isang estudyante.
+# (Pang-development lang ito - alisin bago i-deploy.)
+# ==========================================
+def _jsonable(value):
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    return str(value)
+
+
+@app.route('/api/debug-attendance', methods=['GET'])
+def debug_attendance():
+    try:
+        records = _load_attendance_records()
+
+        field_counter = Counter()
+        status_counter = Counter()
+        for rec in records:
+            field_counter.update(rec.keys())
+            status_value = next(
+                (rec.get(f) for f in ATTENDANCE_STATUS_FIELDS if rec.get(f) not in (None, '')),
+                None
+            )
+            status_counter[str(status_value)] += 1
+
+        students = []
+        matched_ids = set()
+        for doc in db.collection('users').stream():
+            data = doc.to_dict()
+            role = str(data.get('role', '')).lower()
+            if role != 'student' and data.get('role'):
+                continue
+
+            name = data.get('name') or data.get('fullName') or 'Student User'
+            student_id_value = _get_student_id_raw(data) or doc.id[:7]
+
+            matched = _get_student_records(
+                records, doc.id, student_id_value, name, data.get('email')
+            )
+            matched_ids.update(rec['id'] for rec in matched)
+
+            summary = _summarize_attendance(
+                matched,
+                start_date=datetime(2026, 9, 14),
+                today=datetime.now(PH_TZ).replace(tzinfo=None)
+            )
+            students.append({
+                "name": name,
+                "studentId": _jsonable(student_id_value),
+                "matchedRecords": summary["record_count"],
+                "absences": summary["absent_count"],
+                "consecutiveAbsences": summary["consecutive"],
+            })
+
+        unmatched = [rec for rec in records if rec['id'] not in matched_ids]
+
+        return jsonify({
+            "status": "success",
+            "topLevelCollections": [c.id for c in db.collections()],
+            "attendanceCollectionsRead": ATTENDANCE_COLLECTIONS,
+            "totalAttendanceRecords": len(records),
+            "fieldsSeen": dict(field_counter),
+            "statusValuesSeen": dict(status_counter),
+            "countMissingWeekdaysAsAbsent": COUNT_MISSING_WEEKDAYS_AS_ABSENT,
+            "students": students,
+            "unmatchedRecordCount": len(unmatched),
+            "unmatchedSamples": [
+                {k: _jsonable(v) for k, v in rec.items()} for rec in unmatched[:3]
+            ],
+            "sampleRecords": [
+                {k: _jsonable(v) for k, v in rec.items()} for rec in records[:3]
+            ],
+        })
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 

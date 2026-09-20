@@ -2,8 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 
 import {
     getAuth,
-    onAuthStateChanged,
-    signOut
+    onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 import {
@@ -15,10 +14,7 @@ import {
     query,
     where,
     setDoc,
-    deleteDoc,
-    onSnapshot,
-    orderBy,
-    limit
+    deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 
@@ -53,21 +49,6 @@ const db = getFirestore(app);
 let allWeeklyReports = [];
 
 let coordinatorExceptions = {};
-
-
-// ========================================
-// NOTIFICATIONS (weekly report submissions)
-// ========================================
-
-let studentNameMap = {};
-
-let notifItems = [];
-
-let notifLastSeenAt = 0;
-
-let notifStorageKey = "coordinatorNotifLastSeen";
-
-let notifUnsubscribe = null;
 
 
 // ========================================
@@ -118,25 +99,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
             try {
 
-                // Fetch Coordinator Profile
-                const userDocRef = doc(db, "users", user.uid);
-                const userDoc = await getDoc(userDocRef);
-
-                if (userDoc.exists()) {
-
-                    const userData = userDoc.data();
-
-                    updateProfileUI(userData, user);
-
-                } else {
-
-                    updateProfileUI({}, user);
-
-                }
-
-
                 // ========================================
                 // LOAD DASHBOARD DATA
+                // (Profile info + notifications sa header
+                // ay hawak na ng shared ../header/header.js)
                 // ========================================
 
                 loadDashboardStats();
@@ -146,8 +112,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 loadOverallProgress();
 
                 loadWeeklyReports();
-
-                startWeeklyReportNotifications(user.uid);
 
 
                 // ========================================
@@ -178,41 +142,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     // ========================================
-    // LOGOUT HANDLER
-    // ========================================
-
-    const logoutBtn =
-        document.getElementById("logoutBtn");
-
-    if (logoutBtn) {
-
-        logoutBtn.addEventListener("click", async (e) => {
-
-            e.preventDefault();
-
-            try {
-
-                await signOut(auth);
-
-                window.location.href =
-                    "../coordinator_login/coordinator_login.html";
-
-            } catch (err) {
-
-                console.error(
-                    "Logout Error:",
-                    err
-                );
-
-            }
-
-        });
-
-    }
-
-
-    // ========================================
     // INITIALIZE UI HANDLERS
+    // (Profile menu, notification dropdown, and
+    // logout are wired up by the shared header -
+    // see ../header/header.js)
     // ========================================
 
     // Each init runs in its own try/catch so that if one
@@ -228,10 +161,6 @@ document.addEventListener("DOMContentLoaded", () => {
     safeInit(initReportPagination, "initReportPagination");
 
     safeInit(initCalendarModalEvents, "initCalendarModalEvents");
-
-    safeInit(initProfileMenu, "initProfileMenu");
-
-    safeInit(initNotificationDropdown, "initNotificationDropdown");
 
 });
 
@@ -252,552 +181,55 @@ function safeInit(fn, label) {
 
 
 // ========================================
-// UPDATE PROFILE UI
+// SHOW/HIDE A CARD'S STATUS NOTE
+// Ginagamit ng loadDashboardStats() para lang
+// lumabas ang description kapag may laman na
+// (di zero) ang count ng kaukulang card.
 // ========================================
 
-function updateProfileUI(userData, authUser) {
-
-    const fullName =
-        userData.name ||
-        userData.fullName ||
-        authUser.displayName ||
-        "OJT Coordinator";
-
-    const role =
-        userData.role ||
-        userData.position ||
-        "Coordinator";
-
-
-    const welcomeName =
-        document.getElementById("welcomeName");
-
-    const userName =
-        document.getElementById("userName");
-
-    const userRole =
-        document.getElementById("userRole");
-
-    const userAvatar =
-        document.getElementById("userAvatar");
-
-
-    if (welcomeName) {
-
-        welcomeName.textContent =
-            fullName;
-
-    }
-
-
-    if (userName) {
-
-        userName.textContent =
-            fullName;
-
-    }
-
-
-    if (userRole) {
-
-        userRole.textContent =
-            role.toUpperCase();
-
-    }
-
-
-    // Profile photo, if the coordinator uploaded
-    // one in Account Settings (saved as photoBase64
-    // or photoURL), otherwise falls back to initials.
-    const photo =
-        userData.photoBase64 ||
-        userData.photoURL ||
-        authUser.photoURL ||
-        null;
-
-    paintAvatar(userAvatar, photo, fullName);
-    paintAvatar(document.getElementById("menuAvatar"), photo, fullName);
-
-
-    // Profile dropdown (name + email)
-    const menuName =
-        document.getElementById("menuName");
-
-    const menuEmail =
-        document.getElementById("menuEmail");
-
-    if (menuName) {
-
-        menuName.textContent =
-            fullName;
-
-    }
-
-    if (menuEmail) {
-
-        menuEmail.textContent =
-            authUser.email || "—";
-
-    }
-
-}
-
-
 // ========================================
-// AVATAR RENDERING
-// (shows the saved photo when there is one,
-// falls back to initials otherwise)
+// STAT NOTES (laging nakikita - hindi na bakante)
+// Kapag may laman ang count -> "filled" message.
+// Kapag zero -> "empty" message (hindi na tinatago).
 // ========================================
 
-function paintAvatar(element, photo, name) {
+function setStatNote(id, hasData, filled, empty) {
 
-    if (!element) return;
+    const el =
+        document.getElementById(id);
 
-    const initials = (name || "")
-        .split(" ")
-        .filter(n => n.length > 0)
-        .map(n => n[0])
-        .join("")
-        .substring(0, 2)
-        .toUpperCase() || "CO";
+    if (!el) return;
 
-    if (photo) {
+    const state =
+        hasData ? filled : empty;
 
-        element.innerHTML = "";
-
-        const img =
-            document.createElement("img");
-
-        img.alt = name || "Profile photo";
-        img.src = photo;
-
-        // If the stored image is broken, drop back to initials.
-        img.onerror = () => {
-            element.textContent = initials;
-        };
-
-        element.appendChild(img);
-
-    } else {
-
-        element.textContent = initials;
-
-    }
-
-}
-
-
-// ========================================
-// PROFILE DROPDOWN
-// ========================================
-
-function initProfileMenu() {
-
-    const trigger =
-        document.getElementById("profileMenuTrigger");
-
-    if (!trigger) return;
-
-    trigger.addEventListener("click", (e) => {
-
-        // Clicks on the menu items handle themselves.
-        if (e.target.closest(".profile-menu")) return;
-
-        trigger.classList.toggle("open");
-
-        // Close the notification dropdown if it's open.
-        document.getElementById("notifBell")
-            ?.classList.remove("open");
-
-    });
-
-    document.addEventListener("click", (e) => {
-
-        if (!trigger.contains(e.target)) {
-            trigger.classList.remove("open");
-        }
-
-    });
-
-    document.addEventListener("keydown", (e) => {
-
-        if (e.key === "Escape") {
-            trigger.classList.remove("open");
-        }
-
-    });
-
-
-    // "Account settings" -> go to the settings page.
-    const showProfileBtn =
-        document.getElementById("showProfileBtn");
-
-    if (showProfileBtn) {
-
-        showProfileBtn.addEventListener("click", () => {
-
-            window.location.href =
-                "../settings/settings.html";
-
-        });
-
-    }
-
-}
-
-
-// ========================================
-// NOTIFICATIONS: STUDENT NAME LOOKUP
-// ========================================
-
-async function buildStudentNameMap() {
-
-    try {
-
-        const usersRef =
-            collection(db, "users");
-
-        const studentQuery =
-            query(
-                usersRef,
-                where("role", "==", "student")
-            );
-
-        const snapshot =
-            await getDocs(studentQuery);
-
-        const map = {};
-
-        snapshot.forEach((docSnap) => {
-
-            const data = docSnap.data();
-
-            const name =
-                data.name ||
-                data.fullName ||
-                data.email ||
-                "A student";
-
-            map[docSnap.id] = name;
-
-            if (data.uid) {
-                map[String(data.uid).trim()] = name;
-            }
-
-            if (data.email) {
-                map[String(data.email).toLowerCase().trim()] = name;
-            }
-
-        });
-
-        studentNameMap = map;
-
-    } catch (error) {
-
-        console.error(
-            "Error building student name map for notifications:",
-            error
-        );
-
-    }
-
-}
-
-
-function getStudentNameForReport(data) {
-
-    const studentId =
-        data.userId || data.studentId;
-
-    const possibleEmail =
-        (data.email || data.studentEmail || "")
-            .toLowerCase()
-            .trim();
-
-    return (
-        studentNameMap[studentId] ||
-        studentNameMap[possibleEmail] ||
-        "A student"
+    el.classList.remove(
+        "success",
+        "danger",
+        "muted"
     );
 
-}
+    el.classList.add(state.tone);
 
+    const icon =
+        el.querySelector(".stat-note-header i");
 
-// ========================================
-// NOTIFICATIONS: RELATIVE TIME
-// ========================================
+    const title =
+        el.querySelector(".stat-note-title");
 
-function notifTimeAgo(ms) {
+    const text =
+        el.querySelector("p");
 
-    if (!ms) return "";
-
-    const diffSec =
-        Math.floor((Date.now() - ms) / 1000);
-
-    if (diffSec < 60) return "Just now";
-
-    const diffMin = Math.floor(diffSec / 60);
-    if (diffMin < 60) return `${diffMin}m ago`;
-
-    const diffHr = Math.floor(diffMin / 60);
-    if (diffHr < 24) return `${diffHr}h ago`;
-
-    const diffDay = Math.floor(diffHr / 24);
-    if (diffDay < 7) return `${diffDay}d ago`;
-
-    return new Date(ms).toLocaleDateString(
-        "en-US",
-        { month: "short", day: "numeric" }
-    );
-
-}
-
-
-// ========================================
-// NOTIFICATIONS: RENDER LIST + BADGE
-// ========================================
-
-function renderNotifications() {
-
-    const listEl =
-        document.getElementById("notifList");
-
-    const badgeEl =
-        document.getElementById("notifBadge");
-
-    if (!listEl) return;
-
-    if (notifItems.length === 0) {
-
-        listEl.innerHTML =
-            '<div class="notif-empty">No report submissions yet.</div>';
-
-    } else {
-
-        listEl.innerHTML = notifItems.map((item) => {
-
-            const unread =
-                item.timestamp > notifLastSeenAt;
-
-            return `
-                <div class="notif-item ${unread ? "unread" : ""}" data-report-id="${item.id}">
-                    <div class="notif-icon">
-                        <i class="fa-solid fa-file-circle-check"></i>
-                    </div>
-                    <div class="notif-text">
-                        <p><strong>${item.studentName}</strong> submitted a weekly report.</p>
-                        <span>${notifTimeAgo(item.timestamp)}</span>
-                    </div>
-                    ${unread ? '<span class="notif-dot"></span>' : ""}
-                </div>
-            `;
-
-        }).join("");
-
+    if (icon) {
+        icon.className =
+            "fa-solid " + state.icon;
     }
 
-    const unreadCount =
-        notifItems.filter(
-            (item) => item.timestamp > notifLastSeenAt
-        ).length;
+    if (title) title.textContent = state.title;
 
-    if (badgeEl) {
+    if (text) text.textContent = state.text;
 
-        if (unreadCount > 0) {
-
-            badgeEl.textContent =
-                unreadCount > 9 ? "9+" : String(unreadCount);
-
-            badgeEl.style.display = "flex";
-
-        } else {
-
-            badgeEl.style.display = "none";
-
-        }
-
-    }
-
-}
-
-
-function markNotificationsRead() {
-
-    notifLastSeenAt = Date.now();
-
-    try {
-        localStorage.setItem(
-            notifStorageKey,
-            String(notifLastSeenAt)
-        );
-    } catch (error) {
-        console.error("Could not save notif read state:", error);
-    }
-
-    renderNotifications();
-
-}
-
-
-// ========================================
-// NOTIFICATIONS: LIVE LISTENER
-// Watches the "weekly_reports" collection so
-// new student submissions show up right away,
-// without needing to refresh the page.
-// ========================================
-
-async function startWeeklyReportNotifications(uid) {
-
-    notifStorageKey =
-        `coordinatorNotifLastSeen_${uid}`;
-
-    notifLastSeenAt =
-        Number(localStorage.getItem(notifStorageKey)) || 0;
-
-    await buildStudentNameMap();
-
-    const reportsRef =
-        collection(db, "weekly_reports");
-
-    const notifQuery =
-        query(
-            reportsRef,
-            orderBy("submittedAt", "desc"),
-            limit(20)
-        );
-
-    if (notifUnsubscribe) {
-        notifUnsubscribe();
-    }
-
-    notifUnsubscribe = onSnapshot(
-        notifQuery,
-        (snapshot) => {
-
-            notifItems = snapshot.docs.map((docSnap) => {
-
-                const data = docSnap.data();
-
-                const rawDate = data.submittedAt;
-
-                const timestamp =
-                    rawDate?.seconds
-                        ? rawDate.seconds * 1000
-                        : (rawDate ? new Date(rawDate).getTime() : 0);
-
-                return {
-                    id: docSnap.id,
-                    studentName: getStudentNameForReport(data),
-                    timestamp: timestamp || 0
-                };
-
-            });
-
-            renderNotifications();
-
-        },
-        (error) => {
-
-            console.error(
-                "Error listening for report notifications:",
-                error
-            );
-
-        }
-    );
-
-}
-
-
-// ========================================
-// NOTIFICATIONS: BELL DROPDOWN
-// ========================================
-
-function initNotificationDropdown() {
-
-    const bell =
-        document.getElementById("notifBell");
-
-    const markBtn =
-        document.getElementById("notifMarkReadBtn");
-
-    if (!bell) return;
-
-    bell.addEventListener("click", (e) => {
-
-        if (e.target.closest("#notifMarkReadBtn")) return;
-
-        // Clicking a notification item scrolls to the
-        // weekly reports table instead of just toggling.
-        const clickedItem = e.target.closest(".notif-item");
-
-        if (clickedItem) {
-
-            bell.classList.remove("open");
-
-            document
-                .getElementById("weeklyReportsTableBody")
-                ?.closest("table")
-                ?.scrollIntoView({ behavior: "smooth", block: "center" });
-
-            return;
-
-        }
-
-        const isOpening =
-            !bell.classList.contains("open");
-
-        bell.classList.toggle("open");
-
-        // Close the profile dropdown if it's open.
-        document.getElementById("profileMenuTrigger")
-            ?.classList.remove("open");
-
-        if (isOpening) {
-
-            renderNotifications();
-
-            // Give the user a moment to see what's new
-            // before quietly marking it all as read.
-            setTimeout(() => {
-
-                if (bell.classList.contains("open")) {
-                    markNotificationsRead();
-                }
-
-            }, 1500);
-
-        }
-
-    });
-
-    if (markBtn) {
-
-        markBtn.addEventListener("click", (e) => {
-
-            e.stopPropagation();
-
-            markNotificationsRead();
-
-        });
-
-    }
-
-    document.addEventListener("click", (e) => {
-
-        if (!bell.contains(e.target)) {
-            bell.classList.remove("open");
-        }
-
-    });
-
-    document.addEventListener("keydown", (e) => {
-
-        if (e.key === "Escape") {
-            bell.classList.remove("open");
-        }
-
-    });
+    el.style.display = "";
 
 }
 
@@ -944,6 +376,99 @@ async function loadDashboardStats() {
                 graduated;
 
         }
+
+
+        // ========================================
+        // STAT NOTES:
+        // Laging may description ang bawat card.
+        // May laman = normal message, zero = empty-state
+        // message (hindi na bakante ang card).
+        // ========================================
+
+        setStatNote(
+            "totalInternsNote",
+            total > 0,
+            {
+                tone: "success",
+                icon: "fa-user-check",
+                title: "Currently Active",
+                text: "Monitor student progress and internship status."
+            },
+            {
+                tone: "muted",
+                icon: "fa-user-plus",
+                title: "No Registered Interns Yet",
+                text: "Students will appear here once they register."
+            }
+        );
+
+        setStatNote(
+            "activeInternsNote",
+            active > 0,
+            {
+                tone: "success",
+                icon: "fa-check",
+                title: "Progressing Normally",
+                text: "Continue regular monitoring and support."
+            },
+            {
+                tone: "muted",
+                icon: "fa-user-clock",
+                title: "No Active Interns Yet",
+                text: "Interns will show up here once they start their internship."
+            }
+        );
+
+        setStatNote(
+            "completedNote",
+            completed > 0,
+            {
+                tone: "success",
+                icon: "fa-clipboard-check",
+                title: "Internship Completed",
+                text: "Students who finished their required hours."
+            },
+            {
+                tone: "muted",
+                icon: "fa-clipboard-list",
+                title: "No Completions Yet",
+                text: "Students who finish their required hours will appear here."
+            }
+        );
+
+        setStatNote(
+            "atRiskNote",
+            atRisk > 0,
+            {
+                tone: "danger",
+                icon: "fa-circle-exclamation",
+                title: "Needs Intervention",
+                text: "Review flagged students and address their risk factors."
+            },
+            {
+                tone: "success",
+                icon: "fa-circle-check",
+                title: "All Clear",
+                text: "No students are currently flagged as at-risk."
+            }
+        );
+
+        setStatNote(
+            "graduatedNote",
+            graduated > 0,
+            {
+                tone: "success",
+                icon: "fa-graduation-cap",
+                title: "Graduated",
+                text: "System Recorded."
+            },
+            {
+                tone: "muted",
+                icon: "fa-graduation-cap",
+                title: "No Graduates Yet",
+                text: "Graduated students will be recorded here."
+            }
+        );
 
 
     } catch (error) {
@@ -2077,6 +1602,16 @@ function renderWeeklyReportsTable() {
         )?.value || "default";
 
 
+    const searchTerm =
+        (
+            document.getElementById(
+                "reportSearchInput"
+            )?.value || ""
+        )
+            .trim()
+            .toLowerCase();
+
+
     // ========================================
     // FILTER
     // ========================================
@@ -2093,7 +1628,25 @@ function renderWeeklyReportsTable() {
                     );
 
 
-            return matchesSection;
+            // Search: name, student ID, section, company,
+            // week range, at report date.
+            const matchesSearch =
+                searchTerm === "" ||
+                [
+                    item.studentName,
+                    item.studentNumber,
+                    item.section,
+                    item.company,
+                    item.weekRange,
+                    item.reportDate
+                ].some(field =>
+                    String(field || "")
+                        .toLowerCase()
+                        .includes(searchTerm)
+                );
+
+
+            return matchesSection && matchesSearch;
 
         });
 
@@ -2171,7 +1724,7 @@ function renderWeeklyReportsTable() {
                         padding:25px;
                     "
                 >
-                    No weekly reports found based on the selected filter.
+                    No weekly reports found based on your search or selected filter.
                 </td>
             </tr>
         `;
@@ -2300,8 +1853,7 @@ function renderWeeklyReportsTable() {
                 <td>
 
                     <a
-                        href="../../student-page/reportform/weeklyreport.html?studentId=${report.studentId}&reportId=${report.id}"
-                        target="_blank"
+                        href="../../student-page/reportform/weeklyreport.html?studentId=${encodeURIComponent(report.studentId ?? "")}&reportId=${encodeURIComponent(report.id ?? "")}"
                         class="btn-view-report"
                     >
 
@@ -2619,6 +2171,34 @@ function initReportFilters() {
         document.getElementById(
             "reportNameSort"
         );
+
+
+    const searchInput =
+        document.getElementById(
+            "reportSearchInput"
+        );
+
+
+    // ========================================
+    // SEARCH (name / student ID / company / etc.)
+    // ========================================
+
+    if (searchInput) {
+
+        searchInput.addEventListener(
+            "input",
+            () => {
+
+                // Reset pagination
+                currentReportPage =
+                    1;
+
+                renderWeeklyReportsTable();
+
+            }
+        );
+
+    }
 
 
     // ========================================
@@ -3688,6 +3268,133 @@ document.addEventListener(
                 if (matchingConfig) {
 
                     closePopup(matchingConfig);
+
+                }
+
+            }
+        );
+
+    }
+);
+
+
+// ========================================
+// WEEKLY REPORT POPUP
+//
+// Dati, ang View button ay nagbubukas ng
+// bagong tab. Ngayon, nilo-load na lang ang
+// weeklyreport.html sa loob ng iframe modal
+// (kapareho ng stat card popups) - pareho pa
+// rin ang UI ng report, hindi lang aalis sa
+// dashboard.
+// ========================================
+
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+
+        const reportModal =
+            document.getElementById("weeklyReportModal");
+
+        const reportFrame =
+            document.getElementById("weeklyReportFrame");
+
+        const reportCloseBtn =
+            document.getElementById("closeWeeklyReportModalBtn");
+
+        const reportTableBody =
+            document.getElementById("weeklyReportsTableBody");
+
+
+        if (!reportModal || !reportFrame) return;
+
+
+        function openWeeklyReportPopup(url) {
+
+            // Set src only on open para laging fresh ang data.
+            reportFrame.src = url;
+
+            reportModal.style.display = "flex";
+
+            document.body.style.overflow = "hidden";
+
+        }
+
+
+        function closeWeeklyReportPopup() {
+
+            reportModal.style.display = "none";
+
+            // Linisin ang iframe para huminto ang listener nito.
+            reportFrame.src = "about:blank";
+
+            document.body.style.overflow = "";
+
+        }
+
+
+        // Event delegation - gumagana kahit paulit-ulit
+        // ang pag-render ng table (pagination/search/filter).
+        if (reportTableBody) {
+
+            reportTableBody.addEventListener(
+                "click",
+                (e) => {
+
+                    const viewBtn =
+                        e.target.closest(".btn-view-report");
+
+                    if (!viewBtn) return;
+
+                    e.preventDefault();
+
+                    openWeeklyReportPopup(
+                        viewBtn.getAttribute("href")
+                    );
+
+                }
+            );
+
+        }
+
+
+        if (reportCloseBtn) {
+
+            reportCloseBtn.addEventListener(
+                "click",
+                closeWeeklyReportPopup
+            );
+
+        }
+
+
+        // Click sa labas ng popup = close
+        reportModal.addEventListener(
+            "click",
+            (e) => {
+
+                if (e.target === reportModal) {
+
+                    closeWeeklyReportPopup();
+
+                }
+
+            }
+        );
+
+
+        // Message mula sa loob ng report page
+        // (yung sarili nitong "Back" button)
+        window.addEventListener(
+            "message",
+            (event) => {
+
+                if (
+                    event.data &&
+                    event.data.type === "closeWeeklyReportModal"
+                ) {
+
+                    closeWeeklyReportPopup();
 
                 }
 

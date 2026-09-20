@@ -40,9 +40,33 @@ const db = getFirestore(app);
 const attendanceRef = collection(db, "attendance");
 const companiesRef = collection(db, "companies");
 
+/* ==========================================
+   ATTENDANCE POLICY CONFIGURATION
+   - OFFICIAL_TIME_IN: tamang oras ng time in (8:00 AM)
+   - LATE_GRACE_MINUTES: grace period bago macall na "Late"
+     (halimbawa: 8:15 AM na time in = Late na, dahil lampas
+     na sa 15 minutes grace mula 8:00 AM)
+   - DUTY_DAYS: mga araw ng duty (0=Sunday ... 6=Saturday).
+     Default: Monday–Friday
+========================================== */
+const OFFICIAL_TIME_IN_HOUR = 8;
+const OFFICIAL_TIME_IN_MINUTE = 0;
+const LATE_GRACE_MINUTES = 15;
+const DUTY_DAYS = [1, 2, 3, 4, 5];
+
 let fullAttendanceHistory = [];
 let initialClockInterval = null;
 let todayNoDutyReason = null;
+
+// Naka-cache na schedule.days ng naka-login na student (mula sa users/{uid}
+// document sa Firestore), para hindi na paulit-ulit mag-fetch. Null pa
+// hangga't hindi pa na-a-attempt fetch; empty/undefined array kapag wala
+// pang na-set na schedule sa account niya.
+let studentScheduleDays = null;
+let studentScheduleFetchedFor = null;
+
+// Kontrol sa "View All" toggle ng Attendance History list.
+let showAllHistory = false;
 
 /* ==========================================
    TODAY'S NO-DUTY CHECK (Suspension / Holiday)
@@ -67,6 +91,175 @@ async function getTodayNoDutyReason(dateStr) {
     }
 
     return null;
+}
+
+/* ==========================================
+   LATE COMPUTATION
+   Ikinukumpara ang oras ng Time In sa opisyal na
+   schedule (8:00 AM) + grace period (15 mins).
+   Late na kapag lumampas sa 8:15 AM.
+========================================== */
+function computeLateInfo(timeInDate) {
+    const scheduled = new Date(timeInDate);
+    scheduled.setHours(OFFICIAL_TIME_IN_HOUR, OFFICIAL_TIME_IN_MINUTE, 0, 0);
+
+    const graceDeadline = new Date(scheduled.getTime() + LATE_GRACE_MINUTES * 60000);
+
+    if (timeInDate > graceDeadline) {
+        const lateMinutes = Math.round((timeInDate - scheduled) / 60000);
+        return { isLate: true, lateMinutes };
+    }
+    return { isLate: false, lateMinutes: 0 };
+}
+
+/* ==========================================
+   ABSENCE AUTO-DETECTION
+   Kapag walang Time In record ang isang user sa isang
+   duty day (weekday, at walang calendar exception /
+   suspension), awtomatikong mama-mark itong "Absent"
+   sa susunod na pag-load ng page (hindi kasama ang
+   araw na ito habang ongoing pa).
+========================================== */
+function isDutyDay(dateObj) {
+    return DUTY_DAYS.includes(dateObj.getDay());
+}
+
+/* ==========================================
+   PER-STUDENT SCHEDULE (users/{uid}.schedule.days)
+   Bawat student may sariling assigned na mga araw ng
+   duty (hal. ["Monday","Tuesday","Thursday"]), na naka-set
+   ng coordinator sa Firestore "users" collection. Dito
+   ina-align ang Time In / Time Out buttons sa personal na
+   schedule niya sa halip na sa generic Mon-Fri default.
+========================================== */
+async function getStudentScheduleDays(user) {
+    if (!user || !user.uid) return null;
+
+    // Gamitin ulit ang huling fetch kung same user pa rin,
+    // para hindi na tumawag ulit sa Firestore sa bawat refresh.
+    if (studentScheduleFetchedFor === user.uid) {
+        return studentScheduleDays;
+    }
+
+    try {
+        const userDocRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userDocRef);
+
+        if (userSnap.exists()) {
+            const data = userSnap.data();
+            const days = data.schedule?.days;
+            studentScheduleDays = Array.isArray(days) ? days : null;
+        } else {
+            studentScheduleDays = null;
+        }
+    } catch (error) {
+        console.warn("Could not fetch student schedule:", error);
+        studentScheduleDays = null;
+    }
+
+    studentScheduleFetchedFor = user.uid;
+    return studentScheduleDays;
+}
+
+// True kapag "dateObj" ay isa sa mga naka-assign na duty day ng student.
+// Kung wala pang na-set na schedule sa account niya, babalik sa generic
+// Mon-Fri default (DUTY_DAYS) para hindi mag-lock ng buttons nang walang dahilan.
+function isTodayInStudentSchedule(dateObj, scheduleDays) {
+    if (!Array.isArray(scheduleDays) || scheduleDays.length === 0) {
+        return isDutyDay(dateObj);
+    }
+    const dayName = dateObj.toLocaleDateString("en-US", { weekday: "long" });
+    return scheduleDays.includes(dayName);
+}
+
+async function getNoDutyDatesInRange(startStr, endStr) {
+    const noDutySet = new Set();
+    try {
+        const q = query(
+            collection(db, "calendar_exceptions"),
+            where("date", ">=", startStr),
+            where("date", "<=", endStr)
+        );
+        const snap = await getDocs(q);
+        snap.forEach(d => {
+            if (d.data().date) noDutySet.add(d.data().date);
+        });
+    } catch (error) {
+        console.warn("Could not check calendar exceptions range:", error);
+    }
+    return noDutySet;
+}
+
+async function checkAndMarkAbsences(user, todayStr, scheduleDays) {
+    if (!user) return;
+
+    const existingDates = new Set(fullAttendanceHistory.map(i => i.date));
+
+    // Simula ng pag-check: pinakaunang existing record ng user.
+    // Kung wala pa siyang record, 14 days lang paatras ang default
+    // lookback window (para hindi mag-mark ng absences bago pa
+    // man sumali ang student sa OJT).
+    let earliestDate = null;
+    fullAttendanceHistory.forEach(item => {
+        if (item.date && (!earliestDate || item.date < earliestDate)) {
+            earliestDate = item.date;
+        }
+    });
+
+    const todayDateObj = new Date(todayStr + "T00:00:00");
+    let cursor;
+    if (earliestDate) {
+        cursor = new Date(earliestDate + "T00:00:00");
+    } else {
+        cursor = new Date(todayDateObj);
+        cursor.setDate(cursor.getDate() - 14);
+    }
+
+    const startStr = getLocalYYYYMMDD(cursor);
+    const noDutySet = await getNoDutyDatesInRange(startStr, todayStr);
+
+    const userId = user.uid;
+    const userEmail = user.email;
+
+    // Hindi kasama ang "today" — ma-e-evaluate lang ito paglipas
+    // ng araw (sa susunod na pagbukas ng page).
+    while (cursor < todayDateObj) {
+        const dateStr = getLocalYYYYMMDD(cursor);
+
+        if (isTodayInStudentSchedule(cursor, scheduleDays) && !noDutySet.has(dateStr) && !existingDates.has(dateStr)) {
+            const absentRecord = {
+                userId: userId || "guest_user",
+                userEmail: userEmail || "no_email",
+                date: dateStr,
+                formattedDate: formatLocalDateDisplay(cursor),
+                company: "--",
+                location: "--",
+                timeIn: "--",
+                timeOut: "--",
+                photoProof: "",
+                tasks: "",
+                hoursRendered: 0,
+                todayHours: "0h 0m",
+                status: "Absent",
+                remarks: "No Time In Recorded (Auto-marked)",
+                createdAt: serverTimestamp()
+            };
+
+            try {
+                const docRef = await addDoc(attendanceRef, absentRecord);
+                fullAttendanceHistory.push({
+                    id: docRef.id,
+                    ...absentRecord,
+                    createdAt: new Date().toISOString()
+                });
+                existingDates.add(dateStr);
+            } catch (err) {
+                console.warn("Could not auto-mark absence for", dateStr, err);
+            }
+        }
+
+        cursor.setDate(cursor.getDate() + 1);
+    }
 }
 
 /* ==========================================
@@ -99,6 +292,12 @@ function formatLocalDateDisplay(dateObj = new Date()) {
     return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+// Kasama na ang pangalan ng araw (Monday, Tuesday, ...) — ginagamit sa
+// live timestamp badge para makita agad kung anong araw ngayon.
+function formatLocalDateWithDay(dateObj = new Date()) {
+    return dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 function formatAMPM(dateObj = new Date()) {
     return dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 }
@@ -112,7 +311,7 @@ async function startInitialLiveClock() {
 
     const updateClock = async () => {
         const now = await getCurrentNTPTime();
-        const dateStr = formatLocalDateDisplay(now);
+        const dateStr = formatLocalDateWithDay(now);
         const timeStr = formatAMPM(now);
         badge.textContent = `${timeStr} / ${dateStr}`;
     };
@@ -229,7 +428,7 @@ function initFlatpickrFilter() {
                 if (selectedDates.length === 2) {
                     filterHistoryByDateRange(selectedDates[0], selectedDates[1]);
                 } else if (selectedDates.length === 0) {
-                    renderHistoryItems(fullAttendanceHistory);
+                    renderHistoryItems(getDisplayHistory(fullAttendanceHistory));
                 }
             }
         });
@@ -248,7 +447,7 @@ function filterHistoryByDateRange(startDate, endDate) {
         return itemDate >= start && itemDate <= end;
     });
 
-    renderHistoryItems(filtered);
+    renderHistoryItems(getDisplayHistory(filtered));
 }
 
 // Global View Photo Modal
@@ -295,6 +494,26 @@ window.viewPhotoModal = function(photoUrl, company, date, timeIn) {
 
     viewModal.hidden = false;
 };
+
+// Kapag hindi pa pinindot ang "View All", 3 lang na pinaka-bagong
+// attendance record ang ipapakita sa listahan.
+function getDisplayHistory(historyList) {
+    return showAllHistory ? historyList : historyList.slice(0, 3);
+}
+
+// Ginagamit pareho ng refreshAttendanceUI at ng "View All" button para
+// hindi mag-duplicate ng logic: kung may active date-range filter, i-apply
+// yun; kung wala, ipakita ang buong fullAttendanceHistory (naka-cap sa 3
+// maliban na lang kung naka-toggle na ang "View All").
+function applyHistoryDisplay() {
+    const datePickerInput = document.getElementById("dateRangePicker");
+    if (datePickerInput && datePickerInput._flatpickr && datePickerInput._flatpickr.selectedDates.length === 2) {
+        const dates = datePickerInput._flatpickr.selectedDates;
+        filterHistoryByDateRange(dates[0], dates[1]);
+    } else {
+        renderHistoryItems(getDisplayHistory(fullAttendanceHistory));
+    }
+}
 
 // Render Logs List
 function renderHistoryItems(historyList) {
@@ -411,6 +630,8 @@ function initAttendanceSystem(currentUser) {
 
     const viewPhotoBtnClose = document.getElementById("view-photo-btn-close");
     const viewPhotoModalEl = document.getElementById("view-photo-modal");
+
+    const viewAllBtn = document.getElementById("view-all-btn");
 
     let qrScanner = null;
     let scanMode = null; 
@@ -612,6 +833,9 @@ function initAttendanceSystem(currentUser) {
         const userId = user ? user.uid : "guest_user";
         const userEmail = user ? user.email : "no_email";
 
+        // I-check kung Late ang Time In (lampas 15 mins grace mula 8:00 AM)
+        const lateInfo = computeLateInfo(now);
+
         const newRecord = {
             userId: userId,
             userEmail: userEmail,
@@ -627,7 +851,9 @@ function initAttendanceSystem(currentUser) {
             hoursRendered: 0,
             todayHours: "0h 0m",
             status: "Active",
-            remarks: "--",
+            isLate: lateInfo.isLate,
+            lateMinutes: lateInfo.lateMinutes,
+            remarks: lateInfo.isLate ? `Late Arrival (${lateInfo.lateMinutes} minute/s late)` : "--",
             createdAt: serverTimestamp() // Gumagamit na ng Server Timestamp
         };
 
@@ -645,7 +871,11 @@ function initAttendanceSystem(currentUser) {
             });
 
             localStorage.setItem("current_attendance_doc_id", docRef.id);
-            showToast("Time In Successful! Status is Active.", "success");
+            if (lateInfo.isLate) {
+                showToast(`Time In Successful, but you are Late by ${lateInfo.lateMinutes} minute/s.`, "info");
+            } else {
+                showToast("Time In Successful! Status is Active.", "success");
+            }
         } catch (e) {
             console.error("Firebase Firestore Time In Error:", e);
             const fallbackRecord = { ...newRecord, id: "local_" + Date.now(), createdAt: new Date().toISOString() };
@@ -755,7 +985,16 @@ function initAttendanceSystem(currentUser) {
 
                 if (docSnap.exists()) {
                     const data = docSnap.data();
-                    
+
+                    // Gamitin ang Late flag na na-compute noong Time In
+                    if (data.isLate) {
+                        finalStatus = "Late";
+                        finalRemarks = `Late Arrival (${data.lateMinutes || 0} minute/s late)`;
+                    } else {
+                        finalStatus = "Present";
+                        finalRemarks = "On-Time / Present";
+                    }
+
                     let timeInDate;
                     if (data.timeInRaw) {
                         timeInDate = new Date(data.timeInRaw);
@@ -826,6 +1065,14 @@ function initAttendanceSystem(currentUser) {
         if (viewPhotoModalEl) viewPhotoModalEl.hidden = true;
     });
 
+    // "View All" toggles between showing only the 3 most recent
+    // attendance records and the complete history list in place.
+    viewAllBtn?.addEventListener("click", () => {
+        showAllHistory = !showAllHistory;
+        viewAllBtn.textContent = showAllHistory ? "View Less" : "View All";
+        applyHistoryDisplay();
+    });
+
     // --- 4. REFRESH & BIND TODAY'S ATTENDANCE UI ---
     async function refreshAttendanceUI() {
         const todayDate = document.getElementById("today-date");
@@ -865,11 +1112,27 @@ function initAttendanceSystem(currentUser) {
 
         fullAttendanceHistory = Array.from(historyMap.values());
 
-        fullAttendanceHistory.sort((a, b) => {
-            const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime();
-            const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt || 0).getTime();
-            return timeB - timeA;
-        });
+        // Kunin ang personal na schedule.days ng student (mula sa
+        // users/{uid}) para malaman kung duty day niya ngayon.
+        const scheduleDays = await getStudentScheduleDays(user);
+        const isScheduledToday = isTodayInStudentSchedule(now, scheduleDays);
+
+        const sortHistory = () => {
+            fullAttendanceHistory.sort((a, b) => {
+                const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime();
+                const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt || 0).getTime();
+                return timeB - timeA;
+            });
+        };
+
+        sortHistory();
+
+        // Awtomatikong i-mark na "Absent" ang mga nakaraang duty day
+        // na walang Time In record (hindi kasama ang araw na ito).
+        if (currentUid || currentEmail) {
+            await checkAndMarkAbsences(user, todayStr, scheduleDays);
+            sortHistory();
+        }
 
         const activeDocId = localStorage.getItem("current_attendance_doc_id");
         const session = fullAttendanceHistory.find(i => i.id === activeDocId || (i.status === "Active" && i.date === todayStr));
@@ -890,7 +1153,7 @@ function initAttendanceSystem(currentUser) {
             if (timeOutIconBox) timeOutIconBox.className = "qr-icon-circle orange-bg";
             if (timeOutNoteText) timeOutNoteText.textContent = "Click to scan QR code and time out.";
 
-            const badgeDateStr = session.formattedDate || formatLocalDateDisplay(now);
+            const badgeDateStr = formatLocalDateWithDay(now);
             updateRedTimestampBadge(session.timeIn, badgeDateStr);
 
         } else {
@@ -903,8 +1166,13 @@ function initAttendanceSystem(currentUser) {
                 if (todayTimeOut) todayTimeOut.textContent = latestToday.timeOut || "--";
 
                 if (todayStatusBadge) {
-                    todayStatusBadge.textContent = "Present";
-                    todayStatusBadge.className = "status-badge completed";
+                    if (latestToday.status === "Late") {
+                        todayStatusBadge.textContent = "Late";
+                        todayStatusBadge.className = "status-badge late";
+                    } else {
+                        todayStatusBadge.textContent = "Present";
+                        todayStatusBadge.className = "status-badge completed";
+                    }
                 }
 
                 if (timeInScanBtn) { timeInScanBtn.disabled = true; timeInScanBtn.className = "scan-btn disabled-btn"; }
@@ -912,9 +1180,9 @@ function initAttendanceSystem(currentUser) {
                 if (timeOutIconBox) timeOutIconBox.className = "qr-icon-circle gray-bg";
                 if (timeOutNoteText) timeOutNoteText.textContent = "Attendance completed for today. Come back tomorrow!";
 
-                updateRedTimestampBadge(latestToday.timeIn, latestToday.formattedDate || formatLocalDateDisplay(now));
+                updateRedTimestampBadge(latestToday.timeIn, formatLocalDateWithDay(now));
 
-            } else if (todayNoDutyReason) {
+            } else if (todayNoDutyReason || !isScheduledToday) {
                 if (todayCompany) todayCompany.textContent = "--";
                 if (todayLocation) todayLocation.textContent = "--";
                 if (todayTimeIn) todayTimeIn.textContent = "--";
@@ -929,7 +1197,12 @@ function initAttendanceSystem(currentUser) {
                 if (timeOutScanBtn) { timeOutScanBtn.disabled = true; timeOutScanBtn.className = "scan-btn disabled-btn"; }
                 if (timeOutIconBox) timeOutIconBox.className = "qr-icon-circle gray-bg";
 
-                const noDutyNote = `No duty today — ${todayNoDutyReason}`;
+                // Kung may calendar exception (suspension/holiday) gamitin
+                // yung reason nun; kung wala naman pero hindi lang siya naka-
+                // schedule ngayong araw, sabihin na wala siyang duty ngayon.
+                const noDutyNote = todayNoDutyReason
+                    ? `No duty today — ${todayNoDutyReason}`
+                    : "No duty today — not in your assigned schedule.";
                 if (timeInNoteText) timeInNoteText.textContent = noDutyNote;
                 if (timeOutNoteText) timeOutNoteText.textContent = noDutyNote;
 
@@ -941,7 +1214,7 @@ function initAttendanceSystem(currentUser) {
 
                 if (todayStatusBadge) {
                     todayStatusBadge.textContent = latestToday && latestToday.status === "Absent" ? "Absent" : "Not Timed In";
-                    todayStatusBadge.className = latestToday && latestToday.status === "Absent" ? "status-badge late" : "status-badge not-timed-in";
+                    todayStatusBadge.className = latestToday && latestToday.status === "Absent" ? "status-badge absent" : "status-badge not-timed-in";
                 }
 
                 if (timeInScanBtn) { timeInScanBtn.disabled = latestToday && latestToday.status === "Absent"; timeInScanBtn.className = timeInScanBtn.disabled ? "scan-btn disabled-btn" : "scan-btn green-btn"; }
@@ -952,12 +1225,6 @@ function initAttendanceSystem(currentUser) {
             }
         }
 
-        const datePickerInput = document.getElementById("dateRangePicker");
-        if (datePickerInput && datePickerInput._flatpickr && datePickerInput._flatpickr.selectedDates.length === 2) {
-            const dates = datePickerInput._flatpickr.selectedDates;
-            filterHistoryByDateRange(dates[0], dates[1]);
-        } else {
-            renderHistoryItems(fullAttendanceHistory);
-        }
+        applyHistoryDisplay();
     }
 }

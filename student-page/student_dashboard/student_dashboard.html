@@ -208,10 +208,26 @@
                     <span class="vertical-line red"></span>
                     <h3>Recent Activity</h3>
                 </div>
-                <a href="../activities/activities.html" id="view-all-btn" style="text-decoration: none; color: #0284c7; font-weight: 500; font-size: 14px;">View All</a>
+                <button type="button" id="view-all-btn" class="view-all-btn">View All</button>
             </div>
 
             <div class="activity-list" id="recent-activity-list"></div>
+        </div>
+
+        <!-- All Activities Modal (opened by the "View All" button) -->
+        <div id="modal-container-wrapper">
+            <div class="modal-overlay" id="activities-modal-overlay">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Activity History</h3>
+                        <button type="button" class="close-btn" id="explicit-close-btn" aria-label="Close">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+
+                    <div class="activity-list" id="all-activities-list"></div>
+                </div>
+            </div>
         </div>
     </main>
 </div>

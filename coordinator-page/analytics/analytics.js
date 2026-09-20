@@ -2,227 +2,397 @@
    OJT-LOGS ANALYTICS & AI TASK/ATTENDANCE SKILL EXPOSURE
 ========================================== */
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-
-import {
-    getFirestore,
-    collection,
-    getDocs
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-import {
-    getAuth,
-    onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+// NOTE: Ang login check, profile, at notifications ay hawak na
+// ng shared header (../header/header.js), kaya wala nang Firebase
+// code sa file na ito. Lahat ng data ay galing sa Flask AI server
+// (app.py, http://localhost:5000).
 
 
 // ==========================================
-// FIREBASE CONFIGURATION
+// CHARTS (BAR + PIE) - gamit ang Chart.js
+//
+// Kulay ng system:
+//   maroon  #ab0a0a  -> primary (sidebar/buttons/accent)
+//   red     #e74c3c  -> At Risk
+//   orange  #f19c14  -> Needs Monitoring
+//   green   #27ae60  -> On Track
 // ==========================================
 
-const firebaseConfig = {
-    apiKey: "AIzaSyDvMQyEHIIJTW4etj4VQHjjIzd8oB2geJ8",
-    authDomain: "ojt-logs-e1892.firebaseapp.com",
-    databaseURL: "https://ojt-logs-e1892-default-rtdb.firebaseio.com",
-    projectId: "ojt-logs-e1892",
-    storageBucket: "ojt-logs-e1892.firebasestorage.app",
-    messagingSenderId: "1012575426857",
-    appId: "1:1012575426857:web:c2d6dbcdc0dc0ad965ff38",
-    measurementId: "G-DJ3JW7QH27"
+const CHART_COLORS = {
+    primary: "#ab0a0a",
+    primaryHover: "#8f0808",
+    primarySoft: "#e9b8b8",
+    primarySoftHover: "#dea0a0",
+    risk: "#e74c3c",
+    monitoring: "#f19c14",
+    onTrack: "#27ae60",
+    text: "#666666",
+    muted: "#999999",
+    grid: "#ececec",
+    surface: "#ffffff"
 };
 
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
-
-const usersRef = collection(db, "users");
-
-
-// ==========================================
-// AI STATUS CHARTS (BAR + PIE)
-// gamit ang Chart.js (idinagdag sa HTML)
-// ==========================================
-
 let riskStatusPieChartInstance = null;
-
-function renderRiskStatusCharts(atRiskCount, monitoringCount, onTrackCount) {
-
-    if (typeof Chart === "undefined") {
-        // Hindi pa na-load ang Chart.js library
-        console.error(
-            "Chart.js library failed to load - check internet connection or CDN block."
-        );
-
-        ["riskStatusPieChart"].forEach((canvasId) => {
-
-            const canvasEl =
-                document.getElementById(canvasId);
-
-            if (canvasEl && canvasEl.parentElement) {
-
-                canvasEl.parentElement.innerHTML = `
-                    <div style="padding:20px;text-align:center;color:#dc2626;font-size:12px;">
-                        Hindi na-load ang Chart.js library.<br>
-                        Check ang internet connection o kung na-block
-                        ng adblocker/firewall ang cdn.jsdelivr.net.
-                    </div>
-                `;
-
-            }
-
-        });
-
-        return;
-    }
-
-    const labels = [
-        "At Risk",
-        "Needs Monitoring",
-        "On Track"
-    ];
-
-    const dataValues = [
-        atRiskCount,
-        monitoringCount,
-        onTrackCount
-    ];
-
-    const colors = [
-        "#dc2626", // pula - At Risk
-        "#f19c14", // orange - Needs Monitoring
-        "#27ae60"  // berde - On Track
-    ];
+let graduatesByBatchChartInstance = null;
 
 
-    // ----------- PIE CHART -----------
+function applyChartDefaults() {
 
-    const pieCanvas =
-        document.getElementById("riskStatusPieChart");
+    if (typeof Chart === "undefined") return;
 
-    if (pieCanvas) {
-
-        if (riskStatusPieChartInstance) {
-            riskStatusPieChartInstance.destroy();
-        }
-
-        riskStatusPieChartInstance = new Chart(pieCanvas, {
-            type: "pie",
-            data: {
-                labels: labels,
-                datasets: [{
-                    data: dataValues,
-                    backgroundColor: colors,
-                    borderColor: "#ffffff",
-                    borderWidth: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: "bottom",
-                        labels: { boxWidth: 12, font: { size: 12 } }
-                    }
-                }
-            }
-        });
-
-    }
+    Chart.defaults.font.family = "'Poppins', sans-serif";
+    Chart.defaults.font.size = 12;
+    Chart.defaults.color = CHART_COLORS.text;
 
 }
 
 
-// ==========================================
-// GRADUATED STUDENTS PER BATCH (BAR CHART)
-// gamit ang Chart.js
-//
-// I-edit lang ang GRADUATES_PER_BATCH object sa ibaba
-// kapag may bagong batch o na-update na bilang ng
-// nakapagtapos na estudyante.
-// ==========================================
+// Mensahe sa loob ng chart (loading / walang data / error)
+function setChartMessage(elementId, message, isError = false) {
 
-let graduatesByBatchChartInstance = null;
+    const el = document.getElementById(elementId);
 
-const GRADUATES_PER_BATCH = {
-    "2023-2024": 20,
-    "2024-2025": 50,
-    "2025-2026": 30
-};
+    if (!el) return;
 
-function renderGraduatesByBatchChart(batchData = GRADUATES_PER_BATCH) {
+    el.textContent = message;
+    el.classList.toggle("error", isError);
+    el.hidden = false;
 
-    if (typeof Chart === "undefined") {
-        console.error(
-            "Chart.js library failed to load - check internet connection or CDN block."
-        );
+}
 
-        const canvasEl =
-            document.getElementById("graduatesByBatchChart");
 
-        if (canvasEl && canvasEl.parentElement) {
-            canvasEl.parentElement.innerHTML = `
-                <div style="padding:20px;text-align:center;color:#dc2626;font-size:12px;">
-                    Hindi na-load ang Chart.js library.<br>
-                    Check ang internet connection o kung na-block
-                    ng adblocker/firewall ang cdn.jsdelivr.net.
-                </div>
-            `;
-        }
+function clearChartMessage(elementId) {
 
-        return;
+    const el = document.getElementById(elementId);
+
+    if (el) el.hidden = true;
+
+}
+
+
+function showChartsUnavailable(message) {
+
+    if (riskStatusPieChartInstance) {
+        riskStatusPieChartInstance.destroy();
+        riskStatusPieChartInstance = null;
     }
-
-    const labels = Object.keys(batchData);
-    const dataValues = Object.values(batchData);
-
-    const barCanvas =
-        document.getElementById("graduatesByBatchChart");
-
-    if (!barCanvas) return;
 
     if (graduatesByBatchChartInstance) {
         graduatesByBatchChartInstance.destroy();
+        graduatesByBatchChartInstance = null;
     }
 
-    graduatesByBatchChartInstance = new Chart(barCanvas, {
-        type: "bar",
+    setChartMessage("riskStatusPieEmpty", message, true);
+    setChartMessage("graduatesByBatchEmpty", message, true);
+
+}
+
+
+const CHART_LOAD_ERROR =
+    "Chart.js failed to load. Check your internet connection or ad blocker (cdn.jsdelivr.net).";
+
+
+// ------------------------------------------
+// PIE - STUDENT STATUS DISTRIBUTION
+// ------------------------------------------
+
+function renderRiskStatusCharts(atRiskCount, monitoringCount, onTrackCount) {
+
+    const canvas = document.getElementById("riskStatusPieChart");
+
+    if (!canvas) return;
+
+    if (typeof Chart === "undefined") {
+
+        console.error(CHART_LOAD_ERROR);
+        setChartMessage("riskStatusPieEmpty", CHART_LOAD_ERROR, true);
+        return;
+
+    }
+
+    applyChartDefaults();
+
+    if (riskStatusPieChartInstance) {
+
+        riskStatusPieChartInstance.destroy();
+        riskStatusPieChartInstance = null;
+
+    }
+
+    const total = atRiskCount + monitoringCount + onTrackCount;
+
+    if (total === 0) {
+
+        setChartMessage("riskStatusPieEmpty", "No registered students yet.");
+        return;
+
+    }
+
+    clearChartMessage("riskStatusPieEmpty");
+
+    riskStatusPieChartInstance = new Chart(canvas, {
+        type: "pie",
         data: {
-            labels: labels,
+            labels: ["At Risk", "Needs Monitoring", "On Track"],
             datasets: [{
-                label: "Graduated Students",
-                data: dataValues,
-                backgroundColor: "#2563eb",
-                borderRadius: 6,
-                maxBarThickness: 90
+                data: [atRiskCount, monitoringCount, onTrackCount],
+                backgroundColor: [
+                    CHART_COLORS.risk,
+                    CHART_COLORS.monitoring,
+                    CHART_COLORS.onTrack
+                ],
+                borderColor: CHART_COLORS.surface,
+                borderWidth: 3,
+                hoverOffset: 6
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { display: false },
+                legend: {
+                    position: "bottom",
+                    labels: {
+                        usePointStyle: true,
+                        pointStyle: "circle",
+                        boxWidth: 8,
+                        padding: 16,
+
+                        // Kasama ang bilang sa legend, hal. "At Risk (2)"
+                        generateLabels: (chart) => {
+
+                            const dataset = chart.data.datasets[0];
+
+                            return chart.data.labels.map((label, i) => ({
+                                text: `${label} (${dataset.data[i]})`,
+                                fillStyle: dataset.backgroundColor[i],
+                                strokeStyle: dataset.backgroundColor[i],
+                                lineWidth: 0,
+                                pointStyle: "circle",
+                                hidden: !chart.getDataVisibility(i),
+                                index: i
+                            }));
+
+                        }
+                    }
+                },
                 tooltip: {
+                    backgroundColor: "#1d1d1d",
+                    padding: 10,
+                    cornerRadius: 8,
                     callbacks: {
+                        label: (ctx) => {
+
+                            const pct =
+                                Math.round((ctx.parsed / total) * 100);
+
+                            return ` ${ctx.parsed} of ${total} students (${pct}%)`;
+
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+}
+
+
+// ------------------------------------------
+// BAR - GRADUATED STUDENTS BY BATCH
+//
+// Ang batch ay ang TAON sa umpisa ng Student ID:
+//     2023-01-22112  ->  2023
+//     2026-21-01233  ->  2026
+// Lahat ng estudyanteng nakarehistro sa system ay
+// binibilang (Registered); ang natapos na ang required
+// OJT hours ay binibilang din bilang Graduated.
+// Batch lang na may nakarehistrong estudyante ang lalabas.
+// ------------------------------------------
+
+function getBatchFromStudentId(studentId) {
+
+    const match =
+        String(studentId ?? "")
+            .match(/^\s*((?:19|20)\d{2})\s*[-/\s]\s*\d/);
+
+    return match ? match[1] : "";
+
+}
+
+
+function buildGraduatesByBatchData(records) {
+
+    const batches = new Map();
+
+    records.forEach(item => {
+
+        // Unahin ang batch mula sa backend (app.py); kung wala,
+        // basahin mismo sa Student ID.
+        const batch =
+            String(item.batch ?? "").trim() ||
+            getBatchFromStudentId(item.studentId);
+
+        if (!batch) return;
+
+        const entry =
+            batches.get(batch) ||
+            { batch, registered: 0, graduated: 0 };
+
+        entry.registered++;
+
+        const isGraduated =
+            Boolean(item.graduated) ||
+            (item.aiStatus || "").toLowerCase().includes("completed");
+
+        if (isGraduated) entry.graduated++;
+
+        batches.set(batch, entry);
+
+    });
+
+    return [...batches.values()].sort((a, b) =>
+        a.batch.localeCompare(b.batch, undefined, { numeric: true })
+    );
+
+}
+
+
+// Nagsusulat ng bilang sa ibabaw ng bawat bar
+const barValueLabelsPlugin = {
+
+    id: "barValueLabels",
+
+    afterDatasetsDraw(chart) {
+
+        const { ctx } = chart;
+
+        ctx.save();
+        ctx.font = "600 12px 'Poppins', sans-serif";
+        ctx.fillStyle = "#333333";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "bottom";
+
+        chart.data.datasets.forEach((dataset, datasetIndex) => {
+
+            chart.getDatasetMeta(datasetIndex).data.forEach((bar, i) => {
+
+                ctx.fillText(dataset.data[i], bar.x, bar.y - 4);
+
+            });
+
+        });
+
+        ctx.restore();
+
+    }
+
+};
+
+
+function renderGraduatesByBatchChart(batchRows) {
+
+    const canvas = document.getElementById("graduatesByBatchChart");
+
+    if (!canvas) return;
+
+    if (typeof Chart === "undefined") {
+
+        console.error(CHART_LOAD_ERROR);
+        setChartMessage("graduatesByBatchEmpty", CHART_LOAD_ERROR, true);
+        return;
+
+    }
+
+    applyChartDefaults();
+
+    if (graduatesByBatchChartInstance) {
+
+        graduatesByBatchChartInstance.destroy();
+        graduatesByBatchChartInstance = null;
+
+    }
+
+    if (!batchRows || batchRows.length === 0) {
+
+        setChartMessage(
+            "graduatesByBatchEmpty",
+            "No batches registered in the system yet."
+        );
+        return;
+
+    }
+
+    clearChartMessage("graduatesByBatchEmpty");
+
+    graduatesByBatchChartInstance = new Chart(canvas, {
+        type: "bar",
+        data: {
+            labels: batchRows.map(r => r.batch),
+            datasets: [
+                {
+                    label: "Registered",
+                    data: batchRows.map(r => r.registered),
+                    backgroundColor: CHART_COLORS.primarySoft,
+                    hoverBackgroundColor: CHART_COLORS.primarySoftHover,
+                    borderRadius: 6,
+                    maxBarThickness: 40
+                },
+                {
+                    label: "Graduated",
+                    data: batchRows.map(r => r.graduated),
+                    backgroundColor: CHART_COLORS.primary,
+                    hoverBackgroundColor: CHART_COLORS.primaryHover,
+                    borderRadius: 6,
+                    maxBarThickness: 40
+                }
+            ]
+        },
+        plugins: [barValueLabelsPlugin],
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: { padding: { top: 22 } },
+            plugins: {
+                legend: {
+                    position: "bottom",
+                    labels: {
+                        usePointStyle: true,
+                        pointStyle: "circle",
+                        boxWidth: 8,
+                        padding: 16
+                    }
+                },
+                tooltip: {
+                    backgroundColor: "#1d1d1d",
+                    padding: 10,
+                    cornerRadius: 8,
+                    callbacks: {
+                        title: (items) => `Batch ${items[0].label}`,
                         label: (ctx) =>
-                            ` ${ctx.parsed.y} graduated students`
+                            ` ${ctx.dataset.label}: ${ctx.parsed.y}`
                     }
                 }
             },
             scales: {
                 x: {
+                    grid: { display: false },
+                    border: { color: CHART_COLORS.grid },
                     title: {
                         display: true,
-                        text: "Batch (School Year)"
+                        text: "Batch (year in Student ID)",
+                        color: CHART_COLORS.muted
                     }
                 },
                 y: {
                     beginAtZero: true,
                     ticks: { precision: 0 },
+                    grid: { color: CHART_COLORS.grid },
+                    border: { display: false },
                     title: {
                         display: true,
-                        text: "Number of Graduates"
+                        text: "Number of Students",
+                        color: CHART_COLORS.muted
                     }
                 }
             }
@@ -249,13 +419,13 @@ let globalCompanyExposureData = [];
 // pang totoong estudyanteng na-flag ng backend
 // (bago pa lang ang batch / lahat "On Track" pa).
 //
-// PAANO TANGGALIN ANG SAMPLE DATA PAG MAY REAL DATA NA:
-//   1) I-set ang ENABLE_SAMPLE_RISK_DATA = false, o
-//   2) Burahin na lang itong buong block pati na
-//      ang linyang nag-a-apply nito sa fetchAllStudents().
+// NAKA-OFF NA ITO (false) para totoong absences at status
+// na galing sa attendance records ng mga estudyante ang
+// makita sa page. Kung gusto mong ibalik ang demo data
+// (halimbawa para sa presentation), gawing true lang.
 // ==========================================
 
-const ENABLE_SAMPLE_RISK_DATA = true;
+const ENABLE_SAMPLE_RISK_DATA = false;
 
 const SAMPLE_RISK_MONITORING_RECORDS = [
     {
@@ -331,8 +501,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const studentTable =
         document.getElementById("studentTable");
 
-    renderGraduatesByBatchChart();
-
     if (!studentTable) return;
 
 
@@ -350,156 +518,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     // ==========================================
-    // SYNC USER PROFILE
+    // TABLE ERROR MESSAGE
+    // Para hindi mag-"Loading..." nang walang katapusan
+    // kapag hindi maabot ang AI server.
     // ==========================================
 
-    function syncUserProfile() {
+    function showStudentTableError(message) {
 
-        const profileNameEl =
-            document.getElementById("profileName");
+        studentTable.innerHTML = `
+            <tr>
+                <td
+                    colspan="9"
+                    style="text-align:center;color:#dc2626;padding:30px;"
+                >
+                    ${escapeHtml(message)}
+                </td>
+            </tr>
+        `;
 
-        const profileAvatarEl =
-            document.getElementById("profileAvatar");
+        if (paginationInfo) {
 
-        const profileRoleEl =
-            document.getElementById("profileRole");
+            paginationInfo.textContent = "Showing 0 to 0 students";
 
-
-        onAuthStateChanged(auth, async (user) => {
-
-            if (user) {
-
-                try {
-
-                    const querySnapshot =
-                        await getDocs(usersRef);
-
-                    let foundUser = null;
-
-
-                    querySnapshot.forEach(docSnap => {
-
-                        const data =
-                            docSnap.data();
-
-
-                        if (
-                            data.email === user.email ||
-                            docSnap.id === user.uid
-                        ) {
-
-                            foundUser = data;
-
-                        }
-
-                    });
-
-
-                    const displayName =
-                        foundUser?.name ||
-                        foundUser?.fullName ||
-                        user.displayName ||
-                        user.email ||
-                        "Coordinator";
-
-
-                    const displayRole =
-                        foundUser?.role ||
-                        foundUser?.userType ||
-                        "OJT Coordinator";
-
-
-                    if (profileNameEl) {
-
-                        profileNameEl.textContent =
-                            displayName;
-
-                    }
-
-
-                    if (profileRoleEl) {
-
-                        profileRoleEl.textContent =
-                            displayRole;
-
-                    }
-
-
-                    if (profileAvatarEl) {
-
-                        const initials =
-                            displayName
-                                .split(" ")
-                                .map(n => n[0])
-                                .join("")
-                                .toUpperCase()
-                                .substring(0, 2);
-
-
-                        profileAvatarEl.textContent =
-                            initials || "MS";
-
-                    }
-
-
-                } catch (err) {
-
-                    console.error(
-                        "Error fetching user profile from Firestore:",
-                        err
-                    );
-
-                }
-
-
-            } else {
-
-                const localUser =
-                    JSON.parse(
-                        localStorage.getItem(
-                            "loggedInUser"
-                        )
-                    ) ||
-                    JSON.parse(
-                        sessionStorage.getItem(
-                            "loggedInUser"
-                        )
-                    );
-
-
-                if (localUser) {
-
-                    const name =
-                        localUser.name ||
-                        localUser.email ||
-                        "Coordinator";
-
-
-                    if (profileNameEl) {
-
-                        profileNameEl.textContent =
-                            name;
-
-                    }
-
-
-                    if (profileAvatarEl) {
-
-                        profileAvatarEl.textContent =
-                            name
-                                .split(" ")
-                                .map(n => n[0])
-                                .join("")
-                                .toUpperCase()
-                                .substring(0, 2);
-
-                    }
-
-                }
-
-            }
-
-        });
+        }
 
     }
 
@@ -551,6 +592,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 }
 
+                showStudentTableError(
+                    "Hindi ma-load ang student records - may error mula sa AI server."
+                );
+
+                showChartsUnavailable(
+                    "Unable to load chart data - the AI server returned an error."
+                );
+
                 return;
 
             }
@@ -581,9 +630,6 @@ document.addEventListener("DOMContentLoaded", () => {
             let monitoringCount = 0;
             let onTrackCount = 0;
 
-            let totalCompletedHours = 0;
-
-
             globalStudentRecords.forEach(item => {
 
                 const category =
@@ -608,56 +654,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 }
 
-
-                totalCompletedHours +=
-                    Number(item.progress) || 0;
-
             });
-
-
-            const totalStudents =
-                globalStudentRecords.length;
-
-
-            const avgProgress =
-                totalStudents > 0
-                    ? Math.round(
-                        totalCompletedHours /
-                        totalStudents
-                    )
-                    : 0;
-
-
-            // ==========================================
-            // EXISTING SUMMARY CARDS
-            // ==========================================
-
-            const summaryCards =
-                document.querySelectorAll(
-                    ".summary-card h3"
-                );
-
-
-            if (
-                summaryCards.length >= 4
-            ) {
-
-                summaryCards[0].textContent =
-                    totalStudents;
-
-
-                summaryCards[1].textContent =
-                    avgProgress + "%";
-
-
-                summaryCards[2].textContent =
-                    atRiskCount;
-
-
-                summaryCards[3].textContent =
-                    onTrackCount;
-
-            }
 
 
             // ==========================================
@@ -668,6 +665,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 atRiskCount,
                 monitoringCount,
                 onTrackCount
+            );
+
+            renderGraduatesByBatchChart(
+                buildGraduatesByBatchData(globalStudentRecords)
             );
 
 
@@ -718,8 +719,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
             // ==========================================
-            // EXISTING STUDENT TABLE
+            // STUDENT TABLE
             // ==========================================
+
+            populateSectionFilter();
 
             filterAndRenderTable();
 
@@ -781,6 +784,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
             }
 
+
+            showStudentTableError(
+                "Hindi maabot ang AI Server (Flask, port 5000). Siguraduhing tumatakbo ang app.py."
+            );
+
+            showChartsUnavailable(
+                "Unable to load chart data - the AI server is unreachable."
+            );
 
             fetchCompanySkillExposureAI();
 
@@ -1091,7 +1102,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     "Needs Monitoring",
 
                 badgeClass:
-                    "ongoing",
+                    "monitoring",
 
                 icon:
                     "fa-eye",
@@ -1130,15 +1141,125 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     // ==========================================
-    // RENDER STATUS STUDENTS
+    // HELPERS - ESCAPE + ABSENCES
     //
-    // SAME EXISTING RECORD DATA:
-    // name
-    // course
-    // section
-    // company
-    // riskReason
-    // aiStatus
+    // Ang absentCount at consecutiveAbsences ay
+    // galing sa attendance records ng bawat estudyante
+    // (binabasa ng /api/predict-risk sa app.py).
+    // Dapat kapareho ng thresholds sa app.py ang
+    // mga numero sa ibaba.
+    // ==========================================
+
+    const ABSENCE_MONITORING_THRESHOLD = 5;
+    const ABSENCE_RISK_THRESHOLD = 8;
+    const CONSECUTIVE_ABSENCE_RISK_THRESHOLD = 3;
+
+
+    function escapeHtml(value) {
+
+        return String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+
+    }
+
+
+    function getAbsenceLevel(item) {
+
+        const absent = Number(item.absentCount) || 0;
+        const streak = Number(item.consecutiveAbsences) || 0;
+
+        if (
+            absent >= ABSENCE_RISK_THRESHOLD ||
+            streak >= CONSECUTIVE_ABSENCE_RISK_THRESHOLD
+        ) {
+            return "high";
+        }
+
+        if (absent >= ABSENCE_MONITORING_THRESHOLD) {
+            return "watch";
+        }
+
+        return "";
+
+    }
+
+
+    function renderAbsenceBadge(item) {
+
+        const absent = Number(item.absentCount) || 0;
+        const streak = Number(item.consecutiveAbsences) || 0;
+
+        // 0 record = wala pang nababasang attendance para sa
+        // estudyante (iba ito sa "0 absences" na perfect attendance)
+        if (item.attendanceRecords === 0 && absent === 0) {
+
+            return `
+                <span
+                    class="absence-badge"
+                    title="Wala pang nababasang attendance record para sa estudyanteng ito"
+                >
+                    <i class="fa-solid fa-calendar-xmark"></i>
+                    No attendance yet
+                </span>
+            `;
+
+        }
+
+        const label =
+            `${absent} ${absent === 1 ? "absence" : "absences"}`;
+
+        const title =
+            streak > 0
+                ? `${absent} kabuuang absence · ${streak} sunod-sunod ngayon`
+                : `${absent} kabuuang absence`;
+
+        return `
+            <span
+                class="absence-badge ${getAbsenceLevel(item)}"
+                title="${title}"
+            >
+                <i class="fa-solid fa-calendar-xmark"></i>
+                ${label}
+            </span>
+        `;
+
+    }
+
+
+    function renderStreakBadge(item) {
+
+        const streak = Number(item.consecutiveAbsences) || 0;
+
+        if (streak < 2) return "";
+
+        return `
+            <span
+                class="absence-badge ${
+                    streak >= CONSECUTIVE_ABSENCE_RISK_THRESHOLD
+                        ? "high"
+                        : "watch"
+                }"
+                title="Magkakasunod na absent simula sa pinakahuling duty day"
+            >
+                <i class="fa-solid fa-link-slash"></i>
+                ${streak} sunod-sunod
+            </span>
+        `;
+
+    }
+
+
+    // ==========================================
+    // RENDER STATUS STUDENTS
+    // (AI At-Risk Analysis list)
+    //
+    // Kasama na ngayon ang bilang ng absences ng
+    // bawat estudyante, at nauuna sa listahan ang
+    // pinakamaraming absent / pinakamahabang streak.
     // ==========================================
 
     function renderStatusStudents(
@@ -1147,140 +1268,65 @@ document.addEventListener("DOMContentLoaded", () => {
     ) {
 
         const riskContainer =
-            document.getElementById(
-                "riskStudentsContainer"
-            );
-
+            document.getElementById("riskStudentsContainer");
 
         const titleElement =
-            document.getElementById(
-                "studentStatusListTitle"
-            );
-
+            document.getElementById("studentStatusListTitle");
 
         if (!riskContainer) return;
 
-
-        const config =
-            getStatusConfig(
-                category
-            );
-
-
-        // ==========================================
-        // FILTER EXISTING BACKEND RECORDS
-        // ==========================================
+        const config = getStatusConfig(category);
 
         const filteredList =
-            records.filter(
-                item =>
-                    getStudentStatusCategory(
-                        item
-                    ) === category
-            );
-
-
-        // ==========================================
-        // CHANGE LIST TITLE
-        // ==========================================
+            records
+                .filter(
+                    item =>
+                        getStudentStatusCategory(item) === category
+                )
+                .sort((a, b) =>
+                    (Number(b.consecutiveAbsences) || 0) -
+                        (Number(a.consecutiveAbsences) || 0) ||
+                    (Number(b.absentCount) || 0) -
+                        (Number(a.absentCount) || 0)
+                );
 
         if (titleElement) {
 
-            titleElement.textContent =
-                config.title;
+            titleElement.textContent = config.title;
 
         }
 
-
-        // ==========================================
-        // EMPTY
-        // ==========================================
-
-        if (
-            filteredList.length === 0
-        ) {
+        if (filteredList.length === 0) {
 
             riskContainer.innerHTML = `
-
-                <div
-                    style="
-                        padding:20px;
-                        text-align:center;
-                        color:#777;
-                    "
-                >
-
+                <div style="padding:20px;text-align:center;color:#777;">
                     ${config.empty}
-
                 </div>
-
             `;
 
             return;
 
         }
 
-
-        // ==========================================
-        // EXISTING DATA DISPLAY
-        // ==========================================
-
         riskContainer.innerHTML =
             filteredList
                 .map(item => {
 
-                    const studentName =
-                        item.name ||
-                        "Student";
-
+                    const studentName = item.name || "Student";
 
                     const initials =
                         studentName
                             .split(" ")
                             .filter(Boolean)
-                            .map(
-                                part =>
-                                    part[0]
-                            )
+                            .map(part => part[0])
                             .join("")
                             .toUpperCase()
-                            .substring(0, 2) ||
-                        "ST";
-
-
-                    const course =
-                        item.course ||
-                        "";
-
-
-                    const section =
-                        item.section ||
-                        "";
-
-
-                    const company =
-                        item.company ||
-                        "";
-
+                            .substring(0, 2) || "ST";
 
                     const subInfo =
-                        [
-                            course,
-                            section,
-                            company
-                        ]
+                        [item.course, item.section, item.company]
                             .filter(Boolean)
                             .join(" · ");
-
-
-                    /*
-                        IMPORTANT:
-                        For At Risk, this is the SAME
-                        riskReason coming from your backend.
-
-                        For other statuses, if your backend
-                        provides a reason, it will also use it.
-                    */
 
                     const reason =
                         item.riskReason ||
@@ -1292,76 +1338,49 @@ document.addEventListener("DOMContentLoaded", () => {
                                     : "Student may need intervention."
                         );
 
-
                     return `
-
-                        <div
-                            class="risk-row"
-                        >
-
+                        <div class="risk-row">
 
                             <!-- STUDENT -->
-                            <div
-                                class="student-mini"
-                            >
+                            <div class="student-mini">
 
-                                <div
-                                    class="student-avatar"
-                                >
-                                    ${initials}
+                                <div class="student-avatar">
+                                    ${escapeHtml(initials)}
                                 </div>
 
-
                                 <div>
-
-                                    <strong>
-                                        ${studentName}
-                                    </strong>
-
-
-                                    <small>
-                                        ${subInfo}
-                                    </small>
-
+                                    <strong>${escapeHtml(studentName)}</strong>
+                                    <small>${escapeHtml(subInfo)}</small>
                                 </div>
 
                             </div>
 
 
-                            <!-- REASON -->
-                            <div
-                                class="risk-reason"
-                            >
+                            <!-- REASON + ATTENDANCE -->
+                            <div class="risk-reason">
 
                                 <span>
-
                                     <i
                                         class="fa-solid ${config.icon}"
-                                        style="
-                                            color:${config.iconColor};
-                                            margin-right:5px;
-                                        "
+                                        style="color:${config.iconColor};margin-right:5px;"
                                     ></i>
-
-                                    ${reason}
-
+                                    ${escapeHtml(reason)}
                                 </span>
+
+                                <div class="risk-attendance">
+                                    ${renderAbsenceBadge(item)}
+                                    ${renderStreakBadge(item)}
+                                </div>
 
                             </div>
 
 
                             <!-- STATUS -->
-                            <span
-                                class="status ${config.badgeClass}"
-                            >
-
+                            <span class="status ${config.badgeClass}">
                                 ${config.badge}
-
                             </span>
 
-
                         </div>
-
                     `;
 
                 })
@@ -1566,107 +1585,119 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     // ==========================================
+    // SECTION FILTER
+    // Ang mga section ay galing na sa totoong
+    // student records (hindi na hardcoded 3A / 3B).
+    // ==========================================
+
+    function populateSectionFilter() {
+
+        if (!sectionFilter) return;
+
+        const previous = sectionFilter.value;
+
+        const sections = new Map();
+
+        globalStudentRecords.forEach(item => {
+
+            const section = String(item.section || "").trim();
+
+            if (!section || sections.has(section.toLowerCase())) return;
+
+            sections.set(
+                section.toLowerCase(),
+                [item.course, section].filter(Boolean).join(" ")
+            );
+
+        });
+
+        sectionFilter.innerHTML =
+            `<option value="all">All Sections</option>` +
+            [...sections.entries()]
+                .sort((a, b) => a[1].localeCompare(b[1], undefined, { numeric: true }))
+                .map(([value, label]) =>
+                    `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`
+                )
+                .join("");
+
+        if (previous && sections.has(previous)) {
+
+            sectionFilter.value = previous;
+
+        }
+
+    }
+
+
+    // ==========================================
+    // STATUS FILTER MATCHER
+    // (gumagamit ng parehong category rules gaya
+    // ng AI At-Risk Analysis para pare-pareho ang
+    // resulta sa buong page)
+    // ==========================================
+
+    function matchesStatusFilter(item, filterValue) {
+
+        if (filterValue === "all") return true;
+
+        const status = (item.aiStatus || "").toLowerCase();
+
+        if (filterValue === "completed") {
+
+            return status.includes("completed");
+
+        }
+
+        const category = getStudentStatusCategory(item);
+
+        if (filterValue === "atrisk") return category === "risk";
+
+        if (filterValue === "monitoring") return category === "monitoring";
+
+        if (filterValue === "ontrack") {
+
+            return category === "ontrack" && !status.includes("completed");
+
+        }
+
+        return true;
+
+    }
+
+
+    // ==========================================
     // STUDENT TABLE FILTER
-    // EXISTING FUNCTION
     // ==========================================
 
     function filterAndRenderTable() {
 
         const keyword =
-            searchInput
-                ? searchInput.value
-                    .toLowerCase()
-                    .trim()
-                : "";
-
+            searchInput ? searchInput.value.toLowerCase().trim() : "";
 
         const sectionVal =
-            sectionFilter
-                ? sectionFilter.value
-                    .toLowerCase()
-                : "all";
-
+            sectionFilter ? sectionFilter.value.toLowerCase() : "all";
 
         const progressVal =
-            progressFilter
-                ? progressFilter.value
-                    .toLowerCase()
-                : "all";
-
+            progressFilter ? progressFilter.value.toLowerCase() : "all";
 
         const filtered =
-            globalStudentRecords.filter(
-                item => {
+            globalStudentRecords.filter(item => {
 
-                    const name =
-                        (
-                            item.name ||
-                            ""
-                        ).toLowerCase();
+                const name = String(item.name || "").toLowerCase();
 
+                const studentId = String(item.studentId || "").toLowerCase();
 
-                    const studentId =
-                        (
-                            item.studentId ||
-                            ""
-                        ).toLowerCase();
+                const section = String(item.section || "").trim().toLowerCase();
 
+                return (
+                    (name.includes(keyword) || studentId.includes(keyword)) &&
+                    (sectionVal === "all" || section === sectionVal) &&
+                    matchesStatusFilter(item, progressVal)
+                );
 
-                    const section =
-                        (
-                            item.section ||
-                            ""
-                        ).toLowerCase();
+            });
 
-
-                    const status =
-                        (
-                            item.aiStatus ||
-                            ""
-                        ).toLowerCase();
-
-
-                    return (
-
-                        (
-                            name.includes(
-                                keyword
-                            ) ||
-
-                            studentId.includes(
-                                keyword
-                            )
-                        )
-
-                        &&
-
-                        (
-                            sectionVal === "all" ||
-
-                            section.includes(
-                                sectionVal
-                            )
-                        )
-
-                        &&
-
-                        (
-                            progressVal === "all" ||
-
-                            status.includes(
-                                progressVal
-                            )
-                        )
-
-                    );
-
-                }
-            );
-
-
-        renderTableRows(
-            filtered
-        );
+        renderTableRows(filtered);
 
     }
 
@@ -1679,31 +1710,18 @@ document.addEventListener("DOMContentLoaded", () => {
         records
     ) {
 
-        if (
-            records.length === 0
-        ) {
+        if (records.length === 0) {
 
             studentTable.innerHTML = `
-
                 <tr>
-
                     <td
-                        colspan="8"
-                        style="
-                            text-align:center;
-                            color:#777;
-                            padding:30px;
-                        "
+                        colspan="9"
+                        style="text-align:center;color:#777;padding:30px;"
                     >
-
                         No student records found.
-
                     </td>
-
                 </tr>
-
             `;
-
 
             if (paginationInfo) {
 
@@ -1712,182 +1730,100 @@ document.addEventListener("DOMContentLoaded", () => {
 
             }
 
-
             return;
 
         }
-
 
         studentTable.innerHTML =
             records
                 .map(item => {
 
-                    let statusClass =
-                        "ongoing";
+                    const category = getStudentStatusCategory(item);
 
+                    const isCompleted =
+                        (item.aiStatus || "").toLowerCase().includes("completed");
 
-                    let barClass =
-                        "";
+                    let statusClass = "ongoing";
+                    let barClass = "";
 
+                    if (isCompleted) {
 
-                    if (
-                        (
-                            item.aiStatus ||
-                            ""
-                        )
-                            .toLowerCase()
-                            .includes(
-                                "completed"
-                            )
-                    ) {
+                        statusClass = "completed";
+                        barClass = "complete";
 
-                        statusClass =
-                            "completed";
+                    } else if (category === "risk") {
 
+                        statusClass = "atrisk";
+                        barClass = "danger";
 
-                        barClass =
-                            "complete";
+                    } else if (category === "monitoring") {
+
+                        statusClass = "monitoring";
+                        barClass = "warning";
 
                     }
 
-                    else if (
-                        (
-                            item.aiStatus ||
-                            ""
-                        )
-                            .toLowerCase()
-                            .includes(
-                                "risk"
-                            )
-                    ) {
-
-                        statusClass =
-                            "atrisk";
-
-
-                        barClass =
-                            "danger";
-
-                    }
-
+                    const progress = Number(item.progress) || 0;
 
                     return `
-
                         <tr>
 
                             <td>
-
-                                <strong>
-                                    ${item.name}
-                                </strong>
-
+                                <strong>${escapeHtml(item.name)}</strong>
                                 <br>
-
-                                <small
-                                    style="color:#777;"
-                                >
-                                    ${item.studentId}
+                                <small style="color:#777;">
+                                    ${escapeHtml(item.studentId)}
                                 </small>
-
                             </td>
 
+                            <td>${escapeHtml(item.course)}</td>
+
+                            <td>${escapeHtml(item.section)}</td>
+
+                            <td>${escapeHtml(item.company)}</td>
 
                             <td>
-                                ${item.course}
-                            </td>
-
-
-                            <td>
-                                ${item.section}
-                            </td>
-
-
-                            <td>
-                                ${item.company}
-                            </td>
-
-
-                            <td>
-
-                                <div
-                                    class="progress-wrapper"
-                                >
-
-                                    <div
-                                        class="progress"
-                                    >
-
+                                <div class="progress-wrapper">
+                                    <div class="progress">
                                         <div
                                             class="progress-bar ${barClass}"
-                                            style="
-                                                width:${item.progress}%;
-                                            "
+                                            style="width:${progress}%;"
                                         ></div>
-
                                     </div>
-
-
-                                    <span
-                                        class="progress-value"
-                                    >
-
-                                        ${item.progress}%
-
+                                    <span class="progress-value">
+                                        ${progress}%
                                     </span>
-
                                 </div>
-
                             </td>
 
-
                             <td>
-
-                                ${item.currentHours}
+                                ${escapeHtml(item.currentHours)}
                                 /
-                                ${item.targetHours}
-
+                                ${escapeHtml(item.targetHours)}
                             </td>
 
+                            <td>${renderAbsenceBadge(item)}</td>
 
                             <td>
-
-                                <span
-                                    class="status ${statusClass}"
-                                >
-
-                                    ${item.aiStatus}
-
+                                <span class="status ${statusClass}">
+                                    ${escapeHtml(item.aiStatus)}
                                 </span>
-
                             </td>
 
-
                             <td>
-
                                 <button
                                     class="action-btn view-btn"
-                                    onclick="
-                                        window.viewStudentProgress(
-                                            '${item.id}'
-                                        )
-                                    "
+                                    onclick="window.viewStudentProgress('${escapeHtml(item.id)}')"
                                 >
-
-                                    <i
-                                        class="fa-solid fa-eye"
-                                    ></i>
-
+                                    <i class="fa-solid fa-eye"></i>
                                 </button>
-
                             </td>
 
                         </tr>
-
                     `;
 
                 })
                 .join("");
-
 
         if (paginationInfo) {
 
@@ -2223,8 +2159,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // ==========================================
     // INITIAL LOAD
     // ==========================================
-
-    syncUserProfile();
 
     fetchAllStudents();
 

@@ -9,35 +9,8 @@
     gap:20px;
 }
 
-/* ==========================================
-   HEADER PERIOD SELECTORS
-========================================== */
-
-.period-select{
-    display:flex;
-    align-items:center;
-    gap:8px;
-    height:40px;
-    padding:0 12px;
-    border:1px solid #ddd;
-    border-radius:8px;
-    background:#fff;
-    color:#555;
-    font-size:13px;
-}
-
-.period-select i{
-    color:#AB0A0A;
-}
-
-.period-select select{
-    border:none;
-    outline:none;
-    background:transparent;
-    font-size:13px;
-    font-family:inherit;
-    color:#333;
-}
+/* Ang .period-select ay nasa shared header.css na - dito na lang
+   ito idinideklara para iisa lang ang pinagmumulan ng estilo nito. */
 
 /* ==========================================
    TABS
@@ -134,28 +107,6 @@
     font-size:13px;
     color:#333;
     background:#fff;
-}
-
-.generate-btn{
-    height:40px;
-    padding:0 18px;
-    border:none;
-    border-radius:8px;
-    background:#AB0A0A;
-    color:#fff;
-    font-size:13px;
-    font-weight:600;
-    font-family:inherit;
-    display:flex;
-    align-items:center;
-    gap:8px;
-    cursor:pointer;
-    transition:.2s;
-}
-
-.generate-btn:hover{
-    opacity:.9;
-    transform:translateY(-1px);
 }
 
 .export-row{
@@ -587,7 +538,7 @@
 
 .student-meta strong{
     color:#222;
-    font-size:13px;
+    font-size:15px;
 }
 
 /* ==========================================
@@ -670,7 +621,7 @@
 .reports-table th{
     background:#fafafa;
     color:#666;
-    font-size:13px;
+    font-size:14px;
     text-align:left;
     padding:15px;
     border-bottom:1px solid #ececec;
@@ -864,7 +815,7 @@
 }
 
 .progress-value {
-    font-size: 10px !important;
+    font-size: 13px !important;
     font-weight: 700;
     margin-bottom: 2px;
 }
@@ -938,8 +889,7 @@
 }
 
 .progress-status.ongoing {
-    background: #e3f2fd;
-    color: #1565c0;
+   color: #333;
 }
 
 .progress-status.monitoring {
@@ -953,7 +903,7 @@
 }
 .progress-status, 
 .status {
-    font-size: 9px !important;   /* Dati ay 10px/12px */
+    font-size: 13px !important;   /* Dati ay 10px/12px */
     padding: 10px 8px !important; /* Binawasan rin ang padding para mas maliit ang pill */
 }
 
@@ -1221,12 +1171,15 @@
 }
 
 .report-document .report-meta p{
-    font-size:11.5px;
+    font-size:15px;
     margin-bottom:5px;
 }
 
 .report-document .report-meta strong{
-    font-weight:700;
+    font-weight:500;
+}
+.report-document .report-meta span{
+    font-weight:600;
 }
 
 .report-document .report-section-title{
@@ -1252,7 +1205,7 @@
 .report-document .report-data-table th{
     background:#f1f1f1;
     color:#222;
-    font-size:10px;
+    font-size:13px;
     font-weight:700;
     padding:9px 8px;
     border:1px solid #cfcfcf;
@@ -1260,8 +1213,9 @@
 }
 
 .report-document .report-data-table td{
-    font-size:10.5px;
+    font-size:13px;
     color:#333;
+    font-weight:550;
     padding:9px 8px;
     border:1px solid #d9d9d9;
     vertical-align:middle;
@@ -1758,3 +1712,228 @@
         grid-template-columns:1fr;
     }
 }}
+
+/* ==========================================
+   OVERVIEW REPORT - SAME DOCUMENT STYLE AS STUDENT PROGRESS
+   (#printableOverview now also uses .report-document and
+   .report-data-table, so size, fonts and weights match.)
+========================================== */
+
+.report-document .report-data-table tr.total-row td {
+    font-weight: 700;
+    color: #222;
+    background: #f1f1f1;
+    border: 1px solid #cfcfcf;
+}
+
+/* ==========================================
+   PRINT - FONT SIZES FOR ALL REPORT DOCUMENTS
+   (keep this block at the very end of the file)
+========================================== */
+
+@media print {
+
+    /* ---------- LETTERHEAD ---------- */
+
+    /* Print width is under 768px, so the mobile rules kick in.
+       Force the same row layout as on screen. */
+    .report-document .report-letterhead {
+        flex-direction: row;
+        flex-wrap: nowrap;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 10px;
+    }
+
+    .report-document .letterhead-left {
+        gap: 10px;
+    }
+
+    .report-document .letterhead-left h3 {
+        font-size: 15px;
+    }
+
+    .report-document .letterhead-left p {
+        font-size: 9px;
+    }
+
+    .report-document .letterhead-right {
+        width: auto;
+        min-width: 0;
+        margin-left: auto;
+        padding: 6px 12px;
+    }
+
+    .report-document .letterhead-right h4 {
+        font-size: 10.5px;
+    }
+
+    .report-document .letterhead-right p {
+        font-size: 7.5px;
+        margin-top: 2px;
+    }
+
+    /* ---------- META ---------- */
+
+    .report-document .report-meta {
+        grid-template-columns: 1fr 1fr;
+        gap: 0 24px;
+        margin: 10px 0 12px;
+        padding-bottom: 8px;
+    }
+
+    .report-document .report-meta p {
+        font-size: 10px;
+        margin-bottom: 3px;
+    }
+
+    .report-document .report-meta strong {
+        font-weight: 500;
+    }
+
+    .report-document .report-meta span {
+        font-weight: 600;
+    }
+
+    /* ---------- SECTION TITLES ---------- */
+
+    .report-document .report-section-title {
+        font-size: 10px;
+        margin-top: 12px;
+        padding-bottom: 5px;
+    }
+
+    /* ---------- TABLES (all report tabs) ---------- */
+
+    .report-document .report-data-table th {
+        font-size: 8.5px;
+        padding: 5px 6px;
+    }
+
+    .report-document .report-data-table td {
+        font-size: 9px;
+        padding: 5px 6px;
+    }
+
+    /* ---------- OVERVIEW STAT CARDS ---------- */
+
+    .report-document .overview-stats {
+        grid-template-columns: repeat(6, 1fr);
+        gap: 8px;
+    }
+
+    .report-document .report-split {
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+    }
+
+    .report-document .overview-stats .stat-pill {
+        padding: 8px 4px;
+    }
+
+    .report-document .overview-stats .stat-pill i {
+        font-size: 13px;
+        margin-bottom: 3px;
+    }
+
+    .report-document .overview-stats .stat-pill h3 {
+        font-size: 15px;
+    }
+
+    .report-document .overview-stats .stat-pill p {
+        font-size: 8px;
+    }
+
+    /* ---------- NOTE + SIGNATURE ---------- */
+
+    .report-document .report-note {
+        margin-top: 10px;
+        padding: 6px 9px;
+        font-size: 9px;
+    }
+
+    .report-document .report-signature {
+        grid-template-columns: 1fr 1fr;
+        margin-top: 24px;
+    }
+
+    .report-document .signature-block {
+        text-align: right;
+    }
+
+    .report-document .signature-label {
+        font-size: 9px;
+        margin-bottom: 18px;
+    }
+
+    .report-document .signature-name {
+        font-size: 13px;
+    }
+
+    .report-document .signature-role {
+        font-size: 9px;
+    }
+
+    .report-document .signature-org {
+        font-size: 8.5px;
+    }
+
+    /* ---------- STUDENT PROGRESS TABLE ---------- */
+
+    #panel-progress .progress-print-table th {
+        font-size: 8px !important;
+    }
+
+    #panel-progress .progress-print-table td {
+        font-size: 8.5px !important;
+    }
+
+    #panel-progress .progress-print-table td:nth-child(3) {
+        font-size: 8px !important;
+    }
+
+    #panel-progress .progress-print-table .progress-student-name strong {
+        font-size: 8.5px !important;
+    }
+
+    /* Progress % and Status were 13px, so they looked oversized */
+
+    #panel-progress .progress-print-table td .progress-value {
+        font-size: 9px !important;
+        font-weight: 700 !important;
+        margin: 0 !important;
+    }
+
+    #panel-progress .progress-print-table td .progress-status,
+    #panel-progress .progress-print-table td .status {
+        font-size: 8.5px !important;
+        padding: 2px 6px !important;
+    }
+
+    /* Wider Status column so "On Track" is no longer cut off */
+
+    #panel-progress .progress-print-table th:nth-child(1),
+    #panel-progress .progress-print-table td:nth-child(1)  { width: 4% !important; }
+    #panel-progress .progress-print-table th:nth-child(2),
+    #panel-progress .progress-print-table td:nth-child(2)  { width: 15% !important; }
+    #panel-progress .progress-print-table th:nth-child(3),
+    #panel-progress .progress-print-table td:nth-child(3)  { width: 12% !important; }
+    #panel-progress .progress-print-table th:nth-child(4),
+    #panel-progress .progress-print-table td:nth-child(4)  { width: 9% !important; }
+    #panel-progress .progress-print-table th:nth-child(5),
+    #panel-progress .progress-print-table td:nth-child(5)  { width: 11% !important; }
+    #panel-progress .progress-print-table th:nth-child(6),
+    #panel-progress .progress-print-table td:nth-child(6)  { width: 9% !important; }
+    #panel-progress .progress-print-table th:nth-child(7),
+    #panel-progress .progress-print-table td:nth-child(7)  { width: 10% !important; }
+    #panel-progress .progress-print-table th:nth-child(8),
+    #panel-progress .progress-print-table td:nth-child(8)  { width: 10% !important; }
+    #panel-progress .progress-print-table th:nth-child(9),
+    #panel-progress .progress-print-table td:nth-child(9)  { width: 9% !important; }
+    #panel-progress .progress-print-table th:nth-child(10),
+    #panel-progress .progress-print-table td:nth-child(10) {
+        width: 11% !important;
+        overflow: visible !important;
+    }
+
+}

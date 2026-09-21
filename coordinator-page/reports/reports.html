@@ -11,6 +11,9 @@
     <!-- Shared Layout -->
     <link rel="stylesheet" href="../sidebar/sidebar-web.css">
 
+    <!-- Shared Header -->
+    <link rel="stylesheet" href="../header/header.css">
+
     <!-- Reports CSS -->
     <link rel="stylesheet" href="reports.css">
 
@@ -38,44 +41,15 @@
 
     <main class="main">
 
-        <header>
-
-            <div>
-                <h2>Reports</h2>
-                <p>Generate and manage OJT reports for monitoring and documentation.</p>
-            </div>
-
-            <div class="top-right">
-
-                <div class="period-select">
-                    <i class="fa-regular fa-calendar"></i>
-                    <select id="schoolYearSelect">
-                        <option value="2026-2027" selected>2026 &ndash; 2027</option>
-                        <option value="2025-2026">2025 &ndash; 2026</option>
-                    </select>
-                </div>
-
-                <div class="notification">
-                    <i class="fa-regular fa-bell"></i>
-                    <span class="badge">3</span>
-                </div>
-
-                <div class="profile">
-
-                    <div class="avatar" id="userAvatar">MS</div>
-
-                    <div class="profile-info">
-                        <h4 id="userName">Coordinator</h4>
-                        <p id="userRole">OJT Coordinator</p>
-                    </div>
-
-                    <i class="fa-solid fa-chevron-down"></i>
-
-                </div>
-
-            </div>
-
-        </header>
+        <!-- HEADER (shared: ../header/header.js + header.html)
+             data-school-year: ito lang ang page na dapat magpakita
+             ng School Year selector. -->
+        <header
+            id="header-container"
+            data-page-title="Reports"
+            data-page-subtitle="Generate and manage OJT reports for monitoring and documentation."
+            data-school-year
+        ></header>
 
         <div class="reports-content">
 
@@ -183,7 +157,7 @@
             <!-- ===================== OVERVIEW REPORT ===================== -->
 
             <div class="report-panel active" id="panel-overview">
-                <div class="printable-report" id="printableOverview">
+                <div class="printable-report report-document" id="printableOverview">
 
                     <div class="report-letterhead">
 
@@ -234,7 +208,7 @@
 
                         <div class="report-block">
                             <h5 class="report-section-title">2. Attendance Summary</h5>
-                            <table class="mini-table">
+                            <table class="mini-table report-data-table">
                                 <thead>
                                     <tr>
                                         <th>Status</th>
@@ -249,7 +223,7 @@
 
                         <div class="report-block">
                             <h5 class="report-section-title">3. Internship Progress Summary</h5>
-                            <table class="mini-table">
+                            <table class="mini-table report-data-table">
                                 <thead>
                                     <tr>
                                         <th>Progress Range</th>
@@ -268,7 +242,7 @@
                     <h5 class="report-section-title">4. At-Risk Students</h5>
 
                     <div class="table-container">
-                        <table class="mini-table wide">
+                        <table class="mini-table wide report-data-table">
                             <thead>
                                 <tr>
                                     <th>#</th>
@@ -288,7 +262,7 @@
                     <h5 class="report-section-title">5. Company Deployment Summary</h5>
 
                     <div class="table-container">
-                        <table class="mini-table wide">
+                        <table class="mini-table wide report-data-table">
                             <thead>
                                 <tr>
                                     <th>#</th>
@@ -616,6 +590,7 @@
 </div>
 
 <script src="../sidebar/sidebar-web.js"></script>
+<script type="module" src="../header/header.js"></script>
 <script type="module" src="reports.js"></script>
 
 </body>

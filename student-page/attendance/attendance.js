@@ -65,6 +65,12 @@ let todayNoDutyReason = null;
 let studentScheduleDays = null;
 let studentScheduleFetchedFor = null;
 
+// Naka-cache ang assigned companyName ng naka-login na student (mula sa
+// users/{uid} document), para hindi na paulit-ulit mag-fetch sa Firestore
+// tuwing mag-sscan ng QR. Null hangga't hindi pa na-a-attempt fetch.
+let studentAssignedCompany = null;
+let studentCompanyFetchedFor = null;
+
 // Kontrol sa "View All" toggle ng Attendance History list.
 let showAllHistory = false;
 
@@ -159,6 +165,36 @@ async function getStudentScheduleDays(user) {
 
     studentScheduleFetchedFor = user.uid;
     return studentScheduleDays;
+}
+
+// Kinukuha ang companyName na naka-assign sa naka-login na student, mula
+// sa kanyang users/{uid} document. Ito yung ikukumpara sa company na
+// nakuha mula sa na-scan na QR code, para hindi tumanggap ng QR code
+// ng ibang company.
+async function getStudentAssignedCompany(user) {
+    if (!user || !user.uid) return null;
+
+    if (studentCompanyFetchedFor === user.uid) {
+        return studentAssignedCompany;
+    }
+
+    try {
+        const userDocRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userDocRef);
+
+        if (userSnap.exists()) {
+            const data = userSnap.data();
+            studentAssignedCompany = data.companyName || null;
+        } else {
+            studentAssignedCompany = null;
+        }
+    } catch (error) {
+        console.warn("Could not fetch student's assigned company:", error);
+        studentAssignedCompany = null;
+    }
+
+    studentCompanyFetchedFor = user.uid;
+    return studentAssignedCompany;
 }
 
 // True kapag "dateObj" ay isa sa mga naka-assign na duty day ng student.
@@ -736,6 +772,24 @@ function initAttendanceSystem(currentUser) {
             }
 
             const companyName = companyFound.companyName || companyFound.name || "Partner Company";
+
+            // --- COMPANY MATCH CHECK ---
+            // Dapat tumugma ang company ng na-scan na QR sa naka-assign na
+            // company ng mismong naka-login na student. Kapag QR code ito
+            // ng ibang company, i-reject at huwag ituloy ang time in/out.
+            const user = auth.currentUser || currentUser;
+            const assignedCompany = await getStudentAssignedCompany(user);
+
+            if (!assignedCompany) {
+                showToast("No assigned company found on your account. Contact your coordinator.", "error");
+                return;
+            }
+
+            if (assignedCompany.trim().toLowerCase() !== companyName.trim().toLowerCase()) {
+                showToast(`Wrong QR Code! This QR belongs to ${companyName}, not your assigned company (${assignedCompany}).`, "error");
+                return;
+            }
+
             localStorage.setItem("verified_company_name", companyName);
             
             showToast(`QR Scan Success! Welcome to ${companyName}`, "success");

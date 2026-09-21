@@ -370,6 +370,26 @@ header {
     color: #374151;
 }
 
+/* AI At-Risk alert - same red used for "At Risk" elsewhere in the app
+   (#AB0A0A, matches the avatar/notification-badge red), so it stands out
+   from the plain coordinator "No Duty" notices. */
+.notif-item.notif-risk {
+    background: #fde8e8;
+    border-left: 3px solid #ab0a0a;
+}
+
+.notif-item.notif-risk .notif-title {
+    color: #ab0a0a;
+}
+
+.notif-item.notif-risk .notif-title i {
+    margin-right: 4px;
+}
+
+.notif-item.notif-risk.unseen {
+    background: #fbd5d5;
+}
+
 .notif-empty {
     padding: 32px 16px;
     text-align: center;

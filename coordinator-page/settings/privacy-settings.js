@@ -6,7 +6,7 @@
    <script type="module" src="privacy-settings.js"></script>
 ========================================== */
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 
 import {
     getAuth,
@@ -40,7 +40,8 @@ const firebaseConfig = {
     appId: "1:1012575426857:web:c2d6dbcdc0dc0ad965ff38"
 };
 
-const app = initializeApp(firebaseConfig);
+// Reuse ang app kung na-initialize na ng shared header (header.js)
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
@@ -109,7 +110,10 @@ function showToast(message, type = "success") {
 
     clearTimeout(toastTimer);
 
-    toastTimer = setTimeout(() => toast.classList.remove("show"), 3000);
+    toastTimer = setTimeout(
+        () => toast.classList.remove("show"),
+        type === "error" ? 6000 : 3000
+    );
 }
 
 
@@ -131,18 +135,6 @@ function setBusy(button, busy, busyLabel = "Sending...") {
 }
 
 
-function getInitials(name) {
-
-    return (name || "")
-        .split(" ")
-        .filter(n => n.length > 0)
-        .map(n => n[0])
-        .join("")
-        .substring(0, 2)
-        .toUpperCase() || "CO";
-}
-
-
 function readableError(error) {
 
     const map = {
@@ -152,6 +144,23 @@ function readableError(error) {
     };
 
     return map[error?.code] || "Something went wrong. Please try again.";
+}
+
+
+// Kahit anong hugis ng petsa mula sa Firestore (Timestamp, {seconds},
+// ISO string, Date) - ibinabalik bilang Date, o null kung hindi mabasa.
+function toJsDate(value) {
+
+    if (!value) return null;
+
+    if (typeof value.toDate === "function") return value.toDate();
+
+    if (typeof value.seconds === "number") return new Date(value.seconds * 1000);
+
+    const date = new Date(value);
+
+    return isNaN(date) ? null : date;
+
 }
 
 
@@ -167,8 +176,97 @@ function formatDate(value) {
 
 
 /* ==========================================
+   LOAD USER DOCUMENT (with retry + clear errors)
+   ------------------------------------------
+   Ang "Could not load ..." dati ay lumalabas sa
+   kahit anong error, kaya hindi malaman ang totoong
+   dahilan. Ngayon:
+     - inuulit ang pagbasa ng 3 beses kapag
+       "offline / unavailable" (mabagal o putol
+       ang koneksyon)
+     - hindi inuulit kapag permission-denied
+     - sinasabi sa toast ang totoong dahilan, at
+       nasa browser console (F12) ang buong error
+========================================== */
+
+async function loadUserDoc(uid, attempts = 3) {
+
+    let lastError;
+
+    for (let i = 0; i < attempts; i++) {
+
+        try {
+
+            return await getDoc(doc(db, "users", uid));
+
+        } catch (error) {
+
+            lastError = error;
+
+            if (error?.code === "permission-denied") break;
+
+            await new Promise((resolve) => setTimeout(resolve, 800 * (i + 1)));
+
+        }
+
+    }
+
+    throw lastError;
+
+}
+
+
+function describeLoadError(error, what) {
+
+    const code = error?.code || "";
+
+    if (code === "permission-denied") {
+        return `Could not load ${what}: your Firestore rules don't allow reading your user record.`;
+    }
+
+    if (code === "unavailable" || /offline/i.test(error?.message || "")) {
+        return `Could not load ${what}: can't reach the server. Check your internet connection and reload.`;
+    }
+
+    return `Could not load ${what}${code ? " (" + code + ")" : ""}. Check the browser console for details.`;
+
+}
+
+
+/* ==========================================
    AUTH GATE
 ========================================== */
+
+// Isang render na pumalya ay hindi dapat pumigil sa iba.
+function safeRender(fn) {
+
+    try {
+        fn();
+        return true;
+    } catch (error) {
+        console.error(`${fn.name} failed:`, error);
+        return false;
+    }
+
+}
+
+
+// Kung hindi nabasa ang record, i-lock ang mga kontrol para hindi
+// ma-overwrite ng default values ang mga nakasave nang settings.
+function lockSettings() {
+
+    document
+        .querySelectorAll(".privacy-toggle input[type='checkbox']")
+        .forEach((input) => { input.disabled = true; });
+
+    ["downloadData", "requestCorrection", "requestDeletion", "acknowledgePolicy"]
+        .forEach((id) => {
+            const button = $(id);
+            if (button) button.disabled = true;
+        });
+
+}
+
 
 onAuthStateChanged(auth, async (user) => {
 
@@ -179,25 +277,48 @@ onAuthStateChanged(auth, async (user) => {
 
     currentUser = user;
 
+    let loaded = true;
+
     try {
 
-        const snap = await getDoc(doc(db, "users", user.uid));
+        const snap = await loadUserDoc(user.uid);
 
         currentData = snap.exists() ? snap.data() : {};
 
-        renderHeader();
-        renderToggles();
-        renderActivity();
-        renderConsent();
-
-        logSignIn();
-
     } catch (error) {
 
-        console.error("Error loading privacy settings:", error);
-        showToast("Could not load your privacy settings.", "error");
+        loaded = false;
+        currentData = {};
+
+        console.error(
+            "Error loading privacy settings:",
+            error?.code,
+            error?.message,
+            error
+        );
+
+        showToast(describeLoadError(error, "your privacy settings"), "error");
 
     }
+
+    const rendered = [renderToggles, renderActivity, renderConsent]
+        .map(safeRender)
+        .every(Boolean);
+
+    if (!loaded) {
+
+        lockSettings();
+        return;
+
+    }
+
+    if (!rendered) {
+
+        showToast("Some parts of this page could not be displayed.", "error");
+
+    }
+
+    logSignIn();
 
 });
 
@@ -205,29 +326,6 @@ onAuthStateChanged(auth, async (user) => {
 /* ==========================================
    RENDER
 ========================================== */
-
-function renderHeader() {
-
-    const name =
-        currentData.name ||
-        currentData.fullName ||
-        currentUser.displayName ||
-        "OJT Coordinator";
-
-    const role =
-        currentData.role ||
-        currentData.position ||
-        "Coordinator";
-
-    const photo =
-        currentData.photoBase64 ||
-        currentData.photoURL ||
-        currentUser.photoURL ||
-        "";
-
-    paintHeader(name, role, photo);
-}
-
 
 function renderToggles() {
 
@@ -282,12 +380,10 @@ function renderConsent() {
 
     if (consent?.acknowledgedAt) {
 
-        const date = consent.acknowledgedAt.toDate
-            ? consent.acknowledgedAt.toDate()
-            : new Date(consent.acknowledgedAt);
+        const date = toJsDate(consent.acknowledgedAt);
 
         $("consentStatus").textContent =
-            "Acknowledged on " + formatDate(date);
+            date ? "Acknowledged on " + formatDate(date) : "Acknowledged";
 
         button.disabled = true;
         button.innerHTML =
@@ -395,10 +491,10 @@ $("downloadData").addEventListener("click", () => {
 
     const consent = currentData.privacyConsent;
 
-    const acknowledgedAt = consent?.acknowledgedAt
-        ? (consent.acknowledgedAt.toDate
-            ? consent.acknowledgedAt.toDate().toISOString()
-            : new Date(consent.acknowledgedAt).toISOString())
+    const acknowledgedDate = toJsDate(consent?.acknowledgedAt);
+
+    const acknowledgedAt = acknowledgedDate
+        ? acknowledgedDate.toISOString()
         : null;
 
     const exportData = {
@@ -558,7 +654,7 @@ $("acknowledgePolicy").addEventListener("click", async () => {
 
 document.addEventListener("click", async (e) => {
 
-    const trigger = e.target.closest("#signOutBtn, #logoutBtn");
+    const trigger = e.target.closest("#signOutBtn");
 
     if (!trigger) return;
 
@@ -571,117 +667,5 @@ document.addEventListener("click", async (e) => {
         console.error("Sign out error:", error);
         showToast("Could not sign out.", "error");
     }
-
-});
-
-
-/* ==========================================
-   HEADER AVATAR
-   ------------------------------------------
-   Shows the saved photo when there is one,
-   and falls back to initials otherwise.
-========================================== */
-
-function paintAvatar(element, photo, name) {
-
-    if (!element) return;
-
-    const initials = getInitials(name);
-
-    if (photo) {
-
-        element.innerHTML = "";
-
-        const img = document.createElement("img");
-
-        img.alt = name || "Profile photo";
-        img.src = photo;
-
-        // If the stored image is broken, drop back to initials.
-        img.onerror = () => {
-            element.textContent = initials;
-        };
-
-        element.appendChild(img);
-
-    } else {
-
-        element.textContent = initials;
-
-    }
-
-}
-
-
-function paintHeader(name, role, photo) {
-
-    const nameEl = document.getElementById("profileName");
-    const roleEl = document.getElementById("profileRole");
-
-    if (nameEl) nameEl.textContent = name || "OJT Coordinator";
-    if (roleEl) roleEl.textContent = role || "Coordinator";
-
-    paintAvatar(document.getElementById("profileAvatar"), photo, name);
-    paintAvatar(document.getElementById("menuAvatar"), photo, name);
-
-    const menuName = document.getElementById("menuName");
-    const menuEmail = document.getElementById("menuEmail");
-
-    if (menuName) menuName.textContent = name || "OJT Coordinator";
-    if (menuEmail) menuEmail.textContent = currentUser?.email || "";
-
-}
-
-
-/* ==========================================
-   PROFILE DROPDOWN
-========================================== */
-
-(function initProfileMenu() {
-
-    const trigger = document.getElementById("profileMenuTrigger");
-
-    if (!trigger) return;
-
-    trigger.addEventListener("click", (e) => {
-
-        // Clicks on the menu items handle themselves.
-        if (e.target.closest(".profile-menu")) return;
-
-        trigger.classList.toggle("open");
-
-    });
-
-    document.addEventListener("click", (e) => {
-
-        if (!trigger.contains(e.target)) {
-            trigger.classList.remove("open");
-        }
-
-    });
-
-    document.addEventListener("keydown", (e) => {
-
-        if (e.key === "Escape") {
-            trigger.classList.remove("open");
-        }
-
-    });
-
-})();
-
-
-/* ==========================================
-   MENU: SHOW PROFILE
-   ------------------------------------------
-   Adjust ACCOUNT_PAGE if your folder for the
-   account settings page is named differently.
-========================================== */
-
-const ACCOUNT_PAGE = "../settings/settings.html";
-
-document.getElementById("showProfileBtn")?.addEventListener("click", () => {
-
-    window.location.href = ACCOUNT_PAGE;
 
 });

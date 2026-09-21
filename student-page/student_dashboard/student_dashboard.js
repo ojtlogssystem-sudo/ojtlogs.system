@@ -132,23 +132,42 @@ async function loadStudentData(user) {
         const statusElem = document.querySelector(".status-text");
         const statusHeader = document.querySelector(".summary-card.purple h2");
 
+        // Same icon set as the coordinator's AI At-Risk cards (analytics.html):
+        // fa-triangle-exclamation = At Risk, fa-eye = Needs Monitoring,
+        // fa-circle-check = On Track / Completed. Dati "fa-shield-halved"
+        // lang palagi ito - ngayon nagpapalit na base sa aiStatus.
+        const statusIconBox = document.querySelector(".summary-card.purple .card-icon");
+        const statusIcon = statusIconBox ? statusIconBox.querySelector("i") : null;
+
+        function setStatusIcon(iconClass, colorClass) {
+            if (statusIconBox) {
+                statusIconBox.classList.remove("green-icon", "blue-icon", "orange-icon", "purple-icon", "red-icon", "pink-icon");
+                statusIconBox.classList.add(colorClass);
+            }
+            if (statusIcon) statusIcon.className = iconClass;
+        }
+
         if (statusElem) statusElem.textContent = displayStatus;
 
         if (statusHeader) {
             if (displayStatus.toLowerCase().includes("risk")) {
                 statusHeader.textContent = "At Risk";
-                statusHeader.style.color = "#ef4444";
-                if (statusElem) statusElem.style.color = "#ef4444";
+                statusHeader.style.color = "#ab0a0a";
+                if (statusElem) statusElem.style.color = "#ab0a0a";
+                setStatusIcon("fa-solid fa-triangle-exclamation", "red-icon");
             } else if (displayStatus.toLowerCase().includes("monitoring")) {
                 statusHeader.textContent = "Needs Monitoring";
                 statusHeader.style.color = "#f59e0b";
                 if (statusElem) statusElem.style.color = "#f59e0b";
+                setStatusIcon("fa-solid fa-eye", "orange-icon");
             } else if (displayStatus.toLowerCase().includes("completed")) {
                 statusHeader.textContent = "Completed";
                 statusHeader.style.color = "#22c55e";
+                setStatusIcon("fa-solid fa-circle-check", "green-icon");
             } else {
                 statusHeader.textContent = "On Track";
                 statusHeader.style.color = "#3b82f6";
+                setStatusIcon("fa-solid fa-circle-check", "green-icon");
             }
         }
     } catch (error) {

@@ -11,7 +11,7 @@ from sklearn.linear_model import LinearRegression
 app = Flask(__name__)
 CORS(app)
 
-# Global Preflight CORS Handler para sa lahat ng endpoints
+# Global Preflight CORS Handler for all endpoints
 @app.before_request
 def handle_preflight():
     if request.method == "OPTIONS":
@@ -21,42 +21,42 @@ def handle_preflight():
         response.headers.add("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
         return response, 200
 
-# I-initialize ang Firebase Admin SDK
+# Initialize the Firebase Admin SDK
 if not firebase_admin._apps:
     cred = credentials.Certificate("serviceAccountKey.json")
     firebase_admin.initialize_app(cred)
 db = firestore.client()
 
 # ==========================================
-# 1. ENDPOINT PARA SA AT-RISK PREDICTION
+# 1. ENDPOINT FOR AT-RISK PREDICTION
 # ==========================================
 # ==========================================
 # ATTENDANCE SETTINGS
 # ==========================================
 
-# Pangalan ng Firestore collection(s) kung saan naka-save ang
-# attendance. Kung iba ang pangalan sa Firebase mo (ex.
-# "attendanceRecords"), idagdag lang dito. Puwedeng i-check
-# ang tamang pangalan sa http://localhost:5000/api/debug-attendance
+# Name of the Firestore collection(s) where
+# attendance is stored. If the name is different in your Firebase (ex.
+# "attendanceRecords"), just add it here. You can check
+# the correct name at http://localhost:5000/api/debug-attendance
 ATTENDANCE_COLLECTIONS = ['attendance']
 
-# Kung sa attendance collection mo ay PRESENT lang ang sine-save
-# (walang "Absent" record kapag hindi pumasok), gawing True para
-# ituring na absent ang bawat weekday (Mon-Fri) mula sa simula ng
-# OJT hanggang kahapon na WALANG kahit anong attendance record.
-# Naka-False bilang default para hindi magkamali ng flag sa mga
-# estudyanteng hindi naka-schedule sa ilang araw.
+# If your attendance collection only saves PRESENT records
+# (with no "Absent" record when a student does not attend), set this to True to
+# treat every weekday (Mon-Fri) from the start of
+# OJT through yesterday with NO attendance record.
+# Defaults to False to avoid incorrectly flagging
+# students who are not scheduled on certain days.
 COUNT_MISSING_WEEKDAYS_AS_ABSENT = False
 
-# Mga petsa (YYYY-MM-DD) na walang duty (holiday / walang pasok)
-# - hindi ito ibibilang na absent kapag naka-True ang nasa itaas.
+# Dates (YYYY-MM-DD) with no duty (holiday / no workday)
+# - these will not be counted as absent when the setting above is True.
 NON_DUTY_DATES = set()
 
-# Philippine time (UTC+8) - para hindi magkamali ng petsa kapag
-# Firestore Timestamp (UTC) ang naka-save sa attendance.
+# Philippine time (UTC+8) - to avoid date mismatches when
+# a Firestore Timestamp (UTC) is saved in attendance.
 PH_TZ = timezone(timedelta(hours=8))
 
-# Mga field na puwedeng pagkunan ng petsa ng attendance record
+# Fields that may contain the attendance record date
 ATTENDANCE_DATE_FIELDS = (
     'date', 'attendanceDate', 'dateString', 'day',
     'timestamp', 'createdAt', 'timeIn'
@@ -67,8 +67,8 @@ ATTENDANCE_STATUS_FIELDS = (
     'status', 'attendanceStatus', 'attendance_status'
 )
 
-# Mga field na puwedeng nagsasabi kung SINONG estudyante ang
-# nagmamay-ari ng attendance record
+# Fields that may identify WHICH student
+# owns the attendance record
 ATTENDANCE_OWNER_FIELDS = (
     'studentUid', 'studentUID', 'studentId', 'studentID',
     'studentNumber', 'uid', 'userId', 'userUid', 'student_id',
@@ -77,7 +77,7 @@ ATTENDANCE_OWNER_FIELDS = (
 
 
 def _norm(value):
-    """Lowercase + trim para hindi maapektuhan ng espasyo/capitalization."""
+    """Lowercase + trim so spaces/capitalization do not affect matching."""
     if value is None:
         return None
     text = str(value).strip().lower()
@@ -86,9 +86,9 @@ def _norm(value):
 
 def _to_date_str(value):
     """
-    Ginagawang 'YYYY-MM-DD' ang kahit anong date-like value
-    (Firestore Timestamp, datetime, ISO string, MM/DD/YYYY, atbp.)
-    Returns None kung hindi mabasa.
+    Converts any date-like value to 'YYYY-MM-DD'
+    (Firestore Timestamp, datetime, ISO string, MM/DD/YYYY, etc.)
+    Returns None if it cannot be parsed.
     """
     if value is None or value == '':
         return None
@@ -114,7 +114,7 @@ def _to_date_str(value):
 
 
 def _record_date(rec):
-    """Unang mababasang petsa mula sa mga posibleng date field."""
+    """Returns the first readable date from the possible date fields."""
     for field in ATTENDANCE_DATE_FIELDS:
         parsed = _to_date_str(rec.get(field))
         if parsed:
@@ -124,12 +124,12 @@ def _record_date(rec):
 
 def _is_absent_record(rec):
     """
-    Flexible reader para sa iba't ibang posibleng schema ng
+    Flexible reader for different possible attendance collection schemas:
     attendance collection:
       - status / attendanceStatus / attendance_status na
         naglalaman ng salitang "absent"
-      - boolean na 'isAbsent' / 'absent' (True = absent)
-      - boolean na 'present' (False = absent)
+      - boolean 'isAbsent' / 'absent' (True = absent)
+      - boolean 'present' (False = absent)
     """
     for field in ATTENDANCE_STATUS_FIELDS:
         status = _norm(rec.get(field))
@@ -148,9 +148,9 @@ def _is_absent_record(rec):
 
 def _load_attendance_records():
     """
-    Kinukuha lahat ng attendance records nang isang beses,
-    tapos i-filter/i-count later per-student. Mas mabilis
-    kaysa mag-query per student.
+    Loads all attendance records once,
+    then filters/counts them per student later. Faster
+    than querying per student.
     """
     records = []
     for collection_name in ATTENDANCE_COLLECTIONS:
@@ -168,9 +168,9 @@ def _load_attendance_records():
 def _get_student_records(attendance_records, student_doc_id, student_id_value,
                          student_name, student_email=None):
     """
-    Kinukuha lahat ng attendance record na pag-aari ng partikular
-    na estudyante. Tinitingnan ang doc ID, student number, email,
-    at (bilang huling panlaban) ang pangalan.
+    Gets all attendance records belonging ng partikular
+    to a specific student. Checks the doc ID, student number, email,
+    and (as a last fallback) the name.
     """
     keys = {
         k for k in (
@@ -195,7 +195,7 @@ def _get_student_records(attendance_records, student_doc_id, student_id_value,
 
 
 def _weekdays_between(start_date, end_date):
-    """Lahat ng Mon-Fri (YYYY-MM-DD) mula start_date hanggang end_date (kasama)."""
+    """All Mon-Fri (YYYY-MM-DD) from start_date through end_date (inclusive)."""
     days = []
     current = start_date
     while current <= end_date:
@@ -207,13 +207,13 @@ def _weekdays_between(start_date, end_date):
 
 def _summarize_attendance(matched_records, start_date=None, today=None):
     """
-    Ibinabalik ang:
-      - absent_count: bilang ng absent na araw (unique per petsa,
-        kaya hindi nadodoble kung may duplicate record sa isang araw)
-      - consecutive: bilang ng magkakasunod na absent simula sa
-        pinakahuling duty day pabalik ("hindi nagpaparamdam")
-      - record_count: ilang attendance record ang nakita para sa
-        estudyante (0 = wala pang nababasang attendance)
+    Returns:
+      - absent_count: number of absent days (unique per date,
+        so duplicate records on the same day are not double-counted)
+      - consecutive: number of consecutive absences starting from
+        the most recent duty day going backward ("no-show")
+      - record_count: number of attendance records found for the
+        student (0 = no attendance has been found)
     """
     absent_dates = set()
     present_dates = set()
@@ -229,11 +229,11 @@ def _summarize_attendance(matched_records, start_date=None, today=None):
         elif rec_date:
             present_dates.add(rec_date)
 
-    # Kapag may Present at Absent sa iisang araw, Present ang panalo
+    # If both Present and Absent exist on the same day, Present takes precedence
     absent_dates -= present_dates
 
     if COUNT_MISSING_WEEKDAYS_AS_ABSENT and start_date and today:
-        # Hindi kasama ang ngayong araw dahil hindi pa tapos ang duty
+        # Today is excluded because the duty day is not finished yet
         yesterday = today.date() - timedelta(days=1)
         for day in _weekdays_between(start_date.date(), yesterday):
             if (
@@ -243,7 +243,7 @@ def _summarize_attendance(matched_records, start_date=None, today=None):
             ):
                 absent_dates.add(day)
 
-    # Streak: pinakabagong petsa pabalik hanggang sa unang Present
+    # Streak: from the most recent date backward until the first Present
     duty_days = sorted(absent_dates | present_dates, reverse=True)
     consecutive = 0
     for day in duty_days:
@@ -260,14 +260,14 @@ def _summarize_attendance(matched_records, start_date=None, today=None):
 
 
 # ==========================================
-# BATCH NG ESTUDYANTE - BASE SA STUDENT ID
+# STUDENT BATCH - BASED ON STUDENT ID
 #
-# Ginagamit sa "Graduated Students by Batch" chart. Ang unang
-# 4 na digit (taon) ng Student ID ang batch ng estudyante:
+# Used in the "Graduated Students by Batch" chart. The first
+# 4 digits (year) of the Student ID represent the student's batch:
 #     2023-01-22112  ->  batch 2023
 #     2026-21-01233  ->  batch 2026
-# Kung walang mabasang taon sa ID, saka lang hahanapin ang
-# mismong batch field sa document (kung meron).
+# If no year can be read from the ID, only then look for the
+# batch field in the document (if available).
 # ==========================================
 STUDENT_ID_FIELDS = (
     'studentId', 'studentID', 'studentNumber', 'idNumber',
@@ -282,7 +282,7 @@ BATCH_FIELDS = (
 
 
 def _get_student_id_raw(data):
-    """Ang totoong student ID mula sa Firestore (walang doc.id fallback)."""
+    """The actual student ID from Firestore (without doc.id fallback)."""
     for field in STUDENT_ID_FIELDS:
         value = data.get(field)
         if value not in (None, ''):
@@ -291,7 +291,7 @@ def _get_student_id_raw(data):
 
 
 def _batch_from_student_id(student_id):
-    """'2023-01-22112' -> '2023'. Returns None kung walang taon sa umpisa ng ID."""
+    """'2023-01-22112' -> '2023'. Returns None if the ID does not start with a year."""
     if not student_id:
         return None
     match = re.match(r'^\s*((?:19|20)\d{2})\s*[-/\s]\s*\d', str(student_id))
@@ -313,7 +313,7 @@ def _get_batch_label(data):
 
 
 def _is_graduated(data, ai_status):
-    """Graduated = may explicit na flag, o natapos na ang required OJT hours."""
+    """Graduated = has an explicit flag, or has completed the required OJT hours."""
     if data.get('graduated') is True or data.get('isGraduated') is True:
         return True
     if 'graduated' in str(data.get('status') or '').lower():
@@ -335,33 +335,33 @@ def predict_student_risk():
         # ==========================================
         # BATCH START DATE
         #
-        # Ito ang simula ng kasalukuyang OJT batch.
-        # Kapag bago pa lang nag-start (ex. September 14,
-        # 2026), hindi pa dapat "At Risk" agad ang mga
-        # estudyante dahil malapit pa lang sila sa umpisa
-        # - kulang pa ang datos para maging maaasahan ang
-        # projection. May GRACE_PERIOD_DAYS muna bago
-        # tuluyang gamitin ang hours-based projection.
+        # This is the start of the current OJT batch.
+        # When students have just started (ex. September 14,
+        # 2026), they should not immediately be marked "At Risk"
+        # because they are still near the beginning
+        # - there is not enough data yet for a reliable
+        # projection. A GRACE_PERIOD_DAYS period is applied before
+        # using the hours-based projection.
         # ==========================================
         BATCH_START_DATE = datetime(2026, 9, 14)
         GRACE_PERIOD_DAYS = 7
 
-        # Absence thresholds - ito na ang PANGUNAHING
-        # basehan ng At Risk / Needs Monitoring, lalo na
-        # sa unang linggo ng OJT kung saan halos wala pang
-        # laman ang completed hours ng lahat ng estudyante.
+        # Absence thresholds - these are the PRIMARY
+        # basis for At Risk / Needs Monitoring, especially
+        # during the first week of OJT when there are still very few
+        # completed hours for all students.
         ABSENCE_MONITORING_THRESHOLD = 5   # 5+ absences -> Needs Monitoring
-        ABSENCE_RISK_THRESHOLD = 8         # 8+ absences (maraming) -> At Risk
+        ABSENCE_RISK_THRESHOLD = 8         # 8+ absences (many) -> At Risk
 
-        # "Hindi nagpaparamdam" - magkakasunod na Absent record
-        # simula sa pinaka-huling duty day pabalik. Kahit hindi pa
-        # umabot ng 8 total absences, kapag 3+ sunod-sunod nang
-        # walang time-in, ituturing na ring At Risk (parang biglang
+        # "No-show" - consecutive Absent records
+        # starting from the most recent duty day going backward. Even if
+        # the total has not reached 8 absences, if there are 3+ consecutive
+        # days without a time-in, the student is also considered At Risk (parang biglang
         # nawalan ng communication/showed up ang estudyante).
         CONSECUTIVE_ABSENCE_RISK_THRESHOLD = 3
 
-        # Pangalan lang para di masira ang ibang reference
-        # sa baba (backward-compat na variable name).
+        # Name retained so other references do not break
+        # below (backward-compatible variable name).
         absence_monitoring_threshold = ABSENCE_MONITORING_THRESHOLD
 
         for doc in docs:
@@ -373,8 +373,8 @@ def predict_student_risk():
 
             try:
 
-                # SAFE PARSING - proteksyon laban sa
-                # null / string / missing na values
+                # SAFE PARSING - protection against
+                # null / string / missing values
                 raw_hours = data.get('completedHours', 0)
                 try:
                     completed_hours = float(raw_hours) if raw_hours is not None else 0.0
@@ -384,9 +384,9 @@ def predict_student_risk():
                 name = data.get('name') or data.get('fullName') or 'Student User'
                 coordinator_deadline = data.get('deadlineDate') or '2026-12-31'
 
-                # Kung may per-student na simula ng OJT
+                # If there is a per-student OJT start date
                 # (ex. field na 'ojtStartDate' sa Firestore),
-                # gamitin yun. Kung wala, gamitin na lang
+                # use it. If unavailable, use
                 # ang BATCH_START_DATE (Sept 14, 2026).
                 raw_student_start = data.get('ojtStartDate') or data.get('startDate')
                 try:
@@ -398,11 +398,10 @@ def predict_student_risk():
 
                 today_date = datetime.now()
                 days_active = max(1, (today_date - start_date).days)
-                is_new_student = days_active <= GRACE_PERIOD_DAYS
 
-                # I-PARSE ANG DEADLINE PARA MALAMAN
-                # KUNG ILANG ARAW MULA START_DATE ANG
-                # DEADLINE (target ng regression model)
+                # PARSE THE DEADLINE TO DETERMINE
+                # HOW MANY DAYS FROM START_DATE THE
+                # DEADLINE IS (target of the regression model)
                 try:
                     deadline_dt = datetime.strptime(
                         str(coordinator_deadline)[:10], "%Y-%m-%d"
@@ -414,15 +413,39 @@ def predict_student_risk():
                 deadline_days = max(deadline_days, days_active + 1)
 
                 # ==========================================
+                # GRACE PERIOD - dapat lang ma-exempt sa
+                # hours-based risk ang isang estudyante kung
+                # BAGO PA LANG SIYA *AT* may sapat pa ring
+                # natitirang oras bago ang deadline.
+                #
+                # Dati, "days_active <= GRACE_PERIOD_DAYS" lang
+                # ang basehan - kaya kahit gaano kalapit na ang
+                # deadline (coordinator_deadline), hindi na-e-
+                # evaluate ang hours risk habang loob pa ng unang
+                # 7 araw mula sa start date. Ngayon, isinasama na
+                # rin ang natitirang araw bago ang deadline -
+                # kung malapit na o lagpas na ito, dapat mawala
+                # ang exemption kahit "bagong-bago" pa lang ang
+                # estudyante, dahil totoong deadline risk na ito.
+                # ==========================================
+                days_remaining_until_deadline = (deadline_dt - today_date).days
+                has_deadline_runway = days_remaining_until_deadline > GRACE_PERIOD_DAYS
+
+                is_new_student = (
+                    days_active <= GRACE_PERIOD_DAYS and
+                    has_deadline_runway
+                )
+
+                # ==========================================
                 # SCIKIT-LEARN LINEAR REGRESSION
                 #
-                # Ginagamit ang kasalukuyang bilis ng
-                # progreso (completed_hours vs days_active)
-                # para i-project kung ilang hours ang
-                # matatapos ng estudyante SA ORAS NG
-                # DEADLINE - ito na mismo ang gagamitin
-                # bilang basehan ng AI status, hindi na
-                # basta fixed threshold lang.
+                # Uses the current rate of
+                # progress (completed_hours vs days_active)
+                # to project how many hours
+                # the student will complete BY THE
+                # DEADLINE - this will be used directly
+                # as the basis for the AI status, instead of
+                # using only fixed thresholds.
                 # ==========================================
 
                 X = np.array([[0], [days_active / 2], [days_active]])
@@ -434,8 +457,8 @@ def predict_student_risk():
                     model.predict([[deadline_days]])[0]
                 )
 
-                # Hindi puwedeng bumaba pa sa ibaba ng
-                # kasalukuyang completed hours
+                # Cannot be lower than the
+                # current completed hours
                 projected_total_hours = max(
                     projected_total_hours, completed_hours
                 )
@@ -445,7 +468,7 @@ def predict_student_risk():
                 student_id_value = _get_student_id_raw(data) or doc.id[:7]
 
                 # ==========================================
-                # ATTENDANCE - BASAHIN ANG ABSENCES
+                # ATTENDANCE - READ ABSENCES
                 # ==========================================
                 student_records = _get_student_records(
                     attendance_records, doc.id, student_id_value,
@@ -461,27 +484,27 @@ def predict_student_risk():
                 attendance_record_count = attendance_summary["record_count"]
 
                 # ==========================================
-                # AI STATUS - COMBINED NA BASEHAN:
+                # AI STATUS - COMBINED BASIS:
                 #   1) Scikit-Learn projection (hours vs deadline)
-                #   2) Attendance record (bilang ng absences)
+                #   2) Attendance record (number of absences)
                 #
                 # PRIORITY:
-                #   - Completed      -> naabot na ang target hours
-                #   - At Risk        -> malayong-malayo sa target
-                #                       bago ang deadline (hours-based)
-                #   - Needs Monitoring -> hindi pa "at risk" sa hours,
-                #                       pero may 5+ absences NA, o
-                #                       papalapit lang sa target
-                #   - On Track       -> maayos ang hours AT
-                #                       regular ang pagpasok
+                #   - Completed      -> target hours have been reached
+                #   - At Risk        -> far below the target
+                #                       before the deadline (hours-based)
+                #   - Needs Monitoring -> not yet "at risk" based on hours,
+                #                       but has 5+ absences, or
+                #                       is only approaching the target
+                #   - On Track       -> hours are progressing well AND
+                #                       attendance is regular
                 # ==========================================
 
-                # Hours-projection na basehan ay GINAGAMIT
-                # LANG kapag lampas na sa grace period -
-                # walang saysay i-flag na "at risk sa hours"
-                # ang isang estudyanteng bagong-start pa lang
+                # Hours projection is USED
+                # ONLY after the grace period -
+                # it is not meaningful to flag a student as "at risk by hours"
+                # when a student has just started
                 # (halos 0 pa lang talaga dapat ang hours
-                # nila lahat sa first week).
+                # during the first week).
                 is_hours_at_risk = (
                     not is_new_student and
                     projected_total_hours < target_hours * 0.85
@@ -509,23 +532,36 @@ def predict_student_risk():
                     ai_status = "At Risk"
                     if consecutive_absences >= CONSECUTIVE_ABSENCE_RISK_THRESHOLD:
                         risk_reason = (
-                            f"{consecutive_absences} sunod-sunod na araw na walang "
-                            f"time-in ang estudyante - parang hindi na nagpaparamdam, "
-                            f"kailangan na ng agarang follow-up mula sa coordinator."
+                            f"{consecutive_absences} consecutive days without "
+                            f"student time-in - the student appears to be a no-show, "
+                            f"immediate follow-up from the coordinator is needed."
                         )
                     else:
                         risk_reason = (
-                            f"May {absent_count} naitalang absence na - masyado nang "
-                            f"madalas hindi pumasok sa duty, kailangan na ng agarang "
-                            f"aksyon mula sa coordinator."
+                            f"There are {absent_count} recorded absences - the student is "
+                            f"missing duty too frequently, and immediate "
+                            f"action from the coordinator is needed."
                         )
 
                 elif is_hours_at_risk:
                     ai_status = "At Risk"
+
+                    # Ilang oras pa kulang ngayon (completed vs target),
+                    # ilang oras pa ang hinuhulaan ng modelo na madadagdag
+                    # bago sumapit ang deadline, at kung gaano pa siya
+                    # magkukulang KAHIT patuloy niya ang kasalukuyang bilis.
+                    hours_still_needed = max(target_hours - completed_hours, 0)
+                    hours_projected_to_gain = max(projected_total_hours - completed_hours, 0)
+                    projected_shortfall = max(target_hours - projected_total_hours, 0)
+
                     risk_reason = (
-                        f"Scikit-Learn ML: Sa kasalukuyang bilis ng progreso, "
-                        f"hinuhulaan lamang na makakaabot ng {int(projected_total_hours)} "
-                        f"sa {target_hours} hrs bago ang deadline ({coordinator_deadline})."
+                        f"Scikit-Learn ML: Kulang pa ng {int(hours_still_needed)} hrs "
+                        f"({int(completed_hours)}/{target_hours} hrs) ang estudyante, at "
+                        f"malapit na ang deadline ({coordinator_deadline}). Sa kasalukuyang "
+                        f"bilis, hinuhulaan lamang na makakadagdag pa siya ng "
+                        f"{int(hours_projected_to_gain)} hrs bago sumapit ang deadline - "
+                        f"aabot lamang ng {int(projected_total_hours)} out of {target_hours} hrs, "
+                        f"o magkukulang ng {int(projected_shortfall)} hrs kung hindi bibilisan."
                     )
                     if absent_count > 0:
                         risk_reason += f" May {absent_count} naitalang absence din."
@@ -533,8 +569,8 @@ def predict_student_risk():
                 elif is_attendance_monitor:
                     ai_status = "Needs Monitoring"
                     risk_reason = (
-                        f"May {absent_count} naitalang absence sa duty ng estudyante - "
-                        f"konti pa lang pero kailangan nang bantayan ang attendance."
+                        f"There are {absent_count} recorded absences in the student duty - "
+                        f"still a small number, but attendance should already be monitored."
                     )
                     if is_hours_borderline:
                         risk_reason += (
@@ -546,9 +582,9 @@ def predict_student_risk():
                 elif is_hours_borderline:
                     ai_status = "Needs Monitoring"
                     risk_reason = (
-                        f"Scikit-Learn ML: Malapit sa target pero kailangan pang bantayan - "
+                        f"Scikit-Learn ML: Close to the target but still needs monitoring - "
                         f"hinuhulaan na makakaabot ng {int(projected_total_hours)} "
-                        f"sa {target_hours} hrs bago ang deadline ({coordinator_deadline})."
+                        f"out of {target_hours} hrs before the deadline ({coordinator_deadline})."
                     )
 
                 elif is_new_student:
@@ -556,16 +592,17 @@ def predict_student_risk():
                     risk_reason = (
                         f"OJT has just started ({start_date.strftime('%Y-%m-%d')}) — "
                         f"on the right track and regularly attending "
-                        f"({absent_count} absence so far)."
+                        f"({absent_count} absence so far). "
+                        f"End of duty: {coordinator_deadline}."
                     )
 
                 else:
                     ai_status = "On Track"
                     risk_reason = (
                         f"Scikit-Learn ML: Sa kasalukuyang bilis, hinuhulaan na "
-                        f"makakaabot ng {int(projected_total_hours)} hrs bago ang deadline - "
-                        f"nasa tamang track ({coordinator_deadline}). "
-                        f"Regular din sa pagpasok ({absent_count} absence lang)."
+                        f"reach {int(projected_total_hours)} hrs before the deadline - "
+                        f"on track ({coordinator_deadline}). "
+                        f"Attendance is also regular ({absent_count} absence so far)."
                     )
 
                 batch_label = _get_batch_label(data)
@@ -637,12 +674,12 @@ def predict_student_risk():
 # ==========================================
 # 1.B DEBUG - ATTENDANCE READER
 #
-# Buksan sa browser: http://localhost:5000/api/debug-attendance
-# Ipapakita nito kung anong collection/field ang nababasa,
-# ilang attendance record ang na-match sa bawat estudyante,
-# at ilan ang absent - para madaling malaman kung bakit
-# 0 ang absences ng isang estudyante.
-# (Pang-development lang ito - alisin bago i-deploy.)
+# Open in the browser: http://localhost:5000/api/debug-attendance
+# This shows which collection/fields are being read,
+# how many attendance records matched each student,
+# and how many are absent - to make it easier to determine why
+# a student's absence count is 0.
+# (For development only - remove before deployment.)
 # ==========================================
 def _jsonable(value):
     if value is None or isinstance(value, (str, int, float, bool)):
@@ -718,7 +755,7 @@ def debug_attendance():
 
 
 # ==========================================
-# 2. ENDPOINT PARA SA COMPANY SKILL EXPOSURE
+# 2. ENDPOINT FOR COMPANY SKILL EXPOSURE
 # ==========================================
 @app.route('/api/company-skill-exposure', methods=['GET', 'POST', 'OPTIONS'])
 def analyze_company_skill_exposure():
@@ -817,7 +854,7 @@ def analyze_company_skill_exposure():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # ==========================================
-# 3. ENDPOINT PARA SA COMPANY RECOMMENDATION
+# 3. ENDPOINT FOR COMPANY RECOMMENDATION
 # ==========================================
 def classify_skill_key(primary_skill):
     skill_lower = (primary_skill or "").strip().lower()
@@ -871,7 +908,7 @@ def recommend_company():
                     "aiScore": 90
                 })
 
-        # I-sort base sa aiScore, pinakamataas muna
+        # Sort by aiScore, highest first
         matches.sort(key=lambda m: m["aiScore"], reverse=True)
 
         return jsonify({"status": "success", "data": matches})

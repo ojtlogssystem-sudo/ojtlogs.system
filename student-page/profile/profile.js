@@ -8,7 +8,8 @@ import {
     getFirestore, 
     doc, 
     getDoc, 
-    updateDoc 
+    updateDoc,
+    serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -616,6 +617,10 @@ if (profileForm) {
                 section: section,
                 schedule: scheduleData,
                 profileCompleted: true,
+                // Oras ng pagkumpleto - ginagamit ng notification bell ng
+                // coordinator (../header/header.js) para malaman kung kailan
+                // natapos ng estudyante ang profile.
+                profileCompletedAt: serverTimestamp(),
                 ...(selectedPhotoBase64 ? { photo: selectedPhotoBase64 } : {})
             });
 

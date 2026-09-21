@@ -23,6 +23,19 @@
 
 <div class="top-right">
 
+    <!--
+        School Year selector - OPT-IN LANG.
+        Lalabas lang ito sa page na may  data-school-year  attribute
+        sa <header id="header-container">  (ex. Reports page).
+        Sa ibang page, awtomatiko itong tinatanggal ni header.js kaya
+        hindi makikita ng user kapag wala siya sa Reports.
+    -->
+    <div class="period-select" id="headerSchoolYear">
+        <i class="fa-regular fa-calendar"></i>
+        <select id="schoolYearSelect" aria-label="School year"></select>
+        <i class="fa-solid fa-chevron-down period-chevron"></i>
+    </div>
+
     <!-- Notification -->
     <!--
         Wrapped in its own "notif-wrap" element (instead of putting the
@@ -49,7 +62,7 @@
             </div>
 
             <div class="notif-list" id="notifList">
-                <div class="notif-empty">No report submissions yet.</div>
+                <div class="notif-empty">No notifications yet.</div>
             </div>
 
         </div>
@@ -78,6 +91,11 @@
                     <span id="menuEmail">&mdash;</span>
                 </div>
             </div>
+
+            <button type="button" class="profile-menu-item" id="viewProfileBtn">
+                <i class="fa-solid fa-address-card"></i>
+                View profile
+            </button>
 
             <button type="button" class="profile-menu-item" id="showProfileBtn">
                 <i class="fa-solid fa-circle-user"></i>

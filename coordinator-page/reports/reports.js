@@ -4,7 +4,7 @@
    by dashboard.js (project: ojt-logs-e1892).
 ========================================== */
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 
 import {
     getAuth,
@@ -36,7 +36,8 @@ const firebaseConfig = {
     appId: "1:1012575426857:web:c2d6dbcdc0dc0ad965ff38"
 };
 
-const app = initializeApp(firebaseConfig);
+// Reuse ang app kung na-initialize na ng shared header (header.js)
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
@@ -70,6 +71,47 @@ const filters = {
     company: "all",
     status: "all"
 };
+
+
+// ========================================
+// SCHOOL YEAR (mula sa shared header)
+// ========================================
+// Ang header.js ang may hawak ng aktwal na <select> (opt-in via
+// data-school-year sa reports.html). Dalawang event ang ipinapadala
+// nito sa document:
+//   "header:ready"            -> paglo-load ng header
+//                                 (detail.schoolYear = {value, label})
+//   "header:schoolyearchange" -> tuwing magpalit ng school year
+//                                 (detail = {value, label})
+// Dito lang natin ina-apply ang napiling school year sa laman ng
+// mismong report (ang meta info + signature block).
+
+function applySchoolYearToReport(schoolYear) {
+
+    if (!schoolYear || !schoolYear.label) return;
+
+    const el =
+        document.getElementById("metaSchoolYear");
+
+    if (el) {
+        el.textContent = schoolYear.label;
+    }
+
+    document
+        .querySelectorAll(".report-school-year")
+        .forEach(item => {
+            item.textContent = schoolYear.label;
+        });
+
+}
+
+document.addEventListener("header:ready", (e) => {
+    applySchoolYearToReport(e.detail?.schoolYear);
+});
+
+document.addEventListener("header:schoolyearchange", (e) => {
+    applySchoolYearToReport(e.detail);
+});
 
 
 // ========================================
@@ -143,21 +185,13 @@ function updateProfileUI(userData, authUser) {
         authUser.displayName ||
         "OJT Coordinator";
 
-    const role =
-        userData.role ||
-        userData.position ||
-        "Coordinator";
-
     coordinatorName = fullName;
 
-    const userName =
-        document.getElementById("userName");
-
-    const userRole =
-        document.getElementById("userRole");
-
-    const userAvatar =
-        document.getElementById("userAvatar");
+    // Note: hindi na dito pinipinta ang #userName/#userRole/#userAvatar
+    // (yaon ay sa loob ng shared header) - ginagawa na 'yon ng sarili
+    // niyang listener ng header.js. Dito, i-fill lang ang mga
+    // pangalan na lumalabas sa laman ng report mismo (meta info +
+    // signature).
 
     const metaCoordinator =
         document.getElementById("metaCoordinator");
@@ -165,15 +199,6 @@ function updateProfileUI(userData, authUser) {
     const signatureName =
         document.getElementById("signatureName");
 
-
-    if (userName) {
-        userName.textContent = fullName;
-    }
-
-    if (userRole) {
-        userRole.textContent =
-            String(role).toUpperCase();
-    }
 
     if (metaCoordinator) {
         metaCoordinator.textContent = fullName;
@@ -196,22 +221,6 @@ function updateProfileUI(userData, authUser) {
         .forEach(el => {
             el.textContent = fullName;
         });
-
-
-    if (userAvatar) {
-
-        const initials = fullName
-            .split(" ")
-            .filter(n => n.length > 0)
-            .map(n => n[0])
-            .join("")
-            .substring(0, 2)
-            .toUpperCase();
-
-        userAvatar.textContent =
-            initials || "CO";
-
-    }
 
 }
 
@@ -908,11 +917,6 @@ function initToolbar() {
             "generateReportBtn"
         );
 
-    const schoolYearSelect =
-        document.getElementById(
-            "schoolYearSelect"
-        );
-
     const semesterSelect =
         document.getElementById(
             "semesterSelect"
@@ -1006,47 +1010,11 @@ function initToolbar() {
     // ------------------------------------
     // SCHOOL YEAR
     // ------------------------------------
-
-    if (schoolYearSelect) {
-
-        schoolYearSelect.addEventListener(
-            "change",
-            () => {
-
-                const formattedYear =
-                    schoolYearSelect.value.replace(
-                        "-",
-                        " \u2013 "
-                    );
-
-
-                const el =
-                    document.getElementById(
-                        "metaSchoolYear"
-                    );
-
-
-                if (el) {
-                    el.textContent =
-                        formattedYear;
-                }
-
-
-                document
-                    .querySelectorAll(
-                        ".report-school-year"
-                    )
-                    .forEach(item => {
-
-                        item.textContent =
-                            formattedYear;
-
-                    });
-
-            }
-        );
-
-    }
+    // Ang school year selector ay nasa loob na ng shared header
+    // (data-school-year sa reports.html) - hindi na ito local na
+    // element dito, kaya dito na lang tayo makikinig sa mga event
+    // na ipinapadala ng header.js (see applySchoolYearToReport
+    // sa ibaba ng file).
 
 
     // ------------------------------------
@@ -2881,26 +2849,6 @@ function renderStudentProgressTab(
                                         ${progress}%
                                     </div>
 
-
-                                    <div
-                                        class="progress-bar"
-                                    >
-
-                                        <div
-                                            class="
-                                                progress-bar-fill
-                                                ${progressClass}
-                                            "
-                                            style="
-                                                width:
-                                                ${Math.min(
-                                                    progress,
-                                                    100
-                                                )}%;
-                                            "
-                                        ></div>
-
-                                    </div>
 
                                 </div>
 

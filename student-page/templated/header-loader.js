@@ -41,19 +41,23 @@ function escapeHtml(str) {
         .replace(/'/g, "&#039;");
 }
 
-function getSeenExceptionDates() {
+function getSeenNotifKeys() {
     try {
-        const raw = localStorage.getItem("seen_exception_dates");
-        return raw ? JSON.parse(raw) : [];
+        const raw = localStorage.getItem("seen_notification_keys");
+        if (raw) return JSON.parse(raw);
+        // Migrate from the old exceptions-only key so existing
+        // "seen" state isn't lost for people already using the app.
+        const legacy = localStorage.getItem("seen_exception_dates");
+        return legacy ? JSON.parse(legacy) : [];
     } catch {
         return [];
     }
 }
 
-function markExceptionDatesSeen(dates) {
-    const seen = getSeenExceptionDates();
-    const merged = Array.from(new Set([...seen, ...dates]));
-    localStorage.setItem("seen_exception_dates", JSON.stringify(merged));
+function markNotifKeysSeen(keys) {
+    const seen = getSeenNotifKeys();
+    const merged = Array.from(new Set([...seen, ...keys]));
+    localStorage.setItem("seen_notification_keys", JSON.stringify(merged));
 }
 
 export async function updateHeaderProfile(user) {
@@ -187,7 +191,48 @@ export function updateHeaderCompletionEstimate(payload) {
    Data source: Firestore "calendar_exceptions" collection
    Doc shape: { date: "YYYY-MM-DD", reason: "...", updatedAt: Date }
 ========================================== */
-export async function loadNotifications() {
+
+/* ==========================================
+   AI AT-RISK NOTIFICATION (per-student)
+   Data source: Firestore "analytics/{uid}" doc, written by
+   app.py's /api/predict-risk (aiStatus, riskReason, lastUpdated).
+   Only produces a notification kapag ang aiStatus mismo ng
+   estudyante ay "At Risk" - hindi ito para sa ibang estudyante.
+========================================== */
+async function fetchAiRiskNotification(uid) {
+    if (!uid) return null;
+
+    try {
+        const snap = await getDoc(doc(db, "analytics", uid));
+        if (!snap.exists()) return null;
+
+        const data = snap.data();
+        const status = String(data.aiStatus || "").toLowerCase();
+        if (!status.includes("risk")) return null;
+
+        const posted = data.lastUpdated?.toDate
+            ? data.lastUpdated.toDate()
+            : new Date();
+
+        const note = data.riskReason ||
+            "Ang hinuhulaan ng AI ay hindi ka aabot sa required hours bago ang deadline.";
+
+        return {
+            // Kasama ang riskReason sa key mismo kaya kapag nag-iba ang
+            // detalye (hal. lumiit pa ang projected hours), ma-treat itong
+            // BAGONG notification ulit sa halip na permanenteng "seen" na.
+            key: `airisk:${uid}:${note}`,
+            title: `<i class="fa-solid fa-triangle-exclamation"></i> You're flagged At Risk`,
+            note,
+            posted
+        };
+    } catch (error) {
+        console.error("Error checking AI At-Risk status for notifications:", error);
+        return null;
+    }
+}
+
+export async function loadNotifications(uid = null) {
     const notifBtn = document.getElementById("notification-btn");
     const badge = document.getElementById("notification-badge");
     const panel = document.getElementById("notification-panel");
@@ -222,12 +267,37 @@ export async function loadNotifications() {
         return !isNaN(d) && d >= windowStart && d <= windowEnd;
     });
 
-    exceptions.sort((a, b) => new Date(a.date) - new Date(b.date));
+    // Unified notification list: calendar exceptions (coordinator-wide) +
+    // the AI At-Risk alert (student-specific, kung mayroon).
+    const items = exceptions
+        .map(ex => ({
+            key: ex.date,
+            kind: "exception",
+            title: `Suspension<br>(${escapeHtml(ex.date)})`,
+            note: `Coordinator Note: ${escapeHtml(ex.reason)}`,
+            posted: ex.posted || new Date(),
+            sortTime: new Date(`${ex.date}T00:00:00`).getTime()
+        }))
+        .sort((a, b) => a.sortTime - b.sortTime);
+
+    const aiRiskNotif = await fetchAiRiskNotification(uid);
+    if (aiRiskNotif) {
+        // Laging nasa itaas ang AI At-Risk alert - ito ang pinaka-agarang
+        // dapat pansinin ng estudyante.
+        items.unshift({
+            key: aiRiskNotif.key,
+            kind: "ai-risk",
+            title: aiRiskNotif.title,
+            note: escapeHtml(aiRiskNotif.note),
+            posted: aiRiskNotif.posted,
+            sortTime: aiRiskNotif.posted.getTime()
+        });
+    }
 
     // "Seen" only controls the badge count and each item's read styling —
     // the notification itself always stays visible in the list.
-    const seenList = getSeenExceptionDates();
-    const unseenCount = exceptions.filter(ex => !seenList.includes(ex.date)).length;
+    const seenKeys = getSeenNotifKeys();
+    const unseenCount = items.filter(it => !seenKeys.includes(it.key)).length;
 
     if (badge) {
         if (unseenCount > 0) {
@@ -238,19 +308,20 @@ export async function loadNotifications() {
         }
     }
 
-    if (exceptions.length === 0) {
+    if (items.length === 0) {
         listEl.innerHTML = `<div class="notif-empty">No new notifications.</div>`;
     } else {
-        listEl.innerHTML = exceptions.map(ex => {
-            const postedLabel = (ex.posted || new Date()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-            const isUnseen = !seenList.includes(ex.date);
+        listEl.innerHTML = items.map(it => {
+            const postedLabel = (it.posted || new Date()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            const isUnseen = !seenKeys.includes(it.key);
+            const riskClass = it.kind === "ai-risk" ? "notif-risk" : "";
             return `
-                <div class="notif-item ${isUnseen ? "unseen" : ""}" data-date="${escapeHtml(ex.date)}">
+                <div class="notif-item ${isUnseen ? "unseen" : ""} ${riskClass}" data-key="${escapeHtml(it.key)}">
                     <div class="notif-item-top">
-                        <p class="notif-title">Suspension<br>(${escapeHtml(ex.date)})</p>
+                        <p class="notif-title">${it.title}</p>
                         <span class="notif-posted">Posted: ${postedLabel}</span>
                     </div>
-                    <p class="notif-note">Coordinator Note: ${escapeHtml(ex.reason)}</p>
+                    <p class="notif-note">${it.note}</p>
                 </div>
             `;
         }).join("");
@@ -263,8 +334,8 @@ export async function loadNotifications() {
         const item = e.target.closest(".notif-item");
         if (!item || !item.classList.contains("unseen")) return;
 
-        const date = item.dataset.date;
-        if (date) markExceptionDatesSeen([date]);
+        const key = item.dataset.key;
+        if (key) markNotifKeysSeen([key]);
         item.classList.remove("unseen");
 
         const remainingUnseen = listEl.querySelectorAll(".notif-item.unseen").length;
@@ -281,8 +352,7 @@ export async function loadNotifications() {
     if (clearAllBtn) {
         clearAllBtn.onclick = (e) => {
             e.stopPropagation();
-            const allDates = exceptions.map(ex => ex.date);
-            markExceptionDatesSeen(allDates);
+            markNotifKeysSeen(items.map(it => it.key));
             if (badge) badge.style.display = "none";
             listEl.querySelectorAll(".notif-item.unseen").forEach(el => el.classList.remove("unseen"));
         };
@@ -338,8 +408,13 @@ export async function loadHeader(title, options = {}) {
             });
         }
         // The notification bell is owned by the header itself now, so it
-        // always loads — no per-page opt-in needed.
-        loadNotifications();
+        // always loads — no per-page opt-in needed. It waits for the
+        // logged-in uid so it can also check the student's own AI
+        // At-Risk status (analytics/{uid}) alongside the coordinator's
+        // calendar exceptions.
+        onAuthStateChanged(auth, (user) => {
+            loadNotifications(user ? user.uid : null);
+        });
 
         initHeaderEvents();
     } catch (err) {

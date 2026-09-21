@@ -5,7 +5,7 @@
    Loaded as: <script type="module" src="settings.js"></script>
 ========================================== */
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 
 import {
     getAuth,
@@ -44,7 +44,8 @@ const firebaseConfig = {
     appId: "1:1012575426857:web:c2d6dbcdc0dc0ad965ff38"
 };
 
-const app = initializeApp(firebaseConfig);
+// Reuse ang app kung na-initialize na ng shared header (header.js)
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
@@ -693,7 +694,7 @@ $("sendResetLink").addEventListener("click", async () => {
 
 document.addEventListener("click", async (e) => {
 
-    const trigger = e.target.closest("#signOutBtn, #logoutBtn");
+    const trigger = e.target.closest("#signOutBtn");
 
     if (!trigger) return;
 
@@ -822,13 +823,18 @@ function paintAvatar(element, photo, name) {
 
 function paintHeader(name, role, photo) {
 
-    const nameEl = document.getElementById("profileName");
-    const roleEl = document.getElementById("profileRole");
+    // Ang mismong header markup (avatar, dropdown, logout) ay
+    // hawak na ng shared header.js - dito, i-re-paint lang agad ang
+    // mga elemento nito pagkatapos mag-save, para hindi na
+    // maghintay ng reload bago lumabas ang bagong pangalan/larawan.
+
+    const nameEl = document.getElementById("userName");
+    const roleEl = document.getElementById("userRole");
 
     if (nameEl) nameEl.textContent = name || "OJT Coordinator";
-    if (roleEl) roleEl.textContent = role || "Coordinator";
+    if (roleEl) roleEl.textContent = (role || "Coordinator").toUpperCase();
 
-    paintAvatar(document.getElementById("profileAvatar"), photo, name);
+    paintAvatar(document.getElementById("userAvatar"), photo, name);
     paintAvatar(document.getElementById("menuAvatar"), photo, name);
 
     const menuName = document.getElementById("menuName");
@@ -838,65 +844,3 @@ function paintHeader(name, role, photo) {
     if (menuEmail) menuEmail.textContent = currentUser?.email || "";
 
 }
-
-
-/* ==========================================
-   PROFILE DROPDOWN
-========================================== */
-
-(function initProfileMenu() {
-
-    const trigger = document.getElementById("profileMenuTrigger");
-
-    if (!trigger) return;
-
-    trigger.addEventListener("click", (e) => {
-
-        // Clicks on the menu items handle themselves.
-        if (e.target.closest(".profile-menu")) return;
-
-        trigger.classList.toggle("open");
-
-    });
-
-    document.addEventListener("click", (e) => {
-
-        if (!trigger.contains(e.target)) {
-            trigger.classList.remove("open");
-        }
-
-    });
-
-    document.addEventListener("keydown", (e) => {
-
-        if (e.key === "Escape") {
-            trigger.classList.remove("open");
-        }
-
-    });
-
-})();
-
-
-/* ==========================================
-   MENU: SHOW PROFILE
-   ------------------------------------------
-   Already on this page, so scroll to the
-   profile card and flash it.
-========================================== */
-
-document.getElementById("showProfileBtn")?.addEventListener("click", () => {
-
-    document.getElementById("profileMenuTrigger")?.classList.remove("open");
-
-    const card = document.querySelector(".settings-card");
-
-    if (!card) return;
-
-    card.scrollIntoView({ behavior: "smooth", block: "start" });
-
-    card.classList.add("flash");
-
-    setTimeout(() => card.classList.remove("flash"), 1200);
-
-});

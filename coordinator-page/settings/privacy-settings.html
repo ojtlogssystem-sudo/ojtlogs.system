@@ -10,6 +10,8 @@
 
     <!-- Shared Layout -->
     <link rel="stylesheet" href="../sidebar/sidebar-web.css">
+    <!-- Shared Header -->
+    <link rel="stylesheet" href="../header/header.css">
     <!-- Page CSS -->
     <link rel="stylesheet" href="privacy-settings.css">
 
@@ -34,63 +36,13 @@
 
 <main class="main">
 
-<header>
-
-    <div>
-        <h2>Privacy Settings</h2>
-        <p>Control what others see and how your information is used.</p>
-    </div>
-
-    <div class="top-right">
-
-        <div class="notification">
-            <i class="fa-regular fa-bell"></i>
-            <span class="badge">3</span>
-        </div>
-
-        <div class="profile" id="profileMenuTrigger">
-
-            <div class="avatar" id="profileAvatar">CO</div>
-
-            <div class="profile-info">
-                <h4 id="profileName">Loading...</h4>
-                <p id="profileRole">Coordinator</p>
-            </div>
-
-            <i class="fa-solid fa-chevron-down" id="profileChevron"></i>
-
-            <!-- PROFILE DROPDOWN -->
-
-            <div class="profile-menu" id="profileMenu">
-
-                <div class="profile-menu-head">
-
-                    <div class="avatar avatar-sm" id="menuAvatar">CO</div>
-
-                    <div class="profile-menu-id">
-                        <h5 id="menuName">Loading...</h5>
-                        <span id="menuEmail">&mdash;</span>
-                    </div>
-
-                </div>
-
-                <button type="button" class="profile-menu-item" id="showProfileBtn">
-                    <i class="fa-solid fa-circle-user"></i>
-                    Show profile
-                </button>
-
-                <button type="button" class="profile-menu-item item-danger" id="logoutBtn">
-                    <i class="fa-solid fa-right-from-bracket"></i>
-                    Log out
-                </button>
-
-            </div>
-
-        </div>
-
-    </div>
-
-</header>
+<!-- HEADER (shared: ../header/header.js + header.html)
+     Walang data-school-year dito - sa Reports page lang ang School Year. -->
+<header
+    id="header-container"
+    data-page-title="Privacy Settings"
+    data-page-subtitle="Control what others see and how your information is used."
+></header>
 
 <section class="settings-page">
 
@@ -350,6 +302,7 @@
 </div>
 
 <script src="../sidebar/sidebar-web.js"></script>
+<script type="module" src="../header/header.js"></script>
 <script type="module" src="privacy-settings.js"></script>
 
 </body>

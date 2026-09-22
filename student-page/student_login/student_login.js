@@ -79,23 +79,27 @@ function hideError() {
     }
 }
 
-// Function para sa checking ng User at pagpuno ng Requirements Form
-async function processStudentLogin(user) {
+// Function para sa checking ng Role at Pag-redirect
+async function processUserLogin(user) {
     const userDocRef = doc(db, "users", user.uid);
     let userDoc = await getDoc(userDocRef);
 
-    // 1. KUNG MAY EXISTING PROFILE NA SA FIRESTORE
+    // 1. KUNG MAY EXISTING PROFILE NA SA FIRESTORE (USERS COLLECTION)
     if (userDoc.exists()) {
-
         const userData = userDoc.data();
 
-        const role =
-            (userData.role || userData.userType || "student")
-                .toString()
-                .toLowerCase();
+        // Kunin ang role mula sa 'role' o 'userType'
+        const role = (userData.role || userData.userType || "student").toString().toLowerCase();
 
-        // Record student login
+        // KUNG COORDINATOR O ADMIN -> REDIRECT SA COORDINATOR DASHBOARD
+        if (role === "coordinator" || role === "admin") {
+            window.location.href = "/coordinator-page/dashboard/dashboard.html";
+            return;
+        }
+
+        // KUNG STUDENT -> I-check ang Profile Status bago pumunta sa Dashboard
         if (role === "student") {
+            // I-record ang Student Login
             await addDoc(collection(db, "logs"), {
                 type: "login",
                 action: "Login",
@@ -104,38 +108,24 @@ async function processStudentLogin(user) {
                 studentName: userData.fullName || userData.name || "Student",
                 timestamp: serverTimestamp()
             });
-        }
 
-        if (role === "coordinator" || role === "admin") {
-
-            window.location.href = "/coordinator-page/dashboard/dashboard.html";
-
-        } else {
-
-            console.log("DEBUG isProfileComplete value:", userData.isProfileComplete, userData.profileCompleted);
-
-            const isComplete =
-                userData.profileCompleted === true ||
-                userData.isProfileComplete === true;
+            const isComplete = userData.profileCompleted === true || userData.isProfileComplete === true;
 
             if (isComplete) {
-
+                // Pag kumpleto na ang profile -> Student Dashboard
                 window.location.href = "/student-page/student_dashboard/student_dashboard.html";
-
             } else {
-
+                // Pag hindi pa kumpleto -> Complete Profile Page
                 window.location.href = "/student-page/profile/profile.html";
-
             }
+            return;
         }
-
-        return;
     }
 
-    // 2. KUNG BAGONG LOG-IN (GOOGLE O EMAIL)
+    // 2. KUNG BAGONG LOG-IN NA WALA PA SA USERS COLLECTION
     const emailKey = user.email.toLowerCase();
     
-    // Subukan muna i-check sa invitations collection
+    // I-check kung invited student ito mula sa invitations collection
     let inviteDocRef = doc(db, "invitations", emailKey);
     let inviteDoc = await getDoc(inviteDocRef);
 
@@ -145,28 +135,34 @@ async function processStudentLogin(user) {
     }
 
     let coordinatorId = null;
-    let studentName = user.displayName || "Student User";
+    let userName = user.displayName || "User";
+    let detectedRole = "student"; // Default role
 
     if (inviteDoc.exists()) {
         const inviteData = inviteDoc.data();
         coordinatorId = inviteData.coordinatorId || null;
-        if (inviteData.name) studentName = inviteData.name;
+        if (inviteData.name) userName = inviteData.name;
+        if (inviteData.role) detectedRole = inviteData.role.toLowerCase();
     }
 
-    // Gagawa ng paunang record sa users collection na may flag na profileCompleted: false
+    // Gagawa ng paunang record sa Firestore `users` collection
     await setDoc(userDocRef, {
         uid: user.uid,
-        name: studentName,
+        name: userName,
         email: emailKey,
-        role: "student",
+        role: detectedRole,
         status: "Active",
-        profileCompleted: false, // Priority Flag para sa profile form
+        profileCompleted: detectedRole === "student" ? false : true,
         invitedBy: coordinatorId,
         createdAt: new Date()
     });
 
-    // Diretso papuntang Requirements Form
-    window.location.href = "/student-page/profile/profile.html";
+    // Pagtukoy sa pupuntahang page depende sa natukoy na role
+    if (detectedRole === "coordinator" || detectedRole === "admin") {
+        window.location.href = "/coordinator-page/dashboard/dashboard.html";
+    } else {
+        window.location.href = "/student-page/profile/profile.html";
+    }
 }
 
 // EMAIL & PASSWORD LOGIN HANDLER
@@ -184,7 +180,7 @@ if (loginForm) {
 
         try {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            await processStudentLogin(userCredential.user);
+            await processUserLogin(userCredential.user);
         } catch (error) {
             console.error("Login Error:", error);
             showError("Mali ang email o password. Subukan ulit.");
@@ -203,7 +199,7 @@ if (googleBtn) {
 
         try {
             const result = await signInWithPopup(auth, provider);
-            await processStudentLogin(result.user);
+            await processUserLogin(result.user);
         } catch (error) {
             console.error("Google Auth Error:", error);
             if (error.code !== 'auth/popup-closed-by-user') {

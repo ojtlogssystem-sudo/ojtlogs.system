@@ -390,6 +390,26 @@ header {
     background: #fbd5d5;
 }
 
+/* AI Needs Monitoring alert - amber, one notch below the "At Risk" red so
+   it reads as a heads-up rather than an urgent alarm. Matches the amber
+   used for "Needs Monitoring" status badges elsewhere in the app. */
+.notif-item.notif-monitor {
+    background: #fef3c7;
+    border-left: 3px solid #d97706;
+}
+
+.notif-item.notif-monitor .notif-title {
+    color: #b45309;
+}
+
+.notif-item.notif-monitor .notif-title i {
+    margin-right: 4px;
+}
+
+.notif-item.notif-monitor.unseen {
+    background: #fde8b6;
+}
+
 .notif-empty {
     padding: 32px 16px;
     text-align: center;

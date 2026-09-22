@@ -226,9 +226,9 @@ html, body {
 }
 
 .students-table th {
-    padding: 18px;
+    padding: 9px;
     text-align: left;
-    font-size: 14px;
+    font-size: 13px;
     color: #666;
     font-weight: 600;
     border-bottom: 1px solid #ececec;
@@ -242,8 +242,8 @@ table thead th i {
 }
 
 .students-table td {
-    padding: 18px;
-    font-size: 14px;
+    padding: 11px;
+    font-size: 13px;
     color: #333;
     border-bottom: 1px solid #f2f2f2;
     vertical-align: middle;
@@ -1381,16 +1381,7 @@ table thead th i {
    (#fde8e8 background / #ab0a0a icon at text)
 ========================================== */
 
-.status.active,
-.status.pending,
-.status.completed,
-.status-pill.active,
-.status-pill.pending,
-.status-pill.completed {
-    background: #fde8e8;
-    color: #ab0a0a;
-    border: 1px solid #f5c2c2;
-}
+
 
 .action-btn,
 .view-btn,

@@ -1,5 +1,4 @@
-
-        body {
+body {
             font-family: Arial, sans-serif;
             margin: 40px;
             color: #000;
@@ -284,7 +283,7 @@
     }
 
     .report-date-line {
-        width: 180px;
+        min-width: 180px;
     }
 }
 
@@ -333,8 +332,54 @@
 
 .report-date-line {
     display: inline-block;
-    width: 120px; /* pinaikli */
+    min-width: 120px; /* lalapad ayon sa laman (petsa ng linggo) */
     height: 17px;
+    padding: 0 6px;
     border-bottom: 1px solid #000;
     margin-left: 2px;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    line-height: 17px;
+    white-space: nowrap;
+}
+
+/* ========================================
+   WEEK SELECTOR (screen only)
+   ======================================== */
+
+.week-nav {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.week-nav button {
+    padding: 6px 12px;
+    background: #f3f4f6;
+    color: #111827;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.week-nav button:hover:not(:disabled) {
+    background: #e5e7eb;
+}
+
+.week-nav .week-this {
+    background: #fff;
+    color: #AB0A0A;
+    border-color: #AB0A0A;
+}
+
+.week-label {
+    min-width: 190px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: bold;
+    color: #111827;
 }

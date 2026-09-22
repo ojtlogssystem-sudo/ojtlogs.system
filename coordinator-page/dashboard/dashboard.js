@@ -670,25 +670,33 @@ async function loadPendingCounts() {
             collection(db, "users");
 
 
-        const activeUsersQuery =
+        const registeredStudentsQuery =
             query(
                 usersRef,
-                where("role", "==", "student"),
-                where("status", "==", "Active")
+                where("role", "==", "student")
             );
 
 
-        const activeSnap =
+        const registeredSnap =
             await getDocs(
-                activeUsersQuery
+                registeredStudentsQuery
             );
 
 
-        const activeEmails =
+        // NOTE: dapat lahat ng estudyanteng may account
+        // na sa "users" collection ang i-exclude dito -
+        // hindi lang yung status == "Active". Kung
+        // naka-Completed (o anumang status) na siya,
+        // ibig sabihin naka-register na siya at hindi
+        // na dapat lumabas bilang "pending" invitation,
+        // kahit anong laman ng status field ng kanyang
+        // invitation doc.
+
+        const registeredEmails =
             new Set();
 
 
-        activeSnap.forEach(docSnap => {
+        registeredSnap.forEach(docSnap => {
 
             const data =
                 docSnap.data();
@@ -696,7 +704,7 @@ async function loadPendingCounts() {
 
             if (data.email) {
 
-                activeEmails.add(
+                registeredEmails.add(
                     data.email
                         .toLowerCase()
                         .trim()
@@ -740,7 +748,7 @@ async function loadPendingCounts() {
                 .trim();
 
 
-            if (!activeEmails.has(inviteEmail)) {
+            if (!registeredEmails.has(inviteEmail)) {
 
                 realPendingCount++;
 
@@ -843,25 +851,30 @@ async function fetchAndDisplayPendingInvitations() {
             collection(db, "users");
 
 
-        const activeUsersQuery =
+        const registeredStudentsQuery =
             query(
                 usersRef,
-                where("role", "==", "student"),
-                where("status", "==", "Active")
+                where("role", "==", "student")
             );
 
 
-        const activeSnap =
+        const registeredSnap =
             await getDocs(
-                activeUsersQuery
+                registeredStudentsQuery
             );
 
 
-        const activeEmails =
+        // Lahat ng estudyanteng may account na sa "users"
+        // (Active, Completed, atbp.) ang dapat i-exclude -
+        // hindi lang yung "Active" - kasi naka-register na
+        // sila kahit na hindi na-update yung status ng
+        // kanilang invitation doc.
+
+        const registeredEmails =
             new Set();
 
 
-        activeSnap.forEach(docSnap => {
+        registeredSnap.forEach(docSnap => {
 
             const data =
                 docSnap.data();
@@ -869,7 +882,7 @@ async function fetchAndDisplayPendingInvitations() {
 
             if (data.email) {
 
-                activeEmails.add(
+                registeredEmails.add(
                     data.email
                         .toLowerCase()
                         .trim()
@@ -914,7 +927,7 @@ async function fetchAndDisplayPendingInvitations() {
                 .trim();
 
 
-            if (!activeEmails.has(inviteEmail)) {
+            if (!registeredEmails.has(inviteEmail)) {
 
                 count++;
 

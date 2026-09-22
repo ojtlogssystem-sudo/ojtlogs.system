@@ -161,6 +161,14 @@ let notifItems = [];
 
 let notifLastSeenAt = 0;
 let notifStorageKey = "coordinatorNotifLastSeen";
+
+// Mga notification na pinindot na ang "Mark all as read" (by id + oras).
+// Hiwalay ito sa notifLastSeenAt dahil ang oras lang ay hindi sapat: kapag
+// mas maaga ang orasan ng server (o may petsang nasa hinaharap) kaysa sa
+// computer, mananatiling "unread" ang notification at hindi mawawala ang badge.
+const NOTIF_READ_KEYS_MAX = 300;
+let notifReadKeys = new Set();
+let notifReadKeysStorageKey = "coordinatorNotifReadKeys";
 let notifUnsubscribers = [];
 
 
@@ -851,6 +859,22 @@ function notifMessageHtml(item) {
 }
 
 
+function notifKey(item) {
+
+    return `${item.type}:${item.id}:${item.timestamp}`;
+
+}
+
+
+// Unread lang kung MAS BAGO sa huling "mark as read" AT hindi pa nakalista bilang nabasa na
+function isNotifUnread(item) {
+
+    return item.timestamp > notifLastSeenAt &&
+        !notifReadKeys.has(notifKey(item));
+
+}
+
+
 function renderNotifications() {
 
     const listEl =
@@ -870,8 +894,7 @@ function renderNotifications() {
 
         listEl.innerHTML = notifItems.map((item) => {
 
-            const unread =
-                item.timestamp > notifLastSeenAt;
+            const unread = isNotifUnread(item);
 
             const meta =
                 NOTIF_TYPES[item.type] || NOTIF_TYPES.report;
@@ -896,9 +919,7 @@ function renderNotifications() {
     }
 
     const unreadCount =
-        notifItems.filter(
-            (item) => item.timestamp > notifLastSeenAt
-        ).length;
+        notifItems.filter(isNotifUnread).length;
 
     if (badgeEl) {
 
@@ -942,10 +963,24 @@ function markNotificationsRead() {
 
     notifLastSeenAt = Date.now();
 
+    // Isama ang LAHAT ng nakikita ngayon (kahit nasa hinaharap ang timestamp)
+    notifItems.forEach((item) => notifReadKeys.add(notifKey(item)));
+
+    if (notifReadKeys.size > NOTIF_READ_KEYS_MAX) {
+        notifReadKeys = new Set(
+            Array.from(notifReadKeys).slice(-NOTIF_READ_KEYS_MAX)
+        );
+    }
+
     try {
         localStorage.setItem(
             notifStorageKey,
             String(notifLastSeenAt)
+        );
+
+        localStorage.setItem(
+            notifReadKeysStorageKey,
+            JSON.stringify(Array.from(notifReadKeys))
         );
     } catch (error) {
         console.error("Could not save notif read state:", error);
@@ -1077,6 +1112,19 @@ async function startNotifications(uid) {
 
     notifLastSeenAt =
         Number(localStorage.getItem(notifStorageKey)) || 0;
+
+    notifReadKeysStorageKey =
+        `coordinatorNotifReadKeys_${uid}`;
+
+    try {
+        const savedKeys =
+            JSON.parse(localStorage.getItem(notifReadKeysStorageKey));
+
+        notifReadKeys =
+            new Set(Array.isArray(savedKeys) ? savedKeys : []);
+    } catch (error) {
+        notifReadKeys = new Set();
+    }
 
     await buildStudentNameMap();
 

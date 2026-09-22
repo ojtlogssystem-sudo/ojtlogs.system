@@ -5,7 +5,8 @@ import {
     getDocs, 
     doc, 
     getDoc, 
-    updateDoc 
+    updateDoc,
+    serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { 
     getAuth, 
@@ -56,6 +57,29 @@ function calculateHoursFromTime(timeIn, timeOut) {
         console.error("Error parsing time string:", e);
         return 0;
     }
+}
+
+// Rejected na record = 0 minuto. Ginagamit ng overview total at ng reject action.
+function isRejectedRecord(r) {
+    return String((r && r.status) || "").toLowerCase() === "rejected";
+}
+
+// Net minutes ng isang attendance record (parehong logic ng student_dashboard.js).
+function getRecordMinutes(r) {
+    if (!r || isRejectedRecord(r)) return 0;
+    let minutes = 0;
+    if (r.todayHours) {
+        const matchHours = String(r.todayHours).match(/(\d+)\s*h/i);
+        const matchMins = String(r.todayHours).match(/(\d+)\s*m/i);
+        if (matchHours) minutes += parseInt(matchHours[1]) * 60;
+        if (matchMins) minutes += parseInt(matchMins[1]);
+    } else if (r.timeIn && r.timeOut && r.timeOut !== "--") {
+        const rawHours = calculateHoursFromTime(r.timeIn, r.timeOut);
+        minutes = Math.max(0, Math.round(rawHours * 60) - 60);
+    } else if (r.hoursRendered) {
+        minutes = Math.round((parseFloat(r.hoursRendered) || 0) * 60);
+    }
+    return minutes;
 }
 
 function getInitials(name) {
@@ -259,7 +283,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <td>${item.day || '-'}</td>
                 <td class="${lowerStatus === 'rejected' ? 'text-rejected' : 'text-green'}">${item.timeIn || '--'}</td>
                 <td class="${lowerStatus === 'rejected' ? 'text-rejected' : 'text-green'}">${item.timeOut || '--'}</td>
-                <td>${item.todayHours || (item.hoursRendered ? item.hoursRendered + ' hrs' : '0h 0m')}</td>
+                <td>${lowerStatus === 'rejected' ? '0h 0m' : (item.todayHours || (item.hoursRendered ? item.hoursRendered + ' hrs' : '0h 0m'))}</td>
                 <td><span class="status ${statusClass}">${statusText}</span></td>
                 <td>${item.remarks || '-'}</td>
                 <td>
@@ -309,21 +333,7 @@ document.addEventListener("DOMContentLoaded", () => {
             else if (status.includes("late")) lateCount++;
             else if (status.includes("absent")) absentCount++;
 
-            if (r.todayHours) {
-                const matchHours = r.todayHours.match(/(\d+)\s*h/i);
-                const matchMins = r.todayHours.match(/(\d+)\s*m/i);
-                if (matchHours) totalMinutes += parseInt(matchHours[1]) * 60;
-                if (matchMins) totalMinutes += parseInt(matchMins[1]);
-            } else if (r.timeIn && r.timeOut && r.timeOut !== "--") {
-                // Same fallback as student_dashboard.js: recreate the net
-                // (1hr break deducted) minutes for older records saved
-                // before todayHours existed, instead of silently counting
-                // them as 0 like this page used to.
-                const rawHours = calculateHoursFromTime(r.timeIn, r.timeOut);
-                totalMinutes += Math.max(0, Math.round(rawHours * 60) - 60);
-            } else if (r.hoursRendered) {
-                totalMinutes += parseFloat(r.hoursRendered) * 60;
-            }
+            totalMinutes += getRecordMinutes(r);
         });
 
         const finalHours = Math.floor(totalMinutes / 60);
@@ -425,12 +435,20 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!activeDocIdToModify) return;
             try {
                 const attDocRef = doc(db, "attendance", activeDocIdToModify);
-                await updateDoc(attDocRef, {
+                const editedItem = allStudentAttendance.find(i => i.id === activeDocIdToModify);
+                const editUpdates = {
                     timeIn: editTimeIn ? editTimeIn.value : "",
                     timeOut: editTimeOut ? editTimeOut.value : "",
                     status: "Adjusted",
                     remarks: "Time adjusted by Coordinator."
-                });
+                };
+                // Kung dating Rejected ang record, ibalik ang oras na nabawas
+                // para hindi ma-stuck sa 0h 0m pagkatapos i-edit.
+                if (isRejectedRecord(editedItem)) {
+                    if (editedItem.originalTodayHours != null) editUpdates.todayHours = editedItem.originalTodayHours;
+                    if (editedItem.originalHoursRendered != null) editUpdates.hoursRendered = editedItem.originalHoursRendered;
+                }
+                await updateDoc(attDocRef, editUpdates);
                 alert("Attendance updated successfully!");
                 if (editModal) { editModal.classList.remove("show"); editModal.style.display = "none"; }
                 fetchAttendanceDetails(); 
@@ -445,12 +463,34 @@ document.addEventListener("DOMContentLoaded", () => {
         confirmRejectBtn.addEventListener("click", async function () {
             if (!activeDocIdToModify) return;
             try {
+                const rejectedItem = allStudentAttendance.find(i => i.id === activeDocIdToModify);
+
+                // Nare-reject na dati - huwag nang ulitin (mao-overwrite ang orihinal na oras).
+                if (isRejectedRecord(rejectedItem)) {
+                    alert("This attendance is already rejected.");
+                    if (rejectModal) { rejectModal.classList.remove("show"); rejectModal.style.display = "none"; }
+                    return;
+                }
+
+                // Ilang minuto ang ibabawas sa total ng estudyante
+                const deductedMinutes = getRecordMinutes(rejectedItem);
+
                 const attDocRef = doc(db, "attendance", activeDocIdToModify);
                 await updateDoc(attDocRef, {
                     status: "Rejected",
-                    remarks: "Attendance rejected by Coordinator."
+                    remarks: "Attendance rejected by Coordinator.",
+                    // Naka-zero ang oras ng araw na ito; nakatabi ang orihinal
+                    // para maibalik kung ie-edit ulit ng coordinator.
+                    originalTodayHours: (rejectedItem && rejectedItem.todayHours) ?? null,
+                    originalHoursRendered: (rejectedItem && rejectedItem.hoursRendered) ?? null,
+                    todayHours: "0h 0m (Rejected)",
+                    hoursRendered: 0,
+                    // Ginagamit ng notification bell ng estudyante
+                    rejectedMinutes: deductedMinutes,
+                    rejectedAt: serverTimestamp(),
+                    rejectedBy: (auth.currentUser && auth.currentUser.uid) || null
                 });
-                alert("Attendance marked as rejected.");
+                alert("Attendance rejected. The student has been notified and the hours were deducted.");
                 if (rejectModal) { rejectModal.classList.remove("show"); rejectModal.style.display = "none"; }
                 fetchAttendanceDetails(); 
             } catch (err) {

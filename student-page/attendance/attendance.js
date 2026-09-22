@@ -571,10 +571,12 @@ function renderHistoryItems(historyList) {
         const isLate = item.status === 'Late';
         const isAbsent = item.status === 'Absent';
         const isActive = item.status === 'Active';
+        const isRejected = String(item.status || '').toLowerCase() === 'rejected';
 
         let badgeClass = 'green';
         let badgeText = item.status;
-        if (isLate) { badgeClass = 'orange'; }
+        if (isRejected) { badgeClass = 'red'; badgeText = 'Rejected'; }
+        else if (isLate) { badgeClass = 'orange'; }
         else if (isAbsent) { badgeClass = 'red'; }
         else if (isActive) { badgeClass = 'blue'; badgeText = 'Active'; }
         else if (isCompleted) { badgeClass = 'green'; badgeText = 'Present'; }
@@ -608,7 +610,7 @@ function renderHistoryItems(historyList) {
                 </div>
 
                 ${item.tasks ? `<div class="task-summary-preview"><strong>Tasks:</strong> ${item.tasks}</div>` : ''}
-                ${item.remarks && item.remarks !== '--' ? `<div style="margin-top: 4px; font-size: 11px; color: ${isLate ? '#ea580c' : '#059669'};"><strong>Remarks:</strong> ${item.remarks}</div>` : ''}
+                ${item.remarks && item.remarks !== '--' ? `<div style="margin-top: 4px; font-size: 11px; color: ${isRejected ? '#dc2626' : isLate ? '#ea580c' : '#059669'};"><strong>Remarks:</strong> ${item.remarks}</div>` : ''}
             </div>
         `;
     }).join('');
@@ -701,6 +703,10 @@ function initAttendanceSystem(currentUser) {
         const latestToday = fullAttendanceHistory.find(i => i.date === todayStr);
 
         if (mode === "IN" && latestToday) {
+            if (String(latestToday.status || "").toLowerCase() === "rejected") {
+                showToast("Your attendance for today was rejected by your coordinator.", "error");
+                return;
+            }
             if (latestToday.status === "Completed" || latestToday.status === "Present" || latestToday.status === "Late") {
                 showToast("You have already completed attendance for today. Try again tomorrow!", "error");
                 return;
@@ -1235,6 +1241,23 @@ function initAttendanceSystem(currentUser) {
                 if (timeOutNoteText) timeOutNoteText.textContent = "Attendance completed for today. Come back tomorrow!";
 
                 updateRedTimestampBadge(latestToday.timeIn, formatLocalDateWithDay(now));
+
+            } else if (latestToday && String(latestToday.status || "").toLowerCase() === "rejected") {
+                if (todayCompany) todayCompany.textContent = latestToday.company || "--";
+                if (todayLocation) todayLocation.textContent = latestToday.location || "--";
+                if (todayTimeIn) todayTimeIn.textContent = latestToday.timeIn || "--";
+                if (todayTimeOut) todayTimeOut.textContent = latestToday.timeOut || "--";
+
+                if (todayStatusBadge) {
+                    todayStatusBadge.textContent = "Rejected";
+                    todayStatusBadge.className = "status-badge rejected";
+                }
+
+                if (timeInScanBtn) { timeInScanBtn.disabled = true; timeInScanBtn.className = "scan-btn disabled-btn"; }
+                if (timeOutScanBtn) { timeOutScanBtn.disabled = true; timeOutScanBtn.className = "scan-btn disabled-btn"; }
+                if (timeOutIconBox) timeOutIconBox.className = "qr-icon-circle gray-bg";
+                if (timeInNoteText) timeInNoteText.textContent = "Your attendance for today was rejected by your coordinator.";
+                if (timeOutNoteText) timeOutNoteText.textContent = "Your attendance for today was rejected by your coordinator.";
 
             } else if (todayNoDutyReason || !isScheduledToday) {
                 if (todayCompany) todayCompany.textContent = "--";

@@ -1472,12 +1472,11 @@
    COMPANY VIEW BUTTON
 ========================================================= */
 
-.company-view-btn {
-    gap: 6px;
-    padding: 0 11px;
+.company-view-btn { 
     display: inline-flex;
     align-items: center;
-    justify-content: center;
+    gap: 6px;
+    padding: 4px 10px;
     border: 1px solid #ab0a0a;
     background: #ffffff;
     color: #8c0909;
@@ -1485,10 +1484,8 @@
     font-size: 12px;
     font-weight: 600;
     text-decoration: none;
-    cursor: pointer;    
     transition: all 0.2s ease;
 }
-
 .company-view-btn:hover  {
     background: #ab0a0a;
     color: #ffffff;
@@ -2031,7 +2028,7 @@
 
 .chart-card-desc {
     margin: 4px 0 14px;
-    font-size: 11px;
+    font-size: 13px;
     line-height: 1.5;
     color: #999;
 }

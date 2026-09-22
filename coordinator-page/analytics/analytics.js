@@ -1237,17 +1237,6 @@ document.addEventListener("DOMContentLoaded", () => {
         if (streak < 2) return "";
 
         return `
-            <span
-                class="absence-badge ${
-                    streak >= CONSECUTIVE_ABSENCE_RISK_THRESHOLD
-                        ? "high"
-                        : "watch"
-                }"
-                title="Magkakasunod na absent simula sa pinakahuling duty day"
-            >
-                <i class="fa-solid fa-link-slash"></i>
-                ${streak} sunod-sunod
-            </span>
         `;
 
     }

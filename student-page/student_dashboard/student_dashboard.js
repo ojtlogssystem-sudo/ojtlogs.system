@@ -231,7 +231,12 @@ function listenToStudentAttendance(userId) {
             // total, so it's never used here for the sum. Everything is kept
             // in whole minutes (not float hours) until the very end, so there's
             // no rounding drift between this total and the coordinator's.
-            if (data.todayHours) {
+            // Rejected ng coordinator = hindi binibilang ang oras ng araw na iyon.
+            const isRejectedDay = String(data.status || "").toLowerCase() === "rejected";
+
+            if (isRejectedDay) {
+                netMinutes = 0;
+            } else if (data.todayHours) {
                 const matchHours = data.todayHours.match(/(\d+)\s*h/i);
                 const matchMins = data.todayHours.match(/(\d+)\s*m/i);
                 if (matchHours) netMinutes += parseInt(matchHours[1]) * 60;

@@ -62,7 +62,7 @@ ATTENDANCE_DATE_FIELDS = (
     'timestamp', 'createdAt', 'timeIn'
 )
 
-# Mga field na puwedeng naglalaman ng status (Present/Absent/Late)
+# Fields that may contain status (Present/Absent/Late)
 ATTENDANCE_STATUS_FIELDS = (
     'status', 'attendanceStatus', 'attendance_status'
 )
@@ -126,8 +126,8 @@ def _is_absent_record(rec):
     """
     Flexible reader for different possible attendance collection schemas:
     attendance collection:
-      - status / attendanceStatus / attendance_status na
-        naglalaman ng salitang "absent"
+      - status / attendanceStatus / attendance_status containing
+        the word "absent"
       - boolean 'isAbsent' / 'absent' (True = absent)
       - boolean 'present' (False = absent)
     """
@@ -168,7 +168,7 @@ def _load_attendance_records():
 def _get_student_records(attendance_records, student_doc_id, student_id_value,
                          student_name, student_email=None):
     """
-    Gets all attendance records belonging ng partikular
+    Gets all attendance records belonging
     to a specific student. Checks the doc ID, student number, email,
     and (as a last fallback) the name.
     """
@@ -308,7 +308,7 @@ def _get_batch_label(data):
         if value not in (None, ''):
             return str(value).strip()
 
-    # Walang mabasang batch - hindi isasama sa bar graph
+    # No batch found - will not be included in the bar graph
     return ""
 
 
@@ -350,15 +350,18 @@ def predict_student_risk():
         # basis for At Risk / Needs Monitoring, especially
         # during the first week of OJT when there are still very few
         # completed hours for all students.
-        ABSENCE_MONITORING_THRESHOLD = 5   # 5+ absences -> Needs Monitoring
+        ABSENCE_MONITORING_THRESHOLD = 3   # 3+ absences -> Needs Monitoring
         ABSENCE_RISK_THRESHOLD = 8         # 8+ absences (many) -> At Risk
 
         # "No-show" - consecutive Absent records
         # starting from the most recent duty day going backward. Even if
-        # the total has not reached 8 absences, if there are 3+ consecutive
-        # days without a time-in, the student is also considered At Risk (parang biglang
-        # nawalan ng communication/showed up ang estudyante).
-        CONSECUTIVE_ABSENCE_RISK_THRESHOLD = 3
+        # the total has not reached 8 absences, if there are 5+ consecutive
+        # days without a time-in, the student is also considered At Risk (as if
+        # communication was lost or the student suddenly stopped showing up).
+        # 3-4 consecutive absences fall through to the
+        # ABSENCE_MONITORING_THRESHOLD check below instead
+        # (Needs Monitoring, not yet At Risk).
+        CONSECUTIVE_ABSENCE_RISK_THRESHOLD = 5
 
         # Name retained so other references do not break
         # below (backward-compatible variable name).
@@ -385,9 +388,9 @@ def predict_student_risk():
                 coordinator_deadline = data.get('deadlineDate') or '2026-12-31'
 
                 # If there is a per-student OJT start date
-                # (ex. field na 'ojtStartDate' sa Firestore),
+                # (ex. field 'ojtStartDate' in Firestore),
                 # use it. If unavailable, use
-                # ang BATCH_START_DATE (Sept 14, 2026).
+                # the BATCH_START_DATE (Sept 14, 2026).
                 raw_student_start = data.get('ojtStartDate') or data.get('startDate')
                 try:
                     start_date = datetime.strptime(
@@ -413,20 +416,17 @@ def predict_student_risk():
                 deadline_days = max(deadline_days, days_active + 1)
 
                 # ==========================================
-                # GRACE PERIOD - dapat lang ma-exempt sa
-                # hours-based risk ang isang estudyante kung
-                # BAGO PA LANG SIYA *AT* may sapat pa ring
-                # natitirang oras bago ang deadline.
+                # GRACE PERIOD - a student should only be exempt
+                # from hours-based risk if THEY ARE STILL NEW *AND*
+                # there is still sufficient time remaining before the deadline.
                 #
-                # Dati, "days_active <= GRACE_PERIOD_DAYS" lang
-                # ang basehan - kaya kahit gaano kalapit na ang
-                # deadline (coordinator_deadline), hindi na-e-
-                # evaluate ang hours risk habang loob pa ng unang
-                # 7 araw mula sa start date. Ngayon, isinasama na
-                # rin ang natitirang araw bago ang deadline -
-                # kung malapit na o lagpas na ito, dapat mawala
-                # ang exemption kahit "bagong-bago" pa lang ang
-                # estudyante, dahil totoong deadline risk na ito.
+                # Previously, "days_active <= GRACE_PERIOD_DAYS" was the
+                # sole basis - so no matter how close the deadline
+                # (coordinator_deadline) was, the hours risk was not evaluated
+                # during the first 7 days from the start date. Now, the
+                # remaining days before the deadline are also considered -
+                # if it is near or past, the exemption should be removed even
+                # if the student is brand new, as it poses a genuine deadline risk.
                 # ==========================================
                 days_remaining_until_deadline = (deadline_dt - today_date).days
                 has_deadline_runway = days_remaining_until_deadline > GRACE_PERIOD_DAYS
@@ -489,21 +489,32 @@ def predict_student_risk():
                 #   2) Attendance record (number of absences)
                 #
                 # PRIORITY:
-                #   - Completed      -> target hours have been reached
-                #   - At Risk        -> far below the target
-                #                       before the deadline (hours-based)
-                #   - Needs Monitoring -> not yet "at risk" based on hours,
-                #                       but has 5+ absences, or
-                #                       is only approaching the target
-                #   - On Track       -> hours are progressing well AND
-                #                       attendance is regular
+                #   - Completed        -> target hours have been reached
+                #   - At Risk          -> severe attendance problem
+                #                         (8+ absences, or 5+ consecutive
+                #                         no-shows)
+                #   - Needs Monitoring -> 3-7 absences (ABSENCE_MONITORING_
+                #                         THRESHOLD+). This ALWAYS wins over
+                #                         the hours-based "At Risk" check -
+                #                         a student with 3+ absences should
+                #                         never be silently escalated to
+                #                         "At Risk" purely because of the
+                #                         hours projection; the reason text
+                #                         still mentions the hours shortfall
+                #                         when relevant.
+                #   - At Risk          -> far below the target hours before
+                #                         the deadline (hours-based), only
+                #                         reached when absences are < 3
+                #   - Needs Monitoring -> only approaching the target hours
+                #   - On Track         -> hours are progressing well AND
+                #                         attendance is regular
                 # ==========================================
 
                 # Hours projection is USED
                 # ONLY after the grace period -
                 # it is not meaningful to flag a student as "at risk by hours"
                 # when a student has just started
-                # (halos 0 pa lang talaga dapat ang hours
+                # (hours should naturally be close to 0
                 # during the first week).
                 is_hours_at_risk = (
                     not is_new_student and
@@ -543,47 +554,58 @@ def predict_student_risk():
                             f"action from the coordinator is needed."
                         )
 
-                elif is_hours_at_risk:
-                    ai_status = "At Risk"
-
-                    # Ilang oras pa kulang ngayon (completed vs target),
-                    # ilang oras pa ang hinuhulaan ng modelo na madadagdag
-                    # bago sumapit ang deadline, at kung gaano pa siya
-                    # magkukulang KAHIT patuloy niya ang kasalukuyang bilis.
-                    hours_still_needed = max(target_hours - completed_hours, 0)
-                    hours_projected_to_gain = max(projected_total_hours - completed_hours, 0)
-                    projected_shortfall = max(target_hours - projected_total_hours, 0)
-
-                    risk_reason = (
-                        f"Scikit-Learn ML: Kulang pa ng {int(hours_still_needed)} hrs "
-                        f"({int(completed_hours)}/{target_hours} hrs) ang estudyante, at "
-                        f"malapit na ang deadline ({coordinator_deadline}). Sa kasalukuyang "
-                        f"bilis, hinuhulaan lamang na makakadagdag pa siya ng "
-                        f"{int(hours_projected_to_gain)} hrs bago sumapit ang deadline - "
-                        f"aabot lamang ng {int(projected_total_hours)} out of {target_hours} hrs, "
-                        f"o magkukulang ng {int(projected_shortfall)} hrs kung hindi bibilisan."
-                    )
-                    if absent_count > 0:
-                        risk_reason += f" May {absent_count} naitalang absence din."
-
                 elif is_attendance_monitor:
+                    # 3+ absences (but not yet reaching
+                    # ABSENCE_RISK_THRESHOLD / CONSECUTIVE_ABSENCE_RISK_THRESHOLD
+                    # above) -> always set to "Needs Monitoring" first,
+                    # even if the student is "at risk" in the hours projection.
+                    # This is no longer demoted to At Risk by the
+                    # hours-based check.
                     ai_status = "Needs Monitoring"
                     risk_reason = (
                         f"There are {absent_count} recorded absences in the student duty - "
                         f"still a small number, but attendance should already be monitored."
                     )
-                    if is_hours_borderline:
+                    if is_hours_at_risk:
+                        hours_still_needed = max(target_hours - completed_hours, 0)
                         risk_reason += (
-                            f" Gayundin, hinuhulaan lamang na makakaabot ng "
-                            f"{int(projected_total_hours)} sa {target_hours} hrs bago "
-                            f"ang deadline ({coordinator_deadline})."
+                            f" Scikit-Learn ML: Still short of {int(hours_still_needed)} hrs "
+                            f"({int(completed_hours)}/{target_hours} hrs) before the deadline "
+                            f"({coordinator_deadline}) - hours progress should also be monitored."
                         )
+                    elif is_hours_borderline:
+                        risk_reason += (
+                            f" Likewise, projected to only reach "
+                            f"{int(projected_total_hours)} out of {target_hours} hrs before "
+                            f"the deadline ({coordinator_deadline})."
+                        )
+
+                elif is_hours_at_risk:
+                    ai_status = "At Risk"
+
+                    # Remaining hours needed (completed vs target),
+                    # projected hours to be gained before the deadline,
+                    # and the projected shortfall EVEN IF current pace is maintained.
+                    hours_still_needed = max(target_hours - completed_hours, 0)
+                    hours_projected_to_gain = max(projected_total_hours - completed_hours, 0)
+                    projected_shortfall = max(target_hours - projected_total_hours, 0)
+
+                    risk_reason = (
+                        f"Scikit-Learn ML: Student is still short of {int(hours_still_needed)} hrs "
+                        f"({int(completed_hours)}/{target_hours} hrs), and the deadline "
+                        f"is approaching ({coordinator_deadline}). At the current pace, "
+                        f"it is projected they will only gain {int(hours_projected_to_gain)} hrs "
+                        f"before the deadline - reaching only {int(projected_total_hours)} out of {target_hours} hrs, "
+                        f"or falling short by {int(projected_shortfall)} hrs unless accelerated."
+                    )
+                    if absent_count > 0:
+                        risk_reason += f" There are also {absent_count} recorded absences."
 
                 elif is_hours_borderline:
                     ai_status = "Needs Monitoring"
                     risk_reason = (
                         f"Scikit-Learn ML: Close to the target but still needs monitoring - "
-                        f"hinuhulaan na makakaabot ng {int(projected_total_hours)} "
+                        f"projected to reach {int(projected_total_hours)} "
                         f"out of {target_hours} hrs before the deadline ({coordinator_deadline})."
                     )
 
@@ -599,7 +621,7 @@ def predict_student_risk():
                 else:
                     ai_status = "On Track"
                     risk_reason = (
-                        f"Scikit-Learn ML: Sa kasalukuyang bilis, hinuhulaan na "
+                        f"Scikit-Learn ML: At the current pace, projected to "
                         f"reach {int(projected_total_hours)} hrs before the deadline - "
                         f"on track ({coordinator_deadline}). "
                         f"Attendance is also regular ({absent_count} absence so far)."
@@ -659,13 +681,32 @@ def predict_student_risk():
                 }, merge=True)
 
             except Exception as doc_error:
-                # Huwag ipahinto ang buong request dahil
-                # sa isang sirang document lang - i-skip
-                # at ipagpatuloy ang susunod na estudyante.
+                # Do not interrupt the entire request due to a single broken document
+                # - skip it and continue to the next student.
                 print(f"[predict-risk] Skipped doc {doc.id}: {doc_error}")
                 continue
 
-        return jsonify({"status": "success", "data": student_predictions})
+        # ==========================================
+        # COUNT PER AI STATUS
+        #
+        # Provided so the frontend does not need to
+        # loop/count the full "data" array again just
+        # to get the total count for "Needs Monitoring", "At Risk", etc.
+        # ==========================================
+        status_counts = Counter(item["aiStatus"] for item in student_predictions)
+        summary = {
+            "total": len(student_predictions),
+            "onTrack": status_counts.get("On Track", 0),
+            "needsMonitoring": status_counts.get("Needs Monitoring", 0),
+            "atRisk": status_counts.get("At Risk", 0),
+            "completed": status_counts.get("Completed", 0),
+        }
+
+        return jsonify({
+            "status": "success",
+            "data": student_predictions,
+            "statusCounts": summary
+        })
 
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500

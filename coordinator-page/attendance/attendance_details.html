@@ -7,6 +7,7 @@
 
     <!-- CSS Links -->
     <link rel="stylesheet" href="../sidebar/sidebar-web.css">
+    <link rel="stylesheet" href="../header/header.css">
     <link rel="stylesheet" href="attendance_details.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
@@ -23,28 +24,11 @@
     <main class="main">
         
         <!-- Header -->
-        <header>
-            <div>
-                <h2>Attendance Details</h2>
-                <p>View complete attendance history of the selected student.</p>
-            </div>
-
-            <div class="top-right">
-                <div class="notification">
-                    <i class="fa-regular fa-bell"></i>
-                    <span class="badge">3</span>
-                </div>
-
-                <div class="profile">
-                    <div class="avatar" id="headerAvatar">MB</div>
-                    <div class="profile-info">
-                        <h4 id="profileName">Coordinator</h4>
-                        <p>OJT Coordinator</p>
-                    </div>
-                    <i class="fa-solid fa-chevron-down"></i>
-                </div>
-            </div>
-        </header>
+        <header
+            id="header-container"
+            data-page-title="Attendance Details"
+            data-page-subtitle="View complete attendance history of the selected student."
+        ></header>
 
         <!-- Details Content -->
         <div class="attendance-content">
@@ -305,7 +289,7 @@
                         <i class="fa-solid fa-triangle-exclamation"></i>
                         <div>
                             <strong>Are you sure you want to reject this attendance?</strong>
-                            <p>The rejected record will remain visible in the student's account details for tracking.</p>
+                            <p>The day's rendered hours will be deducted from the student's total and the student will be notified. The record will remain visible for tracking.</p>
                         </div>
                     </div>
                 </div>
@@ -367,6 +351,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="../sidebar/sidebar-web.js"></script>
+<script type="module" src="../header/header.js"></script>
 <script type="module" src="attendance_details.js"></script>
 
 </body>

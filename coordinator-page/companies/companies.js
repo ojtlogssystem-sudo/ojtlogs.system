@@ -859,7 +859,85 @@ function renderEditChips(list, container, inputEl) {
     if (!container) return;
     container.querySelectorAll(".email-chip").forEach(c => c.remove());
     list.forEach((item, idx) => {
-        container.insertBefore(createElementFromHTML(`<div class="email-chip"><span>${item}</span><button type="button" class="remove-chip" data-index="${idx}">&times;</button></div>`), inputEl);
+        const chip = document.createElement("div");
+        chip.className = "email-chip";
+
+        const label = document.createElement("span");
+        label.textContent = item;
+
+        const removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.className = "remove-chip";
+        removeBtn.dataset.index = idx;
+        removeBtn.innerHTML = "&times;";
+
+        chip.append(label, removeBtn);
+        container.insertBefore(chip, inputEl);
+    });
+}
+
+// ----- EDIT MODAL: add / remove ng Supervisor Names at Emails -----
+// Idagdag ang laman ng input bilang chip. Ibabalik ang "added", "empty" o "invalid".
+function commitEditName() {
+    if (!editSupNameInput) return "empty";
+    const val = editSupNameInput.value.trim().replace(/,/g, "");
+    if (!val) return "empty";
+    if (!editSupNamesList.some(n => String(n).toLowerCase() === val.toLowerCase())) {
+        editSupNamesList.push(val);
+    }
+    editSupNameInput.value = "";
+    renderEditChips(editSupNamesList, editSupNameChipsContainer, editSupNameInput);
+    return "added";
+}
+
+function commitEditEmail() {
+    if (!editSupEmailInput) return "empty";
+    const val = editSupEmailInput.value.trim().replace(/,/g, "");
+    if (!val) return "empty";
+    if (!val.includes("@")) return "invalid";
+    if (!editSupEmailsList.some(m => String(m).toLowerCase() === val.toLowerCase())) {
+        editSupEmailsList.push(val);
+    }
+    editSupEmailInput.value = "";
+    renderEditChips(editSupEmailsList, editSupEmailChipsContainer, editSupEmailInput);
+    return "added";
+}
+
+if (editSupNameInput) {
+    editSupNameInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === ",") {
+            e.preventDefault();
+            commitEditName();
+        }
+    });
+}
+
+if (editSupEmailInput) {
+    editSupEmailInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === ",") {
+            e.preventDefault();
+            if (commitEditEmail() === "invalid") {
+                showModalAlert("editModalAlert", "Maglagay ng valid na email (may @).", "error");
+            }
+        }
+    });
+}
+
+if (editSupNameChipsContainer) {
+    editSupNameChipsContainer.addEventListener("click", (e) => {
+        const removeBtn = e.target.closest(".remove-chip");
+        if (!removeBtn) return;
+        editSupNamesList.splice(Number(removeBtn.dataset.index), 1);
+        renderEditChips(editSupNamesList, editSupNameChipsContainer, editSupNameInput);
+    });
+}
+
+if (editSupEmailChipsContainer) {
+    editSupEmailChipsContainer.addEventListener("click", (e) => {
+        const removeBtn = e.target.closest(".remove-chip");
+        if (!removeBtn) return;
+        editSupEmailsList.splice(Number(removeBtn.dataset.index), 1);
+        renderEditChips(editSupEmailsList, editSupEmailChipsContainer, editSupEmailInput);
     });
 }
 
@@ -900,6 +978,9 @@ document.addEventListener("click", async (e) => {
                 renderEditChips(editSupNamesList, editSupNameChipsContainer, editSupNameInput);
                 renderEditChips(editSupEmailsList, editSupEmailChipsContainer, editSupEmailInput);
 
+                if (editSupNameInput) editSupNameInput.value = "";
+                if (editSupEmailInput) editSupEmailInput.value = "";
+
                 if (editCompanyModal) editCompanyModal.classList.add("active");
             } else {
                 showToastNotification("Hindi matagpuan sa database", "error");
@@ -939,6 +1020,14 @@ if (confirmDeleteBtn) {
 if (editCompanyForm) {
     editCompanyForm.addEventListener("submit", async (e) => {
         e.preventDefault();
+
+        // Kung may naka-type na hindi pa na-Enter, isama muna bago i-save.
+        commitEditName();
+        if (commitEditEmail() === "invalid") {
+            showModalAlert("editModalAlert", "Maglagay ng valid na email (may @).", "error");
+            return;
+        }
+
         const companyId = document.getElementById("editCompanyId").value;
         const companyName = document.getElementById("editCompanyName").value.trim();
         const location = document.getElementById("editCompanyLocation").value.trim();

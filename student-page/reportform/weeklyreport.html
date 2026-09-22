@@ -24,6 +24,14 @@
         <span id="submit-status" style="font-size: 14px; font-weight: bold; margin-left: 10px;"></span>
     </div>
 
+    <!-- WEEK SELECTOR (Hidden on Print) - isang linggo lang (Mon - Sun) ang lumalabas sa form -->
+    <div class="no-print week-nav">
+        <button type="button" id="btn-prev-week">&#8249; Previous Week</button>
+        <span id="week-label" class="week-label">--</span>
+        <button type="button" id="btn-next-week">Next Week &#8250;</button>
+        <button type="button" id="btn-this-week" class="week-this">This Week</button>
+    </div>
+
     <div class="header">
         <img src="/images/logo-orig.png" alt="GRC Logo" class="header-logo">
         <p>Touching Hearts.....Renewing Minds.....Transforming Lives</p>
@@ -54,7 +62,7 @@
 
                 <div class="report-info-item">
                     <span class="report-info-label">Date:</span>
-                    <span class="report-date-line"></span>
+                    <span id="report-date-range" class="report-date-line"></span>
                 </div>
             </div>
         </div>

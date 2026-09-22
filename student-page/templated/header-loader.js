@@ -1,6 +1,6 @@
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, collection, getDocs, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyDvMQyEHIIJTW4etj4VQHjjIzd8oB2geJ8",
@@ -193,13 +193,14 @@ export function updateHeaderCompletionEstimate(payload) {
 ========================================== */
 
 /* ==========================================
-   AI AT-RISK NOTIFICATION (per-student)
+   AI AT-RISK / NEEDS MONITORING NOTIFICATION (per-student)
    Data source: Firestore "analytics/{uid}" doc, written by
    app.py's /api/predict-risk (aiStatus, riskReason, lastUpdated).
    Only produces a notification kapag ang aiStatus mismo ng
-   estudyante ay "At Risk" - hindi ito para sa ibang estudyante.
+   estudyante ay "At Risk" o "Needs Monitoring" - hindi ito
+   para sa ibang estudyante.
 ========================================== */
-async function fetchAiRiskNotification(uid) {
+async function fetchAiStatusNotification(uid) {
     if (!uid) return null;
 
     try {
@@ -208,27 +209,132 @@ async function fetchAiRiskNotification(uid) {
 
         const data = snap.data();
         const status = String(data.aiStatus || "").toLowerCase();
-        if (!status.includes("risk")) return null;
+
+        const isAtRisk = status.includes("risk");
+        const isNeedsMonitoring = !isAtRisk && status.includes("monitoring");
+
+        if (!isAtRisk && !isNeedsMonitoring) return null;
 
         const posted = data.lastUpdated?.toDate
             ? data.lastUpdated.toDate()
             : new Date();
 
+        if (isAtRisk) {
+            const note = data.riskReason ||
+                "Ang hinuhulaan ng AI ay hindi ka aabot sa required hours bago ang deadline.";
+
+            return {
+                // Kasama ang riskReason sa key mismo kaya kapag nag-iba ang
+                // detalye (hal. lumiit pa ang projected hours), ma-treat itong
+                // BAGONG notification ulit sa halip na permanenteng "seen" na.
+                key: `airisk:${uid}:${note}`,
+                kind: "ai-risk",
+                title: `<i class="fa-solid fa-triangle-exclamation"></i> You're flagged At Risk`,
+                note,
+                posted
+            };
+        }
+
         const note = data.riskReason ||
-            "Ang hinuhulaan ng AI ay hindi ka aabot sa required hours bago ang deadline.";
+            "May ilang absence ka na naitala - dapat mo nang bantayan ang iyong attendance at hours.";
 
         return {
-            // Kasama ang riskReason sa key mismo kaya kapag nag-iba ang
-            // detalye (hal. lumiit pa ang projected hours), ma-treat itong
-            // BAGONG notification ulit sa halip na permanenteng "seen" na.
-            key: `airisk:${uid}:${note}`,
-            title: `<i class="fa-solid fa-triangle-exclamation"></i> You're flagged At Risk`,
+            key: `aimonitor:${uid}:${note}`,
+            kind: "ai-monitor",
+            title: `<i class="fa-solid fa-eye"></i> You need monitoring`,
             note,
             posted
         };
     } catch (error) {
-        console.error("Error checking AI At-Risk status for notifications:", error);
+        console.error("Error checking AI status for notifications:", error);
         return null;
+    }
+}
+
+/* ==========================================
+   REJECTED ATTENDANCE NOTIFICATION (per-student)
+   Data source: Firestore "attendance" docs ng estudyante na may
+   status = "Rejected" (sine-set ng coordinator sa Attendance Details:
+   rejectedAt, rejectedMinutes). Live ito - lalabas agad ang bagong
+   reject nang hindi nagre-refresh (see watchRejectedAttendance).
+========================================== */
+function minutesToHM(totalMinutes) {
+    const m = Math.max(0, Math.round(totalMinutes || 0));
+    return `${Math.floor(m / 60)}h ${m % 60}m`;
+}
+
+async function fetchRejectedAttendanceNotifications(uid) {
+    if (!uid) return [];
+
+    try {
+        const snap = await getDocs(query(
+            collection(db, "attendance"),
+            where("userId", "==", uid),
+            where("status", "==", "Rejected")
+        ));
+
+        const oldestAllowed = new Date();
+        oldestAllowed.setDate(oldestAllowed.getDate() - 30);
+
+        const list = [];
+        snap.forEach(docSnap => {
+            const data = docSnap.data();
+
+            const posted = data.rejectedAt?.toDate
+                ? data.rejectedAt.toDate()
+                : (data.date ? new Date(`${data.date}T00:00:00`) : new Date());
+
+            if (isNaN(posted) || posted < oldestAllowed) return;
+
+            const dayLabel = data.formattedDate || data.date || "your attendance";
+            const minutes = Number(data.rejectedMinutes) || 0;
+            const deduction = minutes > 0
+                ? ` ${minutesToHM(minutes)} was deducted from your total rendered hours.`
+                : " This day will not count toward your rendered hours.";
+
+            list.push({
+                // Kasama ang oras ng reject sa key: kapag na-reject ulit pagkatapos
+                // ma-edit, BAGONG notification ito at hindi na "seen".
+                key: `rejected:${docSnap.id}:${posted.getTime()}`,
+                kind: "rejected",
+                title: `<i class="fa-solid fa-ban"></i> Attendance Rejected<br>(${escapeHtml(dayLabel)})`,
+                note: escapeHtml(`Your coordinator rejected your attendance for this day.${deduction}`),
+                posted,
+                sortTime: posted.getTime()
+            });
+        });
+
+        return list.sort((a, b) => b.sortTime - a.sortTime);
+    } catch (error) {
+        console.error("Error loading rejected attendance notifications:", error);
+        return [];
+    }
+}
+
+let rejectedWatchUid = null;
+
+function watchRejectedAttendance(uid) {
+    if (!uid || rejectedWatchUid === uid) return;
+    rejectedWatchUid = uid;
+
+    let isFirstSnapshot = true;
+
+    try {
+        onSnapshot(
+            query(
+                collection(db, "attendance"),
+                where("userId", "==", uid),
+                where("status", "==", "Rejected")
+            ),
+            () => {
+                // Ang unang snapshot ay hawak na ng loadNotifications() na tumatakbo.
+                if (isFirstSnapshot) { isFirstSnapshot = false; return; }
+                loadNotifications(uid);
+            },
+            (error) => console.warn("Rejected attendance listener error:", error)
+        );
+    } catch (error) {
+        console.warn("Could not start rejected attendance listener:", error);
     }
 }
 
@@ -238,6 +344,8 @@ export async function loadNotifications(uid = null) {
     const panel = document.getElementById("notification-panel");
     const listEl = document.getElementById("notification-list");
     if (!notifBtn || !panel || !listEl) return;
+
+    watchRejectedAttendance(uid);
 
     let exceptions = [];
     try {
@@ -280,19 +388,23 @@ export async function loadNotifications(uid = null) {
         }))
         .sort((a, b) => a.sortTime - b.sortTime);
 
-    const aiRiskNotif = await fetchAiRiskNotification(uid);
-    if (aiRiskNotif) {
-        // Laging nasa itaas ang AI At-Risk alert - ito ang pinaka-agarang
-        // dapat pansinin ng estudyante.
+    const aiStatusNotif = await fetchAiStatusNotification(uid);
+    if (aiStatusNotif) {
+        // Laging nasa itaas ang AI At-Risk / Needs Monitoring alert - ito
+        // ang pinaka-agarang dapat pansinin ng estudyante.
         items.unshift({
-            key: aiRiskNotif.key,
-            kind: "ai-risk",
-            title: aiRiskNotif.title,
-            note: escapeHtml(aiRiskNotif.note),
-            posted: aiRiskNotif.posted,
-            sortTime: aiRiskNotif.posted.getTime()
+            key: aiStatusNotif.key,
+            kind: aiStatusNotif.kind,
+            title: aiStatusNotif.title,
+            note: escapeHtml(aiStatusNotif.note),
+            posted: aiStatusNotif.posted,
+            sortTime: aiStatusNotif.posted.getTime()
         });
     }
+
+    // Rejected attendance ng estudyante: pinakabago sa itaas, nasa ilalim lang ng AI status alert.
+    const rejectedNotifs = await fetchRejectedAttendanceNotifications(uid);
+    items.splice(aiStatusNotif ? 1 : 0, 0, ...rejectedNotifs);
 
     // "Seen" only controls the badge count and each item's read styling —
     // the notification itself always stays visible in the list.
@@ -314,7 +426,10 @@ export async function loadNotifications(uid = null) {
         listEl.innerHTML = items.map(it => {
             const postedLabel = (it.posted || new Date()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
             const isUnseen = !seenKeys.includes(it.key);
-            const riskClass = it.kind === "ai-risk" ? "notif-risk" : "";
+            const riskClass =
+                (it.kind === "ai-risk" || it.kind === "rejected") ? "notif-risk" :
+                (it.kind === "ai-monitor") ? "notif-monitor" :
+                "";
             return `
                 <div class="notif-item ${isUnseen ? "unseen" : ""} ${riskClass}" data-key="${escapeHtml(it.key)}">
                     <div class="notif-item-top">
@@ -330,7 +445,7 @@ export async function loadNotifications(uid = null) {
     // Per-item mark-as-read: clicking a notification only clears that item's
     // own unseen state (and decrements the badge by one). Opening the panel
     // itself no longer marks everything as seen.
-    listEl.addEventListener("click", (e) => {
+    listEl.onclick = (e) => {
         const item = e.target.closest(".notif-item");
         if (!item || !item.classList.contains("unseen")) return;
 
@@ -346,7 +461,7 @@ export async function loadNotifications(uid = null) {
                 badge.style.display = "none";
             }
         }
-    });
+    };
 
     const clearAllBtn = document.getElementById("notification-clear-all");
     if (clearAllBtn) {

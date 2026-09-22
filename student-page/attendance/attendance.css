@@ -760,6 +760,11 @@ header h2{
     color: #dc2626;
 }
 
+.status-badge.rejected {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
 /* Photo Proof Modal Container & Live Video */
 .photo-preview-wrapper {
     position: relative;

@@ -198,6 +198,46 @@ function getSessions(schedule) {
 
 
 // =====================================================
+// COMPLETED STUDENTS
+//
+// Dapat tumugma ito sa target hours na ginagamit sa
+// backend (app.py: target_hours = 600) at sa "Completed"
+// na aiStatus/internshipStatus na sinusulat doon sa
+// "users" collection kapag naabot na ng estudyante ang
+// required hours.
+// =====================================================
+
+const TARGET_HOURS = 600;
+
+// True kapag "Completed" na ang estudyante (naabot na ang
+// required hours), base sa internshipStatus/aiStatus na
+// naka-save sa users doc, o sa completedHours mismo bilang
+// backup kung sakaling hindi pa na-refresh ang status field.
+function isCompletedStudent(data) {
+
+    const status = String(data.internshipStatus || data.aiStatus || "").toLowerCase();
+
+    if (status === "completed") {
+        return true;
+    }
+
+    const completedHours = Number(data.completedHours);
+    const targetHours = Number(data.targetHours) || TARGET_HOURS;
+
+    return !Number.isNaN(completedHours) && completedHours >= targetHours;
+}
+
+// True kapag pinili ng estudyante (o ng coordinator) na
+// magpatuloy pa rin ang pag-duty niya KAHIT tapos na ang
+// required hours. I-toggle ito sa student's Firestore doc
+// (users/{id}.continueDutyAfterCompletion = true) kung may
+// UI switch na gagawin para dito.
+function wantsToContinueDuty(data) {
+    return data.continueDutyAfterCompletion === true;
+}
+
+
+// =====================================================
 // STATUS BASED ON SCHEDULE
 // =====================================================
 
@@ -261,6 +301,13 @@ export async function loadScheduledUsers() {
             return;
         }
 
+        // Tapos na sa required hours -> hindi na dapat kailanganing
+        // mag-time-in/time-out pa, maliban na lang kung pinili niyang
+        // (o ng coordinator) ipagpatuloy pa rin ang pag-duty.
+        if (isCompletedStudent(data) && !wantsToContinueDuty(data)) {
+            return;
+        }
+
         const schedule = data.schedule || {};
         const sessions = getSessions(schedule);
 
@@ -287,7 +334,11 @@ export async function loadScheduledUsers() {
             sessions,
             scheduleText: sessions
                 .map((s) => `${formatMinutes(s.start)} - ${formatMinutes(s.end)}`)
-                .join(" | ")
+                .join(" | "),
+            // Kung nasa listahan pa rin siya kahit "Completed" na, ibig
+            // sabihin kusa niyang pinagpatuloy ang duty - useful flag
+            // kung gusto pang lagyan ng badge sa UI sa ibang pagkakataon.
+            completedButContinuing: isCompletedStudent(data)
         });
 
     });

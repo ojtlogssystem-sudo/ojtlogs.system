@@ -245,7 +245,7 @@ async function loadHeader() {
         if (!user) {
 
             window.location.href =
-                "../coordinator_login/coordinator_login.html";
+                "../student_login/student_login.html";
 
             return;
 

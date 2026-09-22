@@ -58,8 +58,52 @@ const db = getFirestore(app);
 let allStudents = [];
 let filteredStudents = [];
 let currentPage = 1;
-let rowsPerPage = 6;
+// "auto" (default) = auto-fit kung ilang rows ang kasya sa visible height
+// ng table bago mag-increment ng page. Kapag pinili ng user ang isang
+// specific na number sa "Rows per page" dropdown, doon na gagamitin
+// ang fixed value na 'yun imbes na auto-fit.
+let rowsPerPage = "auto";
+let autoRowsPerPage = 6; // current computed auto-fit value (may fallback default)
+let isReflowingAutoRows = false;
+let resizeDebounceTimer = null;
 let studentToDelete = null;
+
+// Ibinabalik ang aktwal na bilang ng rows na gagamitin sa pagination -
+// yung fixed value kung manual, o yung na-compute na auto-fit value.
+function getEffectiveRowsPerPage() {
+    return rowsPerPage === "auto" ? autoRowsPerPage : rowsPerPage;
+}
+
+// Sinusukat ang height (sa px) ng isang tunay/rendered na row sa table.
+// Kapag wala pang nai-render na row, gagamit na lang ng estimate
+// (44px avatar + 11px padding sa taas/baba + 1px border).
+function measureRowHeight() {
+    const sampleRow = document.querySelector(".students-table tbody tr:not(.empty-slot-row)");
+    if (sampleRow) {
+        const height = sampleRow.getBoundingClientRect().height;
+        if (height > 0) return height;
+    }
+    return 67;
+}
+
+// Kinukwenta kung ilang rows ang kasya sa natitirang visible height ng
+// .table-container (hindi kasama yung thead), base sa aktwal na height
+// ng isang row. Dito nagmumula ang "auto-fit" na pagination - punuin
+// muna ang available space bago dagdagan ang page count.
+function computeAutoRowsPerPage() {
+    const container = document.querySelector(".table-container");
+    const thead = document.querySelector(".students-table thead");
+    if (!container || !thead) return autoRowsPerPage;
+
+    const theadHeight = thead.getBoundingClientRect().height;
+    const availableHeight = container.clientHeight - theadHeight;
+    const rowHeight = measureRowHeight();
+
+    if (availableHeight <= 0 || rowHeight <= 0) return autoRowsPerPage;
+
+    const fitCount = Math.floor(availableHeight / rowHeight);
+    return Math.max(1, fitCount);
+}
 
 // ==========================================
 // TOAST NOTIFICATION (pumapalit sa alert())
@@ -487,13 +531,14 @@ function renderTablePage() {
         return;
     }
 
+    const effectiveRows = getEffectiveRowsPerPage();
     const totalRecords = filteredStudents.length;
-    const totalPages = Math.ceil(totalRecords / rowsPerPage);
+    const totalPages = Math.ceil(totalRecords / effectiveRows);
 
     if (currentPage > totalPages) currentPage = totalPages || 1;
 
-    const startIndex = (currentPage - 1) * rowsPerPage;
-    const endIndex = Math.min(startIndex + rowsPerPage, totalRecords);
+    const startIndex = (currentPage - 1) * effectiveRows;
+    const endIndex = Math.min(startIndex + effectiveRows, totalRecords);
     const paginatedItems = filteredStudents.slice(startIndex, endIndex);
 
     paginatedItems.forEach((student) => {
@@ -541,7 +586,7 @@ function renderTablePage() {
         tableBody.appendChild(row);
     });
 
-    const emptySlots = rowsPerPage - paginatedItems.length;
+    const emptySlots = effectiveRows - paginatedItems.length;
     for (let i = 0; i < emptySlots; i++) {
         const emptyRow = document.createElement("tr");
         emptyRow.className = "empty-slot-row";
@@ -551,6 +596,22 @@ function renderTablePage() {
 
     attachActionEvents();
     updatePaginationUI(startIndex + 1, endIndex, totalRecords);
+
+    // AUTO-FIT REFLOW: pagkatapos mag-render, sukatin ulit gamit ang
+    // tunay/aktwal na row height. Kung magkaiba ang bagong kwenta sa
+    // ginamit natin (hal. unang load pa lang, o nag-resize ang window),
+    // i-re-render ulit nang isang beses gamit ang tamang bilang - dito
+    // natin sinisiguro na mapupuno muna ang visible space ng totoong
+    // datos bago tayo lumipat/gumawa ng bagong page.
+    if (rowsPerPage === "auto" && !isReflowingAutoRows) {
+        const recalculated = computeAutoRowsPerPage();
+        if (recalculated !== autoRowsPerPage) {
+            autoRowsPerPage = recalculated;
+            isReflowingAutoRows = true;
+            renderTablePage();
+            isReflowingAutoRows = false;
+        }
+    }
 }
 
 function updatePaginationUI(start, end, total) {
@@ -559,7 +620,7 @@ function updatePaginationUI(start, end, total) {
         info.textContent = total > 0 ? `Showing ${start} to ${end} of ${total} records` : "Showing 0 records";
     }
 
-    const totalPages = Math.ceil(total / rowsPerPage);
+    const totalPages = Math.ceil(total / getEffectiveRowsPerPage());
     const prevBtn = document.getElementById("prevPageBtn");
     const nextBtn = document.getElementById("nextPageBtn");
     const pageNumbers = document.getElementById("pageNumbers");
@@ -598,7 +659,7 @@ function initPaginationControls() {
 
     if (nextBtn) {
         nextBtn.addEventListener("click", () => {
-            const totalPages = Math.ceil(filteredStudents.length / rowsPerPage);
+            const totalPages = Math.ceil(filteredStudents.length / getEffectiveRowsPerPage());
             if (currentPage < totalPages) {
                 currentPage++;
                 renderTablePage();
@@ -608,11 +669,32 @@ function initPaginationControls() {
 
     if (rowsSelect) {
         rowsSelect.addEventListener("change", (e) => {
-            rowsPerPage = parseInt(e.target.value, 10);
+            if (e.target.value === "auto") {
+                rowsPerPage = "auto";
+                autoRowsPerPage = computeAutoRowsPerPage();
+            } else {
+                rowsPerPage = parseInt(e.target.value, 10);
+            }
             currentPage = 1;
             renderTablePage();
         });
     }
+
+    // Kapag na-resize ang window (o na-collapse/expand ang sidebar) habang
+    // nasa "Auto" mode, kwentahin ulit kung ilang rows ang bagong kasya
+    // at i-render ulit ang table para tama pa rin ang pagpuno ng space.
+    window.addEventListener("resize", () => {
+        if (rowsPerPage !== "auto") return;
+        clearTimeout(resizeDebounceTimer);
+        resizeDebounceTimer = setTimeout(() => {
+            const recalculated = computeAutoRowsPerPage();
+            if (recalculated !== autoRowsPerPage) {
+                autoRowsPerPage = recalculated;
+                currentPage = 1;
+                renderTablePage();
+            }
+        }, 200);
+    });
 }
 
 /* ==========================================

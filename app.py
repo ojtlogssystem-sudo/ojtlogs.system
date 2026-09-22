@@ -39,66 +39,34 @@ db = firestore.client()
 # ==========================================
 # 1. ENDPOINT FOR AT-RISK PREDICTION
 # ==========================================
-# ==========================================
 # ATTENDANCE SETTINGS
-# ==========================================
-
-# Name of the Firestore collection(s) where
-# attendance is stored. If the name is different in your Firebase (ex.
-# "attendanceRecords"), just add it here. You can check
-# the correct name at http://localhost:5000/api/debug-attendance
 ATTENDANCE_COLLECTIONS = ['attendance']
-
-# If your attendance collection only saves PRESENT records
-# (with no "Absent" record when a student does not attend), set this to True to
-# treat every weekday (Mon-Fri) from the start of
-# OJT through yesterday with NO attendance record.
-# Defaults to False to avoid incorrectly flagging
-# students who are not scheduled on certain days.
 COUNT_MISSING_WEEKDAYS_AS_ABSENT = False
-
-# Dates (YYYY-MM-DD) with no duty (holiday / no workday)
-# - these will not be counted as absent when the setting above is True.
 NON_DUTY_DATES = set()
-
-# Philippine time (UTC+8) - to avoid date mismatches when
-# a Firestore Timestamp (UTC) is saved in attendance.
 PH_TZ = timezone(timedelta(hours=8))
 
-# Fields that may contain the attendance record date
 ATTENDANCE_DATE_FIELDS = (
     'date', 'attendanceDate', 'dateString', 'day',
     'timestamp', 'createdAt', 'timeIn'
 )
 
-# Fields that may contain status (Present/Absent/Late)
 ATTENDANCE_STATUS_FIELDS = (
     'status', 'attendanceStatus', 'attendance_status'
 )
 
-# Fields that may identify WHICH student
-# owns the attendance record
 ATTENDANCE_OWNER_FIELDS = (
     'studentUid', 'studentUID', 'studentId', 'studentID',
     'studentNumber', 'uid', 'userId', 'userUid', 'student_id',
     'email', 'studentEmail'
 )
 
-
 def _norm(value):
-    """Lowercase + trim so spaces/capitalization do not affect matching."""
     if value is None:
         return None
     text = str(value).strip().lower()
     return text or None
 
-
 def _to_date_str(value):
-    """
-    Converts any date-like value to 'YYYY-MM-DD'
-    (Firestore Timestamp, datetime, ISO string, MM/DD/YYYY, etc.)
-    Returns None if it cannot be parsed.
-    """
     if value is None or value == '':
         return None
 
@@ -121,25 +89,14 @@ def _to_date_str(value):
 
     return None
 
-
 def _record_date(rec):
-    """Returns the first readable date from the possible date fields."""
     for field in ATTENDANCE_DATE_FIELDS:
         parsed = _to_date_str(rec.get(field))
         if parsed:
             return parsed
     return None
 
-
 def _is_absent_record(rec):
-    """
-    Flexible reader for different possible attendance collection schemas:
-    attendance collection:
-      - status / attendanceStatus / attendance_status containing
-        the word "absent"
-      - boolean 'isAbsent' / 'absent' (True = absent)
-      - boolean 'present' (False = absent)
-    """
     for field in ATTENDANCE_STATUS_FIELDS:
         status = _norm(rec.get(field))
         if status:
@@ -154,13 +111,7 @@ def _is_absent_record(rec):
 
     return False
 
-
 def _load_attendance_records():
-    """
-    Loads all attendance records once,
-    then filters/counts them per student later. Faster
-    than querying per student.
-    """
     records = []
     for collection_name in ATTENDANCE_COLLECTIONS:
         try:
@@ -173,14 +124,8 @@ def _load_attendance_records():
             )
     return records
 
-
 def _get_student_records(attendance_records, student_doc_id, student_id_value,
                          student_name, student_email=None):
-    """
-    Gets all attendance records belonging
-    to a specific student. Checks the doc ID, student number, email,
-    and (as a last fallback) the name.
-    """
     keys = {
         k for k in (
             _norm(student_doc_id),
@@ -202,9 +147,7 @@ def _get_student_records(attendance_records, student_doc_id, student_id_value,
 
     return matched
 
-
 def _weekdays_between(start_date, end_date):
-    """All Mon-Fri (YYYY-MM-DD) from start_date through end_date (inclusive)."""
     days = []
     current = start_date
     while current <= end_date:
@@ -213,17 +156,7 @@ def _weekdays_between(start_date, end_date):
         current += timedelta(days=1)
     return days
 
-
 def _summarize_attendance(matched_records, start_date=None, today=None):
-    """
-    Returns:
-      - absent_count: number of absent days (unique per date,
-        so duplicate records on the same day are not double-counted)
-      - consecutive: number of consecutive absences starting from
-        the most recent duty day going backward ("no-show")
-      - record_count: number of attendance records found for the
-        student (0 = no attendance has been found)
-    """
     absent_dates = set()
     present_dates = set()
     undated_absences = 0
@@ -238,11 +171,9 @@ def _summarize_attendance(matched_records, start_date=None, today=None):
         elif rec_date:
             present_dates.add(rec_date)
 
-    # If both Present and Absent exist on the same day, Present takes precedence
     absent_dates -= present_dates
 
     if COUNT_MISSING_WEEKDAYS_AS_ABSENT and start_date and today:
-        # Today is excluded because the duty day is not finished yet
         yesterday = today.date() - timedelta(days=1)
         for day in _weekdays_between(start_date.date(), yesterday):
             if (
@@ -252,7 +183,6 @@ def _summarize_attendance(matched_records, start_date=None, today=None):
             ):
                 absent_dates.add(day)
 
-    # Streak: from the most recent date backward until the first Present
     duty_days = sorted(absent_dates | present_dates, reverse=True)
     consecutive = 0
     for day in duty_days:
@@ -267,17 +197,6 @@ def _summarize_attendance(matched_records, start_date=None, today=None):
         "record_count": len(matched_records),
     }
 
-
-# ==========================================
-# STUDENT BATCH - BASED ON STUDENT ID
-#
-# Used in the "Graduated Students by Batch" chart. The first
-# 4 digits (year) of the Student ID represent the student's batch:
-#     2023-01-22112  ->  batch 2023
-#     2026-21-01233  ->  batch 2026
-# If no year can be read from the ID, only then look for the
-# batch field in the document (if available).
-# ==========================================
 STUDENT_ID_FIELDS = (
     'studentId', 'studentID', 'studentNumber', 'idNumber',
     'schoolId', 'studentNo', 'id_number'
@@ -289,23 +208,18 @@ BATCH_FIELDS = (
     'academicYear', 'academic_year', 'sy'
 )
 
-
 def _get_student_id_raw(data):
-    """The actual student ID from Firestore (without doc.id fallback)."""
     for field in STUDENT_ID_FIELDS:
         value = data.get(field)
         if value not in (None, ''):
             return str(value).strip()
     return None
 
-
 def _batch_from_student_id(student_id):
-    """'2023-01-22112' -> '2023'. Returns None if the ID does not start with a year."""
     if not student_id:
         return None
     match = re.match(r'^\s*((?:19|20)\d{2})\s*[-/\s]\s*\d', str(student_id))
     return match.group(1) if match else None
-
 
 def _get_batch_label(data):
     batch = _batch_from_student_id(_get_student_id_raw(data))
@@ -317,18 +231,14 @@ def _get_batch_label(data):
         if value not in (None, ''):
             return str(value).strip()
 
-    # No batch found - will not be included in the bar graph
     return ""
 
-
 def _is_graduated(data, ai_status):
-    """Graduated = has an explicit flag, or has completed the required OJT hours."""
     if data.get('graduated') is True or data.get('isGraduated') is True:
         return True
     if 'graduated' in str(data.get('status') or '').lower():
         return True
     return ai_status == "Completed"
-
 
 @app.route('/api/predict-risk', methods=['GET'])
 def predict_student_risk():
@@ -341,40 +251,12 @@ def predict_student_risk():
         student_predictions = []
         target_hours = 600
 
-        # ==========================================
-        # BATCH START DATE
-        #
-        # This is the start of the current OJT batch.
-        # When students have just started (ex. September 14,
-        # 2026), they should not immediately be marked "At Risk"
-        # because they are still near the beginning
-        # - there is not enough data yet for a reliable
-        # projection. A GRACE_PERIOD_DAYS period is applied before
-        # using the hours-based projection.
-        # ==========================================
         BATCH_START_DATE = datetime(2026, 9, 14)
         GRACE_PERIOD_DAYS = 7
 
-        # Absence thresholds - these are the PRIMARY
-        # basis for At Risk / Needs Monitoring, especially
-        # during the first week of OJT when there are still very few
-        # completed hours for all students.
-        ABSENCE_MONITORING_THRESHOLD = 3   # 3+ absences -> Needs Monitoring
-        ABSENCE_RISK_THRESHOLD = 8         # 8+ absences (many) -> At Risk
-
-        # "No-show" - consecutive Absent records
-        # starting from the most recent duty day going backward. Even if
-        # the total has not reached 8 absences, if there are 5+ consecutive
-        # days without a time-in, the student is also considered At Risk (as if
-        # communication was lost or the student suddenly stopped showing up).
-        # 3-4 consecutive absences fall through to the
-        # ABSENCE_MONITORING_THRESHOLD check below instead
-        # (Needs Monitoring, not yet At Risk).
+        ABSENCE_MONITORING_THRESHOLD = 3
+        ABSENCE_RISK_THRESHOLD = 8
         CONSECUTIVE_ABSENCE_RISK_THRESHOLD = 5
-
-        # Name retained so other references do not break
-        # below (backward-compatible variable name).
-        absence_monitoring_threshold = ABSENCE_MONITORING_THRESHOLD
 
         for doc in docs:
             data = doc.to_dict()
@@ -384,9 +266,6 @@ def predict_student_risk():
                 continue
 
             try:
-
-                # SAFE PARSING - protection against
-                # null / string / missing values
                 raw_hours = data.get('completedHours', 0)
                 try:
                     completed_hours = float(raw_hours) if raw_hours is not None else 0.0
@@ -396,10 +275,6 @@ def predict_student_risk():
                 name = data.get('name') or data.get('fullName') or 'Student User'
                 coordinator_deadline = data.get('deadlineDate') or '2026-12-31'
 
-                # If there is a per-student OJT start date
-                # (ex. field 'ojtStartDate' in Firestore),
-                # use it. If unavailable, use
-                # the BATCH_START_DATE (Sept 14, 2026).
                 raw_student_start = data.get('ojtStartDate') or data.get('startDate')
                 try:
                     start_date = datetime.strptime(
@@ -411,9 +286,6 @@ def predict_student_risk():
                 today_date = datetime.now()
                 days_active = max(1, (today_date - start_date).days)
 
-                # PARSE THE DEADLINE TO DETERMINE
-                # HOW MANY DAYS FROM START_DATE THE
-                # DEADLINE IS (target of the regression model)
                 try:
                     deadline_dt = datetime.strptime(
                         str(coordinator_deadline)[:10], "%Y-%m-%d"
@@ -424,19 +296,6 @@ def predict_student_risk():
                 deadline_days = (deadline_dt - start_date).days
                 deadline_days = max(deadline_days, days_active + 1)
 
-                # ==========================================
-                # GRACE PERIOD - a student should only be exempt
-                # from hours-based risk if THEY ARE STILL NEW *AND*
-                # there is still sufficient time remaining before the deadline.
-                #
-                # Previously, "days_active <= GRACE_PERIOD_DAYS" was the
-                # sole basis - so no matter how close the deadline
-                # (coordinator_deadline) was, the hours risk was not evaluated
-                # during the first 7 days from the start date. Now, the
-                # remaining days before the deadline are also considered -
-                # if it is near or past, the exemption should be removed even
-                # if the student is brand new, as it poses a genuine deadline risk.
-                # ==========================================
                 days_remaining_until_deadline = (deadline_dt - today_date).days
                 has_deadline_runway = days_remaining_until_deadline > GRACE_PERIOD_DAYS
 
@@ -444,18 +303,6 @@ def predict_student_risk():
                     days_active <= GRACE_PERIOD_DAYS and
                     has_deadline_runway
                 )
-
-                # ==========================================
-                # SCIKIT-LEARN LINEAR REGRESSION
-                #
-                # Uses the current rate of
-                # progress (completed_hours vs days_active)
-                # to project how many hours
-                # the student will complete BY THE
-                # DEADLINE - this will be used directly
-                # as the basis for the AI status, instead of
-                # using only fixed thresholds.
-                # ==========================================
 
                 X = np.array([[0], [days_active / 2], [days_active]])
                 y = np.array([0, completed_hours * 0.5, completed_hours])
@@ -466,8 +313,6 @@ def predict_student_risk():
                     model.predict([[deadline_days]])[0]
                 )
 
-                # Cannot be lower than the
-                # current completed hours
                 projected_total_hours = max(
                     projected_total_hours, completed_hours
                 )
@@ -476,9 +321,6 @@ def predict_student_risk():
 
                 student_id_value = _get_student_id_raw(data) or doc.id[:7]
 
-                # ==========================================
-                # ATTENDANCE - READ ABSENCES
-                # ==========================================
                 student_records = _get_student_records(
                     attendance_records, doc.id, student_id_value,
                     name, data.get('email')
@@ -492,39 +334,6 @@ def predict_student_risk():
                 consecutive_absences = attendance_summary["consecutive"]
                 attendance_record_count = attendance_summary["record_count"]
 
-                # ==========================================
-                # AI STATUS - COMBINED BASIS:
-                #   1) Scikit-Learn projection (hours vs deadline)
-                #   2) Attendance record (number of absences)
-                #
-                # PRIORITY:
-                #   - Completed        -> target hours have been reached
-                #   - At Risk          -> severe attendance problem
-                #                         (8+ absences, or 5+ consecutive
-                #                         no-shows)
-                #   - Needs Monitoring -> 3-7 absences (ABSENCE_MONITORING_
-                #                         THRESHOLD+). This ALWAYS wins over
-                #                         the hours-based "At Risk" check -
-                #                         a student with 3+ absences should
-                #                         never be silently escalated to
-                #                         "At Risk" purely because of the
-                #                         hours projection; the reason text
-                #                         still mentions the hours shortfall
-                #                         when relevant.
-                #   - At Risk          -> far below the target hours before
-                #                         the deadline (hours-based), only
-                #                         reached when absences are < 3
-                #   - Needs Monitoring -> only approaching the target hours
-                #   - On Track         -> hours are progressing well AND
-                #                         attendance is regular
-                # ==========================================
-
-                # Hours projection is USED
-                # ONLY after the grace period -
-                # it is not meaningful to flag a student as "at risk by hours"
-                # when a student has just started
-                # (hours should naturally be close to 0
-                # during the first week).
                 is_hours_at_risk = (
                     not is_new_student and
                     projected_total_hours < target_hours * 0.85
@@ -564,12 +373,6 @@ def predict_student_risk():
                         )
 
                 elif is_attendance_monitor:
-                    # 3+ absences (but not yet reaching
-                    # ABSENCE_RISK_THRESHOLD / CONSECUTIVE_ABSENCE_RISK_THRESHOLD
-                    # above) -> always set to "Needs Monitoring" first,
-                    # even if the student is "at risk" in the hours projection.
-                    # This is no longer demoted to At Risk by the
-                    # hours-based check.
                     ai_status = "Needs Monitoring"
                     risk_reason = (
                         f"There are {absent_count} recorded absences in the student duty - "
@@ -591,10 +394,6 @@ def predict_student_risk():
 
                 elif is_hours_at_risk:
                     ai_status = "At Risk"
-
-                    # Remaining hours needed (completed vs target),
-                    # projected hours to be gained before the deadline,
-                    # and the projected shortfall EVEN IF current pace is maintained.
                     hours_still_needed = max(target_hours - completed_hours, 0)
                     hours_projected_to_gain = max(projected_total_hours - completed_hours, 0)
                     projected_shortfall = max(target_hours - projected_total_hours, 0)
@@ -690,18 +489,9 @@ def predict_student_risk():
                 }, merge=True)
 
             except Exception as doc_error:
-                # Do not interrupt the entire request due to a single broken document
-                # - skip it and continue to the next student.
                 print(f"[predict-risk] Skipped doc {doc.id}: {doc_error}")
                 continue
 
-        # ==========================================
-        # COUNT PER AI STATUS
-        #
-        # Provided so the frontend does not need to
-        # loop/count the full "data" array again just
-        # to get the total count for "Needs Monitoring", "At Risk", etc.
-        # ==========================================
         status_counts = Counter(item["aiStatus"] for item in student_predictions)
         summary = {
             "total": len(student_predictions),
@@ -717,89 +507,6 @@ def predict_student_risk():
             "statusCounts": summary
         })
 
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-
-# ==========================================
-# 1.B DEBUG - ATTENDANCE READER
-#
-# Open in the browser: http://localhost:5000/api/debug-attendance
-# This shows which collection/fields are being read,
-# how many attendance records matched each student,
-# and how many are absent - to make it easier to determine why
-# a student's absence count is 0.
-# (For development only - remove before deployment.)
-# ==========================================
-def _jsonable(value):
-    if value is None or isinstance(value, (str, int, float, bool)):
-        return value
-    return str(value)
-
-
-@app.route('/api/debug-attendance', methods=['GET'])
-def debug_attendance():
-    try:
-        records = _load_attendance_records()
-
-        field_counter = Counter()
-        status_counter = Counter()
-        for rec in records:
-            field_counter.update(rec.keys())
-            status_value = next(
-                (rec.get(f) for f in ATTENDANCE_STATUS_FIELDS if rec.get(f) not in (None, '')),
-                None
-            )
-            status_counter[str(status_value)] += 1
-
-        students = []
-        matched_ids = set()
-        for doc in db.collection('users').stream():
-            data = doc.to_dict()
-            role = str(data.get('role', '')).lower()
-            if role != 'student' and data.get('role'):
-                continue
-
-            name = data.get('name') or data.get('fullName') or 'Student User'
-            student_id_value = _get_student_id_raw(data) or doc.id[:7]
-
-            matched = _get_student_records(
-                records, doc.id, student_id_value, name, data.get('email')
-            )
-            matched_ids.update(rec['id'] for rec in matched)
-
-            summary = _summarize_attendance(
-                matched,
-                start_date=datetime(2026, 9, 14),
-                today=datetime.now(PH_TZ).replace(tzinfo=None)
-            )
-            students.append({
-                "name": name,
-                "studentId": _jsonable(student_id_value),
-                "matchedRecords": summary["record_count"],
-                "absences": summary["absent_count"],
-                "consecutiveAbsences": summary["consecutive"],
-            })
-
-        unmatched = [rec for rec in records if rec['id'] not in matched_ids]
-
-        return jsonify({
-            "status": "success",
-            "topLevelCollections": [c.id for c in db.collections()],
-            "attendanceCollectionsRead": ATTENDANCE_COLLECTIONS,
-            "totalAttendanceRecords": len(records),
-            "fieldsSeen": dict(field_counter),
-            "statusValuesSeen": dict(status_counter),
-            "countMissingWeekdaysAsAbsent": COUNT_MISSING_WEEKDAYS_AS_ABSENT,
-            "students": students,
-            "unmatchedRecordCount": len(unmatched),
-            "unmatchedSamples": [
-                {k: _jsonable(v) for k, v in rec.items()} for rec in unmatched[:3]
-            ],
-            "sampleRecords": [
-                {k: _jsonable(v) for k, v in rec.items()} for rec in records[:3]
-            ],
-        })
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
@@ -924,7 +631,6 @@ def classify_skill_key(primary_skill):
     else:
         return "software"
 
-
 @app.route('/api/recommend-company', methods=['POST', 'OPTIONS'])
 def recommend_company():
     try:
@@ -958,7 +664,6 @@ def recommend_company():
                     "aiScore": 90
                 })
 
-        # Sort by aiScore, highest first
         matches.sort(key=lambda m: m["aiScore"], reverse=True)
 
         return jsonify({"status": "success", "data": matches})
@@ -967,18 +672,33 @@ def recommend_company():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # ==========================================
-# 4. STATIC & LOGIN PAGE ROUTING
+# 4. UNIVERSAL STATIC & DYNAMIC ROUTING
 # ==========================================
 
-# 1. Gagawing unang lalabas ang Student Login Page kapag binuksan ang main URL (/)
+# Direct root endpoint -> Serves the Login HTML
 @app.route('/')
 def home():
     return send_from_directory('student-page/student_login', 'student_login.html')
 
-# 2. Handler para ma-load ang CSS, JS, at iba pang static files sa kahit anong subfolder
+# Dynamic Fallback static routing to handle all nested directories (subfolders)
 @app.route('/<path:filename>')
 def serve_static(filename):
-    return send_from_directory('.', filename)
+    # 1. Check if the file directly exists from root directory
+    if os.path.exists(filename):
+        return send_from_directory('.', filename)
+    
+    # 2. Check if the file is inside 'student-page/student_login'
+    login_path = os.path.join('student-page/student_login', filename)
+    if os.path.exists(login_path):
+        return send_from_directory('student-page/student_login', filename)
+
+    # 3. Search dynamically across all subdirectories for matching file assets
+    for root, dirs, files in os.walk('.'):
+        if filename in files:
+            relative_dir = os.path.relpath(root, '.')
+            return send_from_directory(relative_dir, filename)
+
+    return f"File '{filename}' not found.", 404
 
 
 if __name__ == '__main__':

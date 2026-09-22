@@ -87,53 +87,50 @@ async function processStudentLogin(user) {
     // 1. KUNG MAY EXISTING PROFILE NA SA FIRESTORE
     if (userDoc.exists()) {
 
-    const userData = userDoc.data();
+        const userData = userDoc.data();
 
-    const role =
-        (userData.role || userData.userType || "student")
-            .toString()
-            .toLowerCase();
+        const role =
+            (userData.role || userData.userType || "student")
+                .toString()
+                .toLowerCase();
 
-    // Record student login
-    if (role === "student") {
-        await addDoc(collection(db, "logs"), {
-            type: "login",
-            action: "Login",
-            title: "Student Login",
-            description: `${userData.fullName || userData.name || "Student"} logged into the system.`,
-            studentName: userData.fullName || userData.name || "Student",
-            timestamp: serverTimestamp()
-        });
-    }
+        // Record student login
+        if (role === "student") {
+            await addDoc(collection(db, "logs"), {
+                type: "login",
+                action: "Login",
+                title: "Student Login",
+                description: `${userData.fullName || userData.name || "Student"} logged into the system.`,
+                studentName: userData.fullName || userData.name || "Student",
+                timestamp: serverTimestamp()
+            });
+        }
 
-    if (role === "coordinator" || role === "admin") {
+        if (role === "coordinator" || role === "admin") {
 
-        window.location.href =
-            "../coordinator-page/dashboard/dashboard.html";
-
-    } else {
-
-        console.log("DEBUG isProfileComplete value:", userData.isProfileComplete, userData.profileCompleted);
-
-        const isComplete =
-            userData.profileCompleted === true ||
-            userData.isProfileComplete === true;
-
-        if (isComplete) {
-
-            window.location.href =
-                "../student_dashboard/student_dashboard.html";
+            window.location.href = "/coordinator-page/dashboard/dashboard.html";
 
         } else {
 
-            window.location.href =
-                "../profile/profile.html";
+            console.log("DEBUG isProfileComplete value:", userData.isProfileComplete, userData.profileCompleted);
 
+            const isComplete =
+                userData.profileCompleted === true ||
+                userData.isProfileComplete === true;
+
+            if (isComplete) {
+
+                window.location.href = "/student-page/student_dashboard/student_dashboard.html";
+
+            } else {
+
+                window.location.href = "/student-page/profile/profile.html";
+
+            }
         }
-    }
 
-    return;
-}
+        return;
+    }
 
     // 2. KUNG BAGONG LOG-IN (GOOGLE O EMAIL)
     const emailKey = user.email.toLowerCase();
@@ -169,7 +166,7 @@ async function processStudentLogin(user) {
     });
 
     // Diretso papuntang Requirements Form
-    window.location.href = "../profile/profile.html";
+    window.location.href = "/student-page/profile/profile.html";
 }
 
 // EMAIL & PASSWORD LOGIN HANDLER

@@ -957,6 +957,22 @@ def recommend_company():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
+# ==========================================
+# 4. STATIC & LOGIN PAGE ROUTING
+# ==========================================
+
+# 1. Gagawing unang lalabas ang Student Login Page kapag binuksan ang main URL (/)
+@app.route('/')
+def home():
+    return send_from_directory('student-page/student_login', 'student_login.html')
+
+# 2. Handler para ma-load ang CSS, JS, at iba pang static files sa kahit anong subfolder
+@app.route('/<path:filename>')
+def serve_static(filename):
+    return send_from_directory('.', filename)
+
 
 if __name__ == '__main__':
-    app.run(port=5000, debug=True)
+    import os
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=True)

@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -7,8 +7,10 @@ from collections import Counter
 import re
 import numpy as np
 from sklearn.linear_model import LinearRegression
+import os
+import json
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='.')
 CORS(app)
 
 # Global Preflight CORS Handler for all endpoints
@@ -21,10 +23,17 @@ def handle_preflight():
         response.headers.add("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
         return response, 200
 
-# Initialize the Firebase Admin SDK
+# Initialize the Firebase Admin SDK (SAFE FOR RENDER DEPLOYMENT & LOCAL)
 if not firebase_admin._apps:
-    cred = credentials.Certificate("serviceAccountKey.json")
+    if os.environ.get("FIREBASE_SERVICE_ACCOUNT"):
+        cert_dict = json.loads(os.environ.get("FIREBASE_SERVICE_ACCOUNT"))
+        cred = credentials.Certificate(cert_dict)
+    elif os.path.exists("serviceAccountKey.json"):
+        cred = credentials.Certificate("serviceAccountKey.json")
+    else:
+        raise FileNotFoundError("Firebase credentials not found! Set FIREBASE_SERVICE_ACCOUNT env var or add serviceAccountKey.json.")
     firebase_admin.initialize_app(cred)
+
 db = firestore.client()
 
 # ==========================================
@@ -973,6 +982,5 @@ def serve_static(filename):
 
 
 if __name__ == '__main__':
-    import os
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=True)

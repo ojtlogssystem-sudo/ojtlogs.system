@@ -512,6 +512,96 @@ def predict_student_risk():
 
 
 # ==========================================
+# 1B. ENDPOINT FOR PER-STUDENT ATTENDANCE
+#     (Present/Absent by date - used by the
+#     "click a student -> line graph" modal
+#     sa Analytics page)
+# ==========================================
+@app.route('/api/student-attendance/<student_doc_id>', methods=['GET'])
+def get_student_attendance(student_doc_id):
+    try:
+        user_doc = db.collection('users').document(student_doc_id).get()
+
+        if not user_doc.exists:
+            return jsonify({
+                "status": "error",
+                "message": "Student not found."
+            }), 404
+
+        data = user_doc.to_dict()
+        name = data.get('name') or data.get('fullName') or 'Student User'
+        student_id_value = _get_student_id_raw(data) or student_doc_id[:7]
+
+        attendance_records = _load_attendance_records()
+        matched_records = _get_student_records(
+            attendance_records, student_doc_id, student_id_value,
+            name, data.get('email')
+        )
+
+        # I-collapse ang mga record papunta sa isang
+        # status kada araw. Kapag may "present" record
+        # sa isang araw, mananalo iyon kahit may
+        # "absent" record din sa parehong araw
+        # (kaparehong logic ng _summarize_attendance).
+        absent_dates = set()
+        present_dates = set()
+        undated_absences = 0
+
+        for rec in matched_records:
+            rec_date = _record_date(rec)
+            if _is_absent_record(rec):
+                if rec_date:
+                    absent_dates.add(rec_date)
+                else:
+                    undated_absences += 1
+            elif rec_date:
+                present_dates.add(rec_date)
+
+        absent_dates -= present_dates
+
+        timeline = sorted(absent_dates | present_dates)
+
+        attendance_list = [
+            {
+                "date": day,
+                "status": "present" if day in present_dates else "absent"
+            }
+            for day in timeline
+        ]
+
+        duty_days_desc = sorted(absent_dates | present_dates, reverse=True)
+        consecutive = 0
+        for day in duty_days_desc:
+            if day in absent_dates:
+                consecutive += 1
+            else:
+                break
+
+        return jsonify({
+            "status": "success",
+            "student": {
+                "id": student_doc_id,
+                "name": name,
+                "studentId": student_id_value,
+                "course": data.get('course', 'BSIT'),
+                "section": data.get('section', '403'),
+                "company": data.get('companyName') or data.get('company') or 'Unassigned',
+            },
+            "attendance": attendance_list,
+            "summary": {
+                "totalPresent": len(present_dates),
+                "totalAbsent": len(absent_dates) + undated_absences,
+                "undatedAbsences": undated_absences,
+                "consecutiveAbsences": consecutive,
+                "recordCount": len(matched_records),
+            }
+        })
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# ==========================================
 # 2. ENDPOINT FOR COMPANY SKILL EXPOSURE
 # ==========================================
 @app.route('/api/company-skill-exposure', methods=['GET', 'POST', 'OPTIONS'])

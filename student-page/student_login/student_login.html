@@ -48,7 +48,26 @@
         </div>
     </div>
 
-    <!-- Firebase SDK and Script -->
+    <!-- Forgot Password Modal -->
+    <div class="modal-overlay" id="forgotModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>Reset Password</h2>
+                <i class="fa-solid fa-xmark" id="closeModalBtn"></i>
+            </div>
+            <p class="modal-subtext">Enter your email to receive a password reset link.</p>
+
+            <div id="modalMessage" class="error-msg"></div>
+
+            <form id="resetForm">
+                <div class="input-box">
+                    <input type="email" id="resetEmail" placeholder=" " required>
+                    <label for="resetEmail">Email</label>
+                </div>
+                <button type="submit" class="login-btn" id="resetBtn">Send Reset Link</button>
+            </form>
+        </div>
+    </div>
     <script type="module" src="student_login.js"></script>
     <script src="/shared/site-meta.js"></script>
 </body>

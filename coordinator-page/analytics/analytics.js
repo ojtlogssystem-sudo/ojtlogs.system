@@ -1328,7 +1328,14 @@ document.addEventListener("DOMContentLoaded", () => {
                         );
 
                     return `
-                        <div class="risk-row">
+                        <div
+                            class="risk-row"
+                            data-student-id="${escapeHtml(item.id)}"
+                            role="button"
+                            tabindex="0"
+                            style="cursor:pointer;"
+                            title="Click to view attendance history"
+                        >
 
                             <!-- STUDENT -->
                             <div class="student-mini">
@@ -2146,6 +2153,49 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     // ==========================================
+    // CLICK / KEYBOARD -> OPEN ATTENDANCE MODAL
+    // Event delegation dahil pinapalitan ng innerHTML
+    // ang laman ng riskStudentsContainer paulit-ulit
+    // ==========================================
+
+    const riskStudentsContainer =
+        document.getElementById("riskStudentsContainer");
+
+    if (riskStudentsContainer) {
+
+        riskStudentsContainer.addEventListener(
+            "click",
+            (e) => {
+
+                const row = e.target.closest(".risk-row");
+
+                if (row && row.dataset.studentId) {
+                    window.openAttendanceModal(row.dataset.studentId);
+                }
+
+            }
+        );
+
+        riskStudentsContainer.addEventListener(
+            "keydown",
+            (e) => {
+
+                if (e.key !== "Enter" && e.key !== " ") return;
+
+                const row = e.target.closest(".risk-row");
+
+                if (row && row.dataset.studentId) {
+                    e.preventDefault();
+                    window.openAttendanceModal(row.dataset.studentId);
+                }
+
+            }
+        );
+
+    }
+
+
+    // ==========================================
     // INITIAL LOAD
     // ==========================================
 
@@ -2156,15 +2206,237 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // ==========================================
 // VIEW STUDENT PROGRESS
-// EXISTING FUNCTION
+// (Ngayon binubuksan na nito ang attendance modal
+// sa halip na alert lang)
 // ==========================================
 
 window.viewStudentProgress =
     (id) => {
 
-        alert(
-            `Opening student profile: ${id}`
-        );
+        window.openAttendanceModal(id);
+
+    };
+
+
+// ==========================================
+// STUDENT ATTENDANCE MODAL
+// (Present/Absent by date - line graph)
+// ==========================================
+
+let attendanceChartInstance = null;
+
+window.openAttendanceModal =
+    async function(studentId) {
+
+        const modal =
+            document.getElementById("attendanceModal");
+
+        const nameEl =
+            document.getElementById("attendanceModalName");
+
+        const subtitleEl =
+            document.getElementById("attendanceModalSubtitle");
+
+        const summaryRow =
+            document.getElementById("attendanceSummaryRow");
+
+        const loadingEl =
+            document.getElementById("attendanceModalLoading");
+
+        const chartEmptyEl =
+            document.getElementById("attendanceChartEmpty");
+
+        const canvas =
+            document.getElementById("attendanceLineChart");
+
+        if (!modal || !studentId) return;
+
+        // RESET STATE
+        modal.style.display = "block";
+        if (loadingEl) loadingEl.style.display = "block";
+        if (chartEmptyEl) chartEmptyEl.style.display = "none";
+        if (canvas) canvas.style.display = "none";
+        if (summaryRow) summaryRow.innerHTML = "";
+        if (nameEl) nameEl.textContent = "Loading...";
+        if (subtitleEl) subtitleEl.textContent = "";
+
+        if (attendanceChartInstance) {
+            attendanceChartInstance.destroy();
+            attendanceChartInstance = null;
+        }
+
+        try {
+
+            const response =
+                await fetch(
+                    `http://localhost:5000/api/student-attendance/${encodeURIComponent(studentId)}`
+                );
+
+            const result =
+                await response.json();
+
+            if (loadingEl) loadingEl.style.display = "none";
+
+            if (result.status !== "success") {
+
+                if (nameEl) nameEl.textContent = "Unable to load attendance";
+                if (subtitleEl) {
+                    subtitleEl.textContent =
+                        result.message || "Unknown error from server.";
+                }
+                return;
+
+            }
+
+            const student = result.student || {};
+            const attendance = result.attendance || [];
+            const summary = result.summary || {};
+
+            if (nameEl) {
+                nameEl.textContent =
+                    student.name || "Student Attendance";
+            }
+
+            if (subtitleEl) {
+                subtitleEl.textContent =
+                    [student.studentId, student.course, student.section, student.company]
+                        .filter(Boolean)
+                        .join(" · ");
+            }
+
+            if (summaryRow) {
+
+                summaryRow.innerHTML = `
+                    <span
+                        class="absence-badge"
+                        style="background:#e8f7ee;color:#1e8449;border-color:#c6efd7;"
+                    >
+                        <i class="fa-solid fa-calendar-check"></i>
+                        ${summary.totalPresent || 0} present
+                    </span>
+                    <span class="absence-badge high">
+                        <i class="fa-solid fa-calendar-xmark"></i>
+                        ${summary.totalAbsent || 0} absent
+                    </span>
+                    ${
+                        (summary.consecutiveAbsences || 0) > 0
+                            ? `<span class="absence-badge high">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                    ${summary.consecutiveAbsences} consecutive absences
+                                </span>`
+                            : ""
+                    }
+                `;
+
+            }
+
+            if (attendance.length === 0) {
+
+                if (chartEmptyEl) chartEmptyEl.style.display = "block";
+                if (canvas) canvas.style.display = "none";
+                return;
+
+            }
+
+            if (canvas) canvas.style.display = "block";
+            if (chartEmptyEl) chartEmptyEl.style.display = "none";
+
+            const labels =
+                attendance.map(rec => rec.date);
+
+            const dataPoints =
+                attendance.map(rec => rec.status === "present" ? 1 : 0);
+
+            const pointColors =
+                attendance.map(rec => rec.status === "present" ? "#27ae60" : "#e74c3c");
+
+            if (canvas && window.Chart) {
+
+                attendanceChartInstance = new Chart(canvas, {
+                    type: "line",
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: "Attendance",
+                            data: dataPoints,
+                            stepped: true,
+                            borderColor: "#ab0a0a",
+                            backgroundColor: "rgba(171,10,10,0.08)",
+                            pointBackgroundColor: pointColors,
+                            pointBorderColor: pointColors,
+                            pointRadius: 5,
+                            pointHoverRadius: 7,
+                            fill: true,
+                            tension: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                min: -0.2,
+                                max: 1.2,
+                                ticks: {
+                                    stepSize: 1,
+                                    callback: (value) => {
+                                        if (value === 1) return "Present";
+                                        if (value === 0) return "Absent";
+                                        return "";
+                                    }
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    autoSkip: true,
+                                    maxRotation: 45,
+                                    minRotation: 0
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) =>
+                                        context.parsed.y === 1 ? "Present" : "Absent"
+                                }
+                            }
+                        }
+                    }
+                });
+
+            }
+
+        } catch (err) {
+
+            console.error("Failed to load student attendance:", err);
+
+            if (loadingEl) loadingEl.style.display = "none";
+            if (nameEl) nameEl.textContent = "Unable to load attendance";
+            if (subtitleEl) {
+                subtitleEl.textContent =
+                    "May problema sa pagkonekta sa server (http://localhost:5000). " +
+                    "Siguraduhing tumatakbo ang backend (app.py).";
+            }
+
+        }
+
+    };
+
+
+window.closeAttendanceModal =
+    function() {
+
+        const modal =
+            document.getElementById("attendanceModal");
+
+        if (modal) modal.style.display = "none";
+
+        if (attendanceChartInstance) {
+            attendanceChartInstance.destroy();
+            attendanceChartInstance = null;
+        }
 
     };
 
@@ -2388,18 +2660,32 @@ window.closeCompanyModal =
 window.onclick =
     function(event) {
 
-        const modal =
+        const companyModal =
             document.getElementById(
                 "companyModal"
             );
 
+        const attendanceModal =
+            document.getElementById(
+                "attendanceModal"
+            );
+
 
         if (
-            event.target === modal
+            event.target === companyModal
         ) {
 
-            modal.style.display =
+            companyModal.style.display =
                 "none";
+
+        }
+
+
+        if (
+            event.target === attendanceModal
+        ) {
+
+            window.closeAttendanceModal();
 
         }
 

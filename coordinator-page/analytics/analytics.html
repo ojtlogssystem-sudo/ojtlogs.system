@@ -331,6 +331,28 @@
     </div>
 </div>
 
+<!-- STUDENT ATTENDANCE MODAL (Present/Absent by date) -->
+<div id="attendanceModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
+    <div class="modal-content" style="background-color: #fff; margin: 6% auto; padding: 20px; border-radius: 8px; width: 70%; max-width: 800px; max-height: 82vh; overflow-y: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">
+            <div>
+                <h3 id="attendanceModalName" style="margin: 0; color: #333;">Student Attendance</h3>
+                <p id="attendanceModalSubtitle" style="color: #666; font-size: 13px; margin: 4px 0 0;"></p>
+            </div>
+            <button onclick="closeAttendanceModal()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #777;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div id="attendanceModalLoading" style="text-align:center; color:#777; padding:20px;">Loading attendance records...</div>
+
+        <div id="attendanceSummaryRow" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:15px;"></div>
+
+        <div class="chart-canvas-wrapper" style="position:relative; height:280px;">
+            <canvas id="attendanceLineChart"></canvas>
+            <p class="chart-empty" id="attendanceChartEmpty" style="display:none;">No attendance records yet for this student.</p>
+        </div>
+    </div>
+</div>
+
 <script src="../sidebar/sidebar-web.js"></script>
 <script type="module" src="../header/header.js"></script>
 <script type="module" src="analytics.js"></script>

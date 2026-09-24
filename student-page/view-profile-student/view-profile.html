@@ -58,6 +58,22 @@
                     </div>
                 </div>
 
+                <!-- Attendance summary (galing sa schedule + attendance records) -->
+                <div class="hero-stats hero-stats--attendance">
+                    <div class="stat stat-present">
+                        <strong id="statPresent">0</strong>
+                        <span>Present</span>
+                    </div>
+                    <div class="stat stat-late">
+                        <strong id="statLate">0</strong>
+                        <span>Late</span>
+                    </div>
+                    <div class="stat stat-absent">
+                        <strong id="statAbsent">0</strong>
+                        <span>Absent</span>
+                    </div>
+                </div>
+
                 <a class="btn-edit" href="../settings/settings.html">
                     <i class="fa-solid fa-pen"></i>
                     Edit profile
@@ -150,10 +166,16 @@
                 <dl class="field-list">
                     <div class="field span-2"><dt>Company</dt><dd id="fCompany">&mdash;</dd></div>
                     <div class="field span-2"><dt>Supervisor</dt><dd id="fSupervisor">&mdash;</dd></div>
+                    <div class="field span-2"><dt>Duty type</dt><dd id="fModality">&mdash;</dd></div>
                     <div class="field"><dt>Required hours</dt><dd id="fRequired">&mdash;</dd></div>
                     <div class="field"><dt>Hours completed</dt><dd id="fDone">&mdash;</dd></div>
                     <div class="field"><dt>Remaining hours</dt><dd id="fRemaining">&mdash;</dd></div>
                 </dl>
+
+                <div class="sched-block">
+                    <h4><i class="fa-regular fa-calendar"></i> OJT schedule</h4>
+                    <div id="scheduleBox"><span class="sched-empty">No schedule assigned yet</span></div>
+                </div>
 
             </div>
 

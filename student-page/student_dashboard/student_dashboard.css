@@ -702,7 +702,9 @@ button{
     align-items: center;
     gap: 7px;
     width: 100%;
-    overflow: hidden;
+    /* visible, not hidden: a clipped ancestor was cutting off the
+       "Note: ..." popup that appears when a day is tapped. */
+    overflow: visible;
 }
 
 .calendar-day-list {
@@ -711,7 +713,7 @@ button{
     gap: 7px;
     flex: 1;
     min-width: 0;
-    overflow: hidden;
+    overflow: visible;
 }
 
 /* DATE BOX */
@@ -806,7 +808,7 @@ button{
 
 .calendar-days {
     flex: 1;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .calendar-day-list {
@@ -940,6 +942,20 @@ button{
     background: #f0fdf4;
     border-color: #bbf7d0;
     color: #15803d;
+}
+
+/* Red tint on past duty days with no logged hours and no excuse/holiday
+   on file — the same treatment as the green "has-duty" tint above, just
+   for the opposite case (absent instead of present). */
+.calendar-day-list.month-view .calendar-month-day.absent-day:not(.active) {
+    background: #fef2f2;
+    border-color: #fca5a5;
+    color: #b91c1c;
+}
+
+.calendar-day.absent-day:not(.active) {
+    background: #fef2f2;
+    border-color: #fca5a5;
 }
 
 /* EMPTY CELLS */

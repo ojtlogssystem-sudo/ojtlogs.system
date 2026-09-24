@@ -63,7 +63,12 @@ let todayNoDutyReason = null;
 // hangga't hindi pa na-a-attempt fetch; empty/undefined array kapag wala
 // pang na-set na schedule sa account niya.
 let studentScheduleDays = null;
+let studentSchedule = null;   // buong users/{uid}.schedule (days, morning, afternoon)
 let studentScheduleFetchedFor = null;
+
+// Iisang absence-check lang ang sabay na tatakbo, para walang doble-doblehang
+// "Absent" record kapag sunod-sunod ang refreshAttendanceUI().
+let absenceCheckInFlight = null;
 
 // Naka-cache ang assigned companyName ng naka-login na student (mula sa
 // users/{uid} document), para hindi na paulit-ulit mag-fetch sa Firestore
@@ -105,7 +110,48 @@ async function getTodayNoDutyReason(dateStr) {
    schedule (8:00 AM) + grace period (15 mins).
    Late na kapag lumampas sa 8:15 AM.
 ========================================== */
-function computeLateInfo(timeInDate) {
+// "08:00" (galing sa <input type="time">) -> minuto mula hatinggabi
+function scheduleTimeToMinutes(value) {
+    const m = String(value || "").match(/^(\d{1,2}):(\d{2})/);
+    return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+}
+
+// Mga naka-enable na session ng student, sorted by simula ng oras
+function getScheduleSessions(schedule) {
+    if (!schedule) return [];
+
+    const sessions = [];
+
+    [["morning", "morningEnabled"], ["afternoon", "afternoonEnabled"]].forEach(([key, flag]) => {
+        const s = schedule[key];
+        if (!s || schedule[flag] === false || s[flag] === false) return;
+
+        const start = scheduleTimeToMinutes(s.timeIn);
+        const end = scheduleTimeToMinutes(s.timeOut);
+        if (start !== null && end !== null) sessions.push({ start, end });
+    });
+
+    return sessions.sort((a, b) => a.start - b.start);
+}
+
+/* Late kapag lumampas sa LATE_GRACE_MINUTES mula sa simula ng session
+   sa mismong schedule ng student (users/{uid}.schedule). Kung wala pang
+   schedule, babalik sa default na 8:00 AM. */
+function computeLateInfo(timeInDate, schedule = null) {
+    const sessions = getScheduleSessions(schedule);
+
+    if (sessions.length) {
+        const nowMins = timeInDate.getHours() * 60 + timeInDate.getMinutes() + timeInDate.getSeconds() / 60;
+
+        // Session na hindi pa tapos sa oras ng time-in (kung lampas na lahat, yung huli)
+        const target = sessions.find((s) => nowMins < s.end) || sessions[sessions.length - 1];
+
+        if (nowMins > target.start + LATE_GRACE_MINUTES) {
+            return { isLate: true, lateMinutes: Math.round(nowMins - target.start) };
+        }
+        return { isLate: false, lateMinutes: 0 };
+    }
+
     const scheduled = new Date(timeInDate);
     scheduled.setHours(OFFICIAL_TIME_IN_HOUR, OFFICIAL_TIME_IN_MINUTE, 0, 0);
 
@@ -155,16 +201,25 @@ async function getStudentScheduleDays(user) {
             const data = userSnap.data();
             const days = data.schedule?.days;
             studentScheduleDays = Array.isArray(days) ? days : null;
+            studentSchedule = (data.schedule && typeof data.schedule === "object") ? data.schedule : null;
         } else {
             studentScheduleDays = null;
+            studentSchedule = null;
         }
     } catch (error) {
         console.warn("Could not fetch student schedule:", error);
         studentScheduleDays = null;
+        studentSchedule = null;
     }
 
     studentScheduleFetchedFor = user.uid;
     return studentScheduleDays;
+}
+
+// Buong schedule object ng student (para sa oras ng Morning/Afternoon session).
+async function getStudentSchedule(user) {
+    await getStudentScheduleDays(user);
+    return studentSchedule;
 }
 
 // Kinukuha ang companyName na naka-assign sa naka-login na student, mula
@@ -226,29 +281,41 @@ async function getNoDutyDatesInRange(startStr, endStr) {
     return noDutySet;
 }
 
-async function checkAndMarkAbsences(user, todayStr, scheduleDays) {
+function checkAndMarkAbsences(user, todayStr, scheduleDays) {
+    if (!user) return Promise.resolve();
+    if (absenceCheckInFlight) return absenceCheckInFlight;
+
+    absenceCheckInFlight = markMissedAbsences(user, todayStr, scheduleDays)
+        .finally(() => { absenceCheckInFlight = null; });
+
+    return absenceCheckInFlight;
+}
+
+async function markMissedAbsences(user, todayStr, scheduleDays) {
     if (!user) return;
 
     const existingDates = new Set(fullAttendanceHistory.map(i => i.date));
 
-    // Simula ng pag-check: pinakaunang existing record ng user.
-    // Kung wala pa siyang record, 14 days lang paatras ang default
-    // lookback window (para hindi mag-mark ng absences bago pa
-    // man sumali ang student sa OJT).
-    let earliestDate = null;
-    fullAttendanceHistory.forEach(item => {
-        if (item.date && (!earliestDate || item.date < earliestDate)) {
-            earliestDate = item.date;
-        }
-    });
-
+    // Lookback window: laging naka-cap sa ABSENCE_LOOKBACK_DAYS (14 days)
+    // paatras mula ngayon — hindi na hanggang sa earliest record ng
+    // estudyante. Dati, kapag may kahit isang record na siya noon (halimbawa
+    // 3-4 buwan na ang nakalipas), babalik doon ang cursor at magma-mark ng
+    // "Absent" para sa BAWAT Mon-Fri na walang record mula noon hanggang
+    // ngayon — pwedeng daan-daang maling Absent entries sa isang pagbukas
+    // lang ng page. Ang cap na ito ang dahilan kung bakit "super dami" at
+    // hindi tugma sa totoong (accurate) attendance.
+    const ABSENCE_LOOKBACK_DAYS = 14;
     const todayDateObj = new Date(todayStr + "T00:00:00");
-    let cursor;
-    if (earliestDate) {
-        cursor = new Date(earliestDate + "T00:00:00");
-    } else {
-        cursor = new Date(todayDateObj);
-        cursor.setDate(cursor.getDate() - 14);
+    let cursor = new Date(todayDateObj);
+    cursor.setDate(cursor.getDate() - ABSENCE_LOOKBACK_DAYS);
+
+    // Huwag mag-mark ng "Absent" para sa mga araw bago pa nagkaroon ng account
+    // ang student (hindi pa siya part ng OJT noon).
+    const createdRaw = user.metadata?.creationTime;
+    if (createdRaw) {
+        const createdDay = new Date(createdRaw);
+        createdDay.setHours(0, 0, 0, 0);
+        if (cursor < createdDay) cursor = createdDay;
     }
 
     const startStr = getLocalYYYYMMDD(cursor);
@@ -343,13 +410,28 @@ function formatAMPM(dateObj = new Date()) {
 ========================================== */
 async function startInitialLiveClock() {
     const badge = document.getElementById("firebase-timestamp-badge");
-    if (!badge) return;
+    const dateEl = document.getElementById("student-current-date");
+    const timeEl = document.getElementById("student-current-time");
+    if (!badge && !dateEl && !timeEl) return;
 
     const updateClock = async () => {
         const now = await getCurrentNTPTime();
         const dateStr = formatLocalDateWithDay(now);
         const timeStr = formatAMPM(now);
-        badge.textContent = `${timeStr} / ${dateStr}`;
+
+        if (badge) badge.textContent = `${timeStr} / ${dateStr}`;
+
+        // "Today / Current Time" bar sa itaas ng page — parehong NTP time
+        // source ang ginagamit para laging magkatugma sila ng badge.
+        if (dateEl) dateEl.textContent = dateStr;
+        if (timeEl) {
+            timeEl.textContent = now.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            });
+        }
     };
 
     await updateClock();
@@ -572,12 +654,14 @@ function renderHistoryItems(historyList) {
         const isAbsent = item.status === 'Absent';
         const isActive = item.status === 'Active';
         const isRejected = String(item.status || '').toLowerCase() === 'rejected';
+        const isExcused = String(item.status || '').toLowerCase() === 'excused';
 
         let badgeClass = 'green';
         let badgeText = item.status;
         if (isRejected) { badgeClass = 'red'; badgeText = 'Rejected'; }
         else if (isLate) { badgeClass = 'orange'; }
         else if (isAbsent) { badgeClass = 'red'; }
+        else if (isExcused) { badgeClass = 'blue'; badgeText = 'Excused'; }
         else if (isActive) { badgeClass = 'blue'; badgeText = 'Active'; }
         else if (isCompleted) { badgeClass = 'green'; badgeText = 'Present'; }
 
@@ -586,7 +670,7 @@ function renderHistoryItems(historyList) {
                 <div class="att-item-top">
                     <div class="att-item-left">
                         <div class="att-icon-box ${badgeClass === 'green' ? 'green-bg' : badgeClass === 'orange' ? 'orange-bg' : badgeClass === 'red' ? 'red-bg' : 'blue-bg'}">
-                            <i class="fa-solid ${badgeClass === 'green' ? 'fa-circle-check' : badgeClass === 'orange' ? 'fa-clock' : badgeClass === 'red' ? 'fa-circle-xmark' : 'fa-spinner'}"></i>
+                            <i class="fa-solid ${badgeClass === 'green' ? 'fa-circle-check' : badgeClass === 'orange' ? 'fa-clock' : badgeClass === 'red' ? 'fa-circle-xmark' : (isExcused ? 'fa-circle-info' : 'fa-spinner')}"></i>
                         </div>
                         <div class="att-date-info">
                             <h4>${item.formattedDate || item.date}</h4>
@@ -894,7 +978,7 @@ function initAttendanceSystem(currentUser) {
         const userEmail = user ? user.email : "no_email";
 
         // I-check kung Late ang Time In (lampas 15 mins grace mula 8:00 AM)
-        const lateInfo = computeLateInfo(now);
+        const lateInfo = computeLateInfo(now, await getStudentSchedule(user));
 
         const newRecord = {
             userId: userId,
@@ -1181,6 +1265,11 @@ function initAttendanceSystem(currentUser) {
             fullAttendanceHistory.sort((a, b) => {
                 const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime();
                 const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt || 0).getTime();
+                // Auto-marked "Absent" records ay isinusulat sa susunod na pagbukas ng page,
+                // kaya mali ang createdAt para i-sort. Ang mismong petsa ng duty ang batayan.
+                const dateA = a.date || "";
+                const dateB = b.date || "";
+                if (dateA !== dateB) return dateA < dateB ? 1 : -1;
                 return timeB - timeA;
             });
         };

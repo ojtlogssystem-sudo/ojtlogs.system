@@ -27,6 +27,25 @@
 
         <section class="dashboard-content">
 
+            <!-- LIVE DATE & TIME -->
+            <div class="datetime-bar">
+                <div class="datetime-item">
+                    <div class="datetime-icon"><i class="fa-regular fa-calendar"></i></div>
+                    <div>
+                        <small>Today</small>
+                        <strong id="student-current-date">--</strong>
+                    </div>
+                </div>
+
+                <div class="datetime-item">
+                    <div class="datetime-icon"><i class="fa-regular fa-clock"></i></div>
+                    <div>
+                        <small>Current Time</small>
+                        <strong id="student-current-time">--:--:--</strong>
+                    </div>
+                </div>
+            </div>
+
             <!-- QR SCANNER CARDS -->
             <div class="qr-cards-grid">
                 
@@ -77,12 +96,7 @@
                         <span id="time-out-note-text">Note: 1 hour breaktime is automatically deducted from total hours.</span>
                     </div>
                 </div>
-                
-                <div class="firebase-badge-container">
-                    <div id="firebase-timestamp-badge" class="firebase-timestamp-badge">
-                        --:-- / -- --, ----
-                    </div>
-                </div>
+            
             </div>
 
             <!-- TODAY'S ATTENDANCE SUMMARY -->

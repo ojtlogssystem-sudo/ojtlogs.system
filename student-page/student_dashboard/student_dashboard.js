@@ -32,6 +32,38 @@ const db = getFirestore(app);
 let studentRequiredHours = 600;
 let calendarController = null;
 
+// Same default used by ojt-deadline.js (settings/ojtDeadline +
+// users/{uid}.deadlineDate) kapag wala pa talagang na-set kahit saan.
+const FALLBACK_DEADLINE = "2026-12-31";
+
+// "YYYY-MM-DD" (o Firestore Timestamp) -> "Dec 31, 2026". Mirrors
+// formatDeadline() sa ojt-deadline.js pero mas maikli para bagay sa
+// maliit na "Completion Date" box.
+function formatCompletionDate(value) {
+    if (!value) return "--/----";
+
+    const raw = (value && typeof value.toDate === "function")
+        ? value.toDate()
+        : new Date(`${String(value).slice(0, 10)}T00:00:00`);
+
+    if (Number.isNaN(raw.getTime())) return "--/----";
+
+    return raw.toLocaleDateString("en-PH", {
+        year: "numeric",
+        month: "short",
+        day: "numeric"
+    });
+}
+
+// Ito yung actual deadline na sine-set ng coordinator (Settings > OJT
+// Deadline), hindi yung AI-projected estimate na nasa header pill.
+function updateCompletionDateUI(deadlineDate) {
+    const detailItems = document.querySelectorAll(".detail-item strong");
+    if (detailItems.length >= 3) {
+        detailItems[2].textContent = formatCompletionDate(deadlineDate);
+    }
+}
+
 // Converts an exact decimal hours value (e.g. 31.816666...) into an exact
 // "Xh Ym" string (e.g. "31h 49m") by rounding only to the nearest minute,
 // never to the nearest 0.1 hour. Used for the "Hours Completed" display so
@@ -129,6 +161,11 @@ async function loadStudentData(user) {
 
         updateHoursUI(compHours, studentRequiredHours, remainingHours, percentage);
 
+        // Coordinator-set OJT deadline (global "Apply to all students" or a
+        // per-student override) — same field na binabasa ng Flask AI para
+        // sa at-risk projection. Ito na ngayon yung nasa "Completion Date".
+        updateCompletionDateUI(student.deadlineDate || FALLBACK_DEADLINE);
+
         const statusElem = document.querySelector(".status-text");
         const statusHeader = document.querySelector(".summary-card.purple h2");
 
@@ -211,6 +248,13 @@ function listenToStudentAttendance(userId) {
         let totalCompletedMinutes = 0; // exact minutes, matching attendance_details.js's calculateOverview()
         const dailyHoursMap = {};
 
+        // Dates the student was auto-marked "Absent" (status: "Absent",
+        // written by attendance.js's checkAndMarkAbsences() for any missed
+        // scheduled duty day). Same records/logic the coordinator's
+        // Attendance page counts, so this is the accurate source of truth
+        // instead of guessing from the calendar/holidays alone.
+        const absentDatesMap = {};
+
         const now = new Date();
         const year = now.getFullYear();
         const month = String(now.getMonth() + 1).padStart(2, "0");
@@ -233,6 +277,10 @@ function listenToStudentAttendance(userId) {
             // no rounding drift between this total and the coordinator's.
             // Rejected ng coordinator = hindi binibilang ang oras ng araw na iyon.
             const isRejectedDay = String(data.status || "").toLowerCase() === "rejected";
+
+            if (data.date && String(data.status || "").toLowerCase() === "absent") {
+                absentDatesMap[data.date] = true;
+            }
 
             if (isRejectedDay) {
                 netMinutes = 0;
@@ -298,6 +346,7 @@ function listenToStudentAttendance(userId) {
         // many hours were rendered that day (e.g. "8h" under Jan 1).
         if (calendarController) {
             calendarController.setDailyHours(dailyHoursMap);
+            calendarController.setAbsentDates(absentDatesMap);
         }
 
         // AI-style projection of the OJT completion date, based on the
@@ -696,6 +745,38 @@ function initCalendar() {
     let calendarExceptions = {};
     let dailyHours = {}; // "YYYY-MM-DD" -> hours rendered that day, e.g. { "2026-01-01": 8 }
 
+    // Dates with a real "Absent" attendance record (status: "Absent"),
+    // pushed in from listenToStudentAttendance(). This mirrors the exact
+    // same auto-marking logic attendance.js already runs (checkAndMarkAbsences:
+    // only counts a day if it fell on the student's OWN assigned schedule,
+    // is on/after their first-ever attendance record — i.e. effectively
+    // their OJT start — and isn't a coordinator no-duty/holiday exception),
+    // so the count here always matches what the coordinator sees.
+    let absentDates = {};
+
+    function isAbsentDay(dateStr) {
+        return !!absentDates[dateStr];
+    }
+
+    // Keeps a just-opened "Note: ..." popup fully on-screen by nudging it
+    // left/right if the centered position would run off the viewport edge
+    // (this is what was cutting the text off before).
+    function keepTooltipInView(popup) {
+        requestAnimationFrame(() => {
+            const rect = popup.getBoundingClientRect();
+            const margin = 8;
+            let shift = 0;
+            if (rect.left < margin) {
+                shift = margin - rect.left;
+            } else if (rect.right > window.innerWidth - margin) {
+                shift = (window.innerWidth - margin) - rect.right;
+            }
+            if (shift !== 0) {
+                popup.style.left = `calc(50% + ${shift}px)`;
+            }
+        });
+    }
+
     function formatHoursLabel(h) {
         return Number.isInteger(h) ? `${h}h` : `${h.toFixed(1)}h`;
     }
@@ -822,6 +903,7 @@ function initCalendar() {
                 if (isSameDate(date, selectedDate)) dayButton.classList.add("active");
                 if (isSameDate(date, today)) dayButton.classList.add("today");
                 if (dailyHours[dateStr] > 0) dayButton.classList.add("has-duty");
+                if (isAbsentDay(dateStr)) dayButton.classList.add("absent-day");
 
                 let htmlContent = `<span>${day}</span>`;
                 let indicators = `<div style="display: flex; gap: 2px; margin-top: 2px;">`;
@@ -852,7 +934,7 @@ function initCalendar() {
 
                     const popup = document.createElement("div");
                     popup.className = "calendar-popup-tooltip";
-                    popup.style.cssText = "position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%); background: #1e293b; color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 11px; white-space: nowrap; z-index: 9999; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);";
+                    popup.style.cssText = "position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%); background: #1e293b; color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 11px; white-space: normal; max-width: min(220px, 80vw); width: max-content; text-align: left; line-height: 1.4; z-index: 9999; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);";
                     
                     let textToShow = [];
                     if (hoursLogged > 0) textToShow.push(`Hours Logged: ${formatHoursLabel(hoursLogged)}`);
@@ -862,6 +944,7 @@ function initCalendar() {
                     
                     popup.innerHTML = textToShow.join("<br>");
                     dayButton.appendChild(popup);
+                    keepTooltipInView(popup);
 
                     setTimeout(() => {
                         const closePopup = (ev) => {
@@ -906,6 +989,7 @@ function initCalendar() {
             if (isSameDate(date, selectedDate)) dayButton.classList.add("active");
             if (isSameDate(date, today)) dayButton.classList.add("today");
             if (dailyHours[dateStr] > 0) dayButton.classList.add("has-duty");
+            if (isAbsentDay(dateStr)) dayButton.classList.add("absent-day");
 
             let htmlContent = `
                 <span class="day-number">${date.getDate()}</span>
@@ -943,7 +1027,7 @@ function initCalendar() {
 
                 const popup = document.createElement("div");
                 popup.className = "calendar-popup-tooltip";
-                popup.style.cssText = "position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%); background: #1e293b; color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 11px; white-space: nowrap; z-index: 9999; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);";
+                popup.style.cssText = "position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%); background: #1e293b; color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 11px; white-space: normal; max-width: min(220px, 80vw); width: max-content; text-align: left; line-height: 1.4; z-index: 9999; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);";
                 
                 let textToShow = [];
                 if (hoursLogged > 0) textToShow.push(`Hours Logged: ${formatHoursLabel(hoursLogged)}`);
@@ -953,6 +1037,7 @@ function initCalendar() {
                 
                 popup.innerHTML = textToShow.join("<br>");
                 dayButton.appendChild(popup);
+                    keepTooltipInView(popup);
 
                 setTimeout(() => {
                     const closePopup = (ev) => {
@@ -1013,6 +1098,10 @@ function initCalendar() {
     return {
         setDailyHours(map) {
             dailyHours = map || {};
+            renderCalendar();
+        },
+        setAbsentDates(map) {
+            absentDates = map || {};
             renderCalendar();
         }
     };

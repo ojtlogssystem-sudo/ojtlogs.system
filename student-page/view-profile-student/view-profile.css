@@ -253,6 +253,134 @@ button{
     color:#6b7280;
 }
 
+/* ---------- Present / Late / Absent ---------- */
+
+.hero-stats--attendance{
+    margin-top:8px;
+}
+
+.stat-present strong{ color:#15803d; }
+.stat-late strong{ color:#b45309; }
+.stat-absent strong{ color:#b91c1c; }
+
+.stat-present{ background:#f0fdf4; border-color:#bbf7d0; }
+.stat-late{ background:#fffbeb; border-color:#fde68a; }
+.stat-absent{ background:#fef2f2; border-color:#fecaca; }
+
+/* ---------- OJT schedule (same look as the students page) ---------- */
+
+.sched-block{
+    margin-top:18px;
+    padding-top:14px;
+    border-top:1px solid var(--line);
+}
+
+.sched-block h4{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:10px;
+    font-size:13px;
+    font-weight:600;
+    color:#111827;
+}
+
+.sched-block h4 i{
+    color:var(--primary);
+}
+
+.sched-empty{
+    font-size:13px;
+    color:var(--label);
+}
+
+.schedule-badges{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+}
+
+.schedule-badge{
+    display:inline-flex;
+    align-items:center;
+    padding:6px 12px;
+    border-radius:20px;
+    font-size:12.5px;
+    font-weight:600;
+    white-space:nowrap;
+}
+
+.schedule-badge.morning{
+    background:#fff7ed;
+    color:#c2410c;
+    border:1px solid #fed7aa;
+}
+
+.schedule-badge.afternoon{
+    background:#eff6ff;
+    color:#1d4ed8;
+    border:1px solid #bfdbfe;
+}
+
+.modality-pill{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    padding:4px 12px;
+    border-radius:999px;
+    font-size:12.5px;
+    font-weight:600;
+}
+
+.modality-pill i{
+    font-size:11px;
+}
+
+.modality-pill.onsite{
+    background:#eff6ff;
+    color:#1d4ed8;
+    border:1px solid #bfdbfe;
+}
+
+.modality-pill.wfh{
+    background:#f0fdf4;
+    color:#15803d;
+    border:1px solid #bbf7d0;
+}
+
+.day-chips{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-top:14px;
+}
+
+.day-chip{
+    width:28px;
+    height:28px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:11px;
+    font-weight:700;
+    background:#f1f5f9;
+    color:#94a3b8;
+    border:1px solid #e2e8f0;
+}
+
+.day-chip.active{
+    background:var(--primary);
+    color:var(--white);
+    border-color:var(--primary);
+    box-shadow:0 2px 5px rgba(171,10,10,.25);
+}
+
+.day-chip.today{
+    outline:2px solid #fecaca;
+    outline-offset:2px;
+}
+
 .btn-edit{
     width:100%;
     display:inline-flex;

@@ -175,6 +175,8 @@ body {
     margin: 0;
     font-family: Arial, sans-serif;
     font-size: 14px;
+    display:flex;
+    margin-left: -26px;
     font-weight: normal;
     color: #000;
     text-align: left;
@@ -382,4 +384,124 @@ body {
     font-size: 14px;
     font-weight: bold;
     color: #111827;
+}
+
+/* ========================================
+   MOBILE VIEW
+   ======================================== */
+
+html {
+    overflow-x: hidden;
+}
+
+.table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media screen and (max-width: 768px) {
+    body {
+        margin: 16px;
+        overflow-x: hidden;
+    }
+
+    .header-logo {
+        width: 90px;
+    }
+
+    .header p,
+    .header {
+        font-size: 11px;
+    }
+
+    .title-bar {
+        font-size: 16px;
+        padding: 8px 4px;
+    }
+
+    /* Stack Name/Company and Section/Date instead of a 2-column grid,
+       which was wide enough (80px gap + 100px extra padding-left) to
+       push the second column off-screen on narrow viewports. */
+    .report-info-row {
+        grid-template-columns: 1fr;
+        column-gap: 0;
+        row-gap: 10px;
+        margin-bottom: 10px;
+    }
+
+    .report-info-row .report-info-item:nth-child(2) {
+        padding-left: 0;
+    }
+
+    .report-date-line {
+        min-width: 100px;
+    }
+
+    /* Table scrolls horizontally within its own wrapper instead of
+       squeezing/clipping columns against the edge of the screen. */
+    .table-wrapper {
+        border: 1px solid #000;
+    }
+
+    table {
+        width: max-content;
+        min-width: 100%;
+    }
+
+    th, td {
+        font-size: 12px;
+        padding: 8px 6px;
+        white-space: nowrap;
+    }
+
+    .col-acc {
+        white-space: normal;
+    }
+
+    /* Buttons/week-nav wrap and shrink so they don't overflow either */
+    .no-print button {
+        padding: 8px 10px !important;
+        font-size: 13px;
+    }
+
+    .week-nav {
+        gap: 6px;
+    }
+
+    .week-label {
+        min-width: 0;
+        flex: 1 1 100%;
+        order: -1;
+    }
+
+    /* The -70px shift was tuned for desktop width; on mobile it pushes
+       the certification text and signature line off the left edge. */
+    .supervisor-certification,
+    .supervisor-signature {
+        transform: translateX(0);
+    }
+
+    .supervisor-signature {
+        gap: 20px;
+    }
+
+    .signature-box {
+        width: 100%;
+        max-width: 240px;
+    }
+
+    .footer-line,
+    .footer-bottom-row {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    .footer-accent-box {
+        width: 30%;
+    }
+
+    .footer-title-text {
+        font-size: 15px;
+    }
 }

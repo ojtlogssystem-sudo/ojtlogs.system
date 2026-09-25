@@ -75,7 +75,38 @@ function hoursToHM(hoursFloat) {
     return `${h}h ${m}m`;
 }
 
+/* ==========================================
+   INITIAL LOADING OVERLAY
+   Naka-block ito sa buong dashboard hanggang
+   matapos ang unang loadStudentData() fetch at
+   ang unang onSnapshot() ng attendance/activity
+   listeners. Dito lang dapat makikita ng user
+   ang totoong Hours Completed, Status, Today's
+   Attendance, at Recent Activity — hindi na yung
+   mga default/placeholder na "Loading...", "0
+   hours", "--".
+========================================== */
+function hideDashboardLoadingOverlay() {
+    const overlay = document.getElementById("dashboard-loading-overlay");
+    if (!overlay || overlay.dataset.hidden === "true") return;
+    overlay.dataset.hidden = "true";
+    overlay.classList.add("fade-out");
+    setTimeout(() => overlay.remove(), 300);
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
+    // Safety net: kung sakaling matagal ang koneksyon o may error na
+    // hindi na-catch sa fetch/listener chain, huwag hayaang ma-stuck ang
+    // user sa loading screen magpakailanman — itago pa rin pagkalipas ng
+    // ilang segundo.
+    setTimeout(() => {
+        const overlay = document.getElementById("dashboard-loading-overlay");
+        if (overlay && overlay.dataset.hidden !== "true") {
+            console.warn("Dashboard loading overlay auto-hidden after timeout — check network/Firestore.");
+            hideDashboardLoadingOverlay();
+        }
+    }, 15000);
+
     const modalOverlay = document.getElementById("activities-modal-overlay");
     if (modalOverlay) {
         modalOverlay.classList.remove("show");
@@ -105,8 +136,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             await loadStudentData(user);
-            listenToStudentAttendance(user.uid);
-            listenToActivities(user.uid);
+            // Hintayin munang dumating ang UNANG snapshot ng attendance at
+            // activity listeners (hindi lang yung isang beses na profile
+            // fetch) bago tanggalin ang loading overlay — dito pa lang
+            // dapat makikita ng user ang totoong Today's Attendance at
+            // Recent Activity, hindi na yung mga "--"/"Loading..." default.
+            await Promise.all([
+                listenToStudentAttendance(user.uid),
+                listenToActivities(user.uid)
+            ]).finally(hideDashboardLoadingOverlay);
         } else {
             window.location.href = "../student_login/student_login.html";
         }
@@ -240,6 +278,12 @@ function calculateHoursFromTime(timeIn, timeOut) {
 function listenToStudentAttendance(userId) {
     const attendanceQuery = query(collection(db, "attendance"), where("userId", "==", userId));
 
+    // Ang listener mismo ay tuloy-tuloy (onSnapshot), pero ibinabalik natin
+    // ito bilang Promise na nare-resolve sa UNANG snapshot lang, para may
+    // mahintay ang caller (loading overlay) bago ipakita ang totoong data.
+    let resolveFirstSnapshot;
+    const firstSnapshotReady = new Promise((resolve) => { resolveFirstSnapshot = resolve; });
+
     onSnapshot(attendanceQuery, async (snapshot) => {
         let todayTimeIn = "--";
         let todayTimeOut = "--";
@@ -360,7 +404,14 @@ function listenToStudentAttendance(userId) {
         } catch (updateErr) {
             console.warn("Could not sync completed hours to profile:", updateErr);
         }
+
+        // Resolving an already-resolved Promise is a no-op, so this is safe
+        // to call on every subsequent snapshot too — only the first call
+        // actually matters to callers awaiting firstSnapshotReady.
+        resolveFirstSnapshot();
     });
+
+    return firstSnapshotReady;
 }
 
 /* ==========================================
@@ -560,6 +611,12 @@ let allActivityLogs = [];
 function listenToActivities(userId) {
     const attendanceQuery = query(collection(db, "attendance"), where("userId", "==", userId));
 
+    // Same pattern as listenToStudentAttendance(): the listener keeps
+    // running, but the returned Promise resolves once, on the first
+    // snapshot, so the caller can wait for real activity data.
+    let resolveFirstSnapshot;
+    const firstSnapshotReady = new Promise((resolve) => { resolveFirstSnapshot = resolve; });
+
     onSnapshot(attendanceQuery, (snapshot) => {
         const logs = [];
 
@@ -621,7 +678,11 @@ function listenToActivities(userId) {
         if (modalOverlay && modalOverlay.classList.contains("show")) {
             renderActivityList(document.getElementById("all-activities-list"), logs);
         }
+
+        resolveFirstSnapshot();
     });
+
+    return firstSnapshotReady;
 }
 
 function renderActivityList(listEl, activities) {

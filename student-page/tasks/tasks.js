@@ -34,7 +34,35 @@ const db = getFirestore(app);
 let rawUserDocs = [];
 let selectedFilterDate = null;
 
+/* ==========================================
+   INITIAL LOADING OVERLAY
+   Naka-block ito sa buong page hanggang matapos
+   ang unang onSnapshot() ng attendance/task data.
+   Dito lang dapat makikita ng user ang totoong
+   Task History — hindi na yung "Loading logged-in
+   user tasks..." placeholder.
+========================================== */
+function hideTasksLoadingOverlay() {
+    const overlay = document.getElementById("tasks-loading-overlay");
+    if (!overlay || overlay.dataset.hidden === "true") return;
+    overlay.dataset.hidden = "true";
+    overlay.classList.add("fade-out");
+    setTimeout(() => overlay.remove(), 300);
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+    // Safety net: kung sakaling matagal ang koneksyon o may error na
+    // hindi na-catch sa fetch/listener chain, huwag hayaang ma-stuck ang
+    // user sa loading screen magpakailanman — itago pa rin pagkalipas ng
+    // ilang segundo.
+    setTimeout(() => {
+        const overlay = document.getElementById("tasks-loading-overlay");
+        if (overlay && overlay.dataset.hidden !== "true") {
+            console.warn("Tasks loading overlay auto-hidden after timeout — check network/Firestore.");
+            hideTasksLoadingOverlay();
+        }
+    }, 15000);
+
     // 1. Load Sidebar at i-highlight ang "Tasks"
     loadSidebar("Tasks");
 
@@ -161,6 +189,7 @@ function fetchUserTasks(userId) {
                 `;
             }
             rawUserDocs = [];
+            hideTasksLoadingOverlay();
             return;
         }
 
@@ -174,6 +203,7 @@ function fetchUserTasks(userId) {
         });
 
         renderFilteredTasks();
+        hideTasksLoadingOverlay();
     }, (error) => {
         console.error("Firestore Error:", error);
         if (container) {
@@ -183,6 +213,7 @@ function fetchUserTasks(userId) {
                 </div>
             `;
         }
+        hideTasksLoadingOverlay();
     });
 }
 

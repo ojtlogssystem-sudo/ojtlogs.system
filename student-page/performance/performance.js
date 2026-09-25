@@ -53,7 +53,34 @@ function $(id) {
    PAGE LOAD
 ========================================== */
 
+/* ==========================================
+   INITIAL LOADING OVERLAY
+   Naka-block ito sa buong page hanggang matapos
+   ang unang loadStudentPerformance() fetch. Dito
+   pa lang dapat makikita ng user ang totoong
+   evaluation data, hindi na yung mga placeholder.
+========================================== */
+function hidePerformanceLoadingOverlay() {
+    const overlay = $("performance-loading-overlay");
+    if (!overlay || overlay.dataset.hidden === "true") return;
+    overlay.dataset.hidden = "true";
+    overlay.classList.add("fade-out");
+    setTimeout(() => overlay.remove(), 300);
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+
+    // Safety net: kung sakaling matagal ang koneksyon o may error na
+    // hindi na-catch sa fetch chain, huwag hayaang ma-stuck ang user
+    // sa loading screen magpakailanman — itago pa rin pagkalipas ng
+    // ilang segundo.
+    setTimeout(() => {
+        const overlay = $("performance-loading-overlay");
+        if (overlay && overlay.dataset.hidden !== "true") {
+            console.warn("Performance loading overlay auto-hidden after timeout — check network/Firestore.");
+            hidePerformanceLoadingOverlay();
+        }
+    }, 15000);
 
     loadSidebar("Performance");
 
@@ -67,6 +94,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         await loadStudentPerformance(user);
+
+        hidePerformanceLoadingOverlay();
 
     });
 

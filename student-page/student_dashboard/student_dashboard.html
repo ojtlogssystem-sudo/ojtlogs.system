@@ -13,6 +13,16 @@
 </head>
 <body>
 
+<!-- INITIAL LOADING OVERLAY
+     Itinatago ito ng student_dashboard.js pagkatapos matapos ang unang
+     pag-fetch ng student profile at unang snapshot ng attendance/activity
+     data, para hindi makita ng user ang mga placeholder ("Loading...",
+     "0 hours", "--") bago pa man dumating ang tunay na datos. -->
+<div class="page-loading-overlay" id="dashboard-loading-overlay">
+    <div class="loading-spinner" aria-hidden="true"></div>
+    <p>Loading your dashboard…</p>
+</div>
+
 <div class="dashboard">
     <div id="sidebar-container"></div>
 
@@ -27,10 +37,6 @@
                     <div>
                         <h5>Hours Completed</h5>
                         <h2>0 hours</h2>
-                    </div>
-
-                    <div class="card-icon pink-icon">
-                        <i class="fa-regular fa-clock"></i>
                     </div>
                 </div>
 
@@ -48,10 +54,6 @@
                             <h5>Required Hours</h5>
                             <h2>-- hours</h2>
                         </div>
-
-                        <div class="card-icon pink-icon">
-                            <i class="fa-solid fa-bullseye"></i>
-                        </div>
                     </div>
 
                     <p class="card-sub">-- hours remaining</p>
@@ -62,10 +64,6 @@
                         <div>
                             <h5>Internship Status</h5>
                             <h2>Loading...</h2>
-                        </div>
-
-                        <div class="card-icon pink-icon">
-                            <i class="fa-solid fa-shield-halved"></i>
                         </div>
                     </div>
 

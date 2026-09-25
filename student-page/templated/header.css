@@ -38,8 +38,8 @@ header {
     gap: 6px;
     padding: 5px 12px;
     border-radius: 999px;
-    background: linear-gradient(135deg, #db915c, #c8bbbb);
-    border: 1px solid #ddd6fe;
+    background: transparent;
+    border: 1px solid #e60707;
     color: #b02217;
     font-size: 11.5px;
     font-weight: 600;

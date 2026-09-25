@@ -18,6 +18,17 @@
 
 <body>
 
+<!-- INITIAL LOADING OVERLAY
+     Pinipigilan nito ang user na maka-click ng agad sa mga button
+     (Time In / Time Out) bago pa man matapos ang unang pag-fetch/
+     verify ng totoong attendance status mula Firestore. Awtomatiko
+     itong matatanggal ng attendance.js pagkatapos ng unang
+     refreshAttendanceUI(). -->
+<div class="page-loading-overlay" id="attendance-loading-overlay">
+    <div class="loading-spinner" aria-hidden="true"></div>
+    <p>Loading your attendance data…</p>
+</div>
+
 <div class="dashboard">
     <div id="sidebar-container"></div>
 
@@ -171,30 +182,47 @@
     </div>
 </div>
 
-<!-- 2. PHOTO PROOF MODAL (TIME IN - CAMERA CAPTURE) -->
+<!-- 2. PHOTO PROOF MODAL (TIME IN - CAMERA CAPTURE, mobile-camera style) -->
 <div class="scanner-modal" id="photo-modal" hidden>
-    <div class="scanner-dialog">
-        <h3><i class="fa-solid fa-camera"></i> Take Selfie Photo Proof</h3>
-        <p>Live camera capture with automatic timestamp</p>
-        
+    <div class="scanner-dialog camera-dialog">
+
         <div class="photo-preview-wrapper">
             <video id="photo-video" autoplay playsinline></video>
             <canvas id="photo-canvas" hidden></canvas>
-            
+
             <div class="photo-overlay-stamp">
                 <span><i class="fa-regular fa-clock"></i> <span id="stamp-datetime">--:-- --</span></span>
                 <span><i class="fa-solid fa-building"></i> <span id="stamp-location">Loading company...</span></span>
             </div>
         </div>
 
-        <div class="modal-actions">
-            <button class="action-btn cancel-btn" id="photo-cancel" type="button">Close</button>
-            <button class="action-btn capture-btn" id="capture-photo-btn" type="button">
-                <i class="fa-solid fa-camera"></i> Complete Time In
+        <!-- Native camera-app style bottom bar: small Cancel box sa kaliwa,
+             malaking round shutter (Capture Photo) sa gitna, Switch Camera
+             (front/back) na maliit na box sa kanan. Pagkatapos mag-capture,
+             papalit ang shutter sa "Complete Time In" pill at ang switch-camera
+             sa Retake — existing hidden-toggle logic pa rin sa JS ang gumagalaw. -->
+        <div class="modal-actions camera-actions">
+            <button class="camera-side-btn" id="photo-cancel" type="button" title="Close">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div class="camera-center-slot">
+                <button class="camera-shutter-btn" id="capture-photo-btn" type="button" title="Capture Photo">
+                    <i class="fa-solid fa-camera"></i>
+                </button>
+                <button class="camera-shutter-btn confirm-btn" id="confirm-photo-btn" type="button" hidden>
+                    <i class="fa-solid fa-check-circle"></i> Complete Time In
+                </button>
+            </div>
+
+            <button class="camera-side-btn" id="switch-camera-btn" type="button" title="Switch camera">
+                <i class="fa-solid fa-camera-rotate"></i>
+            </button>
+            <button class="camera-side-btn retake-icon-btn" id="retake-photo-btn" type="button" title="Retake" hidden>
+                <i class="fa-solid fa-rotate-left"></i>
             </button>
         </div>
     </div>
-    
 </div>
 
 <!-- 3. TASK REPORT MODAL (TIME OUT) -->

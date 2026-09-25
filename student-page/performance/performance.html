@@ -29,6 +29,15 @@
 
 <body>
 
+<!-- INITIAL LOADING OVERLAY
+     Itinatago ito ng performance.js pagkatapos matapos ang unang
+     loadStudentPerformance() fetch, para hindi makita ng user ang
+     placeholder content bago pa man dumating ang tunay na datos. -->
+<div class="page-loading-overlay" id="performance-loading-overlay">
+    <div class="loading-spinner" aria-hidden="true"></div>
+    <p>Loading your performance…</p>
+</div>
+
 <div class="dashboard">
 
     <!-- SIDEBAR -->

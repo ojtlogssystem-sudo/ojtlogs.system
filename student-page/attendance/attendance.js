@@ -506,7 +506,37 @@ function showToast(message, type = "success") {
     }, 3500);
 }
 
+/* ==========================================
+   INITIAL LOADING OVERLAY
+   Naka-block ito sa buong page (kasama ang mga
+   Time In / Time Out button) hanggang matapos
+   ang unang refreshAttendanceUI() fetch. Ito ang
+   pumipigil sa bug na maka-click agad ang user
+   bago pa na-verify kung dapat ba talagang naka-
+   enable/disable ang mga button ayon sa totoong
+   estado niya ngayong araw.
+========================================== */
+function hideAttendanceLoadingOverlay() {
+    const overlay = document.getElementById("attendance-loading-overlay");
+    if (!overlay || overlay.dataset.hidden === "true") return;
+    overlay.dataset.hidden = "true";
+    overlay.classList.add("fade-out");
+    setTimeout(() => overlay.remove(), 300);
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
+    // Safety net: kung sakaling matagal ang koneksyon o may error na
+    // hindi na-catch sa fetch chain, huwag hayaang ma-stuck ang user
+    // sa loading screen magpakailanman — itago pa rin pagkalipas ng
+    // ilang segundo.
+    setTimeout(() => {
+        const overlay = document.getElementById("attendance-loading-overlay");
+        if (overlay && overlay.dataset.hidden !== "true") {
+            console.warn("Attendance loading overlay auto-hidden after timeout — check network/Firestore.");
+            hideAttendanceLoadingOverlay();
+        }
+    }, 15000);
+
     // Header markup (bell, avatar, dropdowns) is injected async — anything
     // that targets its elements (notifications, mobile-menu wiring) has to
     // wait for it first. autoLoadProfile lets the shared header populate the
@@ -743,7 +773,10 @@ function initAttendanceSystem(currentUser) {
     const photoCanvas = document.getElementById("photo-canvas");
     const stampDatetime = document.getElementById("stamp-datetime");
     const stampLocation = document.getElementById("stamp-location");
+    const switchCameraBtn = document.getElementById("switch-camera-btn");
     const capturePhotoBtn = document.getElementById("capture-photo-btn");
+    const retakePhotoBtn = document.getElementById("retake-photo-btn");
+    const confirmPhotoBtn = document.getElementById("confirm-photo-btn");
     const photoCancel = document.getElementById("photo-cancel");
 
     const taskModal = document.getElementById("task-modal");
@@ -758,10 +791,18 @@ function initAttendanceSystem(currentUser) {
     let qrScanner = null;
     let scanMode = null; 
     let photoStream = null;
+    let currentFacingMode = "user";
+    let capturedPhotoBase64 = null;
+    let capturedAtTime = null;
     let currentLocationStr = "Company Grounds";
     let clockInterval = null;
 
-    refreshAttendanceUI();
+    // Hintayin munang matapos ang unang pag-verify ng attendance status
+    // (Active / Completed / No Duty / Rejected / atbp.) bago tanggalin
+    // ang loading overlay — dito pa lang dapat pwede nang mag-click ang
+    // user ng Time In / Time Out. .finally() para tanggalin pa rin ang
+    // overlay kahit magka-error sa fetch, para hindi ma-stuck ang user.
+    refreshAttendanceUI().finally(hideAttendanceLoadingOverlay);
 
     // --- 1. QR SCANNER LOGIC ---
     const stopQRScanner = async () => {
@@ -905,17 +946,54 @@ function initAttendanceSystem(currentUser) {
 
     scannerCancel?.addEventListener("click", async () => { await stopQRScanner(); scannerModal.hidden = true; });
 
-    // --- 2. LIVE PHOTO PROOF ---
+    // --- 2. LIVE PHOTO PROOF (with front/back camera switch, capture + retake) ---
+
+    // Nag-a-attempt mag-start ng bagong stream gamit ang hiniling na facingMode
+    // BAGO itigil ang lumang stream — kung mabigo ang bagong camera (halimbawa,
+    // walang back camera ang device), nananatiling gumagana ang dating preview.
+    const startPhotoCamera = async (facingMode) => {
+        const newStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: facingMode } },
+            audio: false
+        });
+
+        if (photoStream) photoStream.getTracks().forEach(t => t.stop());
+        photoStream = newStream;
+        photoVideo.srcObject = photoStream;
+        currentFacingMode = facingMode;
+    };
+
+    // Ibinabalik ang modal sa "live camera" na estado — ginagamit pagbukas
+    // ng modal, at tuwing pipindutin ang Retake.
+    const resetPhotoCaptureUI = () => {
+        capturedPhotoBase64 = null;
+        capturedAtTime = null;
+
+        if (photoCanvas) photoCanvas.hidden = true;
+        if (photoVideo) photoVideo.hidden = false;
+        if (switchCameraBtn) switchCameraBtn.hidden = false;
+
+        if (capturePhotoBtn) {
+            capturePhotoBtn.hidden = false;
+            capturePhotoBtn.disabled = false;
+            capturePhotoBtn.innerHTML = `<i class="fa-solid fa-camera"></i> Capture Photo`;
+        }
+        if (retakePhotoBtn) retakePhotoBtn.hidden = true;
+        if (confirmPhotoBtn) {
+            confirmPhotoBtn.hidden = true;
+            confirmPhotoBtn.disabled = false;
+            confirmPhotoBtn.innerHTML = `<i class="fa-solid fa-check-circle"></i> Complete Time In`;
+        }
+    };
+
     const openPhotoProofModal = async () => {
         photoModal.hidden = false;
         fetchGeolocation();
+        resetPhotoCaptureUI();
 
         try {
-            photoStream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: "user" }, 
-                audio: false 
-            });
-            photoVideo.srcObject = photoStream;
+            currentFacingMode = "user";
+            await startPhotoCamera(currentFacingMode);
         } catch (err) {
             showToast("Camera access required for photo proof.", "error");
             photoModal.hidden = true;
@@ -931,9 +1009,26 @@ function initAttendanceSystem(currentUser) {
 
     const closePhotoModal = () => {
         if (photoStream) photoStream.getTracks().forEach(t => t.stop());
+        photoStream = null;
         if (clockInterval) clearInterval(clockInterval);
+        resetPhotoCaptureUI();
         photoModal.hidden = true;
     };
+
+    // Front/Back camera toggle. Kung sablay ang paglipat (halimbawa, iisa
+    // lang ang camera ng device), nananatili ang kasalukuyang preview.
+    switchCameraBtn?.addEventListener("click", async () => {
+        switchCameraBtn.disabled = true;
+        const newMode = currentFacingMode === "user" ? "environment" : "user";
+        try {
+            await startPhotoCamera(newMode);
+        } catch (err) {
+            console.warn("Switch camera error:", err);
+            showToast("Unable to switch camera. Your device may only have one camera.", "error");
+        } finally {
+            switchCameraBtn.disabled = false;
+        }
+    });
 
     const fetchGeolocation = () => {
         // Wala nang GPS/geolocation fetching — direkta na lang ilalagay
@@ -943,9 +1038,12 @@ function initAttendanceSystem(currentUser) {
         if (stampLocation) stampLocation.textContent = currentLocationStr;
     };
 
+    // STAGE 1 — Capture: kunin ang frame mula sa live video papunta sa
+    // canvas (kasama ang timestamp/company overlay), pero hindi pa ito
+    // ini-upload. Ipinapakita muna ang frozen preview kasama ang Retake
+    // at Confirm buttons, para may pagkakataon munang tingnan/i-redo.
     capturePhotoBtn?.addEventListener("click", async () => {
         capturePhotoBtn.disabled = true;
-        capturePhotoBtn.textContent = "Saving Time In...";
 
         const w = photoVideo.videoWidth || 640;
         const h = photoVideo.videoHeight || 480;
@@ -968,7 +1066,38 @@ function initAttendanceSystem(currentUser) {
         ctx.font = "bold 20px Poppins, sans-serif"; 
         ctx.fillText(`${formattedDateStr} ${formattedAMPM} | ${currentLocationStr}`, 16, overlayY + 38);
 
-        const photoBase64 = photoCanvas.toDataURL("image/jpeg", 0.3);
+        capturedPhotoBase64 = photoCanvas.toDataURL("image/jpeg", 0.3);
+        capturedAtTime = now;
+
+        // Palitan ang live video ng frozen preview + ipakita ang
+        // Retake/Confirm, itago ang Capture at ang camera-switch button.
+        photoVideo.hidden = true;
+        photoCanvas.hidden = false;
+        if (switchCameraBtn) switchCameraBtn.hidden = true;
+
+        capturePhotoBtn.hidden = true;
+        if (retakePhotoBtn) retakePhotoBtn.hidden = false;
+        if (confirmPhotoBtn) confirmPhotoBtn.hidden = false;
+    });
+
+    // Retake — balik sa live camera view, ide-discard ang nakuhang frame.
+    retakePhotoBtn?.addEventListener("click", () => {
+        resetPhotoCaptureUI();
+    });
+
+    // STAGE 2 — Confirm: ito na ang mag-a-upload sa Firestore gamit ang
+    // nakuhang photo mula sa Capture stage.
+    confirmPhotoBtn?.addEventListener("click", async () => {
+        if (!capturedPhotoBase64) return;
+
+        confirmPhotoBtn.disabled = true;
+        confirmPhotoBtn.textContent = "Saving Time In...";
+
+        const now = capturedAtTime || await getCurrentNTPTime();
+        const formattedDateStr = formatLocalDateDisplay(now);
+        const formattedAMPM = formatAMPM(now);
+
+        const photoBase64 = capturedPhotoBase64;
         const todayStr = getLocalYYYYMMDD(now);
         const timeInStr = formattedAMPM;
         const compName = localStorage.getItem("verified_company_name") || "Partner Company";
@@ -1030,9 +1159,6 @@ function initAttendanceSystem(currentUser) {
 
         closePhotoModal();
         await refreshAttendanceUI();
-
-        capturePhotoBtn.disabled = false;
-        capturePhotoBtn.innerHTML = `<i class="fa-solid fa-camera"></i> Complete Time In`;
     });
 
     photoCancel?.addEventListener("click", closePhotoModal);

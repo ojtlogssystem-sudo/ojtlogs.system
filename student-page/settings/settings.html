@@ -14,6 +14,15 @@
 </head>
 
 <body>
+    <!-- INITIAL LOADING OVERLAY
+         Itinatago ito ng settings.js pagkatapos ma-load ang sidebar at
+         header, para hindi makita ng user ang blangkong layout habang
+         nilo-load pa ang mga ito. -->
+    <div class="page-loading-overlay" id="settings-loading-overlay">
+        <div class="loading-spinner" aria-hidden="true"></div>
+        <p>Loading settings…</p>
+    </div>
+
     <div class="dashboard">
         <div id="sidebar-container"></div>
 

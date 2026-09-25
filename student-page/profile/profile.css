@@ -718,3 +718,75 @@ body {
     cursor: not-allowed;
     opacity: 0.7;
 }
+
+/* ================= WORK MODALITY ================= */
+.modality-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.modality-option {
+    display: block;
+    cursor: pointer;
+    margin: 0;
+}
+
+.modality-option input {
+    display: none;
+}
+
+.modality-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 11px;
+    border: 1px solid #e5e5e5;
+    border-radius: 9px;
+    background: #fff;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+
+.modality-card:hover {
+    border-color: var(--primary);
+    background: #fffafa;
+}
+
+.modality-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 13px;
+}
+
+.modality-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.modality-info strong {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.modality-info small {
+    font-size: 8px;
+    color: var(--gray);
+    line-height: 1.3;
+}
+
+.modality-option input:checked + .modality-card {
+    border-color: var(--primary);
+    background: #fff6f6;
+    box-shadow: 0 0 0 1px rgba(171, 10, 10, 0.06);
+}

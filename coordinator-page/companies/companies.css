@@ -892,6 +892,190 @@ body{
     color: #b91c1c;
 }
 
+/* ==========================================
+   EVALUATION STATUS LIST (PREVIEW MODAL)
+========================================== */
+
+.eval-status-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 360px;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+.eval-status-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #f8fafc;
+}
+
+.eval-status-info h4 {
+    margin: 0 0 3px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.eval-status-info span {
+    font-size: 11px;
+    color: #64748b;
+}
+
+.eval-status-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+}
+
+.eval-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .3px;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.eval-status-badge.answered {
+    background: #fecec7;
+    color: #703131;
+    border: 1px solid #AB0A0A;
+}
+
+.eval-status-badge.waiting {
+    background: #fecec7;
+    color: #AB0A0A;
+    border: 1px solid #AB0A0A;
+}
+
+.eval-view-answers-btn {
+    border: 1px solid #AB0A0A;
+    background: #fff;
+    color: #AB0A0A;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.eval-view-answers-btn:hover {
+    background: #fff5f5;
+}
+
+.eval-empty-note {
+    text-align: center;
+    color: #94a3b8;
+    padding: 20px 0;
+    font-size: 13px;
+}
+
+/* ==========================================
+   EVALUATION ANSWERS VIEW
+========================================== */
+
+.eval-answers-meta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+    padding: 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+}
+
+.eval-answers-meta div span {
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    color: #94a3b8;
+    margin-bottom: 3px;
+}
+
+.eval-answers-meta div strong {
+    font-size: 12.5px;
+    color: #334155;
+}
+
+.eval-category-scores {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 18px;
+}
+
+.eval-category-score-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #334155;
+}
+
+.eval-category-score-row strong {
+    color: #AB0A0A;
+    font-size: 12px;
+}
+
+.eval-answer-block {
+    margin-bottom: 14px;
+}
+
+.eval-answer-block h5 {
+    margin: 0 0 5px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.eval-answer-block p {
+    margin: 0;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: #475569;
+    white-space: pre-wrap;
+}
+
+.eval-hire-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.eval-hire-pill.yes {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.eval-hire-pill.no {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
 .email-chips-input {
     flex: 1;
     min-width: 120px;
@@ -1021,22 +1205,16 @@ body{
 
 
 /* ==========================================
-   SOFT AVATAR COLORS
+   AVATAR COLORS
+   Pula na may puting initials (kapareho ng
+   "CO" avatar ng coordinator sa header)
 ========================================== */
 
-.supervisor-color-0 {
-    background: #e8e7ff;
-    color: #5148b8;
-}
-
-.supervisor-color-1 {
-    background: #dff7eb;
-    color: #16804a;
-}
-
+.supervisor-color-0,
+.supervisor-color-1,
 .supervisor-color-2 {
-    background: #fff0c9;
-    color: #a66a00;
+    background: #ab0a0a;
+    color: #ffffff;
 }
 
 

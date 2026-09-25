@@ -1,5 +1,4 @@
-
-        body {
+body {
             font-family: Arial, sans-serif;
             margin: 40px;
             color: #000;
@@ -10,7 +9,7 @@
             align-items: center;
             justify-content: center;
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 60px;
         }
         .header-logo {
             width: 120px;
@@ -19,8 +18,16 @@
         }
         .header p {
             margin: 2px;
-            font-family: "Times New Roman";
+            font-family: "Times New Roman", serif;
             font-weight: bold;
+            font-size: 12px;
+            line-height: 1.1;
+        }
+
+        /* Address / Telephone text */
+        .header {
+            font-size: 12px;
+            line-height: 1.1;
         }
         .title-bar {
             background-color: #AB0A0A;
@@ -28,7 +35,7 @@
             text-align: center;
             font-family: "Times New Roman";
             font-weight: bold;
-            font-size: 24px;
+            font-size: 20px;
             padding: 8px;
             letter-spacing: 1px;
         }
@@ -43,7 +50,7 @@
         th, td {
             border: 1px solid #000;
             padding: 12px 10px; 
-            font-size: 15px;
+            font-size: 14px;
             vertical-align: middle;
         }
         th {
@@ -53,8 +60,8 @@
         }
         .col-date { width: 13%; text-align: center; }
         .col-time { width: 12%; text-align: center; }
-        .col-acc { width: 53%; }
-        .col-hrs { width: 15%; text-align: center; }
+        .col-acc { width: 50%; }
+        .col-hrs { width: 30%; text-align: center; }
         ul {
             margin: 0;
             padding-left: 20px;
@@ -66,11 +73,11 @@
             padding: 10px 20px;
             font-family: "Times New Roman";
             font-weight: bold;
-            font-size: 18px;
+            font-size: 16px;
             height: 18px;
         }
         .footer-section {
-            margin-top: 80px;
+            margin-top: 40px;
             display: flex;
             justify-content: flex-end;
             width: 100%;
@@ -127,3 +134,374 @@
                 page-break-inside: avoid;
             }
         }
+
+/* ========================================
+   SUPERVISOR'S NOTES
+   ======================================== */
+
+.supervisor-notes {
+    width: 100%;
+    margin-top: 25px;
+    margin-bottom: 10px;
+    font-family: Arial, sans-serif;
+}
+
+.notes-title {
+    font-size: 14px;
+    font-weight: normal;
+    margin-bottom: 8px;
+}
+
+.notes-box {
+    width: 100%;
+    height: 75px;
+    border: 1px solid #000;
+    box-sizing: border-box;
+}
+
+/* ========================================
+   CERTIFICATION — LEFT
+   ======================================== */
+
+.supervisor-certification {
+    width: 100%;
+    margin-top: 0;
+    margin-bottom: 30px;
+    margin-left: 0;
+    text-align: left;
+}
+
+.certification-text {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    display:flex;
+    margin-left: -26px;
+    font-weight: normal;
+    color: #000;
+    text-align: left;
+}
+
+.supervisor-certification {
+    transform: translateX(-70px);
+}
+
+.supervisor-signature {
+    transform: translateX(-70px);
+}
+
+/* ========================================
+   SIGNATURES — LEFT
+   ======================================== */
+
+.supervisor-signature {
+    width: 100%;
+    display: flex;
+    justify-content: flex-start;
+    gap: 65px;
+    margin-bottom: 70px;
+    margin-left: 0;
+}
+
+.signature-box {
+    width: 240px;
+    text-align: center;
+}
+
+.signature-line {
+    width: 100%;
+    height: 28px;
+    border-bottom: 1.5px solid #000;
+}
+
+.signature-label {
+    margin-top: 7px;
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    font-weight: normal;
+    text-align: center;
+    color: #000;
+}
+
+/* ========================================
+   WEEKLY ACCOMPLISHMENT
+   FROM CENTER TO RIGHT
+   ======================================== */
+
+.footer-line {
+    border: none;
+    border-top: 2px solid #AB0A0A;
+    width: 85%;
+    margin: 0 0 0 15%;
+}
+
+.footer-bottom-row {
+    width: 85%;
+    margin: -15px 0 0 15%;
+    display: flex;
+    align-items: flex-start;
+}
+
+.footer-accent-box {
+    width: 18%;
+    height: 25px;
+    margin-top: 15px;
+    background-color: #AB0A0A;
+    flex-shrink: 0;
+}
+
+.footer-title-text {
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    font-size: 18px;
+    letter-spacing: 1px;
+    color: #000;
+    padding-left: 15px;
+    margin-top: 20px;
+}
+
+
+/* PRINT */
+@media print {
+    .report-information {
+        margin-top: 16px;
+        margin-bottom: 25px;
+    }
+
+    .report-info-row {
+        column-gap: 80px;
+        margin-bottom: 14px;
+    }
+
+    .report-info-row .report-info-item:nth-child(2) {
+        padding-left: 45px;
+    }
+
+    .report-info-label,
+    .report-info-value {
+        font-family: Arial, sans-serif;
+        font-size: 14px;
+        font-weight: normal;
+    }
+
+    .report-date-line {
+        min-width: 180px;
+    }
+}
+
+/* ========================================
+   REPORT INFORMATION
+   ======================================== */
+
+.report-information {
+    width: 100%;
+    margin: 18px 0 25px;
+    font-family: Arial, sans-serif;
+    color: #000;
+}
+
+.report-info-row {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 80px;
+    margin-bottom: 14px;
+}
+
+.report-info-item {
+    display: flex;
+    align-items: baseline;
+    min-width: 0;
+}
+
+.report-info-label {
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    font-weight: normal;
+    margin-right: 8px;
+    white-space: nowrap;
+}
+
+.report-info-value {
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    font-weight: normal;
+}
+
+.report-info-row .report-info-item:nth-child(2) {
+    padding-left: 100px;
+}
+
+.report-date-line {
+    display: inline-block;
+    min-width: 120px; /* lalapad ayon sa laman (petsa ng linggo) */
+    height: 17px;
+    padding: 0 6px;
+    border-bottom: 1px solid #000;
+    margin-left: 2px;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    line-height: 17px;
+    white-space: nowrap;
+}
+
+/* ========================================
+   WEEK SELECTOR (screen only)
+   ======================================== */
+
+.week-nav {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.week-nav button {
+    padding: 6px 12px;
+    background: #f3f4f6;
+    color: #111827;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.week-nav button:hover:not(:disabled) {
+    background: #e5e7eb;
+}
+
+.week-nav .week-this {
+    background: #fff;
+    color: #AB0A0A;
+    border-color: #AB0A0A;
+}
+
+.week-label {
+    min-width: 190px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: bold;
+    color: #111827;
+}
+
+/* ========================================
+   MOBILE VIEW
+   ======================================== */
+
+html {
+    overflow-x: hidden;
+}
+
+.table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media screen and (max-width: 768px) {
+    body {
+        margin: 16px;
+        overflow-x: hidden;
+    }
+
+    .header-logo {
+        width: 90px;
+    }
+
+    .header p,
+    .header {
+        font-size: 11px;
+    }
+
+    .title-bar {
+        font-size: 16px;
+        padding: 8px 4px;
+    }
+
+    /* Stack Name/Company and Section/Date instead of a 2-column grid,
+       which was wide enough (80px gap + 100px extra padding-left) to
+       push the second column off-screen on narrow viewports. */
+    .report-info-row {
+        grid-template-columns: 1fr;
+        column-gap: 0;
+        row-gap: 10px;
+        margin-bottom: 10px;
+    }
+
+    .report-info-row .report-info-item:nth-child(2) {
+        padding-left: 0;
+    }
+
+    .report-date-line {
+        min-width: 100px;
+    }
+
+    /* Table scrolls horizontally within its own wrapper instead of
+       squeezing/clipping columns against the edge of the screen. */
+    .table-wrapper {
+        border: 1px solid #000;
+    }
+
+    table {
+        width: max-content;
+        min-width: 100%;
+    }
+
+    th, td {
+        font-size: 12px;
+        padding: 8px 6px;
+        white-space: nowrap;
+    }
+
+    .col-acc {
+        white-space: normal;
+    }
+
+    /* Buttons/week-nav wrap and shrink so they don't overflow either */
+    .no-print button {
+        padding: 8px 10px !important;
+        font-size: 13px;
+    }
+
+    .week-nav {
+        gap: 6px;
+    }
+
+    .week-label {
+        min-width: 0;
+        flex: 1 1 100%;
+        order: -1;
+    }
+
+    /* The -70px shift was tuned for desktop width; on mobile it pushes
+       the certification text and signature line off the left edge. */
+    .supervisor-certification,
+    .supervisor-signature {
+        transform: translateX(0);
+    }
+
+    .supervisor-signature {
+        gap: 20px;
+    }
+
+    .signature-box {
+        width: 100%;
+        max-width: 240px;
+    }
+
+    .footer-line,
+    .footer-bottom-row {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    .footer-accent-box {
+        width: 30%;
+    }
+
+    .footer-title-text {
+        font-size: 15px;
+    }
+}

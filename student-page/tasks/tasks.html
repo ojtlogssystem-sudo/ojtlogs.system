@@ -13,6 +13,16 @@
 </head>
 <body>
 
+    <!-- INITIAL LOADING OVERLAY
+         Itinatago ito ng tasks.js pagkatapos matapos ang unang onSnapshot()
+         ng attendance/task data, para hindi makita ng user ang placeholder
+         ("Loading logged-in user tasks...") bago pa man dumating ang tunay
+         na datos. -->
+    <div class="page-loading-overlay" id="tasks-loading-overlay">
+        <div class="loading-spinner" aria-hidden="true"></div>
+        <p>Loading your task history…</p>
+    </div>
+
     <div class="dashboard">
         <div id="sidebar-container"></div>
 

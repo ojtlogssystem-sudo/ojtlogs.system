@@ -1,0 +1,894 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { 
+    getAuth, 
+    onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { 
+    getFirestore, 
+    doc, 
+    getDoc, 
+    updateDoc,
+    collection, 
+    query, 
+    where, 
+    onSnapshot 
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { loadHeader, updateHeaderCompletionEstimate } from "../templated/header-loader.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyDvMQyEHIIJTW4etj4VQHjjIzd8oB2geJ8",
+    authDomain: "ojt-logs-e1892.firebaseapp.com",
+    databaseURL: "https://ojt-logs-e1892-default-rtdb.firebaseio.com",
+    projectId: "ojt-logs-e1892",
+    storageBucket: "ojt-logs-e1892.firebasestorage.app",
+    messagingSenderId: "1012575426857",
+    appId: "1:1012575426857:web:c2d6dbcdc0dc0ad965ff38"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let studentRequiredHours = 600;
+let calendarController = null;
+
+document.addEventListener("DOMContentLoaded", async () => {
+    const modalOverlay = document.getElementById("activities-modal-overlay");
+    if (modalOverlay) {
+        modalOverlay.style.display = "none";
+    }
+
+    fetch("../templated/sidebar.html")
+        .then(response => response.ok ? response.text() : "")
+        .then(html => {
+            const sidebarContainer = document.getElementById("sidebar-container");
+            if (sidebarContainer && html) sidebarContainer.innerHTML = html;
+            initSidebar("Dashboard");
+        })
+        .catch(err => console.error("Error loading sidebar:", err));
+
+    // Header markup (bell, avatar, dropdowns) is injected async, so anything
+    // that targets its elements has to wait for it to finish loading first.
+    // autoLoadProfile lets the shared header module populate the avatar
+    // (including profile photo) and name straight from Firestore, the same
+    // way every other page (e.g. Performance) already does it. The header
+    // module also owns the notification bell/panel on its own — no per-page
+    // wiring needed, so the dashboard no longer keeps its own duplicate copy.
+    await loadHeader("Dashboard", { autoLoadProfile: true });
+
+    initModalFetchAndLoad();
+    calendarController = initCalendar();
+
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            await loadStudentData(user);
+            listenToStudentAttendance(user.uid);
+        } else {
+            window.location.href = "../student_login/student_login.html";
+        }
+    });
+});
+
+async function loadStudentData(user) {
+    try {
+        let fullName = user.displayName || localStorage.getItem("user_fullname") || "";
+        let student = {};
+
+        const userRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userRef);
+
+        if (userSnap.exists()) {
+            student = userSnap.data();
+
+            if (student.lastName && student.firstName) {
+                fullName = `${student.lastName} ${student.firstName} ${student.middleName || ''}`.trim();
+            } else if (student.fullName || student.name) {
+                fullName = student.fullName || student.name;
+            }
+        }
+
+        let displayStatus = student.internshipStatus || "Active - On Track";
+
+        try {
+            const analyticsRef = doc(db, "analytics", user.uid);
+            const analyticsSnap = await getDoc(analyticsRef);
+
+            if (analyticsSnap.exists()) {
+                const analyticsData = analyticsSnap.data();
+                if (analyticsData.aiStatus) {
+                    displayStatus = analyticsData.aiStatus;
+                }
+            }
+        } catch (err) {
+            console.warn("Could not fetch AI analytics status:", err);
+        }
+
+        if (!fullName) fullName = "Student Intern";
+
+        // Avatar initials, dropdown name, and localStorage caching are now
+        // handled by the shared header module (updateHeaderProfile via
+        // autoLoadProfile) so the dashboard header stays connected/in sync
+        // with the rest of the app instead of duplicating that logic here.
+
+        studentRequiredHours = student.requiredHours || 600;
+        const compHours = student.completedHours || 0;
+        const remainingHours = Math.max(0, studentRequiredHours - compHours);
+        const percentage = Math.min(100, Math.round((compHours / studentRequiredHours) * 100));
+
+        updateHoursUI(compHours, studentRequiredHours, remainingHours, percentage);
+
+        const statusElem = document.querySelector(".status-text");
+        const statusHeader = document.querySelector(".summary-card.purple h2");
+
+        if (statusElem) statusElem.textContent = displayStatus;
+
+        if (statusHeader) {
+            if (displayStatus.toLowerCase().includes("risk")) {
+                statusHeader.textContent = "At Risk";
+                statusHeader.style.color = "#ef4444";
+                if (statusElem) statusElem.style.color = "#ef4444";
+            } else if (displayStatus.toLowerCase().includes("completed")) {
+                statusHeader.textContent = "Completed";
+                statusHeader.style.color = "#22c55e";
+            } else {
+                statusHeader.textContent = "On Track";
+                statusHeader.style.color = "#3b82f6";
+            }
+        }
+    } catch (error) {
+        console.error("Error fetching student profile:", error);
+    }
+}
+
+function calculateHoursFromTime(timeIn, timeOut) {
+    if (!timeIn || !timeOut || timeIn === "--" || timeOut === "--") return 0;
+    try {
+        const parseToMinutes = (timeStr) => {
+            let parts = timeStr.trim().split(" ");
+            let time = parts[0];
+            let modifier = parts[1] ? parts[1].toUpperCase() : "";
+            let [hours, minutes] = time.split(":").map(Number);
+
+            if (modifier === "PM" && hours < 12) hours += 12;
+            if (modifier === "AM" && hours === 12) hours = 0;
+            return (hours * 60) + (minutes || 0);
+        };
+
+        const inMinutes = parseToMinutes(timeIn);
+        const outMinutes = parseToMinutes(timeOut);
+
+        if (outMinutes <= inMinutes) return 0;
+        return (outMinutes - inMinutes) / 60;
+    } catch (e) {
+        console.error("Error parsing time string:", e);
+        return 0;
+    }
+}
+
+function listenToStudentAttendance(userId) {
+    const attendanceQuery = query(collection(db, "attendance"), where("userId", "==", userId));
+
+    onSnapshot(attendanceQuery, async (snapshot) => {
+        let todayTimeIn = "--";
+        let todayTimeOut = "--";
+        let todayRendered = "0h 0m";
+        let todayStatus = "";
+        let totalCompletedHours = 0;
+        const dailyHoursMap = {};
+
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, "0");
+        const day = String(now.getDate()).padStart(2, "0");
+        const todayDateStr = `${year}-${month}-${day}`;
+
+        snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            let dailyHours = 0;
+
+            if (data.timeIn && data.timeOut && data.timeOut !== "--") {
+                dailyHours = calculateHoursFromTime(data.timeIn, data.timeOut);
+            } else if (data.hoursRendered) {
+                dailyHours = parseFloat(data.hoursRendered) || 0;
+            }
+
+            totalCompletedHours += dailyHours;
+
+            // Track completed hours per calendar date (e.g. "2026-01-01" -> 8)
+            // so the calendar can show how many hours were rendered on a
+            // given duty day, and so we can project a completion date below.
+            if (data.date && dailyHours > 0) {
+                dailyHoursMap[data.date] = (dailyHoursMap[data.date] || 0) + dailyHours;
+            }
+
+            if (data.date === todayDateStr) {
+                if (data.timeIn) todayTimeIn = data.timeIn;
+                if (data.timeOut && data.timeOut.trim() !== "") todayTimeOut = data.timeOut;
+                if (data.status) todayStatus = data.status;
+
+                if (todayTimeIn !== "--" && todayTimeOut !== "--") {
+                    let dHours = calculateHoursFromTime(todayTimeIn, todayTimeOut);
+                    let hrs = Math.floor(dHours);
+                    let mins = Math.round((dHours - hrs) * 60);
+                    todayRendered = `${hrs}h ${mins}m`;
+                }
+            }
+        });
+
+        updateTodayAttendanceUI(todayTimeIn, todayTimeOut, todayRendered, todayStatus);
+
+        const roundedCompleted = Math.round(totalCompletedHours * 10) / 10;
+        const remainingHours = Math.max(0, studentRequiredHours - roundedCompleted);
+        const percentage = Math.min(100, Math.round((roundedCompleted / studentRequiredHours) * 100));
+
+        updateHoursUI(roundedCompleted, studentRequiredHours, remainingHours, percentage);
+
+        // Push the per-day hours into the calendar so duty days display how
+        // many hours were rendered that day (e.g. "8h" under Jan 1).
+        if (calendarController) {
+            calendarController.setDailyHours(dailyHoursMap);
+        }
+
+        // AI-style projection of the OJT completion date, based on the
+        // student's own average hours-per-duty-day so far.
+        const estimate = estimateCompletionDate(roundedCompleted, studentRequiredHours, dailyHoursMap);
+        updateHeaderCompletionEstimate(estimate);
+
+        try {
+            const userRef = doc(db, "users", userId);
+            await updateDoc(userRef, { completedHours: roundedCompleted });
+        } catch (updateErr) {
+            console.warn("Could not sync completed hours to profile:", updateErr);
+        }
+    });
+}
+
+/* ==========================================
+   AI COMPLETION-DATE ESTIMATE
+   Projects when the student will hit their required hours by
+   extrapolating from their own historical average hours logged
+   per duty day, then counting forward on weekdays only (Mon-Fri).
+   This is a lightweight heuristic run in the browser — not a
+   call to an external AI model — surfaced to the user as an
+   "AI suggestion" pill in the header.
+========================================== */
+function estimateCompletionDate(completedHours, requiredHours, dailyHoursMap) {
+    if (completedHours >= requiredHours) {
+        return { completed: completedHours, required: requiredHours, remaining: 0, isDone: true, estimatedDate: null };
+    }
+
+    const remainingHours = Math.round((requiredHours - completedHours) * 10) / 10;
+    const workedDates = Object.keys(dailyHoursMap).filter(d => dailyHoursMap[d] > 0);
+
+    if (workedDates.length === 0) {
+        return { completed: completedHours, required: requiredHours, remaining: remainingHours, isDone: false, estimatedDate: null };
+    }
+
+    const totalLoggedHours = workedDates.reduce((sum, d) => sum + dailyHoursMap[d], 0);
+    const avgHoursPerDutyDay = totalLoggedHours / workedDates.length;
+
+    if (!avgHoursPerDutyDay || avgHoursPerDutyDay <= 0) {
+        return { completed: completedHours, required: requiredHours, remaining: remainingHours, isDone: false, estimatedDate: null };
+    }
+
+    const dutyDaysNeeded = Math.ceil(remainingHours / avgHoursPerDutyDay);
+
+    // Walk forward from today, only counting Mon-Fri as duty days.
+    // (Swap this for a lookup against the coordinator's holiday/exception
+    // calendar if OJT can also happen on weekends for some students.)
+    const projected = new Date();
+    let dutyDaysCounted = 0;
+    while (dutyDaysCounted < dutyDaysNeeded) {
+        projected.setDate(projected.getDate() + 1);
+        const dayOfWeek = projected.getDay();
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+            dutyDaysCounted++;
+        }
+    }
+
+    const estimatedDate = projected.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric"
+    });
+
+    return {
+        completed: completedHours,
+        required: requiredHours,
+        remaining: remainingHours,
+        avgHoursPerDay: Math.round(avgHoursPerDutyDay * 10) / 10,
+        dutyDaysLogged: workedDates.length,
+        isDone: false,
+        estimatedDate
+    };
+}
+
+/* ==========================================
+   NOTIFICATIONS
+   Handled entirely by the shared header module
+   (../templated/header-loader.js -> loadNotifications),
+   which loadHeader() already calls automatically.
+   The dashboard no longer keeps its own duplicate
+   listener/renderer for #notification-list /
+   #notification-badge.
+========================================== */
+
+function updateHoursUI(completed, required, remaining, percentage) {
+    const completedHeader = document.querySelector(".summary-card.green h2");
+    if (completedHeader) completedHeader.textContent = `${completed} hours`;
+
+    const progressFill = document.querySelector(".green-fill");
+    if (progressFill) progressFill.style.width = `${percentage}%`;
+
+    const completedSpan = document.querySelector(".summary-card.green span");
+    if (completedSpan) completedSpan.textContent = `${percentage}% of required hours`;
+
+    const requiredHeader = document.querySelector(".summary-card.blue h2");
+    if (requiredHeader) requiredHeader.textContent = `${required} hours`;
+
+    const remainingSub = document.querySelector(".card-sub");
+    if (remainingSub) remainingSub.textContent = `${remaining} hours remaining`;
+
+    const circlePercentage = document.querySelector(".circle h1");
+    if (circlePercentage) circlePercentage.textContent = `${percentage}%`;
+
+    const circleBg = document.querySelector(".circle");
+    if (circleBg) circleBg.style.background = `conic-gradient(#22c55e ${percentage}%, #ececec 0)`;
+
+    const detailItems = document.querySelectorAll(".detail-item strong");
+    if (detailItems.length >= 2) {
+        detailItems[0].textContent = `${completed} hrs`;
+        detailItems[1].textContent = `${remaining} hrs`;
+    }
+
+    const requiredBoxVal = document.querySelector(".required-value");
+    if (requiredBoxVal) requiredBoxVal.textContent = required;
+}
+
+function updateTodayAttendanceUI(timeIn, timeOut, totalToday, status = "") {
+    const timeInElem = document.getElementById("today-timein-val");
+    if (timeInElem) timeInElem.textContent = timeIn;
+
+    const timeOutElem = document.getElementById("today-timeout-val");
+    if (timeOutElem) timeOutElem.textContent = timeOut;
+
+    const totalTodayElem = document.getElementById("total-rendered-today");
+    if (totalTodayElem) totalTodayElem.textContent = totalToday;
+
+    const timeinBox = document.getElementById("timein-box");
+    const timeinIcon = document.getElementById("timein-icon");
+    const timeinTitle = document.getElementById("timein-title");
+    const timeinDesc = document.getElementById("timein-desc");
+
+    const timeoutBox = document.getElementById("timeout-box");
+    const timeoutIcon = document.getElementById("timeout-icon");
+    const timeoutTitle = document.getElementById("timeout-title");
+    const timeoutDesc = document.getElementById("timeout-desc");
+
+    if (status.toLowerCase() === "excused") {
+        if (timeinBox) timeinBox.className = "attendance-box blue-box";
+        if (timeinIcon) timeinIcon.className = "fa-solid fa-circle-info";
+        if (timeinTitle) timeinTitle.textContent = "Excused";
+        if (timeinDesc) timeinDesc.textContent = "You have an approved excuse today.";
+
+        if (timeoutBox) timeoutBox.className = "attendance-box blue-box";
+        if (timeoutIcon) timeoutIcon.className = "fa-solid fa-circle-info";
+        if (timeoutTitle) timeoutTitle.textContent = "Excused";
+        if (timeoutDesc) timeoutDesc.textContent = "No time out required.";
+        return;
+    }
+
+    const hasTimedIn = timeIn && timeIn !== "--";
+    const hasTimedOut = timeOut && timeOut !== "--";
+
+    if (hasTimedOut) {
+        if (timeinBox) timeinBox.className = "attendance-box green-box";
+        if (timeinIcon) timeinIcon.className = "fa-solid fa-circle-check";
+        if (timeinTitle) timeinTitle.textContent = "Timed In";
+        if (timeinDesc) timeinDesc.textContent = "You timed in today.";
+
+        if (timeoutBox) timeoutBox.className = "attendance-box green-box";
+        if (timeoutIcon) timeoutIcon.className = "fa-solid fa-circle-check";
+        if (timeoutTitle) timeoutTitle.textContent = "Timed Out";
+        if (timeoutDesc) timeoutDesc.textContent = "You timed out today.";
+    } else if (hasTimedIn) {
+        if (timeinBox) timeinBox.className = "attendance-box green-box";
+        if (timeinIcon) timeinIcon.className = "fa-solid fa-circle-check";
+        if (timeinTitle) timeinTitle.textContent = "Timed In";
+        if (timeinDesc) timeinDesc.textContent = "You timed in today.";
+
+        if (timeoutBox) timeoutBox.className = "attendance-box orange-box";
+        if (timeoutIcon) timeoutIcon.className = "fa-regular fa-clock";
+        if (timeoutTitle) timeoutTitle.textContent = "Pending Time Out";
+        if (timeoutDesc) timeoutDesc.textContent = "Don't forget to time out.";
+    } else {
+        if (timeinBox) timeinBox.className = "attendance-box orange-box";
+        if (timeinIcon) timeinIcon.className = "fa-regular fa-clock";
+        if (timeinTitle) timeinTitle.textContent = "Time In";
+        if (timeinDesc) timeinDesc.textContent = "You haven't timed in yet.";
+
+        if (timeoutBox) timeoutBox.className = "attendance-box orange-box";
+        if (timeoutIcon) timeoutIcon.className = "fa-regular fa-clock";
+        if (timeoutTitle) timeoutTitle.textContent = "Time Out";
+        if (timeoutDesc) timeoutDesc.textContent = "Waiting for time in.";
+    }
+}
+
+function initModalFetchAndLoad() {
+    const viewAllBtn = document.getElementById("view-all-btn");
+    const modalOverlay = document.getElementById("activities-modal-overlay");
+    const explicitCloseBtn = document.getElementById("explicit-close-btn");
+
+    if (viewAllBtn && modalOverlay) {
+        viewAllBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            modalOverlay.style.display = "flex";
+            if (auth.currentUser) {
+                loadModalActivities(auth.currentUser.uid);
+            }
+        });
+    }
+
+    const closeModal = () => {
+        if (modalOverlay) modalOverlay.style.display = "none";
+    };
+
+    if (explicitCloseBtn) {
+        explicitCloseBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            closeModal();
+        });
+    }
+
+    if (modalOverlay) {
+        modalOverlay.addEventListener("click", (e) => {
+            if (e.target === modalOverlay) closeModal();
+        });
+    }
+}
+
+function loadModalActivities(userId) {
+    const attendanceQuery = query(collection(db, "attendance"), where("userId", "==", userId));
+
+    onSnapshot(attendanceQuery, (snapshot) => {
+        let activityLogs = [];
+
+        snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+
+            if (data.timeIn) {
+                activityLogs.push({
+                    title: "Time In Recorded",
+                    subtitle: `${data.date || "Recent"} • ${data.timeIn}`,
+                    type: "timein",
+                    durationText: "Logged In",
+                    sortDate: data.date || ""
+                });
+            }
+
+            if (data.timeOut && data.timeOut !== "--") {
+                let sessionHoursText = "Completed";
+                if (data.timeIn) {
+                    let dHours = calculateHoursFromTime(data.timeIn, data.timeOut);
+                    let hrs = Math.floor(dHours);
+                    let mins = Math.round((dHours - hrs) * 60);
+                    sessionHoursText = `${hrs}h ${mins}m`;
+                }
+
+                activityLogs.push({
+                    title: "Time Out Recorded",
+                    subtitle: `${data.date || "Recent"} • ${data.timeOut}`,
+                    type: "timeout",
+                    durationText: sessionHoursText,
+                    sortDate: data.date || ""
+                });
+            }
+        });
+
+        activityLogs.sort((a, b) => new Date(b.sortDate) - new Date(a.sortDate));
+
+        const modalList = document.getElementById("all-activities-list");
+        if (!modalList) return;
+
+        modalList.innerHTML = "";
+
+        if (activityLogs.length === 0) {
+            modalList.innerHTML = `
+                <div class="activity-item">
+                    <div class="activity-info">
+                        <h4>No activity history found</h4>
+                        <p>Your records will appear here.</p>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        activityLogs.forEach(act => {
+            const item = document.createElement("div");
+            item.className = "activity-item";
+
+            let iconClass = "fa-solid fa-right-to-bracket";
+            let colorClass = "green";
+
+            if (act.type === "timeout") {
+                iconClass = "fa-solid fa-right-from-bracket";
+                colorClass = "blue";
+            }
+
+            item.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <div class="activity-icon ${colorClass}">
+                        <i class="${iconClass}"></i>
+                    </div>
+                    <div class="activity-info">
+                        <h4>${act.title}</h4>
+                        <p>${act.subtitle}</p>
+                    </div>
+                </div>
+                <span style="font-size: 13px; font-weight: 600; color: #64748b;">
+                    ${act.durationText}
+                </span>
+            `;
+
+            modalList.appendChild(item);
+        });
+    });
+}
+
+function initSidebar(activeMenuName) {
+    const menuItems = document.querySelectorAll(".menu li");
+    if (menuItems.length > 0) {
+        menuItems.forEach(item => {
+            const spanText = item.querySelector("span")?.textContent.trim();
+            if (spanText && spanText.toLowerCase() === activeMenuName.toLowerCase()) {
+                item.classList.add("active");
+            } else {
+                item.classList.remove("active");
+            }
+        });
+    }
+}
+
+function initCalendar() {
+    const monthTitle = document.getElementById("calendar-month");
+    const dayList = document.getElementById("calendar-day-list");
+    const prevBtn = document.getElementById("calendar-prev");
+    const nextBtn = document.getElementById("calendar-next");
+    const calendarBtn = document.getElementById("calendar-btn");
+
+    if (!monthTitle || !dayList || !prevBtn || !nextBtn) return;
+
+    const today = new Date();
+    let viewStartDate = new Date(today);
+    let selectedDate = new Date(today);
+    let isMonthView = false;
+
+    let holidays = {};
+    let coordinatorEvents = {};
+    let calendarExceptions = {};
+    let dailyHours = {}; // "YYYY-MM-DD" -> hours rendered that day, e.g. { "2026-01-01": 8 }
+
+    function formatHoursLabel(h) {
+        return Number.isInteger(h) ? `${h}h` : `${h.toFixed(1)}h`;
+    }
+
+    const defaultPHHolidays = {
+        "2026-01-01": "New Year's Day",
+        "2026-04-02": "Maundy Thursday",
+        "2026-04-03": "Good Friday",
+        "2026-04-09": "Araw ng Kagitingan",
+        "2026-05-01": "Labor Day",
+        "2026-06-12": "Independence Day",
+        "2026-08-31": "National Heroes Day",
+        "2026-11-30": "Bonifacio Day",
+        "2026-12-25": "Christmas Day",
+        "2026-12-30": "Rizal Day"
+    };
+
+    holidays = { ...defaultPHHolidays };
+
+    async function fetchPhilippineHolidays(year) {
+        try {
+            const response = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/PH`);
+            if (response.ok) {
+                const data = await response.json();
+                data.forEach(holiday => {
+                    holidays[holiday.date] = holiday.localName;
+                });
+                renderCalendar();
+            }
+        } catch (error) {
+            console.warn("Using default Philippine holidays fallback.", error);
+        }
+    }
+
+    function fetchCoordinatorEvents() {
+        try {
+            const eventsQuery = query(collection(db, "coordinator_calendar"));
+            onSnapshot(eventsQuery, (snapshot) => {
+                coordinatorEvents = {};
+                snapshot.forEach((docSnap) => {
+                    const data = docSnap.data();
+                    let targetDate = data.date || docSnap.id;
+                    if (targetDate) {
+                        if (!coordinatorEvents[targetDate]) coordinatorEvents[targetDate] = [];
+                        if (data.title) coordinatorEvents[targetDate].push(data.title);
+                        if (data.reason) coordinatorEvents[targetDate].push(data.reason);
+                    }
+                });
+                renderCalendar();
+            });
+
+            const exceptionsQuery = query(collection(db, "calendar_exceptions"));
+            onSnapshot(exceptionsQuery, (snapshot) => {
+                calendarExceptions = {};
+                snapshot.forEach((docSnap) => {
+                    const data = docSnap.data();
+                    let targetDate = data.date || docSnap.id;
+                    if (targetDate) {
+                        if (!calendarExceptions[targetDate]) calendarExceptions[targetDate] = [];
+                        if (data.reason) calendarExceptions[targetDate].push(data.reason);
+                        if (data.title) calendarExceptions[targetDate].push(data.title);
+                    }
+                });
+                renderCalendar();
+            });
+        } catch (e) {
+            console.warn("Error syncing coordinator calendar events or exceptions:", e);
+        }
+    }
+
+    fetchPhilippineHolidays(viewStartDate.getFullYear());
+    fetchCoordinatorEvents();
+
+    function formatMonth(date) {
+        return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+    }
+
+    function isSameDate(date1, date2) {
+        return (
+            date1.getFullYear() === date2.getFullYear() &&
+            date1.getMonth() === date2.getMonth() &&
+            date1.getDate() === date2.getDate()
+        );
+    }
+
+    function renderCalendar() {
+        dayList.innerHTML = "";
+        dayList.className = "calendar-day-list";
+
+        if (isMonthView) {
+            monthTitle.textContent = formatMonth(viewStartDate);
+            dayList.classList.add("month-view");
+
+            const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+            weekdays.forEach(day => {
+                const weekday = document.createElement("div");
+                weekday.className = "calendar-weekday";
+                weekday.textContent = day;
+                dayList.appendChild(weekday);
+            });
+
+            const firstDay = new Date(viewStartDate.getFullYear(), viewStartDate.getMonth(), 1);
+            const firstDayIndex = firstDay.getDay();
+
+            for (let i = 0; i < firstDayIndex; i++) {
+                const emptyDay = document.createElement("div");
+                emptyDay.className = "calendar-empty";
+                dayList.appendChild(emptyDay);
+            }
+
+            const daysInMonth = new Date(viewStartDate.getFullYear(), viewStartDate.getMonth() + 1, 0).getDate();
+            const year = viewStartDate.getFullYear();
+            const month = viewStartDate.getMonth();
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(year, month, day);
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+                const dayButton = document.createElement("button");
+                dayButton.type = "button";
+                dayButton.className = "calendar-month-day";
+                dayButton.style.cssText = "display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; padding: 4px; cursor: pointer;";
+
+                if (isSameDate(date, selectedDate)) dayButton.classList.add("active");
+                if (isSameDate(date, today)) dayButton.classList.add("today");
+                if (dailyHours[dateStr] > 0) dayButton.classList.add("has-duty");
+
+                let htmlContent = `<span>${day}</span>`;
+                let indicators = `<div style="display: flex; gap: 2px; margin-top: 2px;">`;
+                if (holidays[dateStr]) indicators += `<span style="width: 4px; height: 4px; background: #ef4444; border-radius: 50%;"></span>`;
+                if (coordinatorEvents[dateStr]) indicators += `<span style="width: 4px; height: 4px; background: #0284c7; border-radius: 50%;"></span>`;
+                if (calendarExceptions[dateStr]) indicators += `<span style="width: 4px; height: 4px; background: #f97316; border-radius: 50%;"></span>`;
+                if (dailyHours[dateStr] > 0) indicators += `<span style="width: 4px; height: 4px; background: #16a34a; border-radius: 50%;"></span>`;
+                indicators += `</div>`;
+                
+                htmlContent += indicators;
+                dayButton.innerHTML = htmlContent;
+
+                dayButton.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    document.querySelectorAll(".calendar-popup-tooltip").forEach(el => el.remove());
+
+                    let holidayName = holidays[dateStr] || "";
+                    let eventList = coordinatorEvents[dateStr] || [];
+                    let exceptionList = calendarExceptions[dateStr] || [];
+                    let hoursLogged = dailyHours[dateStr] || 0;
+
+                    let eventNames = eventList.join(", ");
+                    let exceptionNames = exceptionList.join(", ");
+
+                    if (!holidayName && !eventNames && !exceptionNames && !hoursLogged) {
+                        holidayName = "No entry details available.";
+                    }
+
+                    const popup = document.createElement("div");
+                    popup.className = "calendar-popup-tooltip";
+                    popup.style.cssText = "position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%); background: #1e293b; color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 11px; white-space: nowrap; z-index: 9999; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);";
+                    
+                    let textToShow = [];
+                    if (hoursLogged > 0) textToShow.push(`Hours Logged: ${formatHoursLabel(hoursLogged)}`);
+                    if (holidayName) textToShow.push(`Holiday: ${holidayName}`);
+                    if (eventNames) textToShow.push(`Event: ${eventNames}`);
+                    if (exceptionNames) textToShow.push(`Note: ${exceptionNames}`);
+                    
+                    popup.innerHTML = textToShow.join("<br>");
+                    dayButton.appendChild(popup);
+
+                    setTimeout(() => {
+                        const closePopup = (ev) => {
+                            if (!dayButton.contains(ev.target)) {
+                                popup.remove();
+                                document.removeEventListener("click", closePopup);
+                            }
+                        };
+                        document.addEventListener("click", closePopup);
+                    }, 100);
+                });
+
+                dayList.appendChild(dayButton);
+            }
+
+            if (calendarBtn) {
+                calendarBtn.innerHTML = `<i class="fa-regular fa-calendar"></i><span>Horizontal</span>`;
+            }
+            return;
+        }
+
+        if (calendarBtn) {
+            calendarBtn.innerHTML = `<i class="fa-regular fa-calendar-plus"></i><span>Calendar</span>`;
+        }
+
+        monthTitle.textContent = formatMonth(viewStartDate);
+        dayList.classList.add("week-view");
+
+        for (let i = 0; i < 5; i++) {
+            const date = new Date(viewStartDate);
+            date.setDate(viewStartDate.getDate() + i);
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const dayNum = String(date.getDate()).padStart(2, '0');
+            const dateStr = `${year}-${month}-${dayNum}`;
+
+            const dayButton = document.createElement("button");
+            dayButton.type = "button";
+            dayButton.className = "calendar-day";
+            dayButton.style.cssText = "display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; padding: 6px; cursor: pointer;";
+
+            if (isSameDate(date, selectedDate)) dayButton.classList.add("active");
+            if (isSameDate(date, today)) dayButton.classList.add("today");
+            if (dailyHours[dateStr] > 0) dayButton.classList.add("has-duty");
+
+            let htmlContent = `
+                <span class="day-number">${date.getDate()}</span>
+                <span class="day-name">${date.toLocaleDateString("en-US", { weekday: "short" })}</span>
+            `;
+
+            if (dailyHours[dateStr] > 0) {
+                htmlContent += `<span class="calendar-day-hours">${formatHoursLabel(dailyHours[dateStr])}</span>`;
+            }
+
+            let indicators = `<div style="display: flex; gap: 2px; margin-top: 2px;">`;
+            if (holidays[dateStr]) indicators += `<span style="width: 4px; height: 4px; background: #ef4444; border-radius: 50%;"></span>`;
+            if (coordinatorEvents[dateStr]) indicators += `<span style="width: 4px; height: 4px; background: #0284c7; border-radius: 50%;"></span>`;
+            if (calendarExceptions[dateStr]) indicators += `<span style="width: 4px; height: 4px; background: #f97316; border-radius: 50%;"></span>`;
+            indicators += `</div>`;
+
+            htmlContent += indicators;
+            dayButton.innerHTML = htmlContent;
+
+            dayButton.addEventListener("click", (e) => {
+                e.stopPropagation();
+                document.querySelectorAll(".calendar-popup-tooltip").forEach(el => el.remove());
+
+                let holidayName = holidays[dateStr] || "";
+                let eventList = coordinatorEvents[dateStr] || [];
+                let exceptionList = calendarExceptions[dateStr] || [];
+                let hoursLogged = dailyHours[dateStr] || 0;
+
+                let eventNames = eventList.join(", ");
+                let exceptionNames = exceptionList.join(", ");
+
+                if (!holidayName && !eventNames && !exceptionNames && !hoursLogged) {
+                    holidayName = "No entry details available.";
+                }
+
+                const popup = document.createElement("div");
+                popup.className = "calendar-popup-tooltip";
+                popup.style.cssText = "position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%); background: #1e293b; color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 11px; white-space: nowrap; z-index: 9999; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);";
+                
+                let textToShow = [];
+                if (hoursLogged > 0) textToShow.push(`Hours Logged: ${formatHoursLabel(hoursLogged)}`);
+                if (holidayName) textToShow.push(`Holiday: ${holidayName}`);
+                if (eventNames) textToShow.push(`Event: ${eventNames}`);
+                if (exceptionNames) textToShow.push(`Note: ${exceptionNames}`);
+                
+                popup.innerHTML = textToShow.join("<br>");
+                dayButton.appendChild(popup);
+
+                setTimeout(() => {
+                    const closePopup = (ev) => {
+                        if (!dayButton.contains(ev.target)) {
+                            popup.remove();
+                            document.removeEventListener("click", closePopup);
+                        }
+                    };
+                    document.addEventListener("click", closePopup);
+                }, 100);
+            });
+
+            dayList.appendChild(dayButton);
+        }
+    }
+
+    if (calendarBtn) {
+        calendarBtn.addEventListener("click", () => {
+            isMonthView = !isMonthView;
+            if (!isMonthView) {
+                viewStartDate = new Date(selectedDate);
+            } else {
+                viewStartDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+            }
+            renderCalendar();
+        });
+    }
+
+    prevBtn.addEventListener("click", () => {
+        const oldYear = viewStartDate.getFullYear();
+        if (isMonthView) {
+            viewStartDate = new Date(viewStartDate.getFullYear(), viewStartDate.getMonth() - 1, 1);
+        } else {
+            viewStartDate.setDate(viewStartDate.getDate() - 1);
+        }
+        const newYear = viewStartDate.getFullYear();
+        if (oldYear !== newYear) fetchPhilippineHolidays(newYear);
+        else renderCalendar();
+    });
+
+    nextBtn.addEventListener("click", () => {
+        const oldYear = viewStartDate.getFullYear();
+        if (isMonthView) {
+            viewStartDate = new Date(viewStartDate.getFullYear(), viewStartDate.getMonth() + 1, 1);
+        } else {
+            viewStartDate.setDate(viewStartDate.getDate() + 1);
+        }
+        const newYear = viewStartDate.getFullYear();
+        if (oldYear !== newYear) fetchPhilippineHolidays(newYear);
+        else renderCalendar();
+    });
+
+    renderCalendar();
+
+    // Lets callers outside this closure (e.g. the attendance listener, once
+    // Firestore data comes in) push per-day hours into the calendar and
+    // trigger a re-render.
+    return {
+        setDailyHours(map) {
+            dailyHours = map || {};
+            renderCalendar();
+        }
+    };
+}

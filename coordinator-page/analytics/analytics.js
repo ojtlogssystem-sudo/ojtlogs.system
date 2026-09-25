@@ -1,319 +1,2692 @@
 /* ==========================================
-   OJT-LOGS ANALYTICS & PYTHON SCIKIT-LEARN AI INTEGRATION
+   OJT-LOGS ANALYTICS & AI TASK/ATTENDANCE SKILL EXPOSURE
 ========================================== */
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { 
-    getFirestore, 
-    collection, 
-    getDocs 
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { 
-    getAuth, 
-    onAuthStateChanged 
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+// NOTE: Ang login check, profile, at notifications ay hawak na
+// ng shared header (../header/header.js), kaya wala nang Firebase
+// code sa file na ito. Lahat ng data ay galing sa Flask AI server
+// (app.py, http://localhost:5000).
 
-// FIREBASE CONFIGURATION (Para sa Auth / Profile Header sync)
-const firebaseConfig = {
-    apiKey: "AIzaSyDvMQyEHIIJTW4etj4VQHjjIzd8oB2geJ8",
-    authDomain: "ojt-logs-e1892.firebaseapp.com",
-    databaseURL: "https://ojt-logs-e1892-default-rtdb.firebaseio.com",
-    projectId: "ojt-logs-e1892",
-    storageBucket: "ojt-logs-e1892.firebasestorage.app",
-    messagingSenderId: "1012575426857",
-    appId: "1:1012575426857:web:c2d6dbcdc0dc0ad965ff38",
-    measurementId: "G-DJ3JW7QH27"
+
+// ==========================================
+// CHARTS (BAR + PIE) - gamit ang Chart.js
+//
+// Kulay ng system:
+//   maroon  #ab0a0a  -> primary (sidebar/buttons/accent)
+//   red     #e74c3c  -> At Risk
+//   orange  #f19c14  -> Needs Monitoring
+//   green   #27ae60  -> On Track
+// ==========================================
+
+const CHART_COLORS = {
+    primary: "#ab0a0a",
+    primaryHover: "#8f0808",
+    primarySoft: "#e9b8b8",
+    primarySoftHover: "#dea0a0",
+    risk: "#e74c3c",
+    monitoring: "#f19c14",
+    onTrack: "#27ae60",
+    text: "#666666",
+    muted: "#999999",
+    grid: "#ececec",
+    surface: "#ffffff"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
-const usersRef = collection(db, "users");
+let riskStatusPieChartInstance = null;
+let graduatesByBatchChartInstance = null;
 
-document.addEventListener("DOMContentLoaded", () => {
-    const studentTable = document.getElementById("studentTable");
-    if (!studentTable) return;
 
-    const searchInput = document.getElementById("searchStudent");
-    const sectionFilter = document.getElementById("sectionFilter");
-    const progressFilter = document.getElementById("progressFilter");
-    const paginationInfo = document.getElementById("paginationInfo");
+function applyChartDefaults() {
 
-    let allStudentRecords = [];
+    if (typeof Chart === "undefined") return;
 
-    // 1. SYNC ANG NAKA-LOGIN NA PROFILE SA HEADER
-    function syncUserProfile() {
-        const profileNameEl = document.getElementById("profileName");
-        const profileAvatarEl = document.getElementById("profileAvatar");
-        const profileRoleEl = document.getElementById("profileRole");
+    Chart.defaults.font.family = "'Poppins', sans-serif";
+    Chart.defaults.font.size = 12;
+    Chart.defaults.color = CHART_COLORS.text;
 
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                try {
-                    const querySnapshot = await getDocs(usersRef);
-                    let foundUser = null;
-                    
-                    querySnapshot.forEach(docSnap => {
-                        const data = docSnap.data();
-                        if (data.email === user.email || docSnap.id === user.uid) {
-                            foundUser = data;
-                        }
-                    });
+}
 
-                    const displayName = foundUser?.name || foundUser?.fullName || user.displayName || user.email || "Coordinator";
-                    const displayRole = foundUser?.role || foundUser?.userType || "OJT Coordinator";
 
-                    if (profileNameEl) profileNameEl.textContent = displayName;
-                    if (profileRoleEl) profileRoleEl.textContent = displayRole;
+// Mensahe sa loob ng chart (loading / walang data / error)
+function setChartMessage(elementId, message, isError = false) {
 
-                    if (profileAvatarEl) {
-                        const initials = displayName.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2);
-                        profileAvatarEl.textContent = initials || "MS";
-                    }
-                } catch (err) {
-                    console.error("Error fetching user profile from Firestore:", err);
-                }
-            } else {
-                const localUser = JSON.parse(localStorage.getItem("loggedInUser")) || JSON.parse(sessionStorage.getItem("loggedInUser"));
-                if (localUser) {
-                    const name = localUser.name || localUser.email || "Coordinator";
-                    if (profileNameEl) profileNameEl.textContent = name;
-                    if (profileAvatarEl) {
-                        profileAvatarEl.textContent = name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2);
-                    }
-                }
-            }
-        });
+    const el = document.getElementById(elementId);
+
+    if (!el) return;
+
+    el.textContent = message;
+    el.classList.toggle("error", isError);
+    el.hidden = false;
+
+}
+
+
+function clearChartMessage(elementId) {
+
+    const el = document.getElementById(elementId);
+
+    if (el) el.hidden = true;
+
+}
+
+
+function showChartsUnavailable(message) {
+
+    if (riskStatusPieChartInstance) {
+        riskStatusPieChartInstance.destroy();
+        riskStatusPieChartInstance = null;
     }
 
-    // 2. KUNIN ANG DATA MULA SA PYTHON SCIKIT-LEARN FLASK API
-    async function fetchAllStudents() {
-        try {
-            // Tumatawag sa lokal na Python backend server na nagpapatakbo ng Scikit-learn model
-            const response = await fetch('http://localhost:5000/api/predict-risk');
-            const result = await response.json();
+    if (graduatesByBatchChartInstance) {
+        graduatesByBatchChartInstance.destroy();
+        graduatesByBatchChartInstance = null;
+    }
 
-            if (result.status !== "success") {
-                console.error("API Error:", result.message);
-                return;
-            }
+    setChartMessage("riskStatusPieEmpty", message, true);
+    setChartMessage("graduatesByBatchEmpty", message, true);
 
-            allStudentRecords = result.data;
-            let atRiskCount = 0;
-            let onTrackCount = 0;
-            let totalCompletedHours = 0;
+}
 
-            allStudentRecords.forEach(item => {
-                if ((item.aiStatus || "").toLowerCase().includes("risk")) {
-                    atRiskCount++;
-                } else {
-                    onTrackCount++;
+
+const CHART_LOAD_ERROR =
+    "Chart.js failed to load. Check your internet connection or ad blocker (cdn.jsdelivr.net).";
+
+
+// ------------------------------------------
+// PIE - STUDENT STATUS DISTRIBUTION
+// ------------------------------------------
+
+function renderRiskStatusCharts(atRiskCount, monitoringCount, onTrackCount) {
+
+    const canvas = document.getElementById("riskStatusPieChart");
+
+    if (!canvas) return;
+
+    if (typeof Chart === "undefined") {
+
+        console.error(CHART_LOAD_ERROR);
+        setChartMessage("riskStatusPieEmpty", CHART_LOAD_ERROR, true);
+        return;
+
+    }
+
+    applyChartDefaults();
+
+    if (riskStatusPieChartInstance) {
+
+        riskStatusPieChartInstance.destroy();
+        riskStatusPieChartInstance = null;
+
+    }
+
+    const total = atRiskCount + monitoringCount + onTrackCount;
+
+    if (total === 0) {
+
+        setChartMessage("riskStatusPieEmpty", "No registered students yet.");
+        return;
+
+    }
+
+    clearChartMessage("riskStatusPieEmpty");
+
+    riskStatusPieChartInstance = new Chart(canvas, {
+        type: "pie",
+        data: {
+            labels: ["At Risk", "Needs Monitoring", "On Track"],
+            datasets: [{
+                data: [atRiskCount, monitoringCount, onTrackCount],
+                backgroundColor: [
+                    CHART_COLORS.risk,
+                    CHART_COLORS.monitoring,
+                    CHART_COLORS.onTrack
+                ],
+                borderColor: CHART_COLORS.surface,
+                borderWidth: 3,
+                hoverOffset: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: "bottom",
+                    labels: {
+                        usePointStyle: true,
+                        pointStyle: "circle",
+                        boxWidth: 8,
+                        padding: 16,
+
+                        // Kasama ang bilang sa legend, hal. "At Risk (2)"
+                        generateLabels: (chart) => {
+
+                            const dataset = chart.data.datasets[0];
+
+                            return chart.data.labels.map((label, i) => ({
+                                text: `${label} (${dataset.data[i]})`,
+                                fillStyle: dataset.backgroundColor[i],
+                                strokeStyle: dataset.backgroundColor[i],
+                                lineWidth: 0,
+                                pointStyle: "circle",
+                                hidden: !chart.getDataVisibility(i),
+                                index: i
+                            }));
+
+                        }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: "#1d1d1d",
+                    padding: 10,
+                    cornerRadius: 8,
+                    callbacks: {
+                        label: (ctx) => {
+
+                            const pct =
+                                Math.round((ctx.parsed / total) * 100);
+
+                            return ` ${ctx.parsed} of ${total} students (${pct}%)`;
+
+                        }
+                    }
                 }
-                totalCompletedHours += item.progress;
+            }
+        }
+    });
+
+}
+
+
+// ------------------------------------------
+// BAR - GRADUATED STUDENTS BY BATCH
+//
+// Ang batch ay ang TAON sa umpisa ng Student ID:
+//     2023-01-22112  ->  2023
+//     2026-21-01233  ->  2026
+// Lahat ng estudyanteng nakarehistro sa system ay
+// binibilang (Registered); ang natapos na ang required
+// OJT hours ay binibilang din bilang Graduated.
+// Batch lang na may nakarehistrong estudyante ang lalabas.
+// ------------------------------------------
+
+function getBatchFromStudentId(studentId) {
+
+    const match =
+        String(studentId ?? "")
+            .match(/^\s*((?:19|20)\d{2})\s*[-/\s]\s*\d/);
+
+    return match ? match[1] : "";
+
+}
+
+
+function buildGraduatesByBatchData(records) {
+
+    const batches = new Map();
+
+    records.forEach(item => {
+
+        // Unahin ang batch mula sa backend (app.py); kung wala,
+        // basahin mismo sa Student ID.
+        const batch =
+            String(item.batch ?? "").trim() ||
+            getBatchFromStudentId(item.studentId);
+
+        if (!batch) return;
+
+        const entry =
+            batches.get(batch) ||
+            { batch, registered: 0, graduated: 0 };
+
+        entry.registered++;
+
+        const isGraduated =
+            Boolean(item.graduated) ||
+            (item.aiStatus || "").toLowerCase().includes("completed");
+
+        if (isGraduated) entry.graduated++;
+
+        batches.set(batch, entry);
+
+    });
+
+    return [...batches.values()].sort((a, b) =>
+        a.batch.localeCompare(b.batch, undefined, { numeric: true })
+    );
+
+}
+
+
+// Nagsusulat ng bilang sa ibabaw ng bawat bar
+const barValueLabelsPlugin = {
+
+    id: "barValueLabels",
+
+    afterDatasetsDraw(chart) {
+
+        const { ctx } = chart;
+
+        ctx.save();
+        ctx.font = "600 12px 'Poppins', sans-serif";
+        ctx.fillStyle = "#333333";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "bottom";
+
+        chart.data.datasets.forEach((dataset, datasetIndex) => {
+
+            chart.getDatasetMeta(datasetIndex).data.forEach((bar, i) => {
+
+                ctx.fillText(dataset.data[i], bar.x, bar.y - 4);
+
             });
 
-            // I-update ang Summary Cards sa itaas
-            const totalStudents = allStudentRecords.length;
-            const avgProgress = totalStudents > 0 ? Math.round(totalCompletedHours / totalStudents) : 0;
-
-            const summaryCards = document.querySelectorAll(".summary-card h3");
-            if (summaryCards.length >= 4) {
-                summaryCards[0].textContent = totalStudents;
-                summaryCards[1].textContent = avgProgress + "%";
-                summaryCards[2].textContent = atRiskCount;
-                summaryCards[3].textContent = onTrackCount;
-            }
-
-            // I-update ang mga counters sa AI At-Risk Section sa ibaba
-            const atRiskDisplay = document.getElementById("atRiskCountDisplay");
-            if (atRiskDisplay) atRiskDisplay.textContent = atRiskCount;
-
-            const onTrackDisplay = document.getElementById("onTrackCountDisplay");
-            if (onTrackDisplay) onTrackDisplay.textContent = onTrackCount;
-
-            // I-render ang table at ang At-Risk list
-            filterAndRenderTable();
-            renderRiskStudents(allStudentRecords);
-            populateStudentDropdown(allStudentRecords);
-
-        } catch (error) {
-            console.error("Error connecting to Python Scikit-learn API backend:", error);
-            studentTable.innerHTML = `
-                <tr>
-                    <td colspan="8" style="text-align: center; color: #ff6b6b; padding: 30px;">
-                        <i class="fa-solid triangle-exclamation"></i> Cannot connect to Python AI Server. Make sure 'python app.py' is running on port 5000.
-                    </td>
-                </tr>
-            `;
-        }
-    }
-
-    // 3. FILTER AT RENDER NG TABLE ROWS
-    function filterAndRenderTable() {
-        const keyword = searchInput ? searchInput.value.toLowerCase().trim() : "";
-        const sectionVal = sectionFilter ? sectionFilter.value.toLowerCase() : "all";
-        const progressVal = progressFilter ? progressFilter.value.toLowerCase() : "all";
-
-        const filtered = allStudentRecords.filter(item => {
-            const name = (item.name || "").toLowerCase();
-            const studentId = (item.studentId || "").toLowerCase();
-            const section = (item.section || "").toLowerCase();
-            const status = (item.aiStatus || "").toLowerCase();
-
-            const matchSearch = name.includes(keyword) || studentId.includes(keyword);
-            const matchSection = sectionVal === "all" || section.includes(sectionVal);
-            const matchStatus = progressVal === "all" || status.includes(progressVal);
-
-            return matchSearch && matchSection && matchStatus;
         });
 
-        renderTableRows(filtered);
+        ctx.restore();
+
     }
 
-    function renderTableRows(records) {
-        if (records.length === 0) {
-            studentTable.innerHTML = `
-                <tr>
-                    <td colspan="8" style="text-align: center; color: #777; padding: 30px;">
-                        No student records found matching your filter.
-                    </td>
-                </tr>
-            `;
-            if (paginationInfo) paginationInfo.textContent = "Showing 0 to 0 students";
-            return;
-        }
+};
 
-        studentTable.innerHTML = records.map(item => {
-            let statusClass = "ongoing";
-            let statusText = item.aiStatus || "On Track";
-            let barClass = "";
 
-            if (statusText.toLowerCase().includes("completed")) {
-                statusClass = "completed";
-                barClass = "complete";
-            } else if (statusText.toLowerCase().includes("risk")) {
-                statusClass = "atrisk";
-                barClass = "danger";
+function renderGraduatesByBatchChart(batchRows) {
+
+    const canvas = document.getElementById("graduatesByBatchChart");
+
+    if (!canvas) return;
+
+    if (typeof Chart === "undefined") {
+
+        console.error(CHART_LOAD_ERROR);
+        setChartMessage("graduatesByBatchEmpty", CHART_LOAD_ERROR, true);
+        return;
+
+    }
+
+    applyChartDefaults();
+
+    if (graduatesByBatchChartInstance) {
+
+        graduatesByBatchChartInstance.destroy();
+        graduatesByBatchChartInstance = null;
+
+    }
+
+    if (!batchRows || batchRows.length === 0) {
+
+        setChartMessage(
+            "graduatesByBatchEmpty",
+            "No batches registered in the system yet."
+        );
+        return;
+
+    }
+
+    clearChartMessage("graduatesByBatchEmpty");
+
+    graduatesByBatchChartInstance = new Chart(canvas, {
+        type: "bar",
+        data: {
+            labels: batchRows.map(r => r.batch),
+            datasets: [
+                {
+                    label: "Registered",
+                    data: batchRows.map(r => r.registered),
+                    backgroundColor: CHART_COLORS.primarySoft,
+                    hoverBackgroundColor: CHART_COLORS.primarySoftHover,
+                    borderRadius: 6,
+                    maxBarThickness: 40
+                },
+                {
+                    label: "Graduated",
+                    data: batchRows.map(r => r.graduated),
+                    backgroundColor: CHART_COLORS.primary,
+                    hoverBackgroundColor: CHART_COLORS.primaryHover,
+                    borderRadius: 6,
+                    maxBarThickness: 40
+                }
+            ]
+        },
+        plugins: [barValueLabelsPlugin],
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: { padding: { top: 22 } },
+            plugins: {
+                legend: {
+                    position: "bottom",
+                    labels: {
+                        usePointStyle: true,
+                        pointStyle: "circle",
+                        boxWidth: 8,
+                        padding: 16
+                    }
+                },
+                tooltip: {
+                    backgroundColor: "#1d1d1d",
+                    padding: 10,
+                    cornerRadius: 8,
+                    callbacks: {
+                        title: (items) => `Batch ${items[0].label}`,
+                        label: (ctx) =>
+                            ` ${ctx.dataset.label}: ${ctx.parsed.y}`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    border: { color: CHART_COLORS.grid },
+                    title: {
+                        display: true,
+                        text: "Batch (year in Student ID)",
+                        color: CHART_COLORS.muted
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: { precision: 0 },
+                    grid: { color: CHART_COLORS.grid },
+                    border: { display: false },
+                    title: {
+                        display: true,
+                        text: "Number of Students",
+                        color: CHART_COLORS.muted
+                    }
+                }
             }
+        }
+    });
 
-            return `
-                <tr>
-                    <td>
-                        <strong>${item.name}</strong><br>
-                        <small style="color:#777;">${item.studentId}</small>
-                    </td>
-                    <td>${item.course}</td>
-                    <td>${item.section}</td>
-                    <td>${item.company}</td>
-                    <td>
-                        <div class="progress-wrapper">
-                            <div class="progress">
-                                <div class="progress-bar ${barClass}" style="width:${item.progress}%"></div>
-                            </div>
-                            <span class="progress-value">${item.progress}%</span>
-                        </div>
-                    </td>
-                    <td>${item.currentHours} / ${item.targetHours}</td>
-                    <td><span class="status ${statusClass}">${statusText}</span></td>
-                    <td>
-                        <div class="actions">
-                            <button class="action-btn view-btn" data-id="${item.id}" title="View Student" onclick="viewStudentProgress('${item.id}')">
-                                <i class="fa-solid fa-eye"></i>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        }).join('');
+}
+
+
+// ==========================================
+// GLOBAL DATA
+// ==========================================
+
+let globalStudentRecords = [];
+let globalCompanyExposureData = [];
+
+
+// ==========================================
+// SAMPLE / DEMO DATA - "AT RISK" & "NEEDS MONITORING"
+//
+// Idinagdag lang para may laman muna ang
+// "At Risk" at "Needs Monitoring" sa pie chart,
+// summary cards, at student table habang wala
+// pang totoong estudyanteng na-flag ng backend
+// (bago pa lang ang batch / lahat "On Track" pa).
+//
+// NAKA-OFF NA ITO (false) para totoong absences at status
+// na galing sa attendance records ng mga estudyante ang
+// makita sa page. Kung gusto mong ibalik ang demo data
+// (halimbawa para sa presentation), gawing true lang.
+// ==========================================
+
+const ENABLE_SAMPLE_RISK_DATA = false;
+
+const SAMPLE_RISK_MONITORING_RECORDS = [
+    {
+        id: "sample-risk-1",
+        name: "Jhoana Reyes (Sample)",
+        studentId: "SAMPLE-001",
+        course: "BSIT",
+        section: "403",
+        company: "TechNova Solutions",
+        progress: 42,
+        currentHours: 252,
+        targetHours: 600,
+        deadline: "2026-12-31",
+        absentCount: 6,
+        aiStatus: "At Risk",
+        riskReason: "Scikit-learn: 6 absences have been recorded — the trainee has been absent from duty too frequently and requires immediate action from the coordinator."
+    },
+
+    {
+        id: "sample-risk-2",
+        name: "Marco Villanueva (Sample)",
+        studentId: "SAMPLE-002",
+        course: "BSIT",
+        section: "403",
+        company: "NetLink Systems",
+        progress: 30,
+        currentHours: 180,
+        targetHours: 600,
+        deadline: "2026-12-15",
+        absentCount: 3,
+        aiStatus: "At Risk",
+        riskReason: "Scikit-learn: At the current progress rate, the trainee is predicted to complete only 410 out of 600 hours before the deadline."
+    },
+    {
+        id: "sample-monitor-1",
+        name: "Andrea Santos (Sample)",
+        studentId: "SAMPLE-003",
+        course: "BSIT",
+        section: "404",
+        company: "ByteWorks Inc.",
+        progress: 55,
+        currentHours: 330,
+        targetHours: 600,
+        deadline: "2026-12-31",
+        absentCount: 2,
+        aiStatus: "Needs Monitoring",
+        riskReason: "Scikit-learn: The student has 2 recorded absences from duty — this is still relatively low, but attendance should be monitored."
+    },
+    {
+        id: "sample-monitor-2",
+        name: "Karl Mendoza (Sample)",
+        studentId: "SAMPLE-004",
+        course: "BSIT",
+        section: "404",
+        company: "CloudPeak Hosting",
+        progress: 60,
+        currentHours: 360,
+        targetHours: 600,
+        deadline: "2026-11-30",
+        absentCount: 1,
+        aiStatus: "Needs Monitoring",
+        riskReason: "Scikit-learn: Close to the target, but still needs monitoring — predicted to reach 540 out of 600 hours before the deadline."
+    }
+];
+
+
+// ==========================================
+// DOM CONTENT LOADED
+// ==========================================
+
+document.addEventListener("DOMContentLoaded", () => {
+
+    const studentTable =
+        document.getElementById("studentTable");
+
+    if (!studentTable) return;
+
+
+    const searchInput =
+        document.getElementById("searchStudent");
+
+    const sectionFilter =
+        document.getElementById("sectionFilter");
+
+    const progressFilter =
+        document.getElementById("progressFilter");
+
+    const paginationInfo =
+        document.getElementById("paginationInfo");
+
+
+    // ==========================================
+    // TABLE ERROR MESSAGE
+    // Para hindi mag-"Loading..." nang walang katapusan
+    // kapag hindi maabot ang AI server.
+    // ==========================================
+
+    function showStudentTableError(message) {
+
+        studentTable.innerHTML = `
+            <tr>
+                <td
+                    colspan="9"
+                    style="text-align:center;color:#dc2626;padding:30px;"
+                >
+                    ${escapeHtml(message)}
+                </td>
+            </tr>
+        `;
 
         if (paginationInfo) {
-            paginationInfo.textContent = `Showing 1 to ${records.length} of ${records.length} students`;
+
+            paginationInfo.textContent = "Showing 0 to 0 students";
+
         }
+
     }
 
-    // 4. RENDER NG AT-RISK STUDENTS SA "STUDENTS REQUIRING ATTENTION" SECTION
-    function renderRiskStudents(records) {
-        const riskContainer = document.getElementById("riskStudentsContainer");
+
+    // ==========================================
+    // FETCH ALL STUDENTS
+    // EXISTING BACKEND - UNCHANGED
+    // ==========================================
+
+    async function fetchAllStudents() {
+
+        try {
+
+            const response =
+                await fetch(
+                    "http://localhost:5000/api/predict-risk"
+                );
+
+
+            const result =
+                await response.json();
+
+
+            if (
+                result.status !== "success"
+            ) {
+
+                console.error(
+                    "predict-risk returned an error:",
+                    result.message || result
+                );
+
+                const riskContainer =
+                    document.getElementById(
+                        "riskStudentsContainer"
+                    );
+
+                if (riskContainer) {
+
+                    riskContainer.innerHTML = `
+                        <div style="padding:20px;text-align:center;color:#dc2626;">
+                            AI Server Error: ${
+                                (result.message || "Unknown error")
+                                    .toString()
+                                    .replace(/</g, "&lt;")
+                            }
+                        </div>
+                    `;
+
+                }
+
+                showStudentTableError(
+                    "Hindi ma-load ang student records - may error mula sa AI server."
+                );
+
+                showChartsUnavailable(
+                    "Unable to load chart data - the AI server returned an error."
+                );
+
+                return;
+
+            }
+
+
+            // KEEP ALL EXISTING BACKEND DATA
+            globalStudentRecords =
+                result.data;
+
+
+            // I-DAGDAG ANG SAMPLE "AT RISK" / "NEEDS
+            // MONITORING" RECORDS (kung naka-ON ang
+            // ENABLE_SAMPLE_RISK_DATA sa itaas) para
+            // may makita agad sa pie chart, summary
+            // cards, at table habang wala pang totoong
+            // estudyanteng na-flag ng AI backend.
+            if (ENABLE_SAMPLE_RISK_DATA) {
+
+                globalStudentRecords =
+                    globalStudentRecords.concat(
+                        SAMPLE_RISK_MONITORING_RECORDS
+                    );
+
+            }
+
+
+            let atRiskCount = 0;
+            let monitoringCount = 0;
+            let onTrackCount = 0;
+
+            globalStudentRecords.forEach(item => {
+
+                const category =
+                    getStudentStatusCategory(item);
+
+
+                if (
+                    category === "risk"
+                ) {
+
+                    atRiskCount++;
+
+                } else if (
+                    category === "monitoring"
+                ) {
+
+                    monitoringCount++;
+
+                } else {
+
+                    onTrackCount++;
+
+                }
+
+            });
+
+
+            // ==========================================
+            // I-UPDATE ANG BAR AT PIE CHART
+            // ==========================================
+
+            renderRiskStatusCharts(
+                atRiskCount,
+                monitoringCount,
+                onTrackCount
+            );
+
+            renderGraduatesByBatchChart(
+                buildGraduatesByBatchData(globalStudentRecords)
+            );
+
+
+            // ==========================================
+            // AI STATUS CARD COUNTS
+            // ==========================================
+
+            const atRiskDisplay =
+                document.getElementById(
+                    "atRiskCountDisplay"
+                );
+
+
+            if (atRiskDisplay) {
+
+                atRiskDisplay.textContent =
+                    atRiskCount;
+
+            }
+
+
+            const monitoringDisplay =
+                document.getElementById(
+                    "monitoringCountDisplay"
+                );
+
+
+            if (monitoringDisplay) {
+
+                monitoringDisplay.textContent =
+                    monitoringCount;
+
+            }
+
+
+            const onTrackDisplay =
+                document.getElementById(
+                    "onTrackCountDisplay"
+                );
+
+
+            if (onTrackDisplay) {
+
+                onTrackDisplay.textContent =
+                    onTrackCount;
+
+            }
+
+
+            // ==========================================
+            // STUDENT TABLE
+            // ==========================================
+
+            populateSectionFilter();
+
+            filterAndRenderTable();
+
+
+            // ==========================================
+            // DEFAULT:
+            // SHOW AT RISK RECORDS
+            // ==========================================
+
+            renderStatusStudents(
+                globalStudentRecords,
+                "risk"
+            );
+
+
+            setActiveStatusCard(
+                "risk"
+            );
+
+
+            // ==========================================
+            // EXISTING COMPANY AI
+            // ==========================================
+
+            fetchCompanySkillExposureAI();
+
+
+        } catch (error) {
+
+            console.error(
+                "Error connecting to Python AI Server:",
+                error
+            );
+
+
+            const riskContainer =
+                document.getElementById(
+                    "riskStudentsContainer"
+                );
+
+            if (riskContainer) {
+
+                riskContainer.innerHTML = `
+                    <div style="padding:20px;text-align:center;color:#dc2626;">
+                        Hindi maabot ang AI Server (Flask, port 5000).<br>
+                        <small>${
+                            (error && error.message ? error.message : String(error))
+                                .toString()
+                                .replace(/</g, "&lt;")
+                        }</small><br><br>
+                        <small style="color:#777;">
+                            I-check: (1) tumatakbo ba ang <code>python app.py</code>,
+                            (2) puro <code>http://localhost:5000</code> ba binuksan
+                            ang page na ito (hindi https), (3) walang firewall/adblocker
+                            na humaharang sa localhost:5000.
+                        </small>
+                    </div>
+                `;
+
+            }
+
+
+            showStudentTableError(
+                "Hindi maabot ang AI Server (Flask, port 5000). Siguraduhing tumatakbo ang app.py."
+            );
+
+            showChartsUnavailable(
+                "Unable to load chart data - the AI server is unreachable."
+            );
+
+            fetchCompanySkillExposureAI();
+
+        }
+
+    }
+
+
+    // ==========================================
+    // COMPANY SKILL EXPOSURE AI
+    // EXISTING BACKEND - UNCHANGED
+    // ==========================================
+
+    async function fetchCompanySkillExposureAI() {
+
+        const tableBody =
+            document.getElementById(
+                "companySkillTableBody"
+            );
+
+
+        if (!tableBody) return;
+
+
+        try {
+
+            const response =
+                await fetch(
+                    "http://localhost:5000/api/company-skill-exposure",
+                    {
+                        method: "POST",
+                        headers: {
+                            "Content-Type":
+                                "application/json"
+                        }
+                    }
+                );
+
+
+            const result =
+                await response.json();
+
+
+            if (
+                result.status !== "success"
+            ) {
+
+                tableBody.innerHTML = `
+                    <tr>
+                        <td
+                            colspan="5"
+                            style="
+                                text-align:center;
+                                color:#ff6b6b;
+                                padding:30px;
+                            "
+                        >
+                            Error from Python AI Server.
+                        </td>
+                    </tr>
+                `;
+
+                return;
+
+            }
+
+
+            globalCompanyExposureData =
+                result.data;
+
+
+            if (
+                globalCompanyExposureData.length === 0
+            ) {
+
+                tableBody.innerHTML = `
+                    <tr>
+                        <td
+                            colspan="5"
+                            style="
+                                text-align:center;
+                                color:#777;
+                                padding:30px;
+                            "
+                        >
+                            No companies found.
+                        </td>
+                    </tr>
+                `;
+
+                return;
+
+            }
+
+
+            tableBody.innerHTML =
+                globalCompanyExposureData
+                    .map(item => `
+
+                        <tr>
+
+                            <td>
+                                <strong>
+                                    ${item.companyName}
+                                </strong>
+                            </td>
+
+
+                            <td>
+                                <span
+                                    class="skill-tag ${item.skillKey}"
+                                >
+                                    ${item.primarySkill}
+                                </span>
+                            </td>
+
+
+                            <td>
+
+                                <div
+                                    class="company-progress"
+                                >
+
+                                    <div
+                                        class="company-progress-bar"
+                                    >
+
+                                        <div
+                                            class="company-progress-fill ${item.skillKey}-fill"
+                                            style="
+                                                width:${item.exposure}%;
+                                            "
+                                        ></div>
+
+                                    </div>
+
+                                    <span>
+                                        ${item.exposure}%
+                                    </span>
+
+                                </div>
+
+                            </td>
+
+
+                            <td>
+                                ${item.commonTasks}
+                            </td>
+
+
+                            <td>
+
+                                <button
+                                    class="company-view-btn"
+                                    onclick="
+                                        window.viewCompanySkillModal(
+                                            '${item.companyName}'
+                                        )
+                                    "
+                                >
+
+                                    <i
+                                        class="fa-solid fa-eye"
+                                    ></i>
+
+                                    View
+
+                                </button>
+
+                            </td>
+
+                        </tr>
+
+                    `)
+                    .join("");
+
+
+        } catch (error) {
+
+            console.error(
+                "Error fetching Python AI company exposure:",
+                error
+            );
+
+
+            tableBody.innerHTML = `
+                <tr>
+                    <td
+                        colspan="5"
+                        style="
+                            text-align:center;
+                            color:#ff6b6b;
+                            padding:30px;
+                        "
+                    >
+                        Server connection failed.
+                    </td>
+                </tr>
+            `;
+
+        }
+
+    }
+
+
+    // ==========================================
+    // STATUS CLASSIFICATION
+    //
+    // IMPORTANT:
+    // This DOES NOT create new backend data.
+    // It only reads the existing aiStatus.
+    // ==========================================
+
+    function getStudentStatusCategory(item) {
+
+        const status =
+            (item.aiStatus || "")
+                .toLowerCase()
+                .trim();
+
+
+        // ==========================================
+        // AT RISK
+        // ==========================================
+
+        if (
+            status.includes("risk")
+        ) {
+
+            return "risk";
+
+        }
+
+
+        // ==========================================
+        // NEEDS MONITORING
+        // ==========================================
+
+        if (
+            status.includes("monitor") ||
+            status.includes("watch") ||
+            status.includes("needs attention") ||
+            status.includes("need attention")
+        ) {
+
+            return "monitoring";
+
+        }
+
+
+        // ==========================================
+        // ON TRACK
+        // ==========================================
+
+        return "ontrack";
+
+    }
+
+
+    // ==========================================
+    // STATUS CARD CONFIG
+    // ==========================================
+
+    function getStatusConfig(category) {
+
+        if (
+            category === "risk"
+        ) {
+
+            return {
+
+                title:
+                    "Students Requiring Attention",
+
+                empty:
+                    "No students currently flagged as At Risk.",
+
+                badge:
+                    "At Risk",
+
+                badgeClass:
+                    "atrisk",
+
+                icon:
+                    "fa-brain",
+
+                iconColor:
+                    "#ff6b6b"
+
+            };
+
+        }
+
+
+        if (
+            category === "monitoring"
+        ) {
+
+            return {
+
+                title:
+                    "Students Needing Monitoring",
+
+                empty:
+                    "No students currently need monitoring.",
+
+                badge:
+                    "Needs Monitoring",
+
+                badgeClass:
+                    "monitoring",
+
+                icon:
+                    "fa-eye",
+
+                iconColor:
+                    "#f19c14"
+
+            };
+
+        }
+
+
+        return {
+
+            title:
+                "Students On Track",
+
+            empty:
+                "No students are currently classified as On Track.",
+
+            badge:
+                "On Track",
+
+            badgeClass:
+                "completed",
+
+            icon:
+                "fa-circle-check",
+
+            iconColor:
+                "#27ae60"
+
+        };
+
+    }
+
+
+    // ==========================================
+    // HELPERS - ESCAPE + ABSENCES
+    //
+    // Ang absentCount at consecutiveAbsences ay
+    // galing sa attendance records ng bawat estudyante
+    // (binabasa ng /api/predict-risk sa app.py).
+    // Dapat kapareho ng thresholds sa app.py ang
+    // mga numero sa ibaba.
+    // ==========================================
+
+    const ABSENCE_MONITORING_THRESHOLD = 5;
+    const ABSENCE_RISK_THRESHOLD = 8;
+    const CONSECUTIVE_ABSENCE_RISK_THRESHOLD = 3;
+
+
+    function escapeHtml(value) {
+
+        return String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+
+    }
+
+
+    function getAbsenceLevel(item) {
+
+        const absent = Number(item.absentCount) || 0;
+        const streak = Number(item.consecutiveAbsences) || 0;
+
+        if (
+            absent >= ABSENCE_RISK_THRESHOLD ||
+            streak >= CONSECUTIVE_ABSENCE_RISK_THRESHOLD
+        ) {
+            return "high";
+        }
+
+        if (absent >= ABSENCE_MONITORING_THRESHOLD) {
+            return "watch";
+        }
+
+        return "";
+
+    }
+
+
+    function renderAbsenceBadge(item) {
+
+        const absent = Number(item.absentCount) || 0;
+        const streak = Number(item.consecutiveAbsences) || 0;
+
+        // 0 record = wala pang nababasang attendance para sa
+        // estudyante (iba ito sa "0 absences" na perfect attendance)
+        if (item.attendanceRecords === 0 && absent === 0) {
+
+            return `
+                <span
+                    class="absence-badge"
+                    title="Wala pang nababasang attendance record para sa estudyanteng ito"
+                >
+                    <i class="fa-solid fa-calendar-xmark"></i>
+                    No attendance yet
+                </span>
+            `;
+
+        }
+
+        const label =
+            `${absent} ${absent === 1 ? "absence" : "absences"}`;
+
+        const title =
+            streak > 0
+                ? `${absent} kabuuang absence · ${streak} sunod-sunod ngayon`
+                : `${absent} kabuuang absence`;
+
+        return `
+            <span
+                class="absence-badge ${getAbsenceLevel(item)}"
+                title="${title}"
+            >
+                <i class="fa-solid fa-calendar-xmark"></i>
+                ${label}
+            </span>
+        `;
+
+    }
+
+
+    function renderStreakBadge(item) {
+
+        const streak = Number(item.consecutiveAbsences) || 0;
+
+        if (streak < 2) return "";
+
+        return `
+        `;
+
+    }
+
+
+    // ==========================================
+    // RENDER STATUS STUDENTS
+    // (AI At-Risk Analysis list)
+    //
+    // Kasama na ngayon ang bilang ng absences ng
+    // bawat estudyante, at nauuna sa listahan ang
+    // pinakamaraming absent / pinakamahabang streak.
+    // ==========================================
+
+    function renderStatusStudents(
+        records,
+        category
+    ) {
+
+        const riskContainer =
+            document.getElementById("riskStudentsContainer");
+
+        const titleElement =
+            document.getElementById("studentStatusListTitle");
+
         if (!riskContainer) return;
 
-        const atRiskList = records.filter(item => (item.aiStatus || "").toLowerCase().includes("risk"));
+        const config = getStatusConfig(category);
 
-        if (atRiskList.length === 0) {
-            riskContainer.innerHTML = `
-                <div style="padding: 20px; text-align: center; color: #777;">
-                    No students currently flagged by the Scikit-learn AI Model.
-                </div>
-            `;
-            return;
+        const filteredList =
+            records
+                .filter(
+                    item =>
+                        getStudentStatusCategory(item) === category
+                )
+                .sort((a, b) =>
+                    (Number(b.consecutiveAbsences) || 0) -
+                        (Number(a.consecutiveAbsences) || 0) ||
+                    (Number(b.absentCount) || 0) -
+                        (Number(a.absentCount) || 0)
+                );
+
+        if (titleElement) {
+
+            titleElement.textContent = config.title;
+
         }
 
-        riskContainer.innerHTML = atRiskList.map(item => {
-            const initials = item.name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2);
-            return `
-                <div class="risk-row">
-                    <div class="student-mini">
-                        <div class="student-avatar">${initials}</div>
-                        <div>
-                            <strong>${item.name}</strong>
-                            <small>${item.course} ${item.section} · ${item.company}</small>
-                        </div>
-                    </div>
-                    <div class="risk-reason">
-                        <span><i class="fa-solid fa-brain" style="color: #ff6b6b; margin-right: 5px;"></i> ${item.riskReason}</span>
-                    </div>
-                    <span class="status atrisk">At Risk</span>
+        if (filteredList.length === 0) {
+
+            riskContainer.innerHTML = `
+                <div style="padding:20px;text-align:center;color:#777;">
+                    ${config.empty}
                 </div>
             `;
-        }).join('');
+
+            return;
+
+        }
+
+        riskContainer.innerHTML =
+            filteredList
+                .map(item => {
+
+                    const studentName = item.name || "Student";
+
+                    const initials =
+                        studentName
+                            .split(" ")
+                            .filter(Boolean)
+                            .map(part => part[0])
+                            .join("")
+                            .toUpperCase()
+                            .substring(0, 2) || "ST";
+
+                    const subInfo =
+                        [item.course, item.section, item.company]
+                            .filter(Boolean)
+                            .join(" · ");
+
+                    const reason =
+                        item.riskReason ||
+                        (
+                            category === "monitoring"
+                                ? "Student progress should be monitored."
+                                : category === "ontrack"
+                                    ? "Student is progressing normally."
+                                    : "Student may need intervention."
+                        );
+
+                    return `
+                        <div
+                            class="risk-row"
+                            data-student-id="${escapeHtml(item.id)}"
+                            role="button"
+                            tabindex="0"
+                            style="cursor:pointer;"
+                            title="Click to view attendance history"
+                        >
+
+                            <!-- STUDENT -->
+                            <div class="student-mini">
+
+                                <div class="student-avatar">
+                                    ${escapeHtml(initials)}
+                                </div>
+
+                                <div>
+                                    <strong>${escapeHtml(studentName)}</strong>
+                                    <small>${escapeHtml(subInfo)}</small>
+                                </div>
+
+                            </div>
+
+
+                            <!-- REASON + ATTENDANCE -->
+                            <div class="risk-reason">
+
+                                <span>
+                                    <i
+                                        class="fa-solid ${config.icon}"
+                                        style="color:${config.iconColor};margin-right:5px;"
+                                    ></i>
+                                    ${escapeHtml(reason)}
+                                </span>
+
+                                <div class="risk-attendance">
+                                    ${renderAbsenceBadge(item)}
+                                    ${renderStreakBadge(item)}
+                                </div>
+
+                            </div>
+
+
+                            <!-- STATUS -->
+                            <span class="status ${config.badgeClass}">
+                                ${config.badge}
+                            </span>
+
+                        </div>
+                    `;
+
+                })
+                .join("");
+
     }
 
-    // 5. ILAGAY ANG MGA ESTUDYANTE SA DROPDOWN NG COMPANY RECOMMENDATION
-    function populateStudentDropdown(records) {
-        const studentSelect = document.getElementById("recommendStudent");
-        if (!studentSelect) return;
 
-        studentSelect.innerHTML = `<option value="">Select Student</option>` + records.map(item => `
-            <option value="${item.id}">${item.name} (${item.course} ${item.section})</option>
-        `).join('');
+    // ==========================================
+    // ACTIVE CARD
+    // ==========================================
+
+    function setActiveStatusCard(
+        category
+    ) {
+
+        const riskCard =
+            document.getElementById(
+                "riskCard"
+            );
+
+
+        const monitoringCard =
+            document.getElementById(
+                "monitoringCard"
+            );
+
+
+        const onTrackCard =
+            document.getElementById(
+                "onTrackCard"
+            );
+
+
+        if (riskCard) {
+
+            riskCard.classList.remove(
+                "selected"
+            );
+
+        }
+
+
+        if (monitoringCard) {
+
+            monitoringCard.classList.remove(
+                "selected"
+            );
+
+        }
+
+
+        if (onTrackCard) {
+
+            onTrackCard.classList.remove(
+                "selected"
+            );
+
+        }
+
+
+        if (
+            category === "risk" &&
+            riskCard
+        ) {
+
+            riskCard.classList.add(
+                "selected"
+            );
+
+        }
+
+
+        if (
+            category === "monitoring" &&
+            monitoringCard
+        ) {
+
+            monitoringCard.classList.add(
+                "selected"
+            );
+
+        }
+
+
+        if (
+            category === "ontrack" &&
+            onTrackCard
+        ) {
+
+            onTrackCard.classList.add(
+                "selected"
+            );
+
+        }
+
     }
 
-    if (searchInput) searchInput.addEventListener("keyup", filterAndRenderTable);
-    if (sectionFilter) sectionFilter.addEventListener("change", filterAndRenderTable);
-    if (progressFilter) progressFilter.addEventListener("change", filterAndRenderTable);
 
-    // I-run ang initialization
-    syncUserProfile();
+    // ==========================================
+    // CLICKABLE STATUS CARDS
+    // ==========================================
+
+    function initStatusCards() {
+
+        const riskCard =
+            document.getElementById(
+                "riskCard"
+            );
+
+
+        const monitoringCard =
+            document.getElementById(
+                "monitoringCard"
+            );
+
+
+        const onTrackCard =
+            document.getElementById(
+                "onTrackCard"
+            );
+
+
+        // ==========================================
+        // AT RISK
+        // ==========================================
+
+        if (riskCard) {
+
+            riskCard.addEventListener(
+                "click",
+                () => {
+
+                    renderStatusStudents(
+                        globalStudentRecords,
+                        "risk"
+                    );
+
+
+                    setActiveStatusCard(
+                        "risk"
+                    );
+
+                }
+            );
+
+        }
+
+
+        // ==========================================
+        // NEEDS MONITORING
+        // ==========================================
+
+        if (monitoringCard) {
+
+            monitoringCard.addEventListener(
+                "click",
+                () => {
+
+                    renderStatusStudents(
+                        globalStudentRecords,
+                        "monitoring"
+                    );
+
+
+                    setActiveStatusCard(
+                        "monitoring"
+                    );
+
+                }
+            );
+
+        }
+
+
+        // ==========================================
+        // ON TRACK
+        // ==========================================
+
+        if (onTrackCard) {
+
+            onTrackCard.addEventListener(
+                "click",
+                () => {
+
+                    renderStatusStudents(
+                        globalStudentRecords,
+                        "ontrack"
+                    );
+
+
+                    setActiveStatusCard(
+                        "ontrack"
+                    );
+
+                }
+            );
+
+        }
+
+    }
+
+
+    // ==========================================
+    // SECTION FILTER
+    // Ang mga section ay galing na sa totoong
+    // student records (hindi na hardcoded 3A / 3B).
+    // ==========================================
+
+    function populateSectionFilter() {
+
+        if (!sectionFilter) return;
+
+        const previous = sectionFilter.value;
+
+        const sections = new Map();
+
+        globalStudentRecords.forEach(item => {
+
+            const section = String(item.section || "").trim();
+
+            if (!section || sections.has(section.toLowerCase())) return;
+
+            sections.set(
+                section.toLowerCase(),
+                [item.course, section].filter(Boolean).join(" ")
+            );
+
+        });
+
+        sectionFilter.innerHTML =
+            `<option value="all">All Sections</option>` +
+            [...sections.entries()]
+                .sort((a, b) => a[1].localeCompare(b[1], undefined, { numeric: true }))
+                .map(([value, label]) =>
+                    `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`
+                )
+                .join("");
+
+        if (previous && sections.has(previous)) {
+
+            sectionFilter.value = previous;
+
+        }
+
+    }
+
+
+    // ==========================================
+    // STATUS FILTER MATCHER
+    // (gumagamit ng parehong category rules gaya
+    // ng AI At-Risk Analysis para pare-pareho ang
+    // resulta sa buong page)
+    // ==========================================
+
+    function matchesStatusFilter(item, filterValue) {
+
+        if (filterValue === "all") return true;
+
+        const status = (item.aiStatus || "").toLowerCase();
+
+        if (filterValue === "completed") {
+
+            return status.includes("completed");
+
+        }
+
+        const category = getStudentStatusCategory(item);
+
+        if (filterValue === "atrisk") return category === "risk";
+
+        if (filterValue === "monitoring") return category === "monitoring";
+
+        if (filterValue === "ontrack") {
+
+            return category === "ontrack" && !status.includes("completed");
+
+        }
+
+        return true;
+
+    }
+
+
+    // ==========================================
+    // STUDENT TABLE FILTER
+    // ==========================================
+
+    function filterAndRenderTable() {
+
+        const keyword =
+            searchInput ? searchInput.value.toLowerCase().trim() : "";
+
+        const sectionVal =
+            sectionFilter ? sectionFilter.value.toLowerCase() : "all";
+
+        const progressVal =
+            progressFilter ? progressFilter.value.toLowerCase() : "all";
+
+        const filtered =
+            globalStudentRecords.filter(item => {
+
+                const name = String(item.name || "").toLowerCase();
+
+                const studentId = String(item.studentId || "").toLowerCase();
+
+                const section = String(item.section || "").trim().toLowerCase();
+
+                return (
+                    (name.includes(keyword) || studentId.includes(keyword)) &&
+                    (sectionVal === "all" || section === sectionVal) &&
+                    matchesStatusFilter(item, progressVal)
+                );
+
+            });
+
+        renderTableRows(filtered);
+
+    }
+
+
+    // ==========================================
+    // RENDER STUDENT TABLE
+    // ==========================================
+
+    function renderTableRows(
+        records
+    ) {
+
+        if (records.length === 0) {
+
+            studentTable.innerHTML = `
+                <tr>
+                    <td
+                        colspan="9"
+                        style="text-align:center;color:#777;padding:30px;"
+                    >
+                        No student records found.
+                    </td>
+                </tr>
+            `;
+
+            if (paginationInfo) {
+
+                paginationInfo.textContent =
+                    "Showing 0 to 0 students";
+
+            }
+
+            return;
+
+        }
+
+        studentTable.innerHTML =
+            records
+                .map(item => {
+
+                    const category = getStudentStatusCategory(item);
+
+                    const isCompleted =
+                        (item.aiStatus || "").toLowerCase().includes("completed");
+
+                    let statusClass = "ongoing";
+                    let barClass = "";
+
+                    if (isCompleted) {
+
+                        statusClass = "completed";
+                        barClass = "complete";
+
+                    } else if (category === "risk") {
+
+                        statusClass = "atrisk";
+                        barClass = "danger";
+
+                    } else if (category === "monitoring") {
+
+                        statusClass = "monitoring";
+                        barClass = "warning";
+
+                    }
+
+                    const progress = Number(item.progress) || 0;
+
+                    return `
+                        <tr>
+
+                            <td>
+                                <strong>${escapeHtml(item.name)}</strong>
+                                <br>
+                                <small style="color:#777;">
+                                    ${escapeHtml(item.studentId)}
+                                </small>
+                            </td>
+
+                            <td>${escapeHtml(item.course)}</td>
+
+                            <td>${escapeHtml(item.section)}</td>
+
+                            <td>${escapeHtml(item.company)}</td>
+
+                            <td>
+                                <div class="progress-wrapper">
+                                    <div class="progress">
+                                        <div
+                                            class="progress-bar ${barClass}"
+                                            style="width:${progress}%;"
+                                        ></div>
+                                    </div>
+                                    <span class="progress-value">
+                                        ${progress}%
+                                    </span>
+                                </div>
+                            </td>
+
+                            <td>
+                                ${escapeHtml(item.currentHours)}
+                                /
+                                ${escapeHtml(item.targetHours)}
+                            </td>
+
+                            <td>${renderAbsenceBadge(item)}</td>
+
+                            <td>
+                                <span class="status ${statusClass}">
+                                    ${escapeHtml(item.aiStatus)}
+                                </span>
+                            </td>
+
+                            <td>
+                                <button
+                                    class="action-btn view-btn"
+                                    onclick="window.viewStudentProgress('${escapeHtml(item.id)}')"
+                                >
+                                    <i class="fa-solid fa-eye"></i>
+                                </button>
+                            </td>
+
+                        </tr>
+                    `;
+
+                })
+                .join("");
+
+        if (paginationInfo) {
+
+            paginationInfo.textContent =
+                `Showing 1 to ${records.length} of ${records.length} students`;
+
+        }
+
+    }
+
+
+    // ==========================================
+    // AI COMPANY RECOMMENDATION
+    // EXISTING FUNCTION - UNCHANGED
+    // ==========================================
+
+    const recommendBtn =
+        document.getElementById(
+            "recommendCompanyBtn"
+        );
+
+
+    const skillFocusSelect =
+        document.getElementById(
+            "skillFocus"
+        );
+
+
+    const recommendationResults =
+        document.getElementById(
+            "recommendationResults"
+        );
+
+
+    if (recommendBtn) {
+
+        recommendBtn.addEventListener(
+            "click",
+            async () => {
+
+                const skillFocus =
+                    skillFocusSelect
+                        ? skillFocusSelect.value.trim()
+                        : "";
+
+
+                if (!skillFocus) {
+
+                    alert(
+                        "Mangyaring pumili muna ng Skill Focus."
+                    );
+
+
+                    return;
+
+                }
+
+
+                recommendationResults.innerHTML = `
+
+                    <div
+                        style="
+                            text-align:center;
+                            color:#777;
+                            padding:20px;
+                        "
+                    >
+
+                        AI is finding companies
+                        based on your skills…
+
+                    </div>
+
+                `;
+
+
+                try {
+
+                    const response =
+                        await fetch(
+                            "http://localhost:5000/api/recommend-company",
+                            {
+                                method: "POST",
+
+                                headers: {
+                                    "Content-Type":
+                                        "application/json"
+                                },
+
+                                body:
+                                    JSON.stringify({
+                                        skillFocus:
+                                            skillFocus
+                                    })
+                            }
+                        );
+
+
+                    const result =
+                        await response.json();
+
+
+                    if (
+                        result.status !== "success" ||
+                        !result.data ||
+                        result.data.length === 0
+                    ) {
+
+                        recommendationResults.innerHTML = `
+
+                            <div
+                                style="
+                                    text-align:center;
+                                    color:#ff6b6b;
+                                    padding:20px;
+                                "
+                            >
+
+                                Not Found Skills..
+
+                            </div>
+
+                        `;
+
+
+                        return;
+
+                    }
+
+
+                    recommendationResults.innerHTML =
+                        result.data
+                            .map(comp => `
+
+                                <div
+                                    class="recommendation-company"
+                                    style="
+                                        background:#f8f9fa;
+                                        padding:15px;
+                                        border-radius:8px;
+                                        margin-bottom:10px;
+                                        display:flex;
+                                        justify-content:space-between;
+                                        align-items:center;
+                                        border-left:4px solid #4e73df;
+                                    "
+                                >
+
+                                    <div
+                                        class="recommendation-company-info"
+                                        style="
+                                            display:flex;
+                                            align-items:center;
+                                            gap:15px;
+                                        "
+                                    >
+
+                                        <div
+                                            class="company-icon"
+                                            style="
+                                                background:#e3e6f0;
+                                                color:#4e73df;
+                                                width:40px;
+                                                height:40px;
+                                                display:flex;
+                                                align-items:center;
+                                                justify-content:center;
+                                                border-radius:50%;
+                                            "
+                                        >
+
+                                            <i
+                                                class="fa-solid fa-building"
+                                            ></i>
+
+                                        </div>
+
+
+                                        <div>
+
+                                            <h4
+                                                style="
+                                                    margin:0;
+                                                    color:#333;
+                                                "
+                                            >
+
+                                                ${comp.companyName}
+
+                                            </h4>
+
+
+                                            <p
+                                                style="
+                                                    margin:3px 0;
+                                                    color:#666;
+                                                    font-size:13px;
+                                                "
+                                            >
+
+                                                Primary Skill:
+
+                                                <strong>
+                                                    ${comp.primarySkill}
+                                                </strong>
+
+                                            </p>
+
+
+                                            <p
+                                                style="
+                                                    margin:3px 0;
+                                                    color:#4e73df;
+                                                    font-size:12px;
+                                                "
+                                            >
+
+                                                <em>
+                                                    ${comp.reasons.join(" | ")}
+                                                </em>
+
+                                            </p>
+
+                                        </div>
+
+                                    </div>
+
+
+                                    <div
+                                        style="
+                                            text-align:right;
+                                        "
+                                    >
+
+                                        <span
+                                            style="
+                                                background:#d4edda;
+                                                color:#155724;
+                                                padding:5px 10px;
+                                                border-radius:20px;
+                                                font-size:12px;
+                                                font-weight:bold;
+                                            "
+                                        >
+
+                                            AI Score:
+                                            ${comp.aiScore}%
+
+                                        </span>
+
+                                    </div>
+
+                                </div>
+
+                            `)
+                            .join("");
+
+
+                } catch (error) {
+
+                    console.error(
+                        "Error fetching AI recommendations:",
+                        error
+                    );
+
+
+                    recommendationResults.innerHTML = `
+
+                        <div
+                            style="
+                                text-align:center;
+                                color:#ff6b6b;
+                                padding:20px;
+                            "
+                        >
+
+                            Nabigong kumonekta
+                            sa AI server.
+
+                        </div>
+
+                    `;
+
+                }
+
+            }
+        );
+
+    }
+
+
+    // ==========================================
+    // SEARCH / FILTER EVENTS
+    // ==========================================
+
+    if (searchInput) {
+
+        searchInput.addEventListener(
+            "keyup",
+            filterAndRenderTable
+        );
+
+    }
+
+
+    if (sectionFilter) {
+
+        sectionFilter.addEventListener(
+            "change",
+            filterAndRenderTable
+        );
+
+    }
+
+
+    if (progressFilter) {
+
+        progressFilter.addEventListener(
+            "change",
+            filterAndRenderTable
+        );
+
+    }
+
+
+    // ==========================================
+    // INITIALIZE CLICKABLE CARDS
+    // ==========================================
+
+    initStatusCards();
+
+
+    // ==========================================
+    // CLICK / KEYBOARD -> OPEN ATTENDANCE MODAL
+    // Event delegation dahil pinapalitan ng innerHTML
+    // ang laman ng riskStudentsContainer paulit-ulit
+    // ==========================================
+
+    const riskStudentsContainer =
+        document.getElementById("riskStudentsContainer");
+
+    if (riskStudentsContainer) {
+
+        riskStudentsContainer.addEventListener(
+            "click",
+            (e) => {
+
+                const row = e.target.closest(".risk-row");
+
+                if (row && row.dataset.studentId) {
+                    window.openAttendanceModal(row.dataset.studentId);
+                }
+
+            }
+        );
+
+        riskStudentsContainer.addEventListener(
+            "keydown",
+            (e) => {
+
+                if (e.key !== "Enter" && e.key !== " ") return;
+
+                const row = e.target.closest(".risk-row");
+
+                if (row && row.dataset.studentId) {
+                    e.preventDefault();
+                    window.openAttendanceModal(row.dataset.studentId);
+                }
+
+            }
+        );
+
+    }
+
+
+    // ==========================================
+    // INITIAL LOAD
+    // ==========================================
+
     fetchAllStudents();
+
 });
 
 
-/* ==========================================
-   GLOBAL VIEW FUNCTIONS & AI ACTIONS
-========================================== */
+// ==========================================
+// VIEW STUDENT PROGRESS
+// (Ngayon binubuksan na nito ang attendance modal
+// sa halip na alert lang)
+// ==========================================
 
-window.viewStudentProgress = function(studentId) {
-    console.log("Viewing student progress ID:", studentId);
-    alert(`Opening detailed predictive analytics view for student ID: ${studentId}`);
-}
+window.viewStudentProgress =
+    (id) => {
 
-window.viewCompanySkill = function(companyName) {
-    alert(`Loading analytics profile for partner company: ${companyName}`);
-}
+        window.openAttendanceModal(id);
 
-const recommendBtn = document.getElementById("recommendCompanyBtn");
-if(recommendBtn) {
-    recommendBtn.addEventListener("click", () => {
-        const studentSelect = document.getElementById("recommendStudent");
-        const skillSelect = document.getElementById("skillFocus");
+    };
 
-        const student = studentSelect ? studentSelect.value : "";
-        const skill = skillSelect ? skillSelect.value : "";
 
-        if (!student || !skill) {
-            alert("Please select both a student and a target skill focus.");
-            return;
+// ==========================================
+// STUDENT ATTENDANCE MODAL
+// (Present/Absent by date - line graph)
+// ==========================================
+
+let attendanceChartInstance = null;
+
+window.openAttendanceModal =
+    async function(studentId) {
+
+        const modal =
+            document.getElementById("attendanceModal");
+
+        const nameEl =
+            document.getElementById("attendanceModalName");
+
+        const subtitleEl =
+            document.getElementById("attendanceModalSubtitle");
+
+        const summaryRow =
+            document.getElementById("attendanceSummaryRow");
+
+        const loadingEl =
+            document.getElementById("attendanceModalLoading");
+
+        const chartEmptyEl =
+            document.getElementById("attendanceChartEmpty");
+
+        const canvas =
+            document.getElementById("attendanceLineChart");
+
+        if (!modal || !studentId) return;
+
+        // RESET STATE
+        modal.style.display = "block";
+        if (loadingEl) loadingEl.style.display = "block";
+        if (chartEmptyEl) chartEmptyEl.style.display = "none";
+        if (canvas) canvas.style.display = "none";
+        if (summaryRow) summaryRow.innerHTML = "";
+        if (nameEl) nameEl.textContent = "Loading...";
+        if (subtitleEl) subtitleEl.textContent = "";
+
+        if (attendanceChartInstance) {
+            attendanceChartInstance.destroy();
+            attendanceChartInstance = null;
         }
 
-        alert(`Scikit-learn model successfully generated optimal company recommendations for the selected student based on ${skill}!`);
-    });
-}
+        try {
+
+            const response =
+                await fetch(
+                    `http://localhost:5000/api/student-attendance/${encodeURIComponent(studentId)}`
+                );
+
+            const result =
+                await response.json();
+
+            if (loadingEl) loadingEl.style.display = "none";
+
+            if (result.status !== "success") {
+
+                if (nameEl) nameEl.textContent = "Unable to load attendance";
+                if (subtitleEl) {
+                    subtitleEl.textContent =
+                        result.message || "Unknown error from server.";
+                }
+                return;
+
+            }
+
+            const student = result.student || {};
+            const attendance = result.attendance || [];
+            const summary = result.summary || {};
+
+            if (nameEl) {
+                nameEl.textContent =
+                    student.name || "Student Attendance";
+            }
+
+            if (subtitleEl) {
+                subtitleEl.textContent =
+                    [student.studentId, student.course, student.section, student.company]
+                        .filter(Boolean)
+                        .join(" · ");
+            }
+
+            if (summaryRow) {
+
+                summaryRow.innerHTML = `
+                    <span
+                        class="absence-badge"
+                        style="background:#e8f7ee;color:#1e8449;border-color:#c6efd7;"
+                    >
+                        <i class="fa-solid fa-calendar-check"></i>
+                        ${summary.totalPresent || 0} present
+                    </span>
+                    <span class="absence-badge high">
+                        <i class="fa-solid fa-calendar-xmark"></i>
+                        ${summary.totalAbsent || 0} absent
+                    </span>
+                    ${
+                        (summary.consecutiveAbsences || 0) > 0
+                            ? `<span class="absence-badge high">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                    ${summary.consecutiveAbsences} consecutive absences
+                                </span>`
+                            : ""
+                    }
+                `;
+
+            }
+
+            if (attendance.length === 0) {
+
+                if (chartEmptyEl) chartEmptyEl.style.display = "block";
+                if (canvas) canvas.style.display = "none";
+                return;
+
+            }
+
+            if (canvas) canvas.style.display = "block";
+            if (chartEmptyEl) chartEmptyEl.style.display = "none";
+
+            const labels =
+                attendance.map(rec => rec.date);
+
+            const dataPoints =
+                attendance.map(rec => rec.status === "present" ? 1 : 0);
+
+            const pointColors =
+                attendance.map(rec => rec.status === "present" ? "#27ae60" : "#e74c3c");
+
+            if (canvas && window.Chart) {
+
+                attendanceChartInstance = new Chart(canvas, {
+                    type: "line",
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: "Attendance",
+                            data: dataPoints,
+                            stepped: true,
+                            borderColor: "#ab0a0a",
+                            backgroundColor: "rgba(171,10,10,0.08)",
+                            pointBackgroundColor: pointColors,
+                            pointBorderColor: pointColors,
+                            pointRadius: 5,
+                            pointHoverRadius: 7,
+                            fill: true,
+                            tension: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                min: -0.2,
+                                max: 1.2,
+                                ticks: {
+                                    stepSize: 1,
+                                    callback: (value) => {
+                                        if (value === 1) return "Present";
+                                        if (value === 0) return "Absent";
+                                        return "";
+                                    }
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    autoSkip: true,
+                                    maxRotation: 45,
+                                    minRotation: 0
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) =>
+                                        context.parsed.y === 1 ? "Present" : "Absent"
+                                }
+                            }
+                        }
+                    }
+                });
+
+            }
+
+        } catch (err) {
+
+            console.error("Failed to load student attendance:", err);
+
+            if (loadingEl) loadingEl.style.display = "none";
+            if (nameEl) nameEl.textContent = "Unable to load attendance";
+            if (subtitleEl) {
+                subtitleEl.textContent =
+                    "May problema sa pagkonekta sa server (http://localhost:5000). " +
+                    "Siguraduhing tumatakbo ang backend (app.py).";
+            }
+
+        }
+
+    };
+
+
+window.closeAttendanceModal =
+    function() {
+
+        const modal =
+            document.getElementById("attendanceModal");
+
+        if (modal) modal.style.display = "none";
+
+        if (attendanceChartInstance) {
+            attendanceChartInstance.destroy();
+            attendanceChartInstance = null;
+        }
+
+    };
+
+
+// ==========================================
+// COMPANY SKILL DRILL-DOWN MODAL
+// EXISTING FUNCTION
+// ==========================================
+
+window.viewCompanySkillModal =
+    function(companyName) {
+
+        const modal =
+            document.getElementById(
+                "companyModal"
+            );
+
+
+        const modalTitle =
+            document.getElementById(
+                "modalCompanyName"
+            );
+
+
+        const modalSubtitle =
+            document.getElementById(
+                "modalCompanySubtitle"
+            );
+
+
+        const modalTableBody =
+            document.getElementById(
+                "modalStudentTableBody"
+            );
+
+
+        if (!modal) return;
+
+
+        const compData =
+            globalCompanyExposureData.find(
+                c =>
+                    c.companyName
+                        .toLowerCase() ===
+                    companyName
+                        .toLowerCase()
+            );
+
+
+        if (!compData) {
+
+            alert(
+                `Details not found for company: ${companyName}`
+            );
+
+
+            return;
+
+        }
+
+
+        modalTitle.textContent =
+            `${compData.companyName} - Skill Exposure Breakdown`;
+
+
+        modalSubtitle.innerHTML =
+            `Primary Skill Focus:
+            <strong>
+                ${compData.primarySkill}
+            </strong>
+            |
+            Skill Exposure Rate:
+            <strong>
+                ${compData.exposure}%
+            </strong>`;
+
+
+        if (
+            compData.matchedStudents.length === 0
+        ) {
+
+            modalTableBody.innerHTML = `
+
+                <tr>
+
+                    <td
+                        colspan="4"
+                        style="
+                            text-align:center;
+                            color:#777;
+                            padding:20px;
+                        "
+                    >
+
+                        No students matched
+                        the primary skill criteria
+                        for this company yet.
+
+                    </td>
+
+                </tr>
+
+            `;
+
+        }
+
+        else {
+
+            modalTableBody.innerHTML =
+                compData.matchedStudents
+                    .map(st => `
+
+                        <tr
+                            style="
+                                border-bottom:
+                                1px solid #f1f1f1;
+                            "
+                        >
+
+                            <td
+                                style="
+                                    padding:10px;
+                                "
+                            >
+
+                                <strong>
+                                    ${st.name}
+                                </strong>
+
+                            </td>
+
+
+                            <td
+                                style="
+                                    padding:10px;
+                                "
+                            >
+
+                                ${st.courseSection}
+
+                            </td>
+
+
+                            <td
+                                style="
+                                    padding:10px;
+                                    color:#555;
+                                    font-size:13px;
+                                "
+                            >
+
+                                ${st.tasks}
+
+                            </td>
+
+
+                            <td
+                                style="
+                                    padding:10px;
+                                "
+                            >
+
+                                <span
+                                    style="
+                                        background:#d4edda;
+                                        color:#155724;
+                                        padding:3px 8px;
+                                        border-radius:4px;
+                                        font-size:11px;
+                                        font-weight:bold;
+                                    "
+                                >
+
+                                    ${st.status}
+
+                                </span>
+
+                            </td>
+
+                        </tr>
+
+                    `)
+                    .join("");
+
+        }
+
+
+        modal.style.display =
+            "block";
+
+    };
+
+
+// ==========================================
+// CLOSE COMPANY MODAL
+// ==========================================
+
+window.closeCompanyModal =
+    function() {
+
+        const modal =
+            document.getElementById(
+                "companyModal"
+            );
+
+
+        if (modal) {
+
+            modal.style.display =
+                "none";
+
+        }
+
+    };
+
+
+// ==========================================
+// CLOSE MODAL OUTSIDE CLICK
+// ==========================================
+
+window.onclick =
+    function(event) {
+
+        const companyModal =
+            document.getElementById(
+                "companyModal"
+            );
+
+        const attendanceModal =
+            document.getElementById(
+                "attendanceModal"
+            );
+
+
+        if (
+            event.target === companyModal
+        ) {
+
+            companyModal.style.display =
+                "none";
+
+        }
+
+
+        if (
+            event.target === attendanceModal
+        ) {
+
+            window.closeAttendanceModal();
+
+        }
+
+    };

@@ -9,87 +9,77 @@
     gap:20px;
 }
 
+/* Ang .period-select ay nasa shared header.css na - dito na lang
+   ito idinideklara para iisa lang ang pinagmumulan ng estilo nito. */
+
 /* ==========================================
-   SUMMARY
+   TABS
 ========================================== */
 
-.reports-summary{
-    display:grid;
-    grid-template-columns:repeat(4,1fr);
-    gap:18px;
-}
-
-.summary-card{
+.report-tabs{
+    display:flex;
+    gap:6px;
     background:#fff;
     border-radius:12px;
-    padding:18px;
-    display:flex;
-    align-items:center;
-    gap:15px;
+    padding:6px;
     box-shadow:0 2px 10px rgba(0,0,0,.08);
+    overflow-x:auto;
 }
 
-.summary-icon{
-    width:55px;
-    height:55px;
-    border-radius:12px;
+.report-tab{
     display:flex;
-    justify-content:center;
     align-items:center;
-    color:#fff;
-    font-size:22px;
-}
-
-.summary-icon.blue{background:#3b82f6;}
-.summary-icon.green{background:#22c55e;}
-.summary-icon.orange{background:#f59e0b;}
-.summary-icon.red{background:#ef4444;}
-
-.summary-card h3{
-    font-size:24px;
-    color:#222;
-}
-
-.summary-card p{
+    gap:8px;
+    white-space:nowrap;
+    padding:10px 18px;
+    border:none;
+    background:transparent;
+    border-radius:8px;
+    font-family:inherit;
     font-size:13px;
+    font-weight:500;
     color:#777;
+    cursor:pointer;
+    transition:.2s;
+}
+
+.report-tab i{
+    font-size:14px;
+}
+
+.report-tab:hover{
+    background:#faf1f1;
+    color:#AB0A0A;
+}
+
+.report-tab.active{
+    background:#AB0A0A;
+    color:#fff;
 }
 
 /* ==========================================
-   SECTION
+   TOOLBAR
 ========================================== */
 
-.reports-section{
-    background:#fff;
-    border-radius:12px;
-    padding:20px;
-    box-shadow:0 2px 10px rgba(0,0,0,.08);
+.toolbar-section .section-header{
+    margin-bottom:14px;
 }
 
-.section-header{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:18px;
-}
-
-.section-header h3{
-    color:#222;
-    font-size:18px;
-}
-
-/* ==========================================
-   SEARCH
-========================================== */
-
-.toolbar-right{
+.toolbar-left{
     display:flex;
     align-items:center;
     gap:12px;
 }
 
+.toolbar-right{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    flex-wrap:wrap;
+}
+
 .search-box{
-    width:250px;
+    width:280px;
     height:40px;
     border:1px solid #ddd;
     border-radius:8px;
@@ -104,6 +94,7 @@
     border:none;
     outline:none;
     font-size:13px;
+    font-family:inherit;
 }
 
 .toolbar-right select{
@@ -112,10 +103,508 @@
     border-radius:8px;
     padding:0 12px;
     outline:none;
+    font-family:inherit;
+    font-size:13px;
+    color:#333;
+    background:#fff;
+}
+
+.export-row{
+    display:flex;
+    gap:10px;
+    border-top:1px solid #f0f0f0;
+    padding-top:14px;
+}
+
+.export-mini{
+    height:36px;
+    padding:0 14px;
+    border:1px solid #ddd;
+    border-radius:8px;
+    background:#fff;
+    font-family:inherit;
+    font-size:12.5px;
+    font-weight:600;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    cursor:pointer;
+    transition:.2s;
+    color:#444;
+}
+
+.export-mini:hover{
+    transform:translateY(-1px);
+    box-shadow:0 4px 10px rgba(0,0,0,.08);
+}
+
+.export-mini.pdf i{color:#dc2626;}
+.export-mini.excel i{color:#16a34a;}
+.export-mini.print i{color:#2563eb;}
+
+.hint-badge{
+    font-size:12px;
+    color:#b45309;
+    background:#fef3c7;
+    padding:5px 10px;
+    border-radius:20px;
 }
 
 /* ==========================================
-   TABLE
+   STATUS / EMPTY STATE
+========================================== */
+
+.report-status{
+    background:#fff;
+    border-radius:12px;
+    padding:40px 20px;
+    text-align:center;
+    color:#888;
+    box-shadow:0 2px 10px rgba(0,0,0,.08);
+}
+
+.report-status i{
+    font-size:30px;
+    color:#ccc;
+    margin-bottom:12px;
+    display:block;
+}
+
+.report-status.error{
+    background:#fef2f2;
+}
+
+/* ==========================================
+   PANELS
+========================================== */
+
+.report-panel{
+    display:none;
+    flex-direction:column;
+    gap:20px;
+}
+
+.report-panel.active{
+    display:flex;
+}
+
+/* ==========================================
+   PRINTABLE REPORT (LETTERHEAD STYLE)
+========================================== */
+
+.printable-report{
+    background:#fff;
+    border-radius:12px;
+    padding:30px;
+    box-shadow:0 2px 10px rgba(0,0,0,.08);
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+}
+
+.report-letterhead{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:20px;
+    padding-bottom:16px;
+    border-bottom:2px solid #AB0A0A;
+    flex-wrap:wrap;
+}
+
+.letterhead-left{
+    display:flex;
+    align-items:center;
+    gap:14px;
+}
+
+.letterhead-logo{
+    width:50px;
+    height:50px;
+    border-radius:50%;
+    background:#AB0A0A;
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:20px;
+    flex-shrink:0;
+}
+
+.letterhead-left h3{
+    font-size:16px;
+    color:#222;
+    letter-spacing:.3px;
+}
+
+.letterhead-left p{
+    font-size:12px;
+    color:#999;
+    font-style:italic;
+}
+
+.letterhead-right{
+    text-align:right;
+    border:1px solid #eee;
+    border-radius:8px;
+    padding:10px 16px;
+}
+
+.letterhead-right h4{
+    font-size:13px;
+    color:#AB0A0A;
+    font-weight:700;
+}
+
+.letterhead-right p{
+    font-size:10.5px;
+    color:#999;
+    margin-top:2px;
+}
+
+.report-meta{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    font-size:13px;
+    color:#444;
+}
+
+.report-meta p{
+    margin-bottom:4px;
+}
+
+.report-meta strong{
+    color:#222;
+}
+
+.report-section-title{
+    font-size:14px;
+    color:#222;
+    font-weight:600;
+    padding-bottom:6px;
+    border-bottom:1px solid #f0f0f0;
+}
+
+/* ==========================================
+   OVERVIEW STAT PILLS
+========================================== */
+
+.overview-stats{
+    display:grid;
+    grid-template-columns:repeat(6,1fr);
+    gap:14px;
+}
+
+.overview-stats .stat-pill{
+    background:#fafafa;
+    border:1px solid #ececec;
+    border-radius:10px;
+    padding:14px 10px;
+    text-align:center;
+}
+
+.overview-stats .stat-pill i{
+    font-size:18px;
+    color:#AB0A0A;
+    margin-bottom:6px;
+    display:block;
+}
+
+.overview-stats .stat-pill h3{
+    font-size:20px;
+    color:#222;
+    margin-bottom:2px;
+}
+
+.overview-stats .stat-pill p{
+    font-size:11px;
+    color:#888;
+    line-height:1.3;
+}
+
+.overview-stats .stat-pill.warn i,
+.overview-stats .stat-pill.warn h3{
+    color:#dc2626;
+}
+
+/* ==========================================
+   REPORT SPLIT + MINI TABLES
+========================================== */
+
+.report-split{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:20px;
+}
+
+.report-block{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+}
+
+.mini-table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+.mini-table th{
+    background:#fafafa;
+    color:#777;
+    font-size:11.5px;
+    text-align:left;
+    padding:10px 12px;
+    border-bottom:1px solid #ececec;
+}
+
+.mini-table td{
+    padding:10px 12px;
+    font-size:12.5px;
+    color:#333;
+    border-bottom:1px solid #f5f5f5;
+}
+
+.mini-table tfoot td,
+.mini-table tr.total-row td{
+    font-weight:700;
+    color:#222;
+    border-top:2px solid #eee;
+    border-bottom:none;
+}
+
+.mini-table.wide{
+    min-width:700px;
+}
+
+/* ==========================================
+   SIGNATURE
+========================================== */
+
+.report-signature{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    margin-top:10px;
+}
+
+.signature-block{
+    text-align:right;
+}
+
+.signature-label{
+    font-size:12px;
+    color:#888;
+    margin-bottom:26px;
+}
+
+.signature-name{
+    font-family:"Brush Script MT", cursive;
+    font-size:26px;
+    color:#222;
+}
+
+.signature-role{
+    font-size:12px;
+    color:#444;
+    margin-top:2px;
+}
+
+.signature-org{
+    font-size:11px;
+    color:#999;
+}
+
+/* ==========================================
+   STUDENT PROGRESS PANEL
+========================================== */
+
+.mini-toolbar{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-bottom:16px;
+}
+
+.mini-toolbar .search-box{
+    width:280px;
+}
+
+.mini-toolbar select{
+    height:40px;
+    border:1px solid #ddd;
+    border-radius:8px;
+    padding:0 12px;
+    outline:none;
+    font-family:inherit;
+    font-size:13px;
+    color:#333;
+    background:#fff;
+}
+
+.table-avatar img{
+    width:40px;
+    height:40px;
+    border-radius:50%;
+    object-fit:cover;
+    display:block;
+}
+
+.avatar-circle{
+    width:40px;
+    height:40px;
+    border-radius:50%;
+    background:#AB0A0A;
+}
+
+.name-cell strong{
+    display:block;
+    color:#222;
+}
+
+.name-cell small{
+    display:block;
+    color:#999;
+    font-size:11.5px;
+}
+
+.status.pending{
+    background:#fef3c7;
+    color:#b45309;
+}
+
+.status.active{
+    background:#dcfce7;
+    color:#15803d;
+}
+
+.student-profile-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:20px;
+    padding-bottom:16px;
+    border-bottom:2px solid #AB0A0A;
+}
+
+.student-identity{
+    display:flex;
+    align-items:center;
+    gap:14px;
+}
+
+.student-avatar{
+    width:56px;
+    height:56px;
+    border-radius:50%;
+    background:#AB0A0A;
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:18px;
+    font-weight:700;
+    flex-shrink:0;
+}
+
+.student-identity h3{
+    font-size:17px;
+    color:#222;
+}
+
+.student-identity p{
+    font-size:12px;
+    color:#888;
+}
+
+.student-meta{
+    display:flex;
+    gap:26px;
+    flex-wrap:wrap;
+}
+
+.student-meta div{
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+    font-size:12px;
+}
+
+.student-meta span{
+    color:#999;
+}
+
+.student-meta strong{
+    color:#222;
+    font-size:15px;
+}
+
+/* ==========================================
+   AI INSIGHTS
+========================================== */
+
+.ai-insights .insight-card{
+    border-radius:10px;
+    padding:14px;
+    font-size:12.5px;
+    line-height:1.5;
+}
+
+.ai-insights .insight-card strong{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:6px;
+    font-size:12.5px;
+}
+
+.ai-insights .insight-card.risk{
+    background:#fef2f2;
+    color:#991b1b;
+}
+
+.ai-insights .insight-card.risk strong{
+    color:#b91c1c;
+}
+
+.ai-insights .insight-card.action{
+    background:#eff6ff;
+    color:#1e40af;
+    margin-top:12px;
+}
+
+.ai-insights .insight-card.action strong{
+    color:#1d4ed8;
+}
+
+/* ==========================================
+   SECTION (SHARED)
+========================================== */
+
+.reports-section{
+    background:#fff;
+    border-radius:12px;
+    padding:20px;
+    box-shadow:0 2px 10px rgba(0,0,0,.08);
+}
+
+.section-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:18px;
+    flex-wrap:wrap;
+    gap:10px;
+}
+
+.section-header h3{
+    color:#222;
+    font-size:18px;
+}
+
+/* ==========================================
+   TABLE (LIST-STYLE, USED IN ATTENDANCE / RISK / COMPANY TABS)
 ========================================== */
 
 .table-container{
@@ -131,7 +620,7 @@
 .reports-table th{
     background:#fafafa;
     color:#666;
-    font-size:13px;
+    font-size:14px;
     text-align:left;
     padding:15px;
     border-bottom:1px solid #ececec;
@@ -153,7 +642,7 @@
 }
 
 /* ==========================================
-   STATUS
+   STATUS PILLS
 ========================================== */
 
 .status{
@@ -166,14 +655,22 @@
     font-weight:600;
 }
 
-.status.ready{
+.status.ready,
+.status.ontrack,
+.status.completed{
     background:#dcfce7;
     color:#15803d;
 }
 
-.status.processing{
+.status.processing,
+.status.monitoring{
     background:#fef3c7;
     color:#b45309;
+}
+
+.status.risk{   
+    color:#b91c1c;
+
 }
 
 /* ==========================================
@@ -207,92 +704,229 @@
     transform:translateY(-2px);
     opacity:.9;
 }
-/* ==========================================
-   REPORT STATISTICS
-========================================== */
 
-.statistics-grid{
-    display:grid;
-    grid-template-columns:repeat(4,1fr);
-    gap:18px;
+/* ========================================
+   STUDENT PROGRESS REPORT
+======================================== */
+
+.progress-report-summary {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    margin-top: 20px;
+    margin-bottom: 25px;
 }
 
-.stat-card{
-    background:#fafafa;
-    border:1px solid #ececec;
-    border-radius:12px;
-    padding:22px;
-    text-align:center;
-    transition:.25s;
+.progress-summary-card {
+    background: #fff;
+    border: 1px solid #eeeeee;
+    border-radius: 12px;
+    padding: 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-height: 85px;
 }
 
-.stat-card:hover{
-    transform:translateY(-4px);
-    box-shadow:0 6px 18px rgba(0,0,0,.08);
+.progress-summary-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    background: #f5f5f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
 }
 
-.stat-card i{
-    font-size:34px;
-    color:#AB0A0A;
-    margin-bottom:14px;
+.progress-summary-icon i {
+    font-size: 17px;
+    color: #ab0a0a;
 }
 
-.stat-card h3{
-    font-size:24px;
-    color:#222;
-    margin-bottom:8px;
+.progress-summary-card span {
+    display: block;
+    font-size: 11px;
+    color: #888;
+    margin-bottom: 4px;
 }
 
-.stat-card p{
-    color:#666;
-    font-size:13px;
-    line-height:1.5;
+.progress-summary-card strong {
+    display: block;
+    font-size: 22px;
+    font-weight: 700;
+    color: #222;
 }
 
-/* ==========================================
-   EXPORT CENTER
-========================================== */
-
-.export-grid{
-    display:grid;
-    grid-template-columns:repeat(4,1fr);
-    gap:18px;
+.section-description {
+    margin: 5px 0 0;
+    font-size: 12px;
+    color: #888;
 }
 
-.export-btn{
-    height:55px;
-    border:none;
-    border-radius:10px;
-    color:#fff;
-    font-size:15px;
-    font-weight:600;
-    cursor:pointer;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap:10px;
-    transition:.25s;
+
+/* ========================================
+   PROGRESS TABLE
+======================================== */
+
+.progress-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
 }
 
-.export-btn:hover{
-    transform:translateY(-2px);
-    box-shadow:0 6px 15px rgba(0,0,0,.12);
+.progress-report-table {
+    width: 100%;
+    min-width: 1100px;
+    border-collapse: collapse;
 }
 
-.export-btn.pdf{
-    background:#dc2626;
+.progress-report-table th {
+    white-space: nowrap;
 }
 
-.export-btn.excel{
-    background:#16a34a;
+.progress-report-table td {
+    vertical-align: middle;
 }
 
-.export-btn.print{
-    background:#2563eb;
+.progress-student-name {
+    min-width: 150px;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
-.export-btn.all{
-    background:#AB0A0A;
+.progress-student-name strong {
+    font-size: 13px;
+    color: #333;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+
+/* ========================================
+   PROGRESS CELL
+======================================== */
+
+.progress-cell {
+    min-width: 90px;
+}
+
+.progress-value {
+    font-size: 13px !important;
+    font-weight: 700;
+    margin-bottom: 2px;
+}
+
+.progress-bar {
+    width: 85px;
+    height: 6px;
+    background: #eeeeee;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    border-radius: 10px;
+    background: #ab0a0a;
+}
+
+.progress-bar-fill.excellent {
+    background: #4caf50;
+}
+
+.progress-bar-fill.good {
+    background: #8bc34a;
+}
+
+.progress-bar-fill.medium {
+    background: #ffb300;
+}
+
+.progress-bar-fill.low {
+    background: #e53935;
+}
+
+
+/* ========================================
+   STATUS
+======================================== */
+
+.progress-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.progress-status.completed {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.progress-status.ongoing {
+   color: #333;
+}
+
+.progress-status.monitoring {
+    background: #fff3e0;
+    color: #ef6c00;
+}
+
+.progress-status.risk {
+    color: #c62828;
+}
+.progress-status, 
+.status {
+    font-size: 13px !important;   /* Dati ay 10px/12px */
+    padding: 10px 8px !important; /* Binawasan rin ang padding para mas maliit ang pill */
+}
+
+/* ========================================
+   EMPTY TABLE
+======================================== */
+
+.table-empty {
+    text-align: center;
+    color: #999;
+    padding: 35px 15px !important;
+}
+
+
+/* ========================================
+   RESPONSIVE
+======================================== */
+
+@media (max-width: 1200px) {
+
+    .progress-report-summary {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+}
+
+
+@media (max-width: 768px) {
+
+    .progress-report-summary {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+}
+
+
+@media (max-width: 500px) {
+
+    .progress-report-summary {
+        grid-template-columns: 1fr;
+    }
+
 }
 
 /* ==========================================
@@ -301,10 +935,12 @@
 
 @media(max-width:1200px){
 
-    .reports-summary,
-    .statistics-grid,
-    .export-grid{
-        grid-template-columns:repeat(2,1fr);
+    .overview-stats{
+        grid-template-columns:repeat(3,1fr);
+    }
+
+    .report-split{
+        grid-template-columns:1fr;
     }
 
 }
@@ -319,12 +955,15 @@
 
     .toolbar-right{
         width:100%;
-        flex-direction:column;
     }
 
     .search-box,
     .toolbar-right select{
         width:100%;
+    }
+
+    .report-meta{
+        grid-template-columns:1fr;
     }
 
 }
@@ -335,10 +974,8 @@
         padding:18px;
     }
 
-    .reports-summary,
-    .statistics-grid,
-    .export-grid{
-        grid-template-columns:1fr;
+    .overview-stats{
+        grid-template-columns:repeat(2,1fr);
     }
 
     .reports-table th,
@@ -347,13 +984,30 @@
         font-size:13px;
     }
 
+    .report-letterhead,
+    .student-profile-header{
+        flex-direction:column;
+        align-items:flex-start;
+    }
+
+    .letterhead-right{
+        text-align:left;
+    }
+
+    .report-signature{
+        grid-template-columns:1fr;
+    }
+
+    .signature-block{
+        text-align:left;
+    }
+
 }
 
 @media(max-width:480px){
 
-    .summary-card{
-        flex-direction:column;
-        text-align:center;
+    .overview-stats{
+        grid-template-columns:1fr 1fr;
     }
 
     .action-btn{
@@ -362,9 +1016,905 @@
         margin-right:4px;
     }
 
-    .export-btn{
-        height:50px;
-        font-size:14px;
+}
+
+/* ==========================================
+   PRINT
+========================================== */
+
+@media print{
+
+    #sidebar-container,
+    header,
+    .report-tabs,
+    .toolbar-section,
+    .report-status,
+    .student-select{
+        display:none !important;
+    }
+
+    .main{
+        padding:0 !important;
+        margin:0 !important;
+    }
+
+    .printable-report{
+        box-shadow:none;
+        padding:0;
+    }
+
+}
+
+/* ==========================================
+   REPORT DOCUMENT PREVIEW
+   ========================================== */
+
+/* The report tabs are presented as printable documents on screen. */
+.report-document {
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    background: #fff;
+    border: 1px solid #d9d9d9;
+    box-shadow: 0 8px 28px rgba(0,0,0,.12);
+    min-height: 760px;
+    color: #222;
+    box-sizing: border-box;
+}
+
+.report-document .report-letterhead{
+    padding-bottom:14px;
+    border-bottom:2px solid #222;
+}
+
+/* ==========================================
+   GRC LOGO - FIX SIZE
+========================================== */
+
+.report-document .letterhead-logo.grc-logo {
+    width: 75px !important;
+    height: 75px !important;
+
+    min-width: 75px !important;
+    min-height: 75px !important;
+    max-width: 75px !important;
+    max-height: 75px !important;
+
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    flex-shrink: 0 !important;
+    overflow: hidden !important;
+
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+.report-document .letterhead-logo.grc-logo img {
+    display: block !important;
+
+    width: 75px !important;
+    height: 75px !important;
+
+    min-width: 75px !important;
+    min-height: 75px !important;
+    max-width: 75px !important;
+    max-height: 75px !important;
+
+    object-fit: contain !important;
+    object-position: center !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.report-document .letterhead-left h3{
+    font-size:17px;
+    font-weight:700;
+    letter-spacing:.2px;
+}
+
+.report-document .letterhead-left p{
+    font-size:10.5px;
+    color:#777;
+    font-style:normal;
+}
+
+.report-document .letterhead-right{
+    min-width:300px;
+    border:2px solid #222;
+    border-radius:0;
+    padding:9px 14px;
+    text-align:center;
+}
+
+.report-document .letterhead-right h4{
+    color:#222;
+    font-size:12.5px;
+    line-height:1.3;
+    letter-spacing:.2px;
+}
+
+.report-document .letterhead-right p{
+    color:#777;
+    font-size:9px;
+    margin-top:3px;
+}
+
+.report-document .report-meta{
+    margin:16px 0 18px;
+    padding-bottom:12px;
+    border-bottom:1px solid #aaa;
+}
+
+.report-document .report-meta p{
+    font-size:15px;
+    margin-bottom:5px;
+}
+
+.report-document .report-meta strong{
+    font-weight:500;
+}
+.report-document .report-meta span{
+    font-weight:600;
+}
+
+.report-document .report-section-title{
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:.25px;
+    padding-bottom:7px;
+    margin-top:16px;
+    border-bottom:1.5px solid #222;
+}
+
+.report-table-print-wrap{
+    width:100%;
+    overflow-x:auto;
+}
+
+.report-document .report-data-table{
+    width:100%;
+    min-width:0;
+    border-collapse:collapse;
+}
+
+.report-document .report-data-table th{
+    background:#f1f1f1;
+    color:#222;
+    font-size:13px;
+    font-weight:700;
+    padding:9px 8px;
+    border:1px solid #cfcfcf;
+    white-space:nowrap;
+}
+
+.report-document .report-data-table td{
+    font-size:13px;
+    color:#333;
+    font-weight:550;
+    padding:9px 8px;
+    border:1px solid #d9d9d9;
+    vertical-align:middle;
+}
+
+.report-document .report-data-table tbody tr:nth-child(even){
+    background:#fafafa;
+}
+
+.report-document .progress-print-table th:first-child,
+.report-document .progress-print-table td:first-child{
+    width:34px;
+    text-align:center;
+}
+
+.report-document .progress-print-table th:nth-child(6),
+.report-document .progress-print-table th:nth-child(7),
+.report-document .progress-print-table th:nth-child(8),
+.report-document .progress-print-table td:nth-child(6),
+.report-document .progress-print-table td:nth-child(7),
+.report-document .progress-print-table td:nth-child(8){
+    text-align:center;
+    white-space:nowrap;
+}
+
+.report-document .progress-print-table th:nth-child(9),
+.report-document .progress-print-table td:nth-child(9),
+.report-document .progress-print-table th:nth-child(10),
+.report-document .progress-print-table td:nth-child(10){
+    text-align:center;
+}
+
+.report-note{
+    margin-top:14px;
+    padding:9px 11px;
+    border-left:3px solid #AB0A0A;
+    background:#fafafa;
+    color:#666;
+    font-size:10.5px;
+    line-height:1.5;
+}
+
+.report-document .report-signature{
+    margin-top:38px;
+}
+
+.report-document .signature-label{
+    font-size:10px;
+    color:#777;
+    margin-bottom:25px;
+}
+
+.report-document .signature-name{
+    font-size:17px;
+    font-weight:700;
+    font-family:inherit;
+    border-bottom:1px solid #222;
+    padding-bottom:3px;
+}
+
+.report-document .signature-role{
+    font-size:10px;
+    margin-top:4px;
+}
+
+.report-document .signature-org{
+    font-size:9.5px;
+}
+
+/* Hide the old dashboard-style progress summary if an older cached HTML is loaded. */
+.progress-report-summary{
+    display:none !important;
+}
+
+/* ==========================================
+   REPORT TOOLBAR
+========================================== */
+
+.toolbar-section {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 14px 16px;
+}
+
+.report-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    flex-wrap: nowrap;
+}
+
+.report-toolbar .search-box {
+    flex: 1;
+    min-width: 220px;
+}
+
+.report-toolbar select {
+    height: 40px;
+    padding: 0 35px 0 14px;
+    border: 1px solid #ddd;
+    border-radius: 9px;
+    background: #fff;
+    color: #444;
+    font-family: "Poppins", sans-serif;
+    font-size: 12px;
+    outline: none;
+    cursor: pointer;
+}
+
+.report-toolbar select:focus {
+    border-color: #ab0a0a;
+}
+
+.report-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.report-action-btn {
+    height: 40px;
+    padding: 0 14px;
+    border: 1px solid #ddd;
+    border-radius: 9px;
+    background: #fff;
+    font-family: "Poppins", sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    white-space: nowrap;
+    transition: 0.2s ease;
+}
+
+.report-action-btn:hover {
+    background: #f8f8f8;
+    transform: translateY(-1px);
+}
+
+.report-action-btn.pdf i {
+    color: #b91c1c;
+}
+
+.report-action-btn.excel i {
+    color: #16a34a;
+}
+
+.report-action-btn.print i {
+    color: #2563eb;
+}
+
+/* ==========================================
+   MATCH TABS + TOOLBAR
+========================================== */
+
+.report-tabs,
+.toolbar-section {
+    background: #ffffff !important;
+    border-radius: 12px !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06) !important;
+    border: none !important;
+}
+
+/* TABS */
+.report-tabs {
+    padding: 6px !important;
+}
+
+/* TOOLBAR */
+.toolbar-section {
+    padding: 10px 12px !important;
+}
+
+/* Keep the active tab red */
+.report-tab.active {
+    background: #AB0A0A !important;
+    color: #fff !important;
+}
+
+/* Normal tabs */
+.report-tab {
+    background: transparent;
+    color: #777;
+}
+
+.report-tab:hover:not(.active) {
+    background: #faf1f1;
+    color: #AB0A0A;
+}
+
+
+/* ==========================================
+   PRINT PREVIEW / ACTUAL PRINT
+   ========================================== */
+
+@media print{
+    @page{
+        size:A4 portrait;
+        margin:10mm;
+    }
+
+    html,
+    body{
+        background:#fff !important;
+    }
+
+    #panel-progress {
+    width: 100%;
+    max-width: 100%;
+}
+
+#panel-progress .report-document {
+    width: 100%;
+    max-width: 1450px;
+    margin: 0 auto;
+    box-sizing: border-box;
+}
+
+    .reports-content{
+        padding:0 !important;
+        gap:0 !important;
+    }
+
+    .report-panel{
+        display:none !important;
+    }
+
+    .report-panel.active{
+        display:block !important;
+    }
+
+    .report-document,
+    .printable-report{
+        width:100% !important;
+        max-width:none !important;
+        min-height:0 !important;
+        margin:0 !important;
+        padding:0 !important;
+        border:none !important;
+        border-radius:0 !important;
+        box-shadow:none !important;
+    }
+
+    /* ==========================================
+   STUDENT PROGRESS - PRINT TABLE
+========================================== */
+
+#panel-progress .progress-print-table {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    table-layout: fixed !important;
+    border-collapse: collapse !important;
+}
+
+/* ALL CELLS - LEFT ALIGN */
+#panel-progress .progress-print-table th,
+#panel-progress .progress-print-table td {
+    text-align: left !important;
+    vertical-align: middle !important;
+    font-size: 8px !important;
+    line-height: 1.25 !important;
+    padding: 6px 6px !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+}
+
+/* HEADER */
+#panel-progress .progress-print-table th {
+    text-align: left !important;
+    font-size: 8px !important;
+    font-weight: 700 !important;
+    background: #f1f1f1 !important;
+    color: #222 !important;
+    white-space: normal !important;
+}
+
+/* ==========================================
+   COLUMN WIDTHS
+========================================== */
+
+#panel-progress .progress-print-table th:nth-child(1),
+#panel-progress .progress-print-table td:nth-child(1) {
+    width: 4% !important;
+}
+
+#panel-progress .progress-print-table th:nth-child(2),
+#panel-progress .progress-print-table td:nth-child(2) {
+    width: 15% !important;
+}
+
+#panel-progress .progress-print-table th:nth-child(3),
+#panel-progress .progress-print-table td:nth-child(3) {
+    width: 12% !important;
+}
+
+#panel-progress .progress-print-table th:nth-child(4),
+#panel-progress .progress-print-table td:nth-child(4) {
+    width: 9% !important;
+}
+
+#panel-progress .progress-print-table th:nth-child(5),
+#panel-progress .progress-print-table td:nth-child(5) {
+    width: 12% !important;
+}
+
+#panel-progress .progress-print-table th:nth-child(6),
+#panel-progress .progress-print-table td:nth-child(6) {
+    width: 10% !important;
+}
+
+#panel-progress .progress-print-table th:nth-child(7),
+#panel-progress .progress-print-table td:nth-child(7) {
+    width: 10% !important;
+}
+
+#panel-progress .progress-print-table th:nth-child(8),
+#panel-progress .progress-print-table td:nth-child(8) {
+    width: 11% !important;
+}
+
+#panel-progress .progress-print-table th:nth-child(9),
+#panel-progress .progress-print-table td:nth-child(9) {
+    width: 8% !important;
+}
+
+#panel-progress .progress-print-table th:nth-child(10),
+#panel-progress .progress-print-table td:nth-child(10) {
+    width: 9% !important;
+}
+
+/* ==========================================
+   STUDENT NAME
+========================================== */
+
+#panel-progress .progress-print-table td:nth-child(2),
+#panel-progress .progress-print-table .progress-student-name,
+#panel-progress .progress-print-table .progress-student-name strong {
+    text-align: left !important;
+    white-space: normal !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important;
+}
+
+#panel-progress .progress-print-table .progress-student-name strong {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+
+    font-size: 9px !important;
+    font-weight: 600 !important;
+    line-height: 1.2 !important;
+
+    text-align: left !important;
+    white-space: normal !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important;
+}
+
+/* ==========================================
+   STUDENT ID
+========================================== */
+
+#panel-progress .progress-print-table td:nth-child(3) {
+    text-align: left !important;
+    font-size: 7.5px !important;
+    white-space: normal !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important;
+}
+
+/* ==========================================
+   SECTION & COMPANY
+========================================== */
+
+#panel-progress .progress-print-table td:nth-child(4),
+#panel-progress .progress-print-table td:nth-child(5) {
+    text-align: left !important;
+    white-space: normal !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important;
+}
+
+/* ==========================================
+   HOURS
+========================================== */
+
+#panel-progress .progress-print-table td:nth-child(6),
+#panel-progress .progress-print-table td:nth-child(7),
+#panel-progress .progress-print-table td:nth-child(8) {
+    text-align: left !important;
+    white-space: nowrap !important;
+}
+
+/* ==========================================
+   PROGRESS
+========================================== */
+
+#panel-progress .progress-print-table td:nth-child(9) {
+    text-align: left !important;
+}
+
+#panel-progress .progress-print-table td:nth-child(9) .progress-value {
+    display: inline-block !important;
+    text-align: left !important;
+}
+
+/* ==========================================
+   STATUS
+========================================== */
+
+#panel-progress .progress-print-table td:nth-child(10) {
+    text-align: left !important;
+}
+
+#panel-progress .progress-print-table td:nth-child(10) .progress-status,
+#panel-progress .progress-print-table td:nth-child(10) .status {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    margin: 0 !important;
+    white-space: nowrap !important;
+}
+
+/* ==========================================
+   OVERVIEW REPORT LOGO - SCREEN FIX
+========================================== */
+
+#printableOverview .letterhead-left {
+    display: flex !important;
+    align-items: center !important;
+    gap: 14px !important;
+}
+
+.printable-report .letterhead-logo.grc-logo,
+.report-document .letterhead-logo.grc-logo,
+#printableOverview .letterhead-logo.grc-logo {
+    width: 65px !important;
+    height: 65px !important;
+    min-width: 65px !important;
+    max-width: 65px !important;
+    min-height: 65px !important;
+    max-height: 65px !important;
+    flex: 0 0 65px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* Actual Image inside Logo Container */
+.printable-report .letterhead-logo.grc-logo img,
+.report-document .letterhead-logo.grc-logo img,
+#printableOverview .letterhead-logo.grc-logo img {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 65px !important;
+    max-height: 65px !important;
+    object-fit: contain !important;
+    object-position: center !important;
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+@media(max-width:900px){
+    .report-document{
+        padding:28px 24px;
+    }
+
+    .report-document .letterhead-right{
+        min-width:0;
+        width:100%;
+    }
+}
+
+@media(max-width:600px){
+    .report-document{
+        padding:22px 16px;
+        border-radius:4px;
+    }
+
+    .report-document .report-meta{
+        grid-template-columns:1fr;
+    }
+}}
+
+/* ==========================================
+   OVERVIEW REPORT - SAME DOCUMENT STYLE AS STUDENT PROGRESS
+   (#printableOverview now also uses .report-document and
+   .report-data-table, so size, fonts and weights match.)
+========================================== */
+
+.report-document .report-data-table tr.total-row td {
+    font-weight: 700;
+    color: #222;
+    background: #f1f1f1;
+    border: 1px solid #cfcfcf;
+}
+
+/* ==========================================
+   PRINT - FONT SIZES FOR ALL REPORT DOCUMENTS
+   (keep this block at the very end of the file)
+========================================== */
+
+@media print {
+
+    /* ---------- LETTERHEAD ---------- */
+
+    /* Print width is under 768px, so the mobile rules kick in.
+       Force the same row layout as on screen. */
+    .report-document .report-letterhead {
+        flex-direction: row;
+        flex-wrap: nowrap;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 10px;
+    }
+
+    .report-document .letterhead-left {
+        gap: 10px;
+    }
+
+    .report-document .letterhead-left h3 {
+        font-size: 15px;
+    }
+
+    .report-document .letterhead-left p {
+        font-size: 9px;
+    }
+
+    .report-document .letterhead-right {
+        width: auto;
+        min-width: 0;
+        margin-left: auto;
+        padding: 6px 12px;
+    }
+
+    .report-document .letterhead-right h4 {
+        font-size: 10.5px;
+    }
+
+    .report-document .letterhead-right p {
+        font-size: 7.5px;
+        margin-top: 2px;
+    }
+
+    /* ---------- META ---------- */
+
+    .report-document .report-meta {
+        grid-template-columns: 1fr 1fr;
+        gap: 0 24px;
+        margin: 10px 0 12px;
+        padding-bottom: 8px;
+    }
+
+    .report-document .report-meta p {
+        font-size: 10px;
+        margin-bottom: 3px;
+    }
+
+    .report-document .report-meta strong {
+        font-weight: 500;
+    }
+
+    .report-document .report-meta span {
+        font-weight: 600;
+    }
+
+    /* ---------- SECTION TITLES ---------- */
+
+    .report-document .report-section-title {
+        font-size: 10px;
+        margin-top: 12px;
+        padding-bottom: 5px;
+    }
+
+    /* ---------- TABLES (all report tabs) ---------- */
+
+    .report-document .report-data-table th {
+        font-size: 8.5px;
+        padding: 5px 6px;
+    }
+
+    .report-document .report-data-table td {
+        font-size: 9px;
+        padding: 5px 6px;
+    }
+
+    /* ---------- OVERVIEW STAT CARDS ---------- */
+
+    .report-document .overview-stats {
+        grid-template-columns: repeat(6, 1fr);
+        gap: 8px;
+    }
+
+    .report-document .report-split {
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+    }
+
+    .report-document .overview-stats .stat-pill {
+        padding: 8px 4px;
+    }
+
+    .report-document .overview-stats .stat-pill i {
+        font-size: 13px;
+        margin-bottom: 3px;
+    }
+
+    .report-document .overview-stats .stat-pill h3 {
+        font-size: 15px;
+    }
+
+    .report-document .overview-stats .stat-pill p {
+        font-size: 8px;
+    }
+
+    /* ---------- NOTE + SIGNATURE ---------- */
+
+    .report-document .report-note {
+        margin-top: 10px;
+        padding: 6px 9px;
+        font-size: 9px;
+    }
+
+    .report-document .report-signature {
+        grid-template-columns: 1fr 1fr;
+        margin-top: 24px;
+    }
+
+    .report-document .signature-block {
+        text-align: right;
+    }
+
+    .report-document .signature-label {
+        font-size: 9px;
+        margin-bottom: 18px;
+    }
+
+    .report-document .signature-name {
+        font-size: 13px;
+    }
+
+    .report-document .signature-role {
+        font-size: 9px;
+    }
+
+    .report-document .signature-org {
+        font-size: 8.5px;
+    }
+
+    /* ---------- STUDENT PROGRESS TABLE ---------- */
+
+    #panel-progress .progress-print-table th {
+        font-size: 8px !important;
+    }
+
+    #panel-progress .progress-print-table td {
+        font-size: 8.5px !important;
+    }
+
+    #panel-progress .progress-print-table td:nth-child(3) {
+        font-size: 8px !important;
+    }
+
+    #panel-progress .progress-print-table .progress-student-name strong {
+        font-size: 8.5px !important;
+    }
+
+    /* Progress % and Status were 13px, so they looked oversized */
+
+    #panel-progress .progress-print-table td .progress-value {
+        font-size: 9px !important;
+        font-weight: 700 !important;
+        margin: 0 !important;
+    }
+
+    #panel-progress .progress-print-table td .progress-status,
+    #panel-progress .progress-print-table td .status {
+        font-size: 8.5px !important;
+        padding: 2px 6px !important;
+    }
+
+    /* Wider Status column so "On Track" is no longer cut off */
+
+    #panel-progress .progress-print-table th:nth-child(1),
+    #panel-progress .progress-print-table td:nth-child(1)  { width: 4% !important; }
+    #panel-progress .progress-print-table th:nth-child(2),
+    #panel-progress .progress-print-table td:nth-child(2)  { width: 15% !important; }
+    #panel-progress .progress-print-table th:nth-child(3),
+    #panel-progress .progress-print-table td:nth-child(3)  { width: 12% !important; }
+    #panel-progress .progress-print-table th:nth-child(4),
+    #panel-progress .progress-print-table td:nth-child(4)  { width: 9% !important; }
+    #panel-progress .progress-print-table th:nth-child(5),
+    #panel-progress .progress-print-table td:nth-child(5)  { width: 11% !important; }
+    #panel-progress .progress-print-table th:nth-child(6),
+    #panel-progress .progress-print-table td:nth-child(6)  { width: 9% !important; }
+    #panel-progress .progress-print-table th:nth-child(7),
+    #panel-progress .progress-print-table td:nth-child(7)  { width: 10% !important; }
+    #panel-progress .progress-print-table th:nth-child(8),
+    #panel-progress .progress-print-table td:nth-child(8)  { width: 10% !important; }
+    #panel-progress .progress-print-table th:nth-child(9),
+    #panel-progress .progress-print-table td:nth-child(9)  { width: 9% !important; }
+    #panel-progress .progress-print-table th:nth-child(10),
+    #panel-progress .progress-print-table td:nth-child(10) {
+        width: 11% !important;
+        overflow: visible !important;
     }
 
 }

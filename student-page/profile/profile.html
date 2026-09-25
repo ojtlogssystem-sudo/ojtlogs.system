@@ -22,7 +22,6 @@
     <main class="main">
 
         <div class="profile-container">
-            <!-- STEP PROGRESS CARD -->
             <div class="step-card">
                 <div class="step-top">
                     <div class="step-icon">
@@ -35,24 +34,23 @@
                 </div>
 
                 <div class="step-progress">
-                    <span id="stepText">Step 1 of 2</span>
+                    <span id="stepText">Step 1 of 3</span>
                     <div class="progress-bar">
-                        <div class="progress-fill" id="progressFill" style="width: 50%;"></div>
+                        <div class="progress-fill" id="progressFill" style="width: 33.33%;"></div>
                     </div>
                 </div>
             </div>
 
-            <!-- FORM START -->
             <form id="profileForm">
                 
-                <!-- STEP 1: PROFILE INFORMATION -->
                 <div class="profile-card step-content" id="step1Content">
                     <div class="card-title">
                         <span class="vertical-line red"></span>
                         <h2>Profile Information</h2>
                     </div>
 
-                    <!-- PROFILE IMAGE -->
+                    <div id="alertMessageStep1" class="alert-banner" style="display: none;"></div>
+
                     <div class="profile-upload">
                         <div class="profile-preview">
                             <img id="previewImage" src="https://cdn-icons-png.flaticon.com/512/149/149071.png">
@@ -65,10 +63,9 @@
                         <p>JPG, PNG or GIF. Max size of 5MB.</p>
                     </div>
 
-                    <!-- FORM INPUTS -->
                     <div class="form-group">
                         <div class="input-box">
-                            <input type="text" id="fullName" required placeholder=" ">
+                            <input type="text" id="fullName" name="username" autocomplete="username" required placeholder=" ">
                             <label for="fullName">Full Name</label>
                             <i class="fa-regular fa-user"></i>
                         </div>
@@ -76,15 +73,27 @@
                     
                     <div class="form-group">
                         <div class="input-box">
-                            <input type="text" id="studentNumber" required placeholder=" ">
+                            <input type="text" id="studentNumber" name="student-number" autocomplete="off" required placeholder=" ">
                             <label for="studentNumber">Student Number</label>
                             <i class="fa-regular fa-id-card"></i>
                         </div>
                     </div>
 
                     <div class="form-group">
+                        <label for="genderInput">Gender</label>
+                        <div class="select-box">
+                            <select id="genderInput" name="gender" required>
+                                <option value="" disabled selected>Select Gender</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                            </select>
+                            <i class="fa-solid fa-chevron-down"></i>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
                         <div class="input-box">
-                            <input type="text" id="companyName" required placeholder=" ">
+                            <input type="text" id="companyName" name="organization" required placeholder=" " autocomplete="off">
                             <label for="companyName">Company Name</label>
                             <i class="fa-solid fa-building"></i>
                         </div>
@@ -92,33 +101,31 @@
 
                     <div class="form-group">
                         <div class="input-box">
-                            <input type="text" id="supervisorName" required placeholder=" ">
+                            <input type="text" id="supervisorName" name="supervisor" required placeholder=" " autocomplete="off" list="supervisorList">
                             <label for="supervisorName">Supervisor's Name</label>
                             <i class="fa-solid fa-user-tie"></i>
+                            <datalist id="supervisorList"></datalist>
                         </div>
                     </div>
 
+                    <!-- COURSE INPUT (Naka-preset at naka-readonly) -->
                     <div class="form-group">
-                        <label>Section</label>
+                        <div class="input-box">
+                            <input type="text" id="courseInput" value="BSIT" readonly style="background-color: #f5f5f5; cursor: not-allowed;">
+                            <label for="courseInput">Course</label>
+                            <i class="fa-solid fa-graduation-cap"></i>
+                        </div>
+                    </div>
+
+                    <!-- SECTION DROPDOWN SELECT -->
+                    <div class="form-group">
+                        <label for="sectionInput">Section</label>
                         <div class="select-box">
-                            <select id="sectionSelect" required>
-                                <option value="" selected disabled>Select your section</option>
-                                <option value="401">401</option>
-                                <option value="402">402</option>
+                            <select id="sectionInput" name="section" required>
+                                <option value="" disabled selected>Select Section</option>
                                 <option value="403">403</option>
-                            </select>
-                            <i class="fa-solid fa-chevron-down"></i>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Course</label>
-                        <div class="select-box">
-                            <select id="courseSelect" required>
-                                <option value="" selected disabled>Select your course</option>
-                                <option value="BSIT">BSIT</option>
-                                <option value="BSBA">BSBA</option>
-                                <option value="BSE">BSE</option>
+                                <option value="405">405</option>
+                                <option value="406">406</option>
                             </select>
                             <i class="fa-solid fa-chevron-down"></i>
                         </div>
@@ -129,7 +136,6 @@
                     </button>
                 </div>
 
-                <!-- STEP 2: INTERNSHIP SCHEDULE -->
                 <div class="profile-card step-content" id="step2Content" style="display: none;">
 
                     <div class="card-title">
@@ -137,8 +143,60 @@
                         <h2>Internship Schedule</h2>
                     </div>
 
-                    <!-- INTERNSHIP DAYS -->
+                    <div id="alertMessageStep2" class="alert-banner" style="display: none;"></div>
+
                     <div class="schedule-section">
+
+                        <div class="schedule-label">
+                            <i class="fa-solid fa-house-laptop"></i>
+                            <span>Work Modality</span>
+                        </div>
+
+                        <div class="modality-options">
+
+                            <label class="modality-option">
+                                <input
+                                    type="radio"
+                                    name="workModality"
+                                    id="onSiteModality"
+                                    value="On-site"
+                                    checked
+                                >
+
+                                <span class="modality-card">
+                                    <span class="modality-icon">
+                                        <i class="fa-solid fa-building"></i>
+                                    </span>
+
+                                    <span class="modality-info">
+                                        <strong>On-site</strong>
+                                        <small>Work at the company premises</small>
+                                    </span>
+                                </span>
+                            </label>
+
+
+                            <label class="modality-option">
+                                <input
+                                    type="radio"
+                                    name="workModality"
+                                    id="wfhModality"
+                                    value="Work From Home"
+                                >
+
+                                <span class="modality-card">
+                                    <span class="modality-icon">
+                                        <i class="fa-solid fa-house"></i>
+                                    </span>
+
+                                    <span class="modality-info">
+                                        <strong>Work From Home</strong>
+                                        <small>Perform internship tasks remotely</small>
+                                    </span>
+                                </span>
+                            </label>
+
+                        </div>
 
                         <div class="schedule-label">
                             <i class="fa-regular fa-calendar"></i>
@@ -146,187 +204,90 @@
                         </div>
 
                         <div class="days-grid">
-
-                            <button type="button" class="day-btn" data-day="Monday">
-                                Mon
-                            </button>
-
-                            <button type="button" class="day-btn" data-day="Tuesday">
-                                Tue
-                            </button>
-
-                            <button type="button" class="day-btn" data-day="Wednesday">
-                                Wed
-                            </button>
-
-                            <button type="button" class="day-btn" data-day="Thursday">
-                                Thu
-                            </button>
-
-                            <button type="button" class="day-btn" data-day="Friday">
-                                Fri
-                            </button>
-
-                            <button type="button" class="day-btn" data-day="Saturday">
-                                Sat
-                            </button>
-
-                            <button type="button" class="day-btn" data-day="Sunday">
-                                Sun
-                            </button>
-
+                            <button type="button" class="day-btn" data-day="Monday">Mon</button>
+                            <button type="button" class="day-btn" data-day="Tuesday">Tue</button>
+                            <button type="button" class="day-btn" data-day="Wednesday">Wed</button>
+                            <button type="button" class="day-btn" data-day="Thursday">Thu</button>
+                            <button type="button" class="day-btn" data-day="Friday">Fri</button>
+                            <button type="button" class="day-btn" data-day="Saturday">Sat</button>
+                            <button type="button" class="day-btn" data-day="Sunday">Sun</button>
                         </div>
 
                     </div>
 
-
-                    <!-- MORNING -->
-                    <div class="schedule-session">
-
+                    <div class="afternoon-toggle-card">
                         <div class="session-title">
-
                             <i class="fa-regular fa-sun"></i>
+                            <div>
+                                <h3>Morning Session</h3>
+                                <p id="morningStatus">Enabled</p>
+                            </div>
+                        </div>
 
+                        <label class="switch">
+                            <input type="checkbox" id="morningEnabled" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="schedule-session" id="morningSchedule">
+                        <div class="session-title">
+                            <i class="fa-regular fa-sun"></i>
                             <div>
                                 <h3>Morning</h3>
                                 <p>Set your morning working hours</p>
                             </div>
-
                         </div>
 
                         <div class="time-group">
-
-                            <label>
-                                <i class="fa-regular fa-clock"></i>
-                                TIME IN
-                            </label>
-
-                            <input
-                                type="time"
-                                id="morningTimeIn"
-                                value="08:00"
-                                required
-                            >
-
+                            <label><i class="fa-regular fa-clock"></i> TIME IN</label>
+                            <input type="time" id="morningTimeIn" value="08:00">
                         </div>
 
                         <div class="time-group">
-
-                            <label>
-                                <i class="fa-regular fa-clock"></i>
-                                TIME OUT
-                            </label>
-
-                            <input
-                                type="time"
-                                id="morningTimeOut"
-                                value="12:00"
-                                required
-                            >
-
+                            <label><i class="fa-regular fa-clock"></i> TIME OUT</label>
+                            <input type="time" id="morningTimeOut" value="12:00">
                         </div>
-
                     </div>
 
-
-                    <!-- AFTERNOON TOGGLE -->
                     <div class="afternoon-toggle-card">
-
                         <div class="session-title">
-
                             <i class="fa-regular fa-sun"></i>
-
                             <div>
                                 <h3>Afternoon Session</h3>
                                 <p id="afternoonStatus">Enabled</p>
                             </div>
-
                         </div>
 
                         <label class="switch">
-
-                            <input
-                                type="checkbox"
-                                id="afternoonEnabled"
-                                checked
-                            >
-
+                            <input type="checkbox" id="afternoonEnabled" checked>
                             <span class="slider"></span>
-
                         </label>
-
                     </div>
 
-
-                    <!-- AFTERNOON -->
-                    <div
-                        class="schedule-session"
-                        id="afternoonSchedule"
-                    >
-
+                    <div class="schedule-session" id="afternoonSchedule">
                         <div class="session-title">
-
                             <i class="fa-solid fa-sun"></i>
-
                             <div>
                                 <h3>Afternoon</h3>
                                 <p>Set your afternoon working hours</p>
                             </div>
-
                         </div>
 
                         <div class="time-group">
-
-                            <label>
-                                <i class="fa-regular fa-clock"></i>
-                                TIME IN
-                            </label>
-
-                            <input
-                                type="time"
-                                id="afternoonTimeIn"
-                                value="13:00"
-                            >
-
+                            <label><i class="fa-regular fa-clock"></i> TIME IN</label>
+                            <input type="time" id="afternoonTimeIn" value="13:00">
                         </div>
 
                         <div class="time-group">
-
-                            <label>
-                                <i class="fa-regular fa-clock"></i>
-                                TIME OUT
-                            </label>
-
-                            <input
-                                type="time"
-                                id="afternoonTimeOut"
-                                value="17:00"
-                            >
-
+                            <label><i class="fa-regular fa-clock"></i> TIME OUT</label>
+                            <input type="time" id="afternoonTimeOut" value="17:00">
                         </div>
-
                     </div>
 
-
-                    <!-- BUTTONS -->
                     <div class="step-buttons">
-
-                        <button
-                            type="button"
-                            class="continue-btn back-btn"
-                            id="scheduleBackBtn"
-                        >
-                            Back
-                        </button>
-
-                        <button
-                            type="button"
-                            class="continue-btn"
-                            id="scheduleNextBtn"
-                        >
-                            Next
-                        </button>
-
+                        <button type="button" class="continue-btn back-btn" id="scheduleBackBtn">Back</button>
+                        <button type="button" class="continue-btn" id="scheduleNextBtn">Next</button>
                     </div>
 
                 </div>
@@ -343,16 +304,16 @@
                     <div class="form-group">
                         <label>Set Password</label>
                         <div class="input-box">
-                            <input id="password" type="password" placeholder="Enter your password" required>
-                            <i class="fa-regular fa-eye toggle-password"></i>
+                            <input id="password" type="password" name="new-password" autocomplete="new-password" placeholder="Enter your password" required>
+                            <i class="fa-regular fa-eye toggle-password" id="togglePassword"></i>
                         </div>
                     </div>
 
                     <div class="form-group">
                         <label>Confirm Password</label>
                         <div class="input-box">
-                            <input id="confirmPassword" type="password" placeholder="Confirm your password" required>
-                            <i class="fa-regular fa-eye toggle-password"></i>
+                            <input id="confirmPassword" type="password" name="confirm-password" autocomplete="new-password" placeholder="Confirm your password" required>
+                            <i class="fa-regular fa-eye toggle-password" id="toggleConfirmPassword"></i>
                         </div>
                     </div>
 

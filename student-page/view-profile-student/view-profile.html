@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile - OJT LOGS</title>
+
+    <link rel="stylesheet" href="../templated/header.css">
+    <link rel="stylesheet" href="view-profile.css">
+    <link rel="stylesheet" href="../templated/sidebar.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+</head>
+
+<body>
+
+<div class="dashboard">
+    <div id="sidebar-container"></div>
+
+    <main class="main">
+
+        <!-- Header Bar (populated at runtime by loadHeader() from ../templated/header.html) -->
+        <header id="header-container"></header>
+
+        <section class="profile-page">
+
+            <!-- ============ HERO ============ -->
+            <div class="hero-card">
+
+                <div class="hero-cover"></div>
+
+                <div class="hero-avatar">
+                    <div class="avatar-lg" id="heroAvatar">ST</div>
+                    <span class="status-dot" id="heroDot"></span>
+                </div>
+
+                <h1 id="heroName">Loading...</h1>
+
+                <div class="chips">
+                    <span class="chip chip-role"><i class="fa-solid fa-user-graduate"></i>Student Intern</span>
+                    <span class="chip chip-date"><i class="fa-regular fa-calendar"></i><span id="chipJoined">&mdash;</span></span>
+                    <span class="chip chip-active" id="chipStatus"><i class="fa-solid fa-circle"></i>Active</span>
+                </div>
+
+                <!-- OJT quick stats -->
+                <div class="hero-stats">
+                    <div class="stat">
+                        <strong id="statDone">0h 0m</strong>
+                        <span>Hours Done</span>
+                    </div>
+                    <div class="stat">
+                        <strong id="statRequired">&mdash;</strong>
+                        <span>Required</span>
+                    </div>
+                    <div class="stat">
+                        <strong id="statProgress">0%</strong>
+                        <span>Progress</span>
+                    </div>
+                </div>
+
+                <!-- Attendance summary (galing sa schedule + attendance records) -->
+                <div class="hero-stats hero-stats--attendance">
+                    <div class="stat stat-present">
+                        <strong id="statPresent">0</strong>
+                        <span>Present</span>
+                    </div>
+                    <div class="stat stat-late">
+                        <strong id="statLate">0</strong>
+                        <span>Late</span>
+                    </div>
+                    <div class="stat stat-absent">
+                        <strong id="statAbsent">0</strong>
+                        <span>Absent</span>
+                    </div>
+                </div>
+
+                <a class="btn-edit" href="../settings/settings.html">
+                    <i class="fa-solid fa-pen"></i>
+                    Edit profile
+                </a>
+
+            </div>
+
+            <!-- ============ TABS ============ -->
+            <div class="tabs" role="tablist" aria-label="Profile sections">
+
+                <button type="button" class="tab active" role="tab" id="tab-personal"
+                        data-tab="personal" aria-selected="true" aria-controls="panel-personal">
+                    <i class="fa-regular fa-user"></i> Personal
+                </button>
+
+                <button type="button" class="tab" role="tab" id="tab-contact"
+                        data-tab="contact" aria-selected="false" aria-controls="panel-contact">
+                    <i class="fa-solid fa-phone"></i> Contact
+                </button>
+
+                <button type="button" class="tab" role="tab" id="tab-ojt"
+                        data-tab="ojt" aria-selected="false" aria-controls="panel-ojt">
+                    <i class="fa-solid fa-briefcase"></i> OJT
+                </button>
+
+            </div>
+
+            <!-- ============ PERSONAL ============ -->
+            <div class="info-card" role="tabpanel" id="panel-personal" aria-labelledby="tab-personal">
+
+                <div class="info-head">
+                    <div class="icon-tile"><i class="fa-regular fa-user"></i></div>
+                    <div>
+                        <h3>Personal information</h3>
+                        <p>Your name and school details</p>
+                    </div>
+                </div>
+
+                <dl class="field-list">
+                    <div class="field"><dt>Full name</dt><dd id="fFull">&mdash;</dd></div>
+                    <div class="field"><dt>First name</dt><dd id="fFirst">&mdash;</dd></div>
+                    <div class="field"><dt>Middle name</dt><dd id="fMiddle">&mdash;</dd></div>
+                    <div class="field"><dt>Last name</dt><dd id="fLast">&mdash;</dd></div>
+                    <div class="field"><dt>Student number</dt><dd id="fStudentNo">&mdash;</dd></div>
+                    <div class="field"><dt>Course</dt><dd id="fCourse">&mdash;</dd></div>
+                    <div class="field"><dt>Section</dt><dd id="fSection">&mdash;</dd></div>
+                    <div class="field"><dt>Account status</dt><dd id="fStatus">&mdash;</dd></div>
+                </dl>
+
+            </div>
+
+            <!-- ============ CONTACT ============ -->
+            <div class="info-card" role="tabpanel" id="panel-contact" aria-labelledby="tab-contact" hidden>
+
+                <div class="info-head">
+                    <div class="icon-tile"><i class="fa-solid fa-phone"></i></div>
+                    <div>
+                        <h3>Contact information</h3>
+                        <p>How your coordinator can reach you</p>
+                    </div>
+                </div>
+
+                <dl class="field-list">
+                    <div class="field span-2"><dt>Email</dt><dd id="fEmail">&mdash;</dd></div>
+                    <div class="field"><dt>Phone number</dt><dd id="fPhone">&mdash;</dd></div>
+                    <div class="field span-2"><dt>Address</dt><dd id="fAddress">&mdash;</dd></div>
+                </dl>
+
+            </div>
+
+            <!-- ============ OJT ============ -->
+            <div class="info-card" role="tabpanel" id="panel-ojt" aria-labelledby="tab-ojt" hidden>
+
+                <div class="info-head">
+                    <div class="icon-tile"><i class="fa-solid fa-briefcase"></i></div>
+                    <div>
+                        <h3>OJT information</h3>
+                        <p>Your company and required hours</p>
+                    </div>
+                </div>
+
+                <div class="ojt-progress">
+                    <div class="ojt-progress-top">
+                        <span>OJT progress</span>
+                        <strong id="ojtPercent">0%</strong>
+                    </div>
+                    <div class="ojt-bar"><div class="ojt-bar-fill" id="ojtBar"></div></div>
+                </div>
+
+                <dl class="field-list">
+                    <div class="field span-2"><dt>Company</dt><dd id="fCompany">&mdash;</dd></div>
+                    <div class="field span-2"><dt>Supervisor</dt><dd id="fSupervisor">&mdash;</dd></div>
+                    <div class="field span-2"><dt>Duty type</dt><dd id="fModality">&mdash;</dd></div>
+                    <div class="field"><dt>Required hours</dt><dd id="fRequired">&mdash;</dd></div>
+                    <div class="field"><dt>Hours completed</dt><dd id="fDone">&mdash;</dd></div>
+                    <div class="field"><dt>Remaining hours</dt><dd id="fRemaining">&mdash;</dd></div>
+                </dl>
+
+                <div class="sched-block">
+                    <h4><i class="fa-regular fa-calendar"></i> OJT schedule</h4>
+                    <div id="scheduleBox"><span class="sched-empty">No schedule assigned yet</span></div>
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+</div>
+
+<script type="module" src="view-profile.js"></script>
+
+</body>
+</html>

@@ -1,4 +1,4 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { 
     getAuth, 
     onAuthStateChanged,
@@ -30,7 +30,8 @@ const firebaseConfig = {
     appId: "1:1012575426857:web:c2d6dbcdc0dc0ad965ff38"
 };
 
-const app = initializeApp(firebaseConfig);
+// Reuse the app kung na-initialize na ng shared ../header/header.js
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
@@ -42,37 +43,14 @@ document.addEventListener("DOMContentLoaded", () => {
     let activeQrData = {};
     let activeEvaluationData = {};
 
-    onAuthStateChanged(auth, async (user) => {
+    // (Profile, notification bell, at logout ay hawak na ng shared
+    // header - see ../header/header.js. Ito rin ang nagre-redirect
+    // papuntang login kapag walang naka-login.)
+    onAuthStateChanged(auth, (user) => {
         if (user) {
-            try {
-                const userDocRef = doc(db, "users", user.uid);
-                const userDoc = await getDoc(userDocRef);
-                if (userDoc.exists()) {
-                    updateProfileUI(userDoc.data(), user);
-                } else {
-                    updateProfileUI({}, user);
-                }
-            } catch (error) {
-                console.error("Error fetching coordinator details:", error);
-            }
             loadCompaniesWithStudentCounts();
-        } else {
-            window.location.href = "../coordinator_login/coordinator_login.html";
         }
     });
-
-    const logoutBtn = document.getElementById("logoutBtn");
-    if (logoutBtn) {
-        logoutBtn.addEventListener("click", async (e) => {
-            e.preventDefault();
-            try {
-                await signOut(auth);
-                window.location.href = "../coordinator_login/coordinator_login.html";
-            } catch (err) {
-                console.error("Logout Error:", err);
-            }
-        });
-    }
 
     // LOAD COMPANIES & RENDER CARDS WITH PROPER DATA-ID
     function loadCompaniesWithStudentCounts() {
@@ -529,8 +507,236 @@ document.addEventListener("click", (e) => {
 
     if (previewEvaluationBtn) {
         previewEvaluationBtn.addEventListener("click", () => {
-            const previewUrl = `/guest-access/guest-evaluation.html?preview=1`; 
-            window.open(previewUrl, '_blank');
+            const companyName = activeEvaluationData.company;
+            if (!companyName) return;
+            openEvaluationStatusModal(companyName);
+        });
+    }
+
+    // ==========================================
+    // EVALUATION STATUS PREVIEW (PER STUDENT)
+    // ==========================================
+    const evaluationStatusModal = document.getElementById("evaluationStatusModal");
+    const closeEvaluationStatusModal = document.getElementById("closeEvaluationStatusModal");
+    const evaluationStatusList = document.getElementById("evaluationStatusList");
+    const evaluationStatusCompanyLabel = document.getElementById("evaluationStatusCompanyLabel");
+    const viewBlankFormBtn = document.getElementById("viewBlankFormBtn");
+
+    const evaluationAnswersModal = document.getElementById("evaluationAnswersModal");
+    const closeEvaluationAnswersModal = document.getElementById("closeEvaluationAnswersModal");
+    const evaluationAnswersTitle = document.getElementById("evaluationAnswersTitle");
+    const evaluationAnswersContent = document.getElementById("evaluationAnswersContent");
+
+    let currentEvaluationsMap = new Map();
+
+    function escapeHtml(value = "") {
+        const el = document.createElement("div");
+        el.textContent = value == null ? "" : String(value);
+        return el.innerHTML;
+    }
+
+    const RATING_CATEGORIES = [
+        { prefix: "integration", label: "Integration of Basic Theory in Practice" },
+        { prefix: "profession", label: "Understanding of the Profession" },
+        { prefix: "quality", label: "Quality and Quantity of Work" },
+        { prefix: "skills", label: "Practicumer's Skill in Program Settings" },
+        { prefix: "interpersonal", label: "Intrapersonal and Interpersonal Skills" },
+        { prefix: "program", label: "Practicum Program Evaluation" }
+    ];
+
+    async function openEvaluationStatusModal(companyName) {
+        if (evaluationStatusCompanyLabel) {
+            evaluationStatusCompanyLabel.textContent = `Students under ${companyName}`;
+        }
+
+        if (evaluationStatusList) {
+            evaluationStatusList.innerHTML = `<p class="eval-empty-note"><i class="fa-solid fa-spinner fa-spin"></i> Loading students...</p>`;
+        }
+
+        if (viewBlankFormBtn) {
+            viewBlankFormBtn.onclick = () => {
+                window.open(`/guest-access/guest-evaluation.html?preview=1`, "_blank");
+            };
+        }
+
+        if (evaluationStatusModal) evaluationStatusModal.classList.add("active");
+
+        try {
+            // Kunin lahat ng estudyante/intern ng company na ito
+            const internsQuery1 = query(collection(db, "users"), where("company", "==", companyName));
+            const internsQuery2 = query(collection(db, "users"), where("companyName", "==", companyName));
+            const [snap1, snap2] = await Promise.all([getDocs(internsQuery1), getDocs(internsQuery2)]);
+
+            const studentsMap = new Map();
+            [...snap1.docs, ...snap2.docs].forEach(docSnap => {
+                const data = docSnap.data();
+                const role = (data.role || "").toLowerCase();
+                if (role === "intern" || role === "student") {
+                    studentsMap.set(docSnap.id, {
+                        id: docSnap.id,
+                        fullName: data.fullName || data.name || "Unnamed Student",
+                        studentNumber: data.studentNumber || data.idNumber || ""
+                    });
+                }
+            });
+
+            // Kunin lahat ng na-submit nang evaluation ng company na ito
+            const evaluationsQuery = query(collection(db, "evaluations"), where("companyName", "==", companyName));
+            const evalSnap = await getDocs(evaluationsQuery);
+
+            currentEvaluationsMap = new Map();
+            evalSnap.forEach(docSnap => {
+                const data = docSnap.data();
+                if (data.internId) {
+                    currentEvaluationsMap.set(data.internId, { id: docSnap.id, ...data });
+                }
+            });
+
+            renderEvaluationStatusList(studentsMap);
+
+        } catch (err) {
+            console.error("Evaluation status load error:", err);
+            if (evaluationStatusList) {
+                evaluationStatusList.innerHTML = `<p class="eval-empty-note">Hindi na-load ang listahan ng estudyante. Subukan muli.</p>`;
+            }
+        }
+    }
+
+    function renderEvaluationStatusList(studentsMap) {
+        if (!evaluationStatusList) return;
+
+        if (studentsMap.size === 0) {
+            evaluationStatusList.innerHTML = `<p class="eval-empty-note">Walang naitalang estudyante para sa kumpanyang ito.</p>`;
+            return;
+        }
+
+        const students = Array.from(studentsMap.values())
+            .sort((a, b) => a.fullName.localeCompare(b.fullName));
+
+        evaluationStatusList.innerHTML = students.map(student => {
+            const evaluation = currentEvaluationsMap.get(student.id);
+            const isAnswered = !!evaluation;
+
+            return `
+                <div class="eval-status-item">
+                    <div class="eval-status-info">
+                        <h4>${escapeHtml(student.fullName)}</h4>
+                        <span>${escapeHtml(student.studentNumber || "No student number")}</span>
+                    </div>
+                    <div class="eval-status-right">
+                        ${isAnswered
+                            ? `<span class="eval-status-badge answered"><i class="fa-solid fa-circle-check"></i> Evaluated</span>
+                               <button type="button" class="eval-view-answers-btn" data-intern-id="${student.id}">View Answers</button>`
+                            : `<span class="eval-status-badge waiting"><i class="fa-solid fa-clock"></i> Waiting for Supervisor</span>`
+                        }
+                    </div>
+                </div>
+            `;
+        }).join("");
+    }
+
+    if (evaluationStatusList) {
+        evaluationStatusList.addEventListener("click", (e) => {
+            const btn = e.target.closest(".eval-view-answers-btn");
+            if (!btn) return;
+            const internId = btn.dataset.internId;
+            const evaluation = currentEvaluationsMap.get(internId);
+            if (evaluation) openEvaluationAnswersModal(evaluation);
+        });
+    }
+
+    function openEvaluationAnswersModal(evaluation) {
+        if (evaluationAnswersTitle) {
+            evaluationAnswersTitle.textContent = `Evaluation — ${evaluation.internName || "Student"}`;
+        }
+
+        const ratings = evaluation.ratings || {};
+
+        const categoryScoresHtml = RATING_CATEGORIES.map(cat => {
+            const values = Object.keys(ratings)
+                .filter(key => key.startsWith(cat.prefix + "_"))
+                .map(key => Number(ratings[key]))
+                .filter(v => !isNaN(v) && v > 0);
+
+            if (values.length === 0) return "";
+
+            const avg = (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1);
+
+            return `
+                <div class="eval-category-score-row">
+                    <span>${escapeHtml(cat.label)}</span>
+                    <strong>${avg} / 5</strong>
+                </div>
+            `;
+        }).join("");
+
+        const hire = (evaluation.wouldHire || "").toLowerCase();
+        const hirePillHtml = evaluation.wouldHire
+            ? `<span class="eval-hire-pill ${hire === "yes" ? "yes" : "no"}">
+                   <i class="fa-solid ${hire === "yes" ? "fa-thumbs-up" : "fa-thumbs-down"}"></i>
+                   ${escapeHtml(evaluation.wouldHire)}
+               </span>`
+            : "—";
+
+        if (evaluationAnswersContent) {
+            evaluationAnswersContent.innerHTML = `
+                <div class="eval-answers-meta">
+                    <div>
+                        <span>Evaluator</span>
+                        <strong>${escapeHtml(evaluation.evaluatorName || "—")}</strong>
+                    </div>
+                    <div>
+                        <span>Position</span>
+                        <strong>${escapeHtml(evaluation.evaluatorPosition || "—")}</strong>
+                    </div>
+                    <div>
+                        <span>Date Accomplished</span>
+                        <strong>${escapeHtml(evaluation.dateAccomplished || "—")}</strong>
+                    </div>
+                    <div>
+                        <span>Would Hire?</span>
+                        <strong>${hirePillHtml}</strong>
+                    </div>
+                </div>
+
+                <div class="eval-category-scores">
+                    ${categoryScoresHtml || `<p class="eval-empty-note" style="padding:8px 0;">No rating data available.</p>`}
+                </div>
+
+                <div class="eval-answer-block">
+                    <h5>Strong Points</h5>
+                    <p>${escapeHtml(evaluation.strongPoints || "—")}</p>
+                </div>
+
+                <div class="eval-answer-block">
+                    <h5>Significant Limitations</h5>
+                    <p>${escapeHtml(evaluation.limitations || "—")}</p>
+                </div>
+
+                <div class="eval-answer-block">
+                    <h5>Professional Improvement</h5>
+                    <p>${escapeHtml(evaluation.professionalImprovement || "—")}</p>
+                </div>
+
+                <div class="eval-answer-block">
+                    <h5>Program Suggestion</h5>
+                    <p>${escapeHtml(evaluation.programSuggestion || "—")}</p>
+                </div>
+            `;
+        }
+
+        if (evaluationAnswersModal) evaluationAnswersModal.classList.add("active");
+    }
+
+    if (closeEvaluationStatusModal) {
+        closeEvaluationStatusModal.addEventListener("click", () => {
+            if (evaluationStatusModal) evaluationStatusModal.classList.remove("active");
+        });
+    }
+
+    if (closeEvaluationAnswersModal) {
+        closeEvaluationAnswersModal.addEventListener("click", () => {
+            if (evaluationAnswersModal) evaluationAnswersModal.classList.remove("active");
         });
     }
 
@@ -604,7 +810,7 @@ document.addEventListener("click", (e) => {
                     );
                 }
 
-                showModalAlert("evaluationAlert", `Na-send na ang link gamit ang EmailJS! I-check ang Gmail.`, "success");
+                showModalAlert("evaluationAlert", `The link has been sent via email! Please check your Gmail.`, "success");
                 
                 setTimeout(() => {
                     if (evaluationModal) evaluationModal.classList.remove("active");
@@ -653,7 +859,85 @@ function renderEditChips(list, container, inputEl) {
     if (!container) return;
     container.querySelectorAll(".email-chip").forEach(c => c.remove());
     list.forEach((item, idx) => {
-        container.insertBefore(createElementFromHTML(`<div class="email-chip"><span>${item}</span><button type="button" class="remove-chip" data-index="${idx}">&times;</button></div>`), inputEl);
+        const chip = document.createElement("div");
+        chip.className = "email-chip";
+
+        const label = document.createElement("span");
+        label.textContent = item;
+
+        const removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.className = "remove-chip";
+        removeBtn.dataset.index = idx;
+        removeBtn.innerHTML = "&times;";
+
+        chip.append(label, removeBtn);
+        container.insertBefore(chip, inputEl);
+    });
+}
+
+// ----- EDIT MODAL: add / remove ng Supervisor Names at Emails -----
+// Idagdag ang laman ng input bilang chip. Ibabalik ang "added", "empty" o "invalid".
+function commitEditName() {
+    if (!editSupNameInput) return "empty";
+    const val = editSupNameInput.value.trim().replace(/,/g, "");
+    if (!val) return "empty";
+    if (!editSupNamesList.some(n => String(n).toLowerCase() === val.toLowerCase())) {
+        editSupNamesList.push(val);
+    }
+    editSupNameInput.value = "";
+    renderEditChips(editSupNamesList, editSupNameChipsContainer, editSupNameInput);
+    return "added";
+}
+
+function commitEditEmail() {
+    if (!editSupEmailInput) return "empty";
+    const val = editSupEmailInput.value.trim().replace(/,/g, "");
+    if (!val) return "empty";
+    if (!val.includes("@")) return "invalid";
+    if (!editSupEmailsList.some(m => String(m).toLowerCase() === val.toLowerCase())) {
+        editSupEmailsList.push(val);
+    }
+    editSupEmailInput.value = "";
+    renderEditChips(editSupEmailsList, editSupEmailChipsContainer, editSupEmailInput);
+    return "added";
+}
+
+if (editSupNameInput) {
+    editSupNameInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === ",") {
+            e.preventDefault();
+            commitEditName();
+        }
+    });
+}
+
+if (editSupEmailInput) {
+    editSupEmailInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === ",") {
+            e.preventDefault();
+            if (commitEditEmail() === "invalid") {
+                showModalAlert("editModalAlert", "Maglagay ng valid na email (may @).", "error");
+            }
+        }
+    });
+}
+
+if (editSupNameChipsContainer) {
+    editSupNameChipsContainer.addEventListener("click", (e) => {
+        const removeBtn = e.target.closest(".remove-chip");
+        if (!removeBtn) return;
+        editSupNamesList.splice(Number(removeBtn.dataset.index), 1);
+        renderEditChips(editSupNamesList, editSupNameChipsContainer, editSupNameInput);
+    });
+}
+
+if (editSupEmailChipsContainer) {
+    editSupEmailChipsContainer.addEventListener("click", (e) => {
+        const removeBtn = e.target.closest(".remove-chip");
+        if (!removeBtn) return;
+        editSupEmailsList.splice(Number(removeBtn.dataset.index), 1);
+        renderEditChips(editSupEmailsList, editSupEmailChipsContainer, editSupEmailInput);
     });
 }
 
@@ -694,6 +978,9 @@ document.addEventListener("click", async (e) => {
                 renderEditChips(editSupNamesList, editSupNameChipsContainer, editSupNameInput);
                 renderEditChips(editSupEmailsList, editSupEmailChipsContainer, editSupEmailInput);
 
+                if (editSupNameInput) editSupNameInput.value = "";
+                if (editSupEmailInput) editSupEmailInput.value = "";
+
                 if (editCompanyModal) editCompanyModal.classList.add("active");
             } else {
                 showToastNotification("Hindi matagpuan sa database", "error");
@@ -733,6 +1020,14 @@ if (confirmDeleteBtn) {
 if (editCompanyForm) {
     editCompanyForm.addEventListener("submit", async (e) => {
         e.preventDefault();
+
+        // Kung may naka-type na hindi pa na-Enter, isama muna bago i-save.
+        commitEditName();
+        if (commitEditEmail() === "invalid") {
+            showModalAlert("editModalAlert", "Maglagay ng valid na email (may @).", "error");
+            return;
+        }
+
         const companyId = document.getElementById("editCompanyId").value;
         const companyName = document.getElementById("editCompanyName").value.trim();
         const location = document.getElementById("editCompanyLocation").value.trim();
@@ -802,17 +1097,4 @@ function showModalAlert(containerId, message, type = "success") {
     alertBox.style.display = "flex";
     alertBox.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-circle-check' : 'fa-circle-exclamation'}"></i> <span>${message}</span>`;
     setTimeout(() => alertBox.style.display = "none", 4000);
-}
-
-function updateProfileUI(userData, authUser) {
-    const fullName = userData.name || userData.fullName || authUser.displayName || "OJT Coordinator";
-    const role = userData.role || userData.position || "Coordinator";
-    const userName = document.getElementById("userName");
-    const userRole = document.getElementById("userRole");
-    const userAvatar = document.getElementById("userAvatar");
-    if (userName) userName.textContent = fullName;
-    if (userRole) userRole.textContent = role.toUpperCase();
-    if (userAvatar) {
-        userAvatar.textContent = fullName.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase() || "CO";
-    }
 }

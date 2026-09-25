@@ -4,167 +4,703 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Coordinator Dashboard</title>
 
+    <!-- Sidebar CSS -->
     <link rel="stylesheet" href="../sidebar/sidebar-web.css">
+
+    <!-- Dashboard CSS -->
     <link rel="stylesheet" href="dashboard.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+
+    <!-- Shared Coordinator Header CSS -->
+    <link rel="stylesheet" href="../header/header.css">
+
+    <!-- Analytics CSS -->
+    <link rel="stylesheet" href="/coordinator-page/analytics/analytics.css">
+
+    <!-- Google Font -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet"
+    >
+
+    <!-- Font Awesome -->
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css"
+    >
 </head>
 
 <body>
 
 <div class="dashboard">
 
-    <!-- Sidebar -->
+    <!-- =====================================================
+         SIDEBAR
+    ====================================================== -->
     <div id="sidebar-container"></div>
 
-    <!-- Main Content -->
+
+    <!-- =====================================================
+         MAIN CONTENT
+    ====================================================== -->
     <main class="main">
 
-        <!-- Header -->
-        <header>
-            <div>
-                <h2>Dashboard</h2>
-                <p>Welcome back, <span id="welcomeName">Coordinator</span>.</p>
-            </div>
+        <!-- =================================================
+             HEADER
+             (Loaded from ../header/header.html by
+             ../header/header.js - iisang file na lang ang
+             ie-edit kapag may babaguhin sa header, dito o sa
+             ibang coordinator page.)
+        ================================================== -->
+        <header
+            id="header-container"
+            data-page-title="Dashboard"
+            data-page-subtitle="Welcome back, {name}."
+        ></header>
 
-            <div class="top-right">
-                <div class="notification">
-                    <i class="fa-regular fa-bell"></i>
-                    <span class="badge">3</span>
-                </div>
 
-                <div class="profile">
-                    <div class="avatar" id="userAvatar">CO</div>
-                    <div class="profile-info">
-                        <h4 id="userName">Coordinator</h4>
-                        <p id="userRole">OJT Coordinator</p>
-                    </div>
-                    <i class="fa-solid fa-chevron-down"></i>
-                </div>
-            </div>
-        </header>
 
-        <!-- Statistics Cards -->
+
+        <!-- =================================================
+             STATISTICS CARDS
+        ================================================== -->
         <section class="cards">
 
-            <div class="stat-card">
+            <!-- Total Registered Interns -->
+            <div
+                class="stat-card clickable-card"
+                id="registeredStudentsCard"
+            >
+
                 <div class="stat-icon red">
                     <i class="fa-solid fa-users"></i>
                 </div>
+
                 <div class="stat-content">
-                    <p class="title">Total Student Interns</p>
-                    <h2 id="totalStudentsCount">0</h2>
-                    <div class="stat-footer">
-                        <span class="positive"><i class="fa-solid fa-arrow-up"></i> Active</span>
-                        <small>In Database</small>
+
+                    <p class="title">
+                        Total Registered Interns
+                    </p>
+
+                    <h2 id="totalStudentsCount">
+                        0
+                    </h2>
+
+
+                    <div class="stat-note muted" id="totalInternsNote">
+                        <div class="stat-note-header">
+                            <i class="fa-solid fa-user-plus"></i>
+                            <span class="stat-note-title">No Registered Interns Yet</span>
+                        </div>
+                        <p>
+                            Students will appear here once they register.
+                        </p>
                     </div>
+
                 </div>
+
             </div>
 
-            <div class="stat-card">
+
+
+            <!-- Active Interns -->
+            <div
+                class="stat-card clickable-card"
+                id="activeStudentsCard"
+            >
+
                 <div class="stat-icon green">
                     <i class="fa-solid fa-circle-check"></i>
                 </div>
+
                 <div class="stat-content">
-                    <p class="title">Active Interns</p>
-                    <h2 id="activeStudentsCount">0</h2>
-                    <div class="stat-footer">
-                        <span class="positive"><i class="fa-solid fa-arrow-up"></i> On Track</span>
-                        <small>Currently Ongoing</small>
+
+                    <p class="title">
+                        Active Interns
+                    </p>
+
+                    <h2 id="activeStudentsCount">
+                        0
+                    </h2>
+
+                    <div class="stat-note muted" id="activeInternsNote">
+                        <div class="stat-note-header">
+                            <i class="fa-solid fa-user-clock"></i>
+                            <span class="stat-note-title">No Active Interns Yet</span>
+                        </div>
+                        <p>
+                            Interns will show up here once they start their internship.
+                        </p>
                     </div>
+
                 </div>
+
             </div>
 
-            <div class="stat-card">
+
+
+            <!-- Completed -->
+            <div
+                class="stat-card completed-card"
+                id="completedStudentsCard"
+            >
+
                 <div class="stat-icon blue">
+
                     <i class="fa-solid fa-clipboard-check"></i>
+
                 </div>
+
                 <div class="stat-content">
-                    <p class="title">Completed</p>
-                    <h2 id="completedStudentsCount">0</h2>
-                    <div class="stat-footer">
-                        <span class="positive"><i class="fa-solid fa-arrow-up"></i> Finished</span>
-                        <small>Rendered Hours</small>
+
+                    <p class="title">
+                        Completed
+                    </p>
+
+                    <h2 id="completedStudentsCount">
+                        0
+                    </h2>
+
+
+                    <div class="stat-note muted" id="completedNote">
+                        <div class="stat-note-header">
+                            <i class="fa-solid fa-clipboard-list"></i>
+                            <span class="stat-note-title">No Completions Yet</span>
+                        </div>
+                        <p>
+                            Students who finish their required hours will appear here.
+                        </p>
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- At-Risk Students -->
+            <div
+                class="stat-card clickable-card"
+                id="atRiskStudentsCard"
+            >
+
+                <div class="stat-icon red">
+
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+
+                </div>
+
+                <div class="stat-content">
+
+                    <p class="title">
+                        At-Risk Students
+                    </p>
+
+                    <h2 id="atRiskStudentsCount">
+                        0
+                    </h2>
+ 
+
+                    <div class="stat-note success" id="atRiskNote">
+                        <div class="stat-note-header">
+                            <i class="fa-solid fa-circle-check"></i>
+                            <span class="stat-note-title">All Clear</span>
+                        </div>
+                        <p>
+                            No students are currently flagged as at-risk.
+                        </p>
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- Graduated Interns -->
+            <div
+                class="stat-card static-card"
+                id="graduatedStudentsCard"
+            >
+
+                <div class="stat-icon">
+                    <i class="fa-solid fa-box-archive"></i>
+                </div>
+
+                <div class="stat-content">
+
+                    <p class="title">
+                        Completed Batch Archive
+                    </p>
+
+                    <h2 id="graduatedStudentsCount">
+                        0
+                    </h2>
+
+                    <div class="stat-note muted" id="graduatedNote">
+                        <div class="stat-note-header">
+                            <i class="fa-solid fa-box-archive"></i>
+                            <span class="stat-note-title">No Completed Batch Archive Yet</span>
+                        </div>
+                        <p>
+                            Completed batch students will be recorded here.
+                        </p>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- =================================================
+             MIDDLE ANALYTICS
+        ================================================== -->
+        <section class="middle-analytics">
+
+
+            <!-- =================================================
+                 WEEKLY REPORTS
+            ================================================== -->
+            <div class="analytics-card weekly-reports-card">
+
+                <div class="table-card">
+
+
+                    <!-- =============================================
+                         TABLE HEADER
+                    ============================================== -->
+                    <div class="table-header">
+
+                        <div class="reports-title-header">
+
+                            <h3>
+                                Weekly Reports
+                            </h3>
+
+                        </div>
+
+
+                        <div class="table-header-right">
+
+
+                            <!-- Search (name, student ID, section, company, week) -->
+                            <div class="report-search-box">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input
+                                    type="text"
+                                    id="reportSearchInput"
+                                    placeholder="Search name, ID, company..."
+                                    autocomplete="off"
+                                >
+                            </div>
+
+
+                            <!-- Section Filter -->
+                            <select id="reportSectionFilter">
+
+                                <option value="all">
+                                    All Sections
+                                </option>
+
+                                <option value="401">
+                                    401
+                                </option>
+
+                                <option value="402">
+                                    402
+                                </option>
+
+                                <option value="403">
+                                    403
+                                </option>
+
+                                <option value="404">
+                                    404
+                                </option>
+
+                                <option value="405">
+                                    405
+                                </option>
+
+                                <option value="406">
+                                    406
+                                </option>
+
+                            </select>
+
+
+                            <!-- Date Sorting -->
+                            <select id="reportDateSort">
+
+                                <option value="desc">
+                                    Latest First
+                                </option>
+
+                                <option value="asc">
+                                    Oldest First
+                                </option>
+
+                            </select>
+
+
+                            <!-- Sort By (Name / Student ID) -->
+                            <select id="reportNameSort">
+
+                                <option
+                                    value="default"
+                                    selected
+                                    disabled
+                                >
+                                    Sort By
+                                </option>
+
+                                <option value="name_asc">
+                                    Name (A-Z)
+                                </option>
+
+                                <option value="name_desc">
+                                    Name (Z-A)
+                                </option>
+
+                                <option value="student_id">
+                                    Student ID
+                                </option>
+
+                            </select>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- =============================================
+                         WEEKLY REPORT TABLE
+                    ============================================== -->
+                    <div class="table-container">
+
+                        <table
+                            class="students-table"
+                            id="weeklyReportsTable"
+                        >
+
+                            <thead>
+                                <tr>
+                                    <th>Report Date</th>
+                                    <th>Student Name</th>
+                                    <th>Section</th>
+                                    <th>Company</th>
+                                    <th>Week</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="weeklyReportsTableBody">
+                                <tr>
+                                    <td colspan="6"style="text-align: center;padding: 25px;color: #888;">
+                                        Loading weekly reports... </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- =================================================
+                     PAGINATION
+                     INSIDE WEEKLY REPORTS CARD
+                ================================================== -->
+                <div class="pagination-container">
+                    <!-- Showing Records -->
+                    <div
+                        class="showing-text"
+                        id="paginationInfo"
+                    >
+                        Showing 0 records
+                    </div>
+                    <!-- Pagination Controls -->
+                    <div class="pagination-controls">
+
+
+                        <!-- Previous -->
+                        <button
+                            id="prevPageBtn"
+                            class="page-btn"
+                            type="button"
+                        >
+                            <i class="fa-solid fa-chevron-left"></i>
+                            Prev
+                        </button>
+
+                        <!-- Page Numbers -->
+                        <div
+                            id="pageNumbers"
+                            class="page-numbers"
+                        ></div>
+                        <!-- Next -->
+                        <button
+                            id="nextPageBtn"
+                            class="page-btn"
+                            type="button"
+                        >
+                            Next
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                    </div>
+
+                    <!-- Rows Per Page -->
+                    <div class="rows-per-page">
+
+                        <label for="rowsPerPageSelect">
+                            Rows per page:
+                        </label>
+
+                        <select id="rowsPerPageSelect">
+
+                            <option value="5">
+                                5
+                            </option>
+
+                            <option
+                                value="8"
+                                selected
+                            >
+                                8
+                            </option>
+
+                            <option value="15">
+                                15
+                            </option>
+                        </select>
                     </div>
                 </div>
             </div>
 
-            <div class="stat-card">
-                <div class="stat-icon orange">
-                    <i class="fa-solid fa-triangle-exclamation"></i>
+
+
+            <!-- =================================================
+                 RIGHT ANALYTICS COLUMN
+            ================================================== -->
+            <div class="right-analytics-column">
+
+                <!-- =================================================
+                     PENDING CARD
+                ================================================== -->
+                <div class="analytics-card pending-card">
+
+                    <div class="pending-title-header">
+                        <h3>
+                            Pending
+                        </h3>
+                    </div>
+                    <div class="pending-list">
+                        <!-- Pending Invitations -->
+                        <div
+                            class="pending-item"
+                            id="pendingInviteCard"
+                        >
+                            <div class="item-icon yellow-light">
+
+                                <i class="fa-solid fa-paper-plane"></i>
+
+                            </div>
+                            <div class="item-info">
+
+                                <h4>
+                                    Pending Invitations
+                                </h4>
+
+                                <p>
+                                    Waiting for student sign-up
+                                </p>
+
+                            </div>
+                            <div class="item-count">
+
+                                <span
+                                    class="num"
+                                    id="pendingInvitationsCount"
+                                >
+                                    0
+                                </span>
+
+                                <small>
+                                    Pending
+                                </small>
+
+                            </div>
+
+
+                            <i class="fa-solid fa-chevron-right arrow-icon"></i>
+
+                        </div>
+
+                        <!-- Supervisor Evaluations -->
+                        <div
+                            class="pending-item"
+                            id="supervisorEvaluationCard"
+                        >
+
+                            <div class="item-icon red-light">
+
+                                <i class="fa-solid fa-clipboard-user"></i>
+
+                            </div>
+                            <div class="item-info">
+
+                                <h4>
+                                    Supervisor Evaluations
+                                </h4>
+
+                                <p>
+                                    Waiting for supervisor review
+                                </p>
+
+                            </div>
+
+                            <div class="item-count">
+
+                                <span
+                                    class="num"
+                                    id="supervisorEvaluationsCount"
+                                >
+                                    0
+                                </span>
+
+                                <small>
+                                    Pending
+                                </small>
+
+                            </div>
+                            <i class="fa-solid fa-chevron-right arrow-icon"></i>
+                        </div>
+                    </div>
                 </div>
-                <div class="stat-content">
-                    <p class="title">At-Risk Students</p>
-                    <h2 id="atRiskStudentsCount">0</h2>
-                    <div class="stat-footer">
-                        <span class="negative"><i class="fa-solid fa-arrow-down"></i> Needs Review</span>
-                        <small>Low Attendance</small>
+
+                <!-- =================================================
+                     COORDINATOR CALENDAR
+                ================================================== -->
+                <div class="analytics-card coordinator-calendar-card">
+
+                    <!-- Calendar Header -->
+                    <div class="coordinator-calendar-header">
+
+                        <div class="calendar-title">
+
+                            <span class="calendar-title-line"></span>
+
+                            <h3 id="coordinatorCalendarMonth">
+                                Sep 2026
+                            </h3>
+
+                        </div>
+
+                        <div class="calendar-header-actions">
+
+                            <!-- Previous Month -->
+                            <button
+                                type="button"
+                                id="coordinatorCalendarPrev"
+                                class="calendar-arrow"
+                            >
+
+                                <i class="fa-solid fa-chevron-left"></i>
+
+                            </button>
+
+                            <!-- Next Month -->
+                            <button
+                                type="button"
+                                id="coordinatorCalendarNext"
+                                class="calendar-arrow"
+                            >
+
+                                <i class="fa-solid fa-chevron-right"></i>
+
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Divider -->
+                    <div class="coordinator-calendar-divider"></div>
+
+                    <!-- Weekdays -->
+                    <div class="coordinator-calendar-weekdays">
+
+                        <span>Sun</span>
+                        <span>Mon</span>
+                        <span>Tue</span>
+                        <span>Wed</span>
+                        <span>Thu</span>
+                        <span>Fri</span>
+                        <span>Sat</span>
+
+                    </div>
+
+                    <!-- Calendar Grid -->
+                    <div
+                        class="coordinator-calendar-grid"
+                        id="coordinatorCalendarGrid"
+                    >
+
+                        <!-- JS generates dates -->
+
                     </div>
                 </div>
             </div>
         </section>
-        
-        <section class="middle-analytics">
 
-        <!-- Weekly Reports Section -->
-        <div class="analytics-card weekly-reports-card">
-            <div class="table-card">
-                <!-- Table Header & Multi-Filters -->
-                <div class="table-header">
-                    <div class="reports-title-header">
-                        <h3>Weekly Reports</h3>
-                    </div>
+        <!-- =================================================
+             PENDING INVITATIONS MODAL
+        ================================================== -->
+        <div
+            class="modal-overlay"
+            id="pendingInvitationsModal"
+        >
+            <div class="modal-card">
+                <div class="modal-header">
 
-                    <div class="table-header-right">
-                        <!-- Course Filter -->
-                        <select id="reportCourseFilter">
-                            <option value="all">All Courses</option>
-                            <option value="BSIT">BSIT</option>
-                            <option value="BSED">BSED</option>
-                            <option value="BSBA">BSBA</option>
-                            <option value="BSBA">BSA</option>
-                            <option value="BSBA">ENTREP</option>
-                        </select>
+                    <h3>
+                        <i class="fa-solid fa-paper-plane"></i>
+                        Pending Student Invitations
+                    </h3>
 
-                        <!-- Section Filter -->
-                        <select id="reportSectionFilter">
-                            <option value="all">All Sections</option>
-                            <option value="401">401</option>
-                            <option value="402">402</option>
-                            <option value="403">403</option>
-                            <option value="404">404</option>
-                            <option value="405">405</option>
-                            <option value="406">406</option>
-                        </select>
-
-                        <!-- Date Sorting Filter -->
-                        <select id="reportDateSort">
-                            <option value="desc">Latest First</option>
-                            <option value="asc">Oldest First</option>
-                        </select>
-                    </div>
+                    <button
+                        class="close-btn"
+                        id="closeModalBtn"
+                        type="button"
+                    >
+                        &times;
+                    </button>
                 </div>
 
-                <!-- Reports Table -->
-                <div class="table-container">
-                    <table class="students-table" id="weeklyReportsTable">
+                <div class="modal-body">
+                    <table class="modal-table">
                         <thead>
                             <tr>
-                                <th>Report Date <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
-                                <th>Student Name <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
-                                <th>Course <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
-                                <th>Section <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
-                                <th>Company <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
-                                <th>Week <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
-                                <th>Action</th> <!-- Walang sort icon kung di kinakailangan -->
+                                <th>
+                                    Email
+                                </th>
+                                <th>
+                                    Date Sent
+                                </th>
+                                <th>
+                                    Status
+                                </th>
                             </tr>
                         </thead>
-                        <tbody id="weeklyReportsTableBody">
+
+                        <tbody id="invitationsList">
                             <tr>
-                                <td colspan="7" style="text-align: center; padding: 25px; color: #888;">
-                                    Loading weekly reports...
+                                <td
+                                    colspan="4"
+                                    class="text-center"
+                                >
+                                    Loading pending items...
                                 </td>
                             </tr>
                         </tbody>
@@ -173,94 +709,442 @@
             </div>
         </div>
 
-        <!-- Pending Card (Pinaikli at mas compact) -->
-        <div class="right-analytics-column">
-        
-            <!-- Pending Card -->
-            <div class="analytics-card pending-card">
-                <div class="pending-title-header">
-                    <h3>Pending</h3>
-                </div>
-
-                <div class="pending-list">
-                    <!-- Pending Item 1: Student Invitations -->
-                    <div class="pending-item" id="pendingInviteCard">
-                        <div class="item-icon yellow-light">
-                            <i class="fa-solid fa-paper-plane"></i>
-                        </div>
-                        <div class="item-info">
-                            <h4>Pending Invitations</h4>
-                            <p>Waiting for student sign-up</p>
-                        </div>
-                        <div class="item-count">
-                            <span class="num" id="pendingInvitationsCount">0</span>
-                            <small>Pending</small>
-                        </div>
-                        <i class="fa-solid fa-chevron-right arrow-icon"></i>
-                    </div>
-
-                    <!-- Pending Item 2: Supervisor Evaluations -->
-                    <div class="pending-item">
-                        <div class="item-icon red-light">
-                            <i class="fa-solid fa-clipboard-user"></i>
-                        </div>
-                        <div class="item-info">
-                            <h4>Supervisor Evaluations</h4>
-                            <p>Waiting for supervisor review</p>
-                        </div>
-                        <div class="item-count">
-                            <span class="num">0</span>
-                            <small>Pending</small>
-                        </div>
-                        <i class="fa-solid fa-chevron-right arrow-icon"></i>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Recent Activity Card (BAHO/SA BABA NG PENDING) -->
-            <div class="analytics-card recent-activity-card">
-                <div class="pending-title-header">
-                    <h3>Recent Activity</h3>
-                </div>
-
-                <div class="activity-list" id="recentActivityList">
-                    <div class="activity-item-placeholder">
-                        <p style="text-align: center; color: #888; font-size: 12px; padding: 10px 0;">
-                            Loading recent activities...
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="modal-overlay" id="pendingInvitationsModal">
+        <!-- =================================================
+             SUPERVISOR EVALUATIONS MODAL
+        ================================================== -->
+        <div
+            class="modal-overlay"
+            id="supervisorEvaluationsModal"
+        >
             <div class="modal-card">
                 <div class="modal-header">
-                    <h3><i class="fa-solid fa-paper-plane"></i> Pending Student Invitations</h3>
-                    <button class="close-btn" id="closeModalBtn">&times;</button>
+
+                    <h3>
+                        <i class="fa-solid fa-clipboard-user"></i>
+                        Supervisor Evaluations
+                    </h3>
+
+                    <button
+                        class="close-btn"
+                        id="closeSupervisorEvalModalBtn"
+                        type="button"
+                    >
+                        &times;
+                    </button>
                 </div>
+
                 <div class="modal-body">
                     <table class="modal-table">
                         <thead>
                             <tr>
-                                <th>Email</th>
-                                <th>Date Sent</th>
-                                <th>Status</th>
+                                <th>
+                                    Company
+                                </th>
+                                <th>
+                                    Supervisor Email
+                                </th>
+                                <th>
+                                    Date Sent
+                                </th>
+                                <th>
+                                    Status
+                                </th>
                             </tr>
                         </thead>
-                        <!-- Dito ipapasok ng JS ang mga pending items -->
-                        <tbody id="invitationsList">
+
+                        <tbody id="supervisorEvaluationsList">
                             <tr>
-                                <td colspan="4" class="text-center">Loading pending items...</td>
+                                <td
+                                    colspan="4"
+                                    class="text-center"
+                                >
+                                    Loading pending items...
+                                </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
-</section>
 
+        <!-- =================================================
+             COORDINATOR CALENDAR MODAL
+        ================================================== -->
+        <div
+            class="modal-overlay"
+            id="coordinatorCalendarModal"
+        >
+
+            <div
+                class="modal-card"
+                style="max-width: 400px;"
+            >
+
+
+                <!-- Modal Header -->
+                <div class="modal-header">
+
+                    <h3>
+
+                        <i
+                            class="fa-solid fa-calendar-days"
+                            style="color: #AB0A0A;"
+                        ></i>
+
+                        Set Day Status
+
+                    </h3>
+
+
+                    <button
+                        class="close-btn"
+                        id="closeCalendarModalBtn"
+                        type="button"
+                    >
+                        &times;
+                    </button>
+
+                </div>
+
+                <!-- Modal Body -->
+                <div
+                    class="modal-body"
+                    style="padding: 10px 0;"
+                >
+
+
+                    <!-- Selected Date -->
+                    <p
+                        id="selectedCalendarDateText"
+                        style="
+                            font-size: 13px;
+                            color: #555;
+                            margin-bottom: 15px;
+                            font-weight: 600;
+                        "
+                    ></p>
+
+                    <!-- Reason -->
+                    <div style="margin-bottom: 15px;">
+
+                        <label
+                            style="
+                                display: block;
+                                font-size: 12px;
+                                font-weight: 600;
+                                color: #333;
+                                margin-bottom: 6px;
+                            "
+                        >
+                            Remarks (Hal. Caloocan Day / Suspended):
+                        </label>
+
+
+                        <input
+                            type="text"
+                            id="calendarReasonInput"
+                            placeholder="Ilagay ang dahilan o pangalan ng holiday..."
+                            style="
+                                width: 100%;
+                                padding: 10px;
+                                border: 1px solid #ccc;
+                                border-radius: 8px;
+                                font-size: 13px;
+                                outline: none;
+                            "
+                        >
+
+                    </div>
+
+                    <!-- Buttons -->
+                    <div
+                        style="
+                            display: flex;
+                            gap: 10px;
+                        "
+                    >
+
+                        <!-- Save -->
+                        <button
+                            type="button"
+                            id="saveCalendarExceptionBtn"
+                            style="
+                                flex: 1;
+                                background: #AB0A0A;
+                                color: #fff;
+                                border: none;
+                                padding: 10px;
+                                border-radius: 8px;
+                                font-weight: 600;
+                                cursor: pointer;
+                            "
+                        >
+                            Save as No Duty
+                        </button>
+
+
+                        <!-- Clear -->
+                        <button
+                            type="button"
+                            id="removeCalendarExceptionBtn"
+                            style="
+                                background: #f1f5f9;
+                                color: #ef4444;
+                                border: 1px solid #e2e8f0;
+                                padding: 10px 14px;
+                                border-radius: 8px;
+                                font-weight: 600;
+                                cursor: pointer;
+                                display: none;
+                            "
+                        >
+                            Clear
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- =================================================
+             COMPLETED STUDENTS MODAL
+             (Loads completed-students.html as a popup so the
+             user never leaves the dashboard page)
+        ================================================== -->
+        <div
+            class="modal-overlay"
+            id="completedStudentsModal"
+        >
+
+            <div class="modal-card completed-students-modal-card">
+
+                <div class="modal-header">
+
+                    <h3>
+                        <i
+                            class="fa-solid fa-clipboard-check"
+                            style="color: #AB0A0A;"
+                        ></i>
+                        Completed Internship Students
+                    </h3>
+
+                    <button
+                        class="close-btn"
+                        id="closeCompletedStudentsModalBtn"
+                        type="button"
+                    >
+                        &times;
+                    </button>
+
+                </div>
+
+                <div class="modal-body completed-students-modal-body">
+
+                    <iframe
+                        id="completedStudentsFrame"
+                        title="Completed Internship Students"
+                    ></iframe>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- =================================================
+             WEEKLY REPORT MODAL
+             (Loads student-page/reportform/weeklyreport.html
+             inside an iframe - same UI, pero popup na lang
+             imbes na bagong tab)
+        ================================================== -->
+        <div
+            class="modal-overlay"
+            id="weeklyReportModal"
+        >
+
+            <div class="modal-card completed-students-modal-card">
+
+                <div class="modal-header">
+
+                    <h3>
+                        <i
+                            class="fa-solid fa-file-lines"
+                            style="color: #AB0A0A;"
+                        ></i>
+                        Weekly Accomplishment Report
+                    </h3>
+
+                    <button
+                        class="close-btn"
+                        id="closeWeeklyReportModalBtn"
+                        type="button"
+                    >
+                        &times;
+                    </button>
+
+                </div>
+
+                <div class="modal-body completed-students-modal-body">
+
+                    <iframe
+                        id="weeklyReportFrame"
+                        title="Weekly Accomplishment Report"
+                    ></iframe>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- =================================================
+             REGISTERED STUDENTS MODAL
+        ================================================== -->
+        <div
+            class="modal-overlay"
+            id="registeredStudentsModal"
+        >
+
+            <div class="modal-card completed-students-modal-card">
+
+                <div class="modal-header">
+
+                    <h3>
+                        <i
+                            class="fa-solid fa-users"
+                            style="color: #AB0A0A;"
+                        ></i>
+                        Registered Interns
+                    </h3>
+
+                    <button
+                        class="close-btn"
+                        id="closeRegisteredStudentsModalBtn"
+                        type="button"
+                    >
+                        &times;
+                    </button>
+
+                </div>
+
+                <div class="modal-body completed-students-modal-body">
+
+                    <iframe
+                        id="registeredStudentsFrame"
+                        title="Registered Interns"
+                    ></iframe>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- =================================================
+             ACTIVE INTERNS MODAL
+        ================================================== -->
+        <div
+            class="modal-overlay"
+            id="activeStudentsModal"
+        >
+
+            <div class="modal-card completed-students-modal-card">
+
+                <div class="modal-header">
+
+                    <h3>
+                        <i
+                            class="fa-solid fa-circle-check"
+                            style="color: #AB0A0A;"
+                        ></i>
+                        Active Interns
+                    </h3>
+
+                    <button
+                        class="close-btn"
+                        id="closeActiveStudentsModalBtn"
+                        type="button"
+                    >
+                        &times;
+                    </button>
+
+                </div>
+
+                <div class="modal-body completed-students-modal-body">
+
+                    <iframe
+                        id="activeStudentsFrame"
+                        title="Active Interns"
+                    ></iframe>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- =================================================
+             AT-RISK STUDENTS MODAL
+        ================================================== -->
+        <div
+            class="modal-overlay"
+            id="atRiskStudentsModal"
+        >
+
+            <div class="modal-card completed-students-modal-card">
+
+                <div class="modal-header">
+
+                    <h3>
+                        <i
+                            class="fa-solid fa-triangle-exclamation"
+                            style="color: #AB0A0A;"
+                        ></i>
+                        At-Risk Students
+                    </h3>
+
+                    <button
+                        class="close-btn"
+                        id="closeAtRiskStudentsModalBtn"
+                        type="button"
+                    >
+                        &times;
+                    </button>
+
+                </div>
+
+                <div class="modal-body completed-students-modal-body">
+
+                    <iframe
+                        id="atRiskStudentsFrame"
+                        title="At-Risk Students"
+                    ></iframe>
+
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+</div>
+
+
+
+<!-- =========================================================
+     JAVASCRIPT
+========================================================= -->
+
+<!-- Sidebar -->
 <script src="../sidebar/sidebar-web.js"></script>
+
+<!-- Shared Coordinator Header -->
+<script type="module" src="../header/header.js"></script>
+
+<!-- Dashboard JS -->
 <script type="module" src="dashboard.js"></script>
+
+<!-- Analytics JS -->
+<script type="module" src="analytics.js"></script>
+
 
 </body>
 </html>

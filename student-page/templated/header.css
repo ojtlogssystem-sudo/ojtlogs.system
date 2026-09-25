@@ -28,6 +28,210 @@ header {
     color: #222;
 }
 
+/* AI OJT completion-date suggestion pill (sits between the bell and the
+   profile avatar in .top-right). Clickable — opens a small panel with
+   more detail, the same interaction pattern as the notification bell. */
+.ai-suggestion {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: transparent;
+    border: 1px solid #e60707;
+    color: #b02217;
+    font-size: 11.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    max-width: 220px;
+}
+
+.ai-suggestion i {
+    font-size: 11px;
+    flex-shrink: 0;
+}
+
+.ai-suggestion span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ai-suggestion.completed {
+    background: linear-gradient(135deg, #dcfce7, #d1fae5);
+    border-color: #bbf7d0;
+    color: #15803d;
+}
+
+.ai-suggestion-panel {
+    display: none;
+    flex-direction: column;
+    position: absolute;
+    top: 36px;
+    right: -10px;
+    width: min(260px, calc(100vw - 24px));
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 14px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.10);
+    z-index: 200;
+    white-space: normal;
+    cursor: default;
+}
+
+.ai-suggestion-panel.show {
+    display: flex;
+}
+
+.ai-suggestion-panel-header {
+    padding: 14px 16px 10px 16px;
+    border-bottom: 1px solid #eee;
+}
+
+.ai-suggestion-panel-header h4 {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin: 0;
+}
+
+.ai-suggestion-panel-body {
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.ai-suggestion-empty {
+    font-size: 12.5px;
+    color: #6b7280;
+    margin: 0;
+    text-align: center;
+    padding: 10px 0;
+}
+
+.ai-suggestion-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 12.5px;
+    color: #6b7280;
+}
+
+.ai-suggestion-row strong {
+    font-size: 13px;
+    color: #16181d;
+    font-weight: 700;
+}
+
+.ai-suggestion-note {
+    font-size: 12px;
+    line-height: 1.5;
+    color: #4b5563;
+    background: #f9fafb;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin: 2px 0 0 0;
+}
+
+.ai-suggestion-panel.completed-panel .ai-suggestion-note {
+    background: #f0fdf4;
+    color: #15803d;
+}
+
+/* Below this width, keep just the icon so the pill never crowds out the
+   bell/avatar; tap it to still open the full panel. */
+@media (max-width: 480px) {
+    .ai-suggestion span {
+        display: none;
+    }
+    .ai-suggestion {
+        padding: 8px;
+        max-width: none;
+    }
+    .ai-suggestion-panel {
+        right: -60px;
+    }
+}
+
+/* On phones both dropdowns are pinned to the viewport (not to their
+   trigger) and sized down, so the whole card — including its text —
+   always stays fully visible instead of running off the screen. */
+@media (max-width: 768px) {
+    .notification-panel,
+    .ai-suggestion-panel {
+        position: fixed !important;
+        top: 66px !important;
+        right: 8px !important;
+        left: auto !important;
+        width: 270px !important;
+        max-width: none !important;
+    }
+
+    .notification-panel {
+        max-height: 260px !important;
+    }
+
+    .notification-panel-header {
+        padding: 10px 12px;
+    }
+
+    .notification-panel-header h4 {
+        font-size: 13px;
+    }
+
+    .notification-clear-all {
+        font-size: 11px;
+    }
+
+    .notif-item {
+        padding: 8px 12px;
+        gap: 4px;
+    }
+
+    /* Stack the title above the posted date on mobile instead of
+       squeezing them side by side — that's what was forcing
+       "Attendance Rejected" to break mid-word. */
+    .notif-item-top {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+    }
+
+    .notif-title {
+        font-size: 12px;
+        word-break: normal;
+        overflow-wrap: break-word;
+    }
+
+    .notif-posted {
+        font-size: 10px;
+        margin-top: 0;
+    }
+
+    .notif-note {
+        font-size: 10.5px;
+    }
+
+    .notif-empty {
+        padding: 16px 10px;
+        font-size: 11px;
+    }
+}
+
+/* Keeps the header row itself from overflowing: the title ellipsises and
+   the AI pill shrinks before anything can push the avatar off-screen. */
+.header-left {
+    min-width: 0;
+}
+
+.ai-suggestion {
+    min-width: 0;
+    flex-shrink: 1;
+}
+
 .top-right {
     display: flex;
     align-items: center;
@@ -70,11 +274,245 @@ header {
     align-items: center;
 }
 
+/* Anchored to the bell, but never wider than the screen and never
+   allowed to spill past the viewport edge (body has overflow-x:hidden,
+   so anything that overflows would just get cut off). */
+.notification-panel {
+    position: absolute;
+    top: 36px;
+    right: -10px;
+    width: min(320px, calc(100vw - 24px));
+    max-height: min(380px, calc(100vh - 110px));
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 14px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.10);
+    display: none;
+    flex-direction: column;
+    z-index: 200;
+}
+
+.notification-panel.show {
+    display: flex;
+}
+
+.notification-panel-header {
+    padding: 16px 18px;
+    border-bottom: 1px solid #eee;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.notification-panel-header h4 {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin: 0;
+}
+
+.notification-clear-all {
+    font-size: 13px;
+    font-weight: 500;
+    color: #6b7280;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+}
+
+.notification-clear-all:hover {
+    color: #374151;
+    text-decoration: underline;
+}
+
+.notification-list {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.notif-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px 18px;
+    border-bottom: 1px solid #f5f5f5;
+    text-align: left;
+    cursor: default;
+    background: #fff;
+}
+
+.notif-item:last-child {
+    border-bottom: none;
+}
+
+.notif-item.unseen {
+    background: #f6f6f7;
+    cursor: pointer;
+}
+
+.notif-item-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.notif-title {
+    font-size: 13.5px;
+    font-weight: 700;
+    line-height: 1.35;
+    color: #9ca3af;
+    margin: 0;
+    white-space: normal;
+    word-break: break-word;
+}
+
+.notif-item.unseen .notif-title {
+    color: #16181d;
+}
+
+.notif-posted {
+    font-size: 11px;
+    font-weight: 500;
+    color: #9ca3af;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.notif-item.unseen .notif-posted {
+    color: #AB0A0A;
+    font-weight: 600;
+}
+
+.notif-note {
+    font-size: 12.5px;
+    color: #9ca3af;
+    margin: 0;
+}
+
+.notif-item.unseen .notif-note {
+    color: #374151;
+}
+
+/* AI At-Risk alert - same red used for "At Risk" elsewhere in the app
+   (#AB0A0A, matches the avatar/notification-badge red), so it stands out
+   from the plain coordinator "No Duty" notices. */
+.notif-item.notif-risk {
+    background: #fde8e8;
+    border-left: 3px solid #ab0a0a;
+}
+
+.notif-item.notif-risk .notif-title {
+    color: #ab0a0a;
+}
+
+.notif-item.notif-risk .notif-title i {
+    margin-right: 4px;
+}
+
+.notif-item.notif-risk.unseen {
+    background: #fbd5d5;
+}
+
+/* AI Needs Monitoring alert - amber, one notch below the "At Risk" red so
+   it reads as a heads-up rather than an urgent alarm. Matches the amber
+   used for "Needs Monitoring" status badges elsewhere in the app. */
+.notif-item.notif-monitor {
+    background: #fef3c7;
+    border-left: 3px solid #d97706;
+}
+
+.notif-item.notif-monitor .notif-title {
+    color: #b45309;
+}
+
+.notif-item.notif-monitor .notif-title i {
+    margin-right: 4px;
+}
+
+.notif-item.notif-monitor.unseen {
+    background: #fde8b6;
+}
+
+.notif-empty {
+    padding: 32px 16px;
+    text-align: center;
+    color: #4b5563;
+    font-size: 13.5px;
+    font-weight: 500;
+}
+
 .profile {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 10px;
     cursor: pointer;
+}
+
+.profile-card-dropdown {
+    display: none;
+    position: absolute;
+    top: 48px;
+    right: 0;
+    width: 200px;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+    border: 1px solid #eaeaea;
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.profile-card-dropdown.show {
+    display: block;
+}
+
+.profile-card-header {
+    padding: 12px 14px 10px 14px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.profile-card-header h4 {
+    font-size: 13px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+}
+
+.profile-card-header .role-title {
+    font-size: 11px;
+    color: #6b7280;
+    margin-top: 2px;
+}
+
+.profile-card-body {
+    padding: 6px;
+}
+
+.profile-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.profile-menu-item:hover {
+    background-color: #f3f4f6;
+}
+
+.profile-menu-item.logout {
+    color: #dc2626;
 }
 
 .avatar {
@@ -88,10 +526,17 @@ header {
     align-items: center;
     font-weight: 600;
     font-size: 15px;
+    overflow: hidden;
+}
+
+.avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
 }
 
 .profile i {
     font-size: 12px;
     color: #666;
 }
-

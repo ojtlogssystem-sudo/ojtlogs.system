@@ -7,6 +7,7 @@
 
     <!-- CSS Links -->
     <link rel="stylesheet" href="../sidebar/sidebar-web.css">
+    <link rel="stylesheet" href="../header/header.css">
     <link rel="stylesheet" href="attendance_details.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
@@ -23,35 +24,19 @@
     <main class="main">
         
         <!-- Header -->
-        <header>
-            <div>
-                <h2>Attendance Details</h2>
-                <p>View complete attendance history of the selected student.</p>
-            </div>
-
-            <div class="top-right">
-                <div class="notification">
-                    <i class="fa-regular fa-bell"></i>
-                    <span class="badge">3</span>
-                </div>
-
-                <div class="profile">
-                    <div class="avatar" id="headerAvatar">MB</div>
-                    <div class="profile-info">
-                        <h4 id="profileName">Coordinator</h4>
-                        <p>OJT Coordinator</p>
-                    </div>
-                    <i class="fa-solid fa-chevron-down"></i>
-                </div>
-            </div>
-        </header>
+        <header
+            id="header-container"
+            data-page-title="Attendance Details"
+            data-page-subtitle="View complete attendance history of the selected student."
+        ></header>
 
         <!-- Details Content -->
         <div class="attendance-content">
 
             <!-- Back Button -->
-            <a href="todays_attendance.html" class="back-btn-header">
-                <i class="fa-solid fa-arrow-left"></i> Back to Attendance Records
+            <a href="#" class="back-btn-header" id="backBtn">
+                <i class="fa-solid fa-arrow-left"></i>
+                <span id="backBtnText">Back</span>
             </a>
 
             <!-- TWO-COLUMN GRID LAYOUT -->
@@ -304,7 +289,7 @@
                         <i class="fa-solid fa-triangle-exclamation"></i>
                         <div>
                             <strong>Are you sure you want to reject this attendance?</strong>
-                            <p>The rejected record will remain visible in the student's account details for tracking.</p>
+                            <p>The day's rendered hours will be deducted from the student's total and the student will be notified. The record will remain visible for tracking.</p>
                         </div>
                     </div>
                 </div>
@@ -318,11 +303,55 @@
             </div>
         </div>
 
+        <!-- EXCUSE ATTENDANCE MODAL -->
+        <div class="attendance-modal" id="excuseAttendanceModal" aria-hidden="true">
+            <div class="modal-overlay" data-close-modal="excuseAttendanceModal"></div>
+            <div class="attendance-modal-box excuse-modal-box" role="dialog" aria-modal="true" aria-labelledby="excuseAttendanceTitle">
+                <div class="modal-header">
+                    <div>
+                        <h3 id="excuseAttendanceTitle">Excuse Attendance</h3>
+                        <p>This will mark the student as excused for the selected day.</p>
+                    </div>
+                    <button class="modal-close" type="button" data-close-modal="excuseAttendanceModal" aria-label="Close">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="selected-date-box">
+                        <i class="fa-regular fa-calendar"></i>
+                        <div>
+                            <small>Attendance Date</small>
+                            <strong id="excuseAttendanceDate">—</strong>
+                        </div>
+                    </div>
+
+                    <label class="excuse-reason-label">
+                        <span>Reason for Excuse</span>
+                        <textarea id="excuseReason" rows="3" placeholder="e.g. Approved leave, medical reason, company-sanctioned absence..."></textarea>
+                    </label>
+
+                    <div class="adjustment-note">
+                        <i class="fa-solid fa-circle-info"></i>
+                        <span>The student will not be counted as absent for this day once excused.</span>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="modal-secondary-btn" type="button" data-close-modal="excuseAttendanceModal">Cancel</button>
+                    <button class="modal-excuse-btn" type="button" id="confirmExcuseBtn">
+                        <i class="fa-solid fa-user-check"></i> Excuse Student
+                    </button>
+                </div>
+            </div>
+        </div>
+
     </main>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="../sidebar/sidebar-web.js"></script>
+<script type="module" src="../header/header.js"></script>
 <script type="module" src="attendance_details.js"></script>
 
 </body>

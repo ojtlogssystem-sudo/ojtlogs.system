@@ -24,18 +24,54 @@
         <span id="submit-status" style="font-size: 14px; font-weight: bold; margin-left: 10px;"></span>
     </div>
 
+    <!-- WEEK SELECTOR (Hidden on Print) - isang linggo lang (Mon - Sun) ang lumalabas sa form -->
+    <div class="no-print week-nav">
+        <button type="button" id="btn-prev-week">&#8249; Previous Week</button>
+        <span id="week-label" class="week-label">--</span>
+        <button type="button" id="btn-next-week">Next Week &#8250;</button>
+        <button type="button" id="btn-this-week" class="week-this">This Week</button>
+    </div>
+
     <div class="header">
-        <img src="/images/images.png" alt="GRC Logo" class="header-logo">
+        <img src="/images/logo-orig.png" alt="GRC Logo" class="header-logo">
         <p>Touching Hearts.....Renewing Minds.....Transforming Lives</p>
         454 GRC Bldg., Rizal Avenue Ext., corner 9th Avenue<br>
         Grace Park Caloocan City, Philippines<br>
         Telefax: (02)361-63-30; (02) 452-29-45
     </div>
 
+
+    <div class="report-information">
+            <div class="report-info-row">
+                <div class="report-info-item">
+                    <span class="report-info-label">Name:</span>
+                    <span id="report-student-name" class="report-info-value"></span>
+                </div>
+
+                <div class="report-info-item">
+                    <span class="report-info-label">Company Name:</span>
+                    <span id="report-company" class="report-info-value"></span>
+                </div>
+            </div>
+
+            <div class="report-info-row">
+                <div class="report-info-item">
+                    <span class="report-info-label">Section:</span>
+                    <span id="report-section" class="report-info-value"></span>
+                </div>
+
+                <div class="report-info-item">
+                    <span class="report-info-label">Date:</span>
+                    <span id="report-date-range" class="report-date-line"></span>
+                </div>
+            </div>
+        </div>
+
     <div class="title-bar">
         ACCOMPLISHMENT REPORT
     </div>
 
+    <div class="table-wrapper">
     <table>
         <thead>
             <tr>
@@ -63,17 +99,52 @@
             </tr>
         </tfoot>
     </table>
+    </div>
+
+    <div class="supervisor-notes">
+        <div class="notes-title">Supervisor's Notes:</div>
+        <div class="notes-box"></div>
+    </div>
+
 
     <div class="footer-section">
-        <div class="footer-content">
+    <div class="footer-content">
+
+        <!-- SUPERVISOR CERTIFICATION -->
+        <div class="supervisor-certification">
+            <p class="certification-text">
+                I certify that the above information is true and correct.
+            </p>
+        </div>
+
+        <!-- SUPERVISOR SIGNATURE -->
+        <div class="supervisor-signature">
+
+            <div class="signature-box">
+                <div class="signature-line"></div>
+
+                <div class="signature-label">
+                    Supervisor's Signature over Printed Name
+                </div>
+            </div>
+        </div>
+
+        <!-- WEEKLY ACCOMPLISHMENT -->
+        <div class="weekly-accomplishment-fixed">
             <hr class="footer-line">
+
             <div class="footer-bottom-row">
                 <div class="footer-accent-box"></div>
-                <span class="footer-title-text">WEEKLY ACCOMPLISHMENT</span>
+
+                <span class="footer-title-text">
+                    WEEKLY ACCOMPLISHMENT
+                </span>
             </div>
         </div>
     </div>
+</div>
 
+</div>
     <!-- FIREBASE MODULE LOGIC -->
     <script type="module" src="weeklyreport.js"></script>
 

@@ -171,6 +171,14 @@ body {
     animation: slideDown 0.25s ease-out;
 }
 
+/* Success state (e.g. "Password updated!") — same banner element, just
+   swapped to green so nothing needs a native browser alert(). */
+.alert-banner.success {
+    background-color: #dcfce7;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+}
+
 @keyframes slideDown {
     from { opacity: 0; transform: translateY(-6px); }
     to { opacity: 1; transform: translateY(0); }
@@ -216,4 +224,95 @@ body {
 
 .continue-btn:hover {
     background: var(--primary-hover);
+}
+
+/* ================= SUCCESS POPUP ================= */
+.success-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 2000;
+    justify-content: center;
+    align-items: center;
+    padding: 16px;
+}
+
+.success-modal-overlay.show {
+    display: flex;
+}
+
+.success-modal {
+    background: var(--white);
+    border-radius: 20px;
+    padding: 28px 24px;
+    width: 100%;
+    max-width: 320px;
+    text-align: center;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+    animation: popIn 0.25s ease-out;
+}
+
+.success-modal-icon {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 16px;
+    border-radius: 50%;
+    background: #e6f7ee;
+    color: #1e7e45;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+}
+
+.success-modal h3 {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 6px;
+}
+
+.success-modal p {
+    font-size: 12px;
+    color: var(--gray);
+    line-height: 1.5;
+}
+
+@keyframes popIn {
+    from {
+        opacity: 0;
+        transform: scale(0.92);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* MOBILE: bottom-sheet style para mas natural sa touch/mobile UX */
+@media (max-width: 480px) {
+    .success-modal-overlay {
+        align-items: flex-end;
+        padding: 0;
+    }
+
+    .success-modal {
+        max-width: 100%;
+        width: 100%;
+        border-radius: 20px 20px 0 0;
+        padding: 24px 20px 32px;
+        animation: slideUp 0.28s ease-out;
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
 }

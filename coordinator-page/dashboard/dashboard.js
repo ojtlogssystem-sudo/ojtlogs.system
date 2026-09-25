@@ -458,15 +458,15 @@ async function loadDashboardStats() {
             graduated > 0,
             {
                 tone: "success",
-                icon: "fa-graduation-cap",
+                icon: "fa-graduation-archive",
                 title: "Graduated",
                 text: "System Recorded."
             },
             {
                 tone: "muted",
-                icon: "fa-graduation-cap",
-                title: "No Graduates Yet",
-                text: "Graduated students will be recorded here."
+                icon: "fa-graduation-archive",
+                title: "No Completed Batch Archive Yet",
+                text: "Completed batch students will be recorded here."
             }
         );
 

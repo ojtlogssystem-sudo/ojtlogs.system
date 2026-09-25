@@ -327,8 +327,12 @@ header h2{
 }
 
 .green-btn {
-    background: #22c55e;
+    background: var(--primary, #AB0A0A);
     color: #fff;
+}
+
+.green-btn:hover {
+    background: var(--primary-hover, #8E0909);
 }
 
 .disabled-btn {
@@ -717,16 +721,16 @@ header h2{
     background: #e5e7eb;
 }
 
-/* Orange Button State para sa Time Out */
+/* Time Out button — uses the system's primary color, same as Time In */
 .orange-btn {
-    background: #f97316;
+    background: var(--primary, #AB0A0A);
     color: #fff;
     cursor: pointer;
     transition: background 0.2s ease;
 }
 
 .orange-btn:hover {
-    background: #ea580c;
+    background: var(--primary-hover, #8E0909);
 }
 
 /* Status Badges */
@@ -987,8 +991,8 @@ header h2{
 .datetime-bar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 10px;
+    justify-content: flex-start;
+    gap: 48px;
     flex-wrap: wrap;
 
     background: #fff;
@@ -1003,7 +1007,7 @@ header h2{
 .datetime-item {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 20px;
 }
 
 .datetime-icon {
@@ -1041,14 +1045,14 @@ header h2{
     .datetime-bar {
         flex-direction: row;
         align-items: center;
-        justify-content: space-between;
-        gap: 2px;
+        justify-content: flex-start;
+        gap: 100px;
         padding: 10px 12px;
         border-radius: 12px;
     }
 
     .datetime-item {
-        gap: 6px;
+        gap: 50px;
         justify-content: flex-start;
         min-width: 0;
     }

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy & Account Settings</title>
+
+    <link rel="stylesheet" href="privacy-setting.css">
+    <link rel="stylesheet" href="../templated/header.css">
+    <link rel="stylesheet" href="../templated/sidebar.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+</head>
+<body>
+
+<div class="dashboard">
+    <div id="sidebar-container"></div>
+
+    <main class="main">
+        <!-- Header Bar (populated at runtime by loadHeader() from ../templated/header.html) -->
+        <header id="header-container"></header>
+
+        <section class="settings-page">
+
+            <div class="settings-intro">
+                <h2>Privacy Settings</h2>
+                <p>Manage what other people can see about you, how you're notified, and your account password.</p>
+            </div>
+
+            <!-- Profile Visibility -->
+            <div class="settings-card">
+                <div class="section-title">
+                    <div class="title-left">
+                        <span class="vertical-line red"></span>
+                        <h3>Profile Visibility</h3>
+                    </div>
+                </div>
+
+                <div class="setting-row" data-setting="showPhoto">
+                    <div class="setting-icon blue-icon"><i class="fa-regular fa-user"></i></div>
+                    <div class="setting-text">
+                        <h4>Show My Profile Photo</h4>
+                        <p>Let other students and coordinators see your profile picture.</p>
+                    </div>
+                    <div class="setting-control">
+                        <span class="save-flash" data-flash-for="showPhoto">Saved</span>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-show-photo" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setting-row" data-setting="showContactInfo">
+                    <div class="setting-icon purple-icon"><i class="fa-regular fa-address-card"></i></div>
+                    <div class="setting-text">
+                        <h4>Show My Contact Info</h4>
+                        <p>Let other students see your email and phone number on your profile.</p>
+                    </div>
+                    <div class="setting-control">
+                        <span class="save-flash" data-flash-for="showContactInfo">Saved</span>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-show-contact" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setting-row" data-setting="showProgress">
+                    <div class="setting-icon green-icon"><i class="fa-regular fa-chart-bar"></i></div>
+                    <div class="setting-text">
+                        <h4>Show My Internship Progress</h4>
+                        <p>Let other students see your hours completed and internship status.</p>
+                    </div>
+                    <div class="setting-control">
+                        <span class="save-flash" data-flash-for="showProgress">Saved</span>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-show-progress" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notification Preferences -->
+            <div class="settings-card">
+                <div class="section-title">
+                    <div class="title-left">
+                        <span class="vertical-line red"></span>
+                        <h3>Notification Preferences</h3>
+                    </div>
+                </div>
+
+                <div class="setting-row" data-setting="emailNotifications">
+                    <div class="setting-icon orange-icon"><i class="fa-regular fa-envelope"></i></div>
+                    <div class="setting-text">
+                        <h4>Email Notifications</h4>
+                        <p>Receive updates and reminders in your email.</p>
+                    </div>
+                    <div class="setting-control">
+                        <span class="save-flash" data-flash-for="emailNotifications">Saved</span>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-email-notif" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setting-row" data-setting="pushNotifications">
+                    <div class="setting-icon blue-icon"><i class="fa-solid fa-bell"></i></div>
+                    <div class="setting-text">
+                        <h4>Push Notifications</h4>
+                        <p>Receive in-app notifications on this device.</p>
+                    </div>
+                    <div class="setting-control">
+                        <span class="save-flash" data-flash-for="pushNotifications">Saved</span>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-push-notif" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setting-row" data-setting="attendanceReminders">
+                    <div class="setting-icon green-icon"><i class="fa-regular fa-clock"></i></div>
+                    <div class="setting-text">
+                        <h4>Attendance Reminders</h4>
+                        <p>Get reminded to time in or time out.</p>
+                    </div>
+                    <div class="setting-control">
+                        <span class="save-flash" data-flash-for="attendanceReminders">Saved</span>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-attendance-notif" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setting-row" data-setting="announcementNotifications">
+                    <div class="setting-icon purple-icon"><i class="fa-regular fa-bullhorn"></i></div>
+                    <div class="setting-text">
+                        <h4>Announcements &amp; Events</h4>
+                        <p>Get notified about coordinator announcements and events.</p>
+                    </div>
+                    <div class="setting-control">
+                        <span class="save-flash" data-flash-for="announcementNotifications">Saved</span>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-announcement-notif" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setting-row" data-setting="deadlineReminders">
+                    <div class="setting-icon red-icon"><i class="fa-solid fa-bullseye"></i></div>
+                    <div class="setting-text">
+                        <h4>Deadline Reminders</h4>
+                        <p>Get reminded as your OJT completion deadline approaches.</p>
+                    </div>
+                    <div class="setting-control">
+                        <span class="save-flash" data-flash-for="deadlineReminders">Saved</span>
+                        <label class="switch">
+                            <input type="checkbox" id="toggle-deadline-notif" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Password & Security -->
+            <div class="settings-card">
+                <div class="section-title">
+                    <div class="title-left">
+                        <span class="vertical-line red"></span>
+                        <h3>Password &amp; Security</h3>
+                    </div>
+                </div>
+
+                <form id="password-form" class="password-form" novalidate>
+                    <div class="form-field">
+                        <label for="current-password">Current Password</label>
+                        <div class="password-input-wrap">
+                            <input type="password" id="current-password" name="current-password" autocomplete="current-password" placeholder="Enter your current password" required>
+                            <button type="button" class="toggle-visibility" data-target="current-password" aria-label="Show password">
+                                <i class="fa-regular fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="new-password">New Password</label>
+                        <div class="password-input-wrap">
+                            <input type="password" id="new-password" name="new-password" autocomplete="new-password" placeholder="At least 8 characters" minlength="8" required>
+                            <button type="button" class="toggle-visibility" data-target="new-password" aria-label="Show password">
+                                <i class="fa-regular fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="confirm-password">Confirm New Password</label>
+                        <div class="password-input-wrap">
+                            <input type="password" id="confirm-password" name="confirm-password" autocomplete="new-password" placeholder="Re-enter your new password" minlength="8" required>
+                            <button type="button" class="toggle-visibility" data-target="confirm-password" aria-label="Show password">
+                                <i class="fa-regular fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <p id="password-feedback" class="password-feedback"></p>
+
+                    <button type="submit" class="update-password-btn" id="update-password-btn">
+                        <i class="fa-solid fa-lock"></i>
+                        <span>Update Password</span>
+                    </button>
+                </form>
+            </div>
+
+        </section>
+    </main>
+</div>
+
+<script type="module" src="privacy-setting.js"></script>
+
+</body>
+</html>

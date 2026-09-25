@@ -481,7 +481,13 @@ function updateTodayAttendanceUI(timeIn, timeOut, totalToday, status = "") {
     if (timeOutElem) timeOutElem.textContent = timeOut;
 
     const totalTodayElem = document.getElementById("total-rendered-today");
-    if (totalTodayElem) totalTodayElem.textContent = totalToday;
+    // totalToday can arrive as "8h 1m (1hr break deducted)" straight from
+    // attendance.js's saved todayHours string. Strip the parenthetical for
+    // display only — the raw value/Firestore record is untouched, so the
+    // coordinator-side parsing elsewhere that reads the same field still works.
+    if (totalTodayElem) {
+        totalTodayElem.textContent = String(totalToday).replace(/\s*\([^)]*\)\s*$/, "").trim();
+    }
 
     const timeinBox = document.getElementById("timein-box");
     const timeinIcon = document.getElementById("timein-icon");
@@ -574,8 +580,10 @@ function listenToActivities(userId) {
             if (data.timeOut && data.timeOut !== "--") {
                 let sessionHoursText = "Completed";
                 if (data.todayHours) {
-                    // Reuse the exact string attendance.js saved (break already deducted).
-                    sessionHoursText = data.todayHours;
+                    // Reuse the exact string attendance.js saved (break already deducted),
+                    // stripping the "(1hr break deducted)" parenthetical for display only —
+                    // the raw Firestore field itself stays untouched.
+                    sessionHoursText = String(data.todayHours).replace(/\s*\([^)]*\)\s*$/, "").trim();
                 } else if (data.timeIn) {
                     const rawHours = calculateHoursFromTime(data.timeIn, data.timeOut);
                     const netMinutes = Math.max(0, Math.round(rawHours * 60) - 60);

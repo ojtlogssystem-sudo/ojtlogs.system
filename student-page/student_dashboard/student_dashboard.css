@@ -718,8 +718,9 @@ button{
 
 /* DATE BOX */
 .calendar-day { 
-    flex: 0 0 50px;
-    width: 58px;
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 58px;
     height: 60px; 
     border: 1px solid transparent; 
     background: #f7f8fa; 
@@ -808,6 +809,7 @@ button{
 
 .calendar-days {
     flex: 1;
+    min-width: 0;
     overflow: visible;
 }
 
@@ -815,6 +817,7 @@ button{
     display: flex;
     gap: 10px;
     justify-content: flex-start;
+    min-width: 0;
 }
 
 .calendar-nav {
@@ -988,7 +991,7 @@ button{
 }
 
 .activity-duration {
-    font-size: 13px;
+    font-size: 10px;
     font-weight: 600;
     color: #64748b;
     background: #fff;
@@ -998,4 +1001,59 @@ button{
     margin-left: auto;
     flex-shrink: 0;
     white-space: nowrap;
+}
+
+/* ========================================
+   RESPONSIVE: MOBILE CALENDAR
+   The week-view day boxes now flex to share whatever width is left
+   after the two nav arrows (see ".calendar-day" above), so they
+   shrink instead of overflowing and pushing the right arrow off
+   screen. This just tightens spacing/fonts on narrow phones so the
+   shrunk boxes stay readable.
+======================================== */
+@media (max-width: 480px) {
+    .calendar-card {
+        padding: 8px 10px 12px;
+        margin: 0 12px 16px;
+    }
+
+    .calendar-body-wrapper {
+        gap: 4px;
+    }
+
+    .calendar-nav {
+        padding: 6px;
+        font-size: 15px;
+        flex-shrink: 0;
+    }
+
+    .calendar-day-list {
+        gap: 5px;
+    }
+
+    .calendar-day {
+        height: 54px;
+        gap: 3px;
+    }
+
+    .calendar-day .day-number {
+        font-size: 14px;
+    }
+
+    .calendar-day .day-name {
+        font-size: 7.5px;
+    }
+
+    .calendar-day .calendar-day-hours {
+        font-size: 7.5px;
+    }
+
+    .calendar-btn span {
+        display: none;
+    }
+
+    .calendar-btn {
+        padding: 0 10px;
+        width: 42px;
+    }
 }

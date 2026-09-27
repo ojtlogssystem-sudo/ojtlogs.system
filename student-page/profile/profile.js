@@ -2,14 +2,20 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { 
     getAuth, 
     onAuthStateChanged,
-    updatePassword
+    updatePassword,
+    EmailAuthProvider,
+    reauthenticateWithCredential
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { 
     getFirestore, 
     doc, 
     getDoc, 
     updateDoc,
-    serverTimestamp
+    serverTimestamp,
+    collection,
+    getDocs,
+    query,
+    orderBy
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -31,6 +37,11 @@ const db = getFirestore(app);
 let selectedPhotoBase64 = null;
 
 let currentUser = null;
+
+// Naka-save na company/supervisor ng user (kung meron), ise-select balik
+// ito sa mga dropdown pagkatapos ma-load ang listahan mula sa Firestore.
+let pendingCompanyName = null;
+let pendingSupervisorName = null;
 
 // Helper Functions para sa Custom In-App Alert
 function showAlert(message, alertId = 'alertMessage') {
@@ -67,11 +78,15 @@ onAuthStateChanged(auth, async (user) => {
             const data = userDoc.data();
             if (data.name) document.getElementById('fullName').value = data.name;
             if (data.gender) document.getElementById('genderInput').value = data.gender;
+            if (data.companyName) pendingCompanyName = data.companyName;
+            if (data.supervisorName) pendingSupervisorName = data.supervisorName;
 
             const previewImageEl = document.getElementById('previewImage');
             if (data.photo && previewImageEl) {
                 previewImageEl.src = data.photo;
             }
+
+            applyPendingCompanySelection();
         }
     } else {
         window.location.href = "../login/student_login.html";
@@ -163,71 +178,227 @@ if (profileImageInput && previewImage) {
 }
 
 
-// I-edit/dagdagan lang ang listahan dito. Ang key (company name) ay
-// case-insensitive kaya "Globe", "globe", o "GLOBE" ay tutugma.
-const COMPANY_SUPERVISORS = {
-    "globe": ["Juan Dela Cruz", "Maria Santos", "Ramon Lopez"],
-    "smart": ["Angelo Reyes", "Bea Fernandez"],
-    "accenture": ["Michael Tan", "Kristine Uy", "Paolo Garcia"],
-    "concentrix": ["Andrea Villanueva", "Jasper Mendoza"],
-    "ibm": ["Carlos Ramirez"],
-    "converge": ["Nicole Aquino", "Erwin Castro"]
-};
+// ==========================================
+// COMPANY & SUPERVISOR TYPEAHEAD (mula sa Firestore "companies" collection,
+// yung parehong data na pinapamahalaan ng coordinator sa companies.html)
+// Puwedeng mag-type para mag-search, at puwede ring piliin sa listahan.
+// ==========================================
 
-function normalizeCompanyName(value) {
-    return value.trim().toLowerCase();
+// companyName -> array ng supervisor names para sa company na yun
+let companiesMap = {};
+let selectedCompany = null; // yung eksaktong company name na "committed"
+
+const companyNameInput = document.getElementById('companyName');
+const companyNameList = document.getElementById('companyNameList');
+const supervisorNameInput = document.getElementById('supervisorName');
+const supervisorNameList = document.getElementById('supervisorNameList');
+
+// Generic na typeahead combobox: input + <ul> na listahan sa ibaba.
+// getOptions(query) -> array ng string na dapat ipakita.
+// onSelect(value) -> tatawagin kapag pinili (click o Enter) ang isang item.
+function setupCombobox(inputEl, listEl, getOptions, onSelect) {
+    if (!inputEl || !listEl) return { render: () => {} };
+
+    let activeIndex = -1;
+
+    function render(query) {
+        const options = getOptions(query);
+        activeIndex = -1;
+
+        if (options.length === 0) {
+            listEl.innerHTML = `<li class="empty-option">No matches found</li>`;
+        } else {
+            listEl.innerHTML = options
+                .map((opt, i) => `<li data-index="${i}" data-value="${opt.replace(/"/g, '&quot;')}">${opt}</li>`)
+                .join('');
+        }
+    }
+
+    function openList() {
+        if (inputEl.disabled) return;
+        render(inputEl.value);
+        listEl.classList.add('open');
+    }
+
+    function closeList() {
+        listEl.classList.remove('open');
+    }
+
+    function highlight(index) {
+        listEl.querySelectorAll('li[data-value]').forEach(li => li.classList.remove('active'));
+        const items = listEl.querySelectorAll('li[data-value]');
+        if (items[index]) {
+            items[index].classList.add('active');
+            items[index].scrollIntoView({ block: 'nearest' });
+        }
+    }
+
+    inputEl.addEventListener('focus', openList);
+
+    inputEl.addEventListener('input', () => {
+        openList();
+    });
+
+    inputEl.addEventListener('keydown', (e) => {
+        const items = listEl.querySelectorAll('li[data-value]');
+        if (!listEl.classList.contains('open') || items.length === 0) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            activeIndex = Math.min(activeIndex + 1, items.length - 1);
+            highlight(activeIndex);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            activeIndex = Math.max(activeIndex - 1, 0);
+            highlight(activeIndex);
+        } else if (e.key === 'Enter') {
+            if (activeIndex >= 0 && items[activeIndex]) {
+                e.preventDefault();
+                const value = items[activeIndex].dataset.value;
+                inputEl.value = value;
+                closeList();
+                onSelect(value);
+            }
+        } else if (e.key === 'Escape') {
+            closeList();
+        }
+    });
+
+    // mousedown (hindi click) para mauna ito bago mag-fire ang blur ng input
+    listEl.addEventListener('mousedown', (e) => {
+        const li = e.target.closest('li[data-value]');
+        if (!li) return;
+        e.preventDefault();
+        const value = li.dataset.value;
+        inputEl.value = value;
+        closeList();
+        onSelect(value);
+    });
+
+    inputEl.addEventListener('blur', () => {
+        // konting delay para umabot muna ang mousedown handler sa itaas
+        setTimeout(closeList, 120);
+    });
+
+    return { render, openList, closeList };
 }
 
-function findSupervisorsForCompany(typedValue) {
-    const key = normalizeCompanyName(typedValue);
-    if (!key) return [];
-
-    // Exact match muna
-    if (COMPANY_SUPERVISORS[key]) return COMPANY_SUPERVISORS[key];
-
-    // Kung walang exact match, tingnan kung naka-contain yung company key
-    // sa tinype (hal. "Globe Telecom" → matches "globe")
-    const partialMatch = Object.keys(COMPANY_SUPERVISORS).find(
-        companyKey => key.includes(companyKey) || companyKey.includes(key)
-    );
-
-    return partialMatch ? COMPANY_SUPERVISORS[partialMatch] : [];
+// I-filter ang mga company base sa tinype (case-insensitive, "contains")
+function getCompanyOptions(query) {
+    const q = query.trim().toLowerCase();
+    const names = Object.keys(companiesMap);
+    if (!q) return names;
+    return names.filter(name => name.toLowerCase().includes(q));
 }
 
-function updateSupervisorSuggestions() {
-    const companyInput = document.getElementById('companyName');
-    const supervisorInput = document.getElementById('supervisorName');
-    const datalist = document.getElementById('supervisorList');
-    if (!companyInput || !supervisorInput || !datalist) return;
+// I-filter ang mga supervisor. Kung may valid na napiling company, doon lang
+// mula sa company na yun. Kung wala pa (o wala pang companies sa coordinator),
+// ipakita na lang lahat ng supervisor na naka-record sa buong system - type
+// pa rin siya + pumipili sa listahan, hindi kailangang mauna ang company.
+function getAllKnownSupervisors() {
+    const all = new Set();
+    Object.values(companiesMap).forEach(list => {
+        (list || []).forEach(name => all.add(name));
+    });
+    return Array.from(all);
+}
 
-    const matches = findSupervisorsForCompany(companyInput.value);
+function getSupervisorOptions(query) {
+    const pool = selectedCompany
+        ? (companiesMap[selectedCompany] || [])
+        : getAllKnownSupervisors();
 
-    // I-populate ang <datalist> options base sa company na na-type
-    datalist.innerHTML = matches.map(name => `<option value="${name}"></option>`).join('');
+    const q = query.trim().toLowerCase();
+    if (!q) return pool;
+    return pool.filter(name => name.toLowerCase().includes(q));
+}
 
-    // Kung iisa lang ang supervisor sa company na yun, i-auto-type na siya
-    // sa Supervisor's Name field (basta hindi pa in-eedit ng user manually).
-    if (matches.length === 1 && !supervisorInput.dataset.userEdited) {
-        supervisorInput.value = matches[0];
-    } else if (matches.length === 0 && !supervisorInput.dataset.userEdited) {
-        supervisorInput.value = "";
+function commitCompanySelection(companyName, preselectSupervisor = null) {
+    selectedCompany = companyName;
+
+    if (supervisorNameInput && preselectSupervisor !== null) {
+        supervisorNameInput.value = preselectSupervisor;
     }
 }
 
-const companyNameInput = document.getElementById('companyName');
-const supervisorNameInput = document.getElementById('supervisorName');
+// Kapag lumabas o na-edit ang company field, tingnan kung eksaktong tugma
+// (case-insensitive) sa isang tunay na company. Kung tugma, i-commit at
+// i-enable ang supervisor field; kung hindi, i-clear/disable ito.
+function reconcileCompanyValue() {
+    if (!companyNameInput) return;
+
+    const typedValue = companyNameInput.value.trim();
+    const match = Object.keys(companiesMap).find(
+        name => name.toLowerCase() === typedValue.toLowerCase()
+    );
+
+    if (match) {
+        companyNameInput.value = match;
+        const keepSupervisor =
+            selectedCompany === match ? supervisorNameInput?.value || null : null;
+        commitCompanySelection(match, keepSupervisor);
+    } else {
+        selectedCompany = null;
+    }
+}
 
 if (companyNameInput) {
-    companyNameInput.addEventListener('input', updateSupervisorSuggestions);
-}
-
-if (supervisorNameInput) {
-    // Kapag mismong ni-edit ng user ang supervisor field, itigil na ang
-    // auto-fill sa field na iyon para hindi ma-overwrite yung pinili niya.
-    supervisorNameInput.addEventListener('input', () => {
-        supervisorNameInput.dataset.userEdited = "true";
+    companyNameInput.addEventListener('blur', () => {
+        // konting delay din dito para hindi masagabal sa pag-pili sa listahan
+        setTimeout(reconcileCompanyValue, 130);
     });
 }
+
+setupCombobox(companyNameInput, companyNameList, getCompanyOptions, (value) => {
+    commitCompanySelection(value);
+});
+
+setupCombobox(supervisorNameInput, supervisorNameList, getSupervisorOptions, (value) => {
+    // pinili mula sa listahan, wala nang kailangang gawin bukod sa pag-set ng value
+});
+
+// Kung na-fetch na ang mga company at may naka-save nang company/supervisor
+// ang user (galing sa Firestore user doc), ise-select ito bilang default.
+function applyPendingCompanySelection() {
+    if (!companyNameInput || Object.keys(companiesMap).length === 0) return;
+    if (!pendingCompanyName) return;
+
+    const match = Object.keys(companiesMap).find(
+        name => name.toLowerCase() === pendingCompanyName.toLowerCase()
+    );
+
+    if (match) {
+        companyNameInput.value = match;
+        commitCompanySelection(match, pendingSupervisorName);
+    }
+
+    pendingCompanyName = null;
+    pendingSupervisorName = null;
+}
+
+async function loadCompanies() {
+    if (!companyNameInput) return;
+
+    try {
+        const companiesQuery = query(collection(db, "companies"), orderBy("companyName"));
+        const snapshot = await getDocs(companiesQuery);
+
+        companiesMap = {};
+        snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            if (!data.companyName) return;
+            companiesMap[data.companyName] = Array.isArray(data.supervisorNames)
+                ? data.supervisorNames
+                : [];
+        });
+
+        applyPendingCompanySelection();
+    } catch (error) {
+        console.error("Error loading companies:", error);
+    }
+}
+
+loadCompanies();
 
 // ==========================================
 // MULTI-STEP NAVIGATION LOGIC
@@ -260,10 +431,21 @@ if (nextBtn) {
         const studentNumber = document.getElementById('studentNumber').value.trim();
         const gender = document.getElementById('genderInput').value.trim();
         const companyName = document.getElementById('companyName').value.trim();
+        const supervisorName = document.getElementById('supervisorName').value.trim();
         const section = document.getElementById('sectionInput').value.trim();
 
         if (!fullName || !studentNumber || !gender || !companyName || !section) {
             showAlert("Pakisagutan muna ang lahat ng kailangan sa Step 1.", 'alertMessageStep1');
+            return;
+        }
+
+        if (!selectedCompany || selectedCompany.toLowerCase() !== companyName.toLowerCase()) {
+            showAlert("Pumili ng company mula sa listahan.", 'alertMessageStep1');
+            return;
+        }
+
+        if (!supervisorName) {
+            showAlert("Pumili ng supervisor mula sa listahan.", 'alertMessageStep1');
             return;
         }
 
@@ -511,12 +693,111 @@ if (toggleConfirmPassword && confirmPasswordInput) {
     });
 }
 
+const toggleReauthPassword = document.getElementById('toggleReauthPassword');
+const reauthPasswordInput = document.getElementById('reauthPassword');
+const reauthGroup = document.getElementById('reauthGroup');
+
+if (toggleReauthPassword && reauthPasswordInput) {
+    toggleReauthPassword.addEventListener('click', () => {
+        const type = reauthPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        reauthPasswordInput.setAttribute('type', type);
+
+        toggleReauthPassword.classList.toggle('fa-eye');
+        toggleReauthPassword.classList.toggle('fa-eye-slash');
+    });
+}
+
 
 // ==========================================
 // FINAL FORM SUBMISSION (STEP 3 SAVE & REDIRECT)
 // ==========================================
 
 const profileForm = document.getElementById('profileForm');
+
+// Ang aktwal na pag-save ng bagong password + profile data. Hiwalay na
+// function ito para ma-retry agad pagkatapos mag-reauthenticate, kung
+// kailangan, nang hindi na-re-render/nawawala ang mga sagot ng estudyante.
+async function saveProfileData(password) {
+    const fullName = document.getElementById('fullName').value.trim();
+    const studentNumber = document.getElementById('studentNumber').value.trim();
+    const gender = document.getElementById('genderInput').value.trim();
+    const companyName = document.getElementById('companyName').value.trim();
+    const supervisorName = document.getElementById('supervisorName').value.trim();
+
+    // Kukunin ang Course (BSIT) at i-kokombina sa Section input para maging "BSIT 401"
+    const course = document.getElementById('courseInput').value.trim();
+    const rawSection = document.getElementById('sectionInput').value.trim();
+    const cleanSection = rawSection.replace(/^bsit\s*/i, '');
+    const section = `${course} ${cleanSection}`;
+
+    const selectedDays = getSelectedInternshipDays();
+
+    const workModality =
+        document.querySelector(
+            'input[name="workModality"]:checked'
+        )?.value || "On-site";
+
+    const morningEnabled =
+        document.getElementById('morningEnabled').checked;
+
+    const morningTimeIn =
+        document.getElementById('morningTimeIn').value;
+
+    const morningTimeOut =
+        document.getElementById('morningTimeOut').value;
+
+    const afternoonEnabled =
+        document.getElementById('afternoonEnabled').checked;
+
+    const scheduleData = {
+        // WORK MODALITY
+        modality: workModality,
+
+        // INTERNSHIP DAYS
+        days: selectedDays,
+
+        // MORNING
+        morningEnabled: morningEnabled,
+
+        morning: morningEnabled ? {
+            timeIn: morningTimeIn,
+            timeOut: morningTimeOut
+        } : null,
+
+        // AFTERNOON
+        afternoonEnabled: afternoonEnabled,
+
+        afternoon: afternoonEnabled ? {
+            timeIn: document.getElementById('afternoonTimeIn').value,
+            timeOut: document.getElementById('afternoonTimeOut').value
+        } : null
+    };
+
+    // Update Firebase Auth Password
+    await updatePassword(currentUser, password);
+
+    // Update Firestore Profile Data
+    const userDocRef = doc(db, "users", currentUser.uid);
+    await updateDoc(userDocRef, {
+        name: fullName,
+        studentNumber: studentNumber,
+        gender: gender,
+        companyName: companyName,
+        supervisorName: supervisorName,
+        course: course,
+        section: section,
+        schedule: scheduleData,
+        profileCompleted: true,
+        // Oras ng pagkumpleto - ginagamit ng notification bell ng
+        // coordinator (../header/header.js) para malaman kung kailan
+        // natapos ng estudyante ang profile.
+        profileCompletedAt: serverTimestamp(),
+        ...(selectedPhotoBase64 ? { photo: selectedPhotoBase64 } : {})
+    });
+
+    // Redirect to Dashboard
+    window.location.href = "/student-page/student_dashboard/student_dashboard.html";
+}
 
 if (profileForm) {
     profileForm.addEventListener('submit', async (e) => {
@@ -546,90 +827,77 @@ if (profileForm) {
             return;
         }
 
+        const submitBtn = document.getElementById('saveProfileBtn');
+
+        // Kung nag-request na ng reauthentication dati (nag-appear na ang
+        // "Confirm Current Password" field), i-verify muna ang current
+        // password bago subukan ulit i-save ang bagong password + profile.
+        if (reauthGroup && reauthGroup.style.display !== 'none') {
+            const currentPasswordValue = reauthPasswordInput ? reauthPasswordInput.value : "";
+
+            if (!currentPasswordValue) {
+                showAlert("Please enter your current password to continue.");
+                return;
+            }
+
+            try {
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = "Verifying...";
+                }
+
+                const credential = EmailAuthProvider.credential(currentUser.email, currentPasswordValue);
+                await reauthenticateWithCredential(currentUser, credential);
+
+                // Matagumpay na na-verify - itago na ang field at ituloy ang save.
+                reauthGroup.style.display = 'none';
+                reauthPasswordInput.value = '';
+                hideAlert();
+
+                await saveProfileData(password);
+            } catch (error) {
+                console.error("Reauthentication error:", error);
+
+                if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                    showAlert("Incorrect current password. Please try again.");
+                } else {
+                    showAlert("Failed to verify your account: " + error.message);
+                }
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = "Continue";
+                }
+            }
+
+            return;
+        }
+
+        // Normal na flow: i-save agad ang password + profile.
         try {
-            const fullName = document.getElementById('fullName').value.trim();
-            const studentNumber = document.getElementById('studentNumber').value.trim();
-            const gender = document.getElementById('genderInput').value.trim();
-            const companyName = document.getElementById('companyName').value.trim();
-            const supervisorName = document.getElementById('supervisorName').value.trim();
-            
-            // Kukunin ang Course (BSIT) at i-kokombina sa Section input para maging "BSIT 401"
-            const course = document.getElementById('courseInput').value.trim();
-            const rawSection = document.getElementById('sectionInput').value.trim();
-            const cleanSection = rawSection.replace(/^bsit\s*/i, '');
-            const section = `${course} ${cleanSection}`;
-            
-            const selectedDays = getSelectedInternshipDays();
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = "Saving...";
+            }
 
-            const workModality =
-                document.querySelector(
-                    'input[name="workModality"]:checked'
-                )?.value || "On-site";
-
-            const morningEnabled =
-                document.getElementById('morningEnabled').checked;
-
-            const morningTimeIn =
-                document.getElementById('morningTimeIn').value;
-
-            const morningTimeOut =
-                document.getElementById('morningTimeOut').value;
-
-            const afternoonEnabled =
-                document.getElementById('afternoonEnabled').checked;
-            
-            const scheduleData = {
-                // WORK MODALITY
-                modality: workModality,
-
-                // INTERNSHIP DAYS
-                days: selectedDays,
-
-                // MORNING
-                morningEnabled: morningEnabled,
-
-                morning: morningEnabled ? {
-                    timeIn: morningTimeIn,
-                    timeOut: morningTimeOut
-                } : null,
-
-                // AFTERNOON
-                afternoonEnabled: afternoonEnabled,
-
-                afternoon: afternoonEnabled ? {
-                    timeIn: document.getElementById('afternoonTimeIn').value,
-                    timeOut: document.getElementById('afternoonTimeOut').value
-                } : null
-            };
-
-            // Update Firebase Auth Password
-            await updatePassword(currentUser, password);
-
-            // Update Firestore Profile Data
-            const userDocRef = doc(db, "users", currentUser.uid);
-            await updateDoc(userDocRef, {
-                name: fullName,
-                studentNumber: studentNumber,
-                gender: gender,
-                companyName: companyName,
-                supervisorName: supervisorName,
-                course: course,
-                section: section,
-                schedule: scheduleData,
-                profileCompleted: true,
-                // Oras ng pagkumpleto - ginagamit ng notification bell ng
-                // coordinator (../header/header.js) para malaman kung kailan
-                // natapos ng estudyante ang profile.
-                profileCompletedAt: serverTimestamp(),
-                ...(selectedPhotoBase64 ? { photo: selectedPhotoBase64 } : {})
-            });
-
-            // Redirect to Dashboard
-            window.location.href ="/student-page/student_dashboard/student_dashboard.html";
-
+            await saveProfileData(password);
         } catch (error) {
             console.error("Error updating profile:", error);
-            showAlert("An error occurred: " + error.message);
+
+            if (error.code === 'auth/requires-recent-login') {
+                // Matagal na ang huling login ng user - kailangan muna
+                // i-verify ang current password bago payagang baguhin ito.
+                showAlert("For your security, please confirm your current password to continue.");
+                if (reauthGroup) reauthGroup.style.display = 'block';
+                if (reauthPasswordInput) reauthPasswordInput.focus();
+            } else {
+                showAlert("An error occurred: " + error.message);
+            }
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Continue";
+            }
         }
     });
 }

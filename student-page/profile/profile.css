@@ -332,6 +332,63 @@ body {
     pointer-events: none;
 }
 
+/* ================= TYPEAHEAD COMBOBOX (type + pick) ================= */
+.input-box.combobox {
+    position: relative;
+}
+
+.input-box input:disabled {
+    background: #f5f5f5;
+    color: #999;
+    cursor: not-allowed;
+}
+
+.combobox-list {
+    list-style: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    margin: 0;
+    padding: 6px 0;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    max-height: 170px;
+    overflow-y: auto;
+    z-index: 30;
+    display: none;
+}
+
+.combobox-list.open {
+    display: block;
+}
+
+.combobox-list li {
+    padding: 9px 14px;
+    font-size: 12px;
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.combobox-list li:hover,
+.combobox-list li.active {
+    background: #fdecec;
+    color: var(--primary);
+}
+
+.combobox-list li.empty-option {
+    color: var(--gray);
+    cursor: default;
+}
+
+.combobox-list li.empty-option:hover {
+    background: transparent;
+    color: var(--gray);
+}
+
 /* ================= IN-APP ALERT BANNER ================= */
 .alert-banner {
     background-color: #fde8e8;

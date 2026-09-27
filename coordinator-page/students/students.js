@@ -20,7 +20,8 @@ import {
     limit,
     updateDoc,
     getDocs,
-    deleteDoc
+    deleteDoc,
+    deleteField
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // ==========================================
@@ -67,6 +68,39 @@ let autoRowsPerPage = 6; // current computed auto-fit value (may fallback defaul
 let isReflowingAutoRows = false;
 let resizeDebounceTimer = null;
 let studentToDelete = null;
+
+// Ang mga field na dapat talagang mabura (hindi lang i-blangko) kapag
+// "deleted" ang isang student, at kapag na-invite ulit siya - para talagang
+// clean slate ulit siya, parang bagong account, imbes na bumalik yung
+// dati niyang pangalan/company/schedule/atbp.
+function getProfileResetFields() {
+    return {
+        fullName: deleteField(),
+        name: deleteField(),
+        firstName: deleteField(),
+        lastName: deleteField(),
+        studentNumber: deleteField(),
+        studentId: deleteField(),
+        gender: deleteField(),
+        sex: deleteField(),
+        companyName: deleteField(),
+        company: deleteField(),
+        supervisorName: deleteField(),
+        course: deleteField(),
+        section: deleteField(),
+        schedule: deleteField(),
+        photo: deleteField(),
+        profilePic: deleteField(),
+        photoURL: deleteField(),
+        image: deleteField(),
+        avatar: deleteField(),
+        status: deleteField(),
+        profileCompleted: false,
+        isProfileComplete: false,
+        profileCompletedAt: deleteField(),
+        reEnabledAt: deleteField()
+    };
+}
 
 // Ibinabalik ang aktwal na bilang ng rows na gagamitin sa pagination -
 // yung fixed value kung manual, o yung na-compute na auto-fit value.
@@ -889,17 +923,21 @@ function initDeleteModalListeners() {
             confirmDeleteBtn.disabled = true;
 
             try {
-                // Soft delete: hindi natin tinatanggal ang "users" doc, dahil
-                // hindi natin kayang i-delete ang Firebase Auth account mula
-                // client-side (kailangan ng Admin SDK/Cloud Function + Blaze
-                // plan para dun). Sa halip, mina-mark natin siyang disabled -
-                // ito ang che-checkhin ng login page para talagang mabawalan
-                // siyang makapasok kahit tama ang password niya.
+                // Soft delete: hindi natin tinatanggal ang "users" doc mismo,
+                // dahil hindi natin kayang i-delete ang Firebase Auth account
+                // mula client-side (kailangan ng Admin SDK/Cloud Function +
+                // Blaze plan para dun). Sa halip: (1) minamarkahan natin
+                // siyang disabled para ma-block ng login page, AT (2) buong
+                // binubura/rine-reset natin ang profile data niya (pangalan,
+                // student number, company, supervisor, schedule, photo,
+                // atbp.) - para talagang wala nang laman ang datos niya
+                // habang naka-delete, tulad ng hiningi.
                 const userSnapshot = await getDocs(query(collection(db, "users"), where("email", "==", email)));
                 await Promise.all(userSnapshot.docs.map((documentSnap) =>
                     updateDoc(doc(db, "users", documentSnap.id), {
                         accountDisabled: true,
-                        disabledAt: new Date().toISOString()
+                        disabledAt: new Date().toISOString(),
+                        ...getProfileResetFields()
                     })
                 ));
 
@@ -912,11 +950,11 @@ function initDeleteModalListeners() {
                 });
 
                 if (row) row.remove();
-                showToast("Na-delete na ang student account.", "success");
+                showToast("The student account has been deleted, along with all of its data.", "success");
                 closeDeleteModal();
             } catch (error) {
                 console.error("Error sa pag-delete ng student:", error);
-                showToast("Hindi na-delete ang student.", "error");
+                showToast("The student account was not deleted.", "error");
             } finally {
                 confirmDeleteBtn.disabled = false;
             }
@@ -1126,6 +1164,62 @@ function initInviteModal() {
             const loginUrl = `${window.location.origin}/student-page/student_login/student_login.html?email=${encodeURIComponent(emailInput)}`;
 
             try {
+                // Tignan muna kung may existing "users" doc na para sa email
+                // na ito. Kung na-"delete" (disabled) na siya dati, ibig
+                // sabihin may natitirang Firebase Auth account pa rin siya
+                // (hindi natin kayang tanggalin 'yun client-side), kaya sa
+                // halip na gumawa ng bagong invitation na sisira dahil
+                // existing na ang Auth email na 'yun, ire-reset at
+                // ire-enable na lang natin ulit ang parehong "users" doc -
+                // blangko/clean slate, parang bagong account mula umpisa.
+                const existingUserSnapshot = await getDocs(
+                    query(collection(db, "users"), where("email", "==", emailInput))
+                );
+                const disabledUserDoc = existingUserSnapshot.docs.find(
+                    (docSnap) => docSnap.data().accountDisabled === true
+                );
+
+                if (disabledUserDoc) {
+                    // I-reset ulit dito (hindi lang basta i-re-enable) sakaling
+                    // na-disable ang account na ito bago pa i-deploy itong
+                    // pag-reset-sa-delete - para siguradong blangko/clean
+                    // slate talaga siya, parang bagong account.
+                    await updateDoc(doc(db, "users", disabledUserDoc.id), {
+                        accountDisabled: false,
+                        disabledAt: null,
+                        role: "student",
+                        ...getProfileResetFields()
+                    });
+
+                    // Bagong "Pending" invitation record - para talagang
+                    // parang panibagong imbitasyon ito mula umpisa, kasama
+                    // ng ibang parte ng system na umaasa sa "invitations"
+                    // collection (hal. notification bell ng coordinator).
+                    await addDoc(collection(db, "invitations"), {
+                        email: emailInput,
+                        status: "Pending",
+                        role: "student",
+                        createdAt: new Date().toISOString()
+                    });
+
+                    if (window.emailjs) {
+                        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+                            to_email: emailInput,
+                            invite_link: loginUrl
+                        });
+                    }
+
+                    if (sentEmailText) sentEmailText.textContent = emailInput;
+                    if (successMessage) successMessage.classList.add("active");
+                    showToast("Na-restore ang access - kailangan niya ulit kumpletuhin ang profile setup.", "success");
+
+                    setTimeout(() => {
+                        hideModal();
+                    }, 2000);
+                    return;
+                }
+
+                // Walang existing account - normal na bagong invitation flow.
                 await addDoc(collection(db, "invitations"), {
                     email: emailInput,
                     status: "Pending",
@@ -1149,6 +1243,7 @@ function initInviteModal() {
 
             } catch (error) {
                 console.error("Error inviting student:", error);
+                showToast("Hindi na-send ang imbitasyon.", "error");
             }
         });
     }

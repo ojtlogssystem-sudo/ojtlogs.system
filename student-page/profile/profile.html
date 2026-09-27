@@ -92,19 +92,20 @@
                     </div>
 
                     <div class="form-group">
-                        <div class="input-box">
+                        <div class="input-box combobox">
                             <input type="text" id="companyName" name="organization" required placeholder=" " autocomplete="off">
                             <label for="companyName">Company Name</label>
                             <i class="fa-solid fa-building"></i>
+                            <ul class="combobox-list" id="companyNameList"></ul>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <div class="input-box">
-                            <input type="text" id="supervisorName" name="supervisor" required placeholder=" " autocomplete="off" list="supervisorList">
+                        <div class="input-box combobox">
+                            <input type="text" id="supervisorName" name="supervisor" required placeholder=" " autocomplete="off">
                             <label for="supervisorName">Supervisor's Name</label>
                             <i class="fa-solid fa-user-tie"></i>
-                            <datalist id="supervisorList"></datalist>
+                            <ul class="combobox-list" id="supervisorNameList"></ul>
                         </div>
                     </div>
 
@@ -300,6 +301,14 @@
                     </div>
 
                     <div id="alertMessage" class="alert-banner" style="display: none;"></div>
+
+                    <div class="form-group" id="reauthGroup" style="display: none;">
+                        <label>Confirm Current Password</label>
+                        <div class="input-box">
+                            <input id="reauthPassword" type="password" autocomplete="current-password" placeholder="Enter your current password">
+                            <i class="fa-regular fa-eye toggle-password" id="toggleReauthPassword"></i>
+                        </div>
+                    </div>
 
                     <div class="form-group">
                         <label>Set Password</label>

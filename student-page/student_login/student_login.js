@@ -5,7 +5,8 @@ import {
     signInWithEmailAndPassword, 
     GoogleAuthProvider, 
     signInWithPopup,
-    sendPasswordResetEmail
+    sendPasswordResetEmail,
+    signOut
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { 
     getFirestore, 
@@ -14,6 +15,7 @@ import {
     setDoc,
     collection,
     addDoc,
+    getDocs,
     serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
@@ -50,7 +52,9 @@ const resetEmailInput = document.getElementById('resetEmail');
 const resetBtn = document.getElementById('resetBtn');
 const modalMessage = document.getElementById('modalMessage');
 
-// Auto pre-fill the email from the Link Query Parameter (?email=student@gmail.com)
+// Entrance transition: alisin ang "pre-load" class isang frame after
+// load, para maka-trigger ang CSS transition (fade + slide-in) imbes
+// na basta lumitaw agad ang page.
 document.addEventListener("DOMContentLoaded", () => {
     const urlParams = new URLSearchParams(window.location.search);
     const emailParam = urlParams.get("email");
@@ -61,7 +65,35 @@ document.addEventListener("DOMContentLoaded", () => {
             emailInput.value = emailParam;
         }
     }
+
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            document.body.classList.remove("pre-load");
+        });
+    });
 });
+
+// Page Transition Overlay - ginagamit sa halip na direktang
+// `window.location.href = ...` sa loob ng processUserLogin, para may
+// maayos na fade/spinner transition bago mag-navigate sa susunod na page.
+const transitionOverlay = document.getElementById('pageTransitionOverlay');
+const transitionText = document.getElementById('pageTransitionText');
+
+function goTo(url, message = "Loading...") {
+    if (!transitionOverlay) {
+        window.location.href = url;
+        return;
+    }
+
+    if (transitionText) transitionText.textContent = message;
+    transitionOverlay.classList.add('active');
+
+    // Konting delay lang para makita ang transition bago mag-navigate -
+    // hindi ito hinihintay ng anumang async na trabaho.
+    setTimeout(() => {
+        window.location.href = url;
+    }, 350);
+}
 
 // Show/Hide Password Toggle
 if (togglePassword) {
@@ -111,12 +143,23 @@ async function processUserLogin(user) {
     if (userDoc.exists()) {
         const userData = userDoc.data();
 
+        // Na-"delete" (soft delete) ng coordinator ang account na ito sa
+        // Students page. Hindi natin tinatanggal ang aktwal na Firebase
+        // Auth account (kailangan ng Admin SDK/Cloud Function para dun),
+        // kaya dito natin ito hinaharang bago pa man makapasok sa dashboard
+        // o sa profile-completion page.
+        if (userData.accountDisabled === true) {
+            await signOut(auth);
+            showError("This account has been removed by the coordinator. Please contact the coordinator.");
+            return;
+        }
+
         // Get the role from 'role' or 'userType'
         const role = (userData.role || userData.userType || "student").toString().toLowerCase();
 
         // IF COORDINATOR OR ADMIN -> REDIRECT TO COORDINATOR DASHBOARD
         if (role === "coordinator" || role === "admin") {
-            window.location.href = "/coordinator-page/dashboard/dashboard.html";
+            goTo("/coordinator-page/dashboard/dashboard.html", "Opening dashboard...");
             return;
         }
 
@@ -136,10 +179,10 @@ async function processUserLogin(user) {
 
             if (isComplete) {
                 // If the profile is complete -> Student Dashboard
-                window.location.href = "/student-page/student_dashboard/student_dashboard.html";
+                goTo("/student-page/student_dashboard/student_dashboard.html", "Opening your dashboard...");
             } else {
                 // If not yet complete -> Complete Profile Page
-                window.location.href = "/student-page/profile/profile.html";
+                goTo("/student-page/profile/profile.html", "Almost there...");
             }
             return;
         }
@@ -148,25 +191,45 @@ async function processUserLogin(user) {
     // 2. IF THIS IS A NEW LOGIN NOT YET IN THE USERS COLLECTION
     const emailKey = user.email.toLowerCase();
     
-    // Check if this is an invited student from the invitations collection
-    let inviteDocRef = doc(db, "invitations", emailKey);
-    let inviteDoc = await getDoc(inviteDocRef);
+    // Hanapin ang invitation doc gamit ang "email" FIELD, hindi ang
+    // document ID - dahil sa students.js, gamit ang addDoc (random/
+    // auto-generated ang document ID) ang paggawa ng invitation, kaya
+    // hindi kailanman tutugma ang naunang doc(db, "invitations", email)
+    // na lookup. Ito ang dahilan kung bakit "gumagana" (sa maling paraan)
+    // ang hindi-invited na Google accounts dati - hindi talaga natatagpuan
+    // ang invite, kaya bumabagsak lang sa default na "student" account
+    // creation sa halip na tanggihan.
+    const invitesSnapshot = await getDocs(collection(db, "invitations"));
+    const matchedInvite = invitesSnapshot.docs.find(
+        (docSnap) => (docSnap.data().email || "").toLowerCase().trim() === emailKey
+    );
+    const inviteDoc = matchedInvite || null;
 
-    if (!inviteDoc.exists()) {
-        inviteDocRef = doc(db, "invitations", user.email);
-        inviteDoc = await getDoc(inviteDocRef);
+    // Walang invitation mula sa coordinator para sa email na ito. Sa
+    // Google Sign-In, awtomatikong gumagawa si Firebase ng bagong Auth
+    // account kahit random na Google account ang piliin - kaya kailangan
+    // dito i-block bago pa ito maka-gawa ng "users" doc at makarating sa
+    // profile page. Tinatanggal din natin ang kaka-create lang na Auth
+    // account (sarili pa lang niyang account kaya kaya niya itong i-delete
+    // gamit ang client SDK, walang Admin SDK na kailangan) para hindi na
+    // ito magamit ulit sa susunod na pagtatangka.
+    if (!inviteDoc) {
+        try {
+            await user.delete();
+        } catch (cleanupError) {
+            console.error("Could not remove unauthorized auto-created account:", cleanupError);
+            await signOut(auth);
+        }
+        showError("No access. This Google account has not been invited by your coordinator.");
+        return;
     }
 
-    let coordinatorId = null;
-    let userName = user.displayName || "User";
-    let detectedRole = "student"; // Default role
-
-    if (inviteDoc.exists()) {
-        const inviteData = inviteDoc.data();
-        coordinatorId = inviteData.coordinatorId || null;
-        if (inviteData.name) userName = inviteData.name;
-        if (inviteData.role) detectedRole = inviteData.role.toLowerCase();
-    }
+    // May invitation - kunin ang details galing dito (coordinator, pangalan,
+    // role) para sa bagong account.
+    const inviteData = inviteDoc.data();
+    let coordinatorId = inviteData.coordinatorId || null;
+    let userName = inviteData.name || user.displayName || "User";
+    let detectedRole = inviteData.role ? inviteData.role.toLowerCase() : "student";
 
     // Create an initial record in the Firestore `users` collection
     await setDoc(userDocRef, {
@@ -182,9 +245,9 @@ async function processUserLogin(user) {
 
     // Determine which page to go to based on the detected role
     if (detectedRole === "coordinator" || detectedRole === "admin") {
-        window.location.href = "/coordinator-page/dashboard/dashboard.html";
+        goTo("/coordinator-page/dashboard/dashboard.html", "Opening dashboard...");
     } else {
-        window.location.href = "/student-page/profile/profile.html";
+        goTo("/student-page/profile/profile.html", "Setting up your profile...");
     }
 }
 

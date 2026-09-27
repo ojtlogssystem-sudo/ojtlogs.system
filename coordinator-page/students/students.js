@@ -245,6 +245,14 @@ async function refreshAndRenderStudents() {
             const emailKey = (userData.email || "").toLowerCase().trim();
             if (!emailKey) return;
 
+            // Na-"delete" na ng coordinator ang account na ito (soft delete) -
+            // huwag na siyang ipakita sa table, kahit hindi pa physically
+            // tinanggal ang Firestore doc.
+            if (userData.accountDisabled === true) {
+                studentMap.delete(emailKey);
+                return;
+            }
+
             const existingData = studentMap.get(emailKey) || {};
 
             const isProfileDone = userData.isProfileComplete === true || userData.profileCompleted === true;
@@ -878,21 +886,39 @@ function initDeleteModalListeners() {
             if (!studentToDelete) return;
             const { email, row } = studentToDelete;
 
-            try {
-                const userSnapshot = await getDocs(query(collection(db, "users"), where("email", "==", email)));
-                userSnapshot.forEach(async (documentSnap) => {
-                    await deleteDoc(doc(db, "users", documentSnap.id));
-                });
+            confirmDeleteBtn.disabled = true;
 
+            try {
+                // Soft delete: hindi natin tinatanggal ang "users" doc, dahil
+                // hindi natin kayang i-delete ang Firebase Auth account mula
+                // client-side (kailangan ng Admin SDK/Cloud Function + Blaze
+                // plan para dun). Sa halip, mina-mark natin siyang disabled -
+                // ito ang che-checkhin ng login page para talagang mabawalan
+                // siyang makapasok kahit tama ang password niya.
+                const userSnapshot = await getDocs(query(collection(db, "users"), where("email", "==", email)));
+                await Promise.all(userSnapshot.docs.map((documentSnap) =>
+                    updateDoc(doc(db, "users", documentSnap.id), {
+                        accountDisabled: true,
+                        disabledAt: new Date().toISOString()
+                    })
+                ));
+
+                // Kung may pending invitation pa lang (hindi pa nag-complete
+                // ng signup), pwede na talagang i-delete nang buo dahil wala
+                // pang Auth account na kaakibat dito.
                 const inviteSnapshot = await getDocs(query(collection(db, "invitations"), where("email", "==", email)));
                 inviteSnapshot.forEach(async (documentSnap) => {
                     await deleteDoc(doc(db, "invitations", documentSnap.id));
                 });
 
                 if (row) row.remove();
+                showToast("Na-delete na ang student account.", "success");
                 closeDeleteModal();
             } catch (error) {
                 console.error("Error sa pag-delete ng student:", error);
+                showToast("Hindi na-delete ang student.", "error");
+            } finally {
+                confirmDeleteBtn.disabled = false;
             }
         };
     }

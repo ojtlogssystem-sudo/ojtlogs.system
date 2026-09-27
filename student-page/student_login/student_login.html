@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
 </head>
 
-<body>
+<body class="pre-load">
     <div class="container">
         <!-- Login Card -->
         <div class="login-card">
@@ -68,6 +68,12 @@
             </form>
         </div>
     </div>
+    <!-- Page Transition Overlay -->
+    <div class="page-transition-overlay" id="pageTransitionOverlay">
+        <div class="spinner"></div>
+        <span id="pageTransitionText">Loading...</span>
+    </div>
+
     <script type="module" src="student_login.js"></script>
     <script src="/shared/site-meta.js"></script>
 </body>

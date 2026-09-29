@@ -2,11 +2,10 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
     getAuth,
-    verifyPasswordResetCode,
     confirmPasswordReset
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-// Firebase Config (same project as student_login.js)
+// Firebase Config
 const firebaseConfig = {
     apiKey: "AIzaSyDvMQyEHIIJTW4etj4VQHjjIzd8oB2geJ8",
     authDomain: "ojt-logs-e1892.firebaseapp.com",
@@ -38,9 +37,8 @@ const submitBtn = document.getElementById('submitBtn');
 const ruleLength = document.getElementById('ruleLength');
 const ruleMatch = document.getElementById('ruleMatch');
 
-let currentOobCode = null;
+let userEmail = null;
 
-// Entrance transition, same pattern as student_login.js
 document.addEventListener('DOMContentLoaded', () => {
     requestAnimationFrame(() => {
         requestAnimationFrame(() => {
@@ -68,47 +66,44 @@ function hideFormError() {
     formError.textContent = '';
 }
 
-// Read mode + oobCode from the link Firebase sent, then verify it
-async function initFromUrl() {
+// Token Verification
+function initFromUrl() {
     const params = new URLSearchParams(window.location.search);
-    const mode = params.get('mode');
-    const oobCode = params.get('oobCode');
+    const token = params.get('token');
 
-    if (mode !== 'resetPassword' || !oobCode) {
-        invalidReason.textContent = "This reset link is malformed or incomplete. Please request a new one.";
+    if (!token) {
+        invalidReason.textContent = "This reset link is invalid or incomplete. Please request a new one.";
         showState(invalidState);
         return;
     }
 
-    currentOobCode = oobCode;
-
     try {
-        const email = await verifyPasswordResetCode(auth, oobCode);
-        resetForEmail.textContent = email;
+        const decodedStr = atob(token);
+        const data = JSON.parse(decodedStr);
+
+        if (!data.email || !data.ts) {
+            throw new Error("Invalid payload structure");
+        }
+
+        // Expiration check (1 hour limit)
+        const oneHourMs = 60 * 60 * 1000;
+        if (Date.now() - data.ts > oneHourMs) {
+            invalidReason.textContent = "This reset link has expired. Please request a new one.";
+            showState(invalidState);
+            return;
+        }
+
+        userEmail = data.email;
+        if (resetForEmail) resetForEmail.textContent = userEmail;
         showState(formState);
     } catch (error) {
-        console.error("Verify reset code error:", error);
-        switch (error.code) {
-            case 'auth/expired-action-code':
-                invalidReason.textContent = "This reset link has expired. Please request a new one.";
-                break;
-            case 'auth/invalid-action-code':
-                invalidReason.textContent = "This reset link has already been used or is invalid. Please request a new one.";
-                break;
-            case 'auth/user-disabled':
-                invalidReason.textContent = "This account has been disabled. Please contact the coordinator.";
-                break;
-            case 'auth/user-not-found':
-                invalidReason.textContent = "We couldn't find an account for this reset link.";
-                break;
-            default:
-                invalidReason.textContent = "This password reset link is no longer valid. Please request a new one.";
-        }
+        console.error("Token parsing error:", error);
+        invalidReason.textContent = "This password reset link is invalid or corrupted. Please request a new one.";
         showState(invalidState);
     }
 }
 
-// Password eye toggles (works for both password fields on this page)
+// Eye Toggle Icons
 document.querySelectorAll('.toggle-eye').forEach(icon => {
     icon.addEventListener('click', () => {
         const targetId = icon.getAttribute('data-target');
@@ -121,16 +116,16 @@ document.querySelectorAll('.toggle-eye').forEach(icon => {
     });
 });
 
-// Live checklist for password rules
+// Password validation rules
 function updateRules() {
-    const pw = newPasswordInput.value;
-    const confirm = confirmPasswordInput.value;
+    const pw = newPasswordInput ? newPasswordInput.value : '';
+    const confirm = confirmPasswordInput ? confirmPasswordInput.value : '';
 
     const lengthOk = pw.length >= 6;
     const matchOk = pw.length > 0 && pw === confirm;
 
-    ruleLength.classList.toggle('rp-rule-ok', lengthOk);
-    ruleMatch.classList.toggle('rp-rule-ok', matchOk);
+    if (ruleLength) ruleLength.classList.toggle('rp-rule-ok', lengthOk);
+    if (ruleMatch) ruleMatch.classList.toggle('rp-rule-ok', matchOk);
 
     return { lengthOk, matchOk };
 }
@@ -138,7 +133,7 @@ function updateRules() {
 if (newPasswordInput) newPasswordInput.addEventListener('input', updateRules);
 if (confirmPasswordInput) confirmPasswordInput.addEventListener('input', updateRules);
 
-// Submit new password
+// Save New Password Submit
 if (newPasswordForm) {
     newPasswordForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -154,35 +149,34 @@ if (newPasswordForm) {
             showFormError("Passwords do not match.");
             return;
         }
-        if (!currentOobCode) {
-            showFormError("Something went wrong. Please reload this page.");
-            return;
-        }
 
         const originalText = submitBtn.textContent;
         submitBtn.disabled = true;
         submitBtn.textContent = "Saving...";
 
         try {
-            await confirmPasswordReset(auth, currentOobCode, newPasswordInput.value);
+            // Live request ng fresh oobCode sa Firebase REST API
+            const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${firebaseConfig.apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    requestType: "PASSWORD_RESET",
+                    email: userEmail
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error?.message || "Failed to initiate password reset.");
+            }
+
+            // I-confirm at palitan ang password sa Firebase Auth
+            await confirmPasswordReset(auth, data.oobCode, newPasswordInput.value);
             showState(successState);
         } catch (error) {
-            console.error("Confirm reset error:", error);
-            switch (error.code) {
-                case 'auth/expired-action-code':
-                    invalidReason.textContent = "This reset link expired while you were filling in the form. Please request a new one.";
-                    showState(invalidState);
-                    break;
-                case 'auth/invalid-action-code':
-                    invalidReason.textContent = "This reset link has already been used. Please request a new one.";
-                    showState(invalidState);
-                    break;
-                case 'auth/weak-password':
-                    showFormError("Please choose a stronger password.");
-                    break;
-                default:
-                    showFormError("Could not update your password. Please try again.");
-            }
+            console.error("Confirm Reset Error:", error);
+            showFormError(error.message || "Could not update password. Please try requesting a new reset link.");
         } finally {
             submitBtn.disabled = false;
             submitBtn.textContent = originalText;

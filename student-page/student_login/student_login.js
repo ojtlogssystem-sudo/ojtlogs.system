@@ -353,7 +353,7 @@ if (resetForm) {
                 case 'auth/user-not-found':
                     // We don't reveal whether an account exists, for security —
                     // use the same message as the successful case.
-                    showMessage(modalMessage, `If an account is registered with ${email}, a reset link will be sent.`, true);
+                    showMessage(modalMessage, `If an account is registered with ${email}, a reset link will be sent`, true);
                     break;
                 case 'auth/too-many-requests':
                     showMessage(modalMessage, "Too many requests. Please try again later.", false);

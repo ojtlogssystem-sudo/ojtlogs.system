@@ -81,7 +81,7 @@
 }
 
 .stat-content .title {
-    font-size: 13px;
+    font-size: 5px;
     font-weight: 500;
     color: #666;
     margin-bottom: 6px;
@@ -89,11 +89,11 @@
 }
 
 .stat-content h2 {
-    font-size: 28px;
+    font-size: 1px;
     font-weight: 700;
     color: #1a1a1a;
     line-height: 1.1;
-    margin-bottom: 12px;
+    margin-bottom: 2px;
 }
 
 
@@ -2221,7 +2221,6 @@
 .stat-note {
     margin-top: 14px;
     padding-top: 12px;
-    border-top: 1px solid #f0f0f0;
 }
 
 .stat-note-header {
@@ -2342,4 +2341,188 @@
         width: 100%;
     }
 
+}
+
+/* ========================================================
+   NO-SCROLL DASHBOARD + EVEN STAT CARDS
+   Appended last so it wins the cascade. Ang buong dashboard
+   ay kasya na sa isang screen (100vh): walang page scroll.
+   Ang Weekly Reports table lang ang pwedeng mag-scroll
+   sa loob mismo ng card niya kapag maraming rows.
+======================================================== */
+
+html,
+body {
+    height: 100%;
+    overflow: hidden;
+}
+
+.main {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.main > header,
+#header-container {
+    flex: 0 0 auto;
+}
+
+/* ---- Stat cards: pantay ang taas, pantay ang margin taas/baba ---- */
+
+.cards {
+    flex: 0 0 auto;
+    align-items: stretch;
+    padding: 20px 30px;
+}
+
+.stat-card {
+    padding: 20px 22px 20px 26px;
+    justify-content: flex-start;
+}
+
+.stat-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.stat-content h2 {
+    margin-bottom: 0;
+}
+
+/* Naka-pin sa baba ang note para pareho ang bottom margin
+   ng lahat ng cards, kahit magkaiba ang haba ng text. */
+.stat-note {
+    margin-top: auto;
+    padding-top: 12px;
+}
+
+.stat-note-header {
+    min-width: 0;
+}
+
+.stat-note-header i {
+    flex-shrink: 0;
+}
+
+.stat-note-title {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Sa mas makitid na screen, reserve ng 2 lines para sa title
+   para hindi tumaas/bumaba ang number at note ng ibang card. */
+@media (max-width: 1500px) {
+    .stat-content .title {
+        min-height: 2.7em;
+        line-height: 1.35;
+    }
+}
+
+/* ---- Middle section: sakto sa natitirang taas ---- */
+
+.middle-analytics {
+    flex: 1 1 0;
+    min-height: 0;
+    align-items: stretch;
+    padding: 0 30px 20px 30px;
+}
+
+.weekly-reports-card {
+    min-height: 0 !important;
+    height: 100%;
+}
+
+.weekly-reports-card .table-card {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+}
+
+.weekly-reports-card .table-container {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: auto;
+}
+
+/* Ibalik sa dating compact na rows: hindi na iuunat ng table
+   ang taas ng card, sa itaas lang ang rows at nasa baba ang
+   pagination. */
+.weekly-reports-card .students-table {
+    height: auto;
+    flex: 0 0 auto;
+}
+
+.weekly-reports-card .students-table tbody tr {
+    height: auto;
+}
+
+.right-analytics-column {
+    height: 100%;
+    min-height: 0;
+}
+
+.right-analytics-column .pending-card {
+    flex: 0 0 auto;
+}
+
+/* Ang calendar ang sumasakop sa natitirang taas at
+   nagsi-shrink ang mga araw para kasya lahat ng weeks. */
+.coordinator-calendar-card {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.coordinator-calendar-grid {
+    flex: 1 1 0;
+    min-height: 0;
+    grid-auto-rows: minmax(0, 1fr);
+}
+
+.coordinator-calendar-day {
+    height: auto;
+    min-height: 0;
+}
+
+/* Safety: sa sobrang liit na screen (phone / napakababang
+   window) ibalik ang normal na scroll para hindi maputol
+   ang content. */
+@media (max-width: 900px), (max-height: 600px) {
+    html,
+    body {
+        height: auto;
+        overflow: auto;
+    }
+
+    .main {
+        height: auto;
+        overflow: visible;
+    }
+
+    .middle-analytics {
+        flex: 0 0 auto;
+    }
+
+    .weekly-reports-card {
+        min-height: 550px !important;
+        height: auto;
+    }
+
+    .right-analytics-column {
+        height: auto;
+    }
+
+    .coordinator-calendar-day {
+        height: 38px;
+    }
 }

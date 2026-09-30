@@ -458,13 +458,13 @@ async function loadDashboardStats() {
             graduated > 0,
             {
                 tone: "success",
-                icon: "fa-graduation-archive",
-                title: "Graduated",
-                text: "System Recorded."
+                icon: "fa-box-archive",
+                title: "Batches Archived",
+                text: "View completed students grouped by batch."
             },
             {
                 tone: "muted",
-                icon: "fa-graduation-archive",
+                icon: "fa-box-archive",
                 title: "No Completed Batch Archive Yet",
                 text: "Completed batch students will be recorded here."
             }
@@ -3149,6 +3149,14 @@ document.addEventListener(
                 closeBtn: "closeAtRiskStudentsModalBtn",
                 src: "../at-risk-students/at-risk-students.html",
                 closeMessageType: "closeAtRiskStudentsModal"
+            },
+            {
+                card: "graduatedStudentsCard",
+                modal: "completedBatchArchiveModal",
+                frame: "completedBatchArchiveFrame",
+                closeBtn: "closeCompletedBatchArchiveModalBtn",
+                src: "../completed-batch-archive/completed-batch-archive.html",
+                closeMessageType: "closeCompletedBatchArchiveModal"
             }
         ];
 

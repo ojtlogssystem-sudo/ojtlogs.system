@@ -1082,13 +1082,13 @@ header h2{
     box-shadow: 0 2px 8px rgba(0, 0, 0, .03);
 
     padding: 12px 22px;
-    margin-bottom: 20px;
+    margin-bottom: 0; /* gap ng .dashboard-content na ang bahala sa spacing */
 }
 
 .datetime-item {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 12px;
 }
 
 .datetime-icon {
@@ -1125,17 +1125,27 @@ header h2{
 @media (max-width: 600px) {
     .datetime-bar {
         flex-direction: row;
+        flex-wrap: nowrap;          /* laging magkatabi ang Date at Time */
         align-items: center;
-        justify-content: flex-start;
-        gap: 100px;
-        padding: 10px 12px;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 14px;
         border-radius: 12px;
+        margin-bottom: 0;
     }
 
     .datetime-item {
-        gap: 50px;
+        gap: 8px;
         justify-content: flex-start;
         min-width: 0;
+        flex: 1 1 auto;
+    }
+
+    /* Time nasa kanan para balanced tingnan */
+    .datetime-item:last-child {
+        justify-content: flex-end;
+        text-align: right;
+        flex: 0 0 auto;
     }
 
     .datetime-icon {

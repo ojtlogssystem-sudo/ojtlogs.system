@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Completed Batch Archive</title>
+
+    <link rel="stylesheet" href="completed-batch-archive.css">
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet"
+    >
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css"
+    >
+</head>
+
+<body>
+
+    <div class="archive-page">
+
+        <!-- HEADER -->
+        <div class="archive-top">
+
+            <div class="archive-title">
+                <span class="title-line"></span>
+                <div>
+                    <h1>Completed Batch Archive</h1>
+                    <p>Completed interns are recorded here, grouped by batch.</p>
+                </div>
+            </div>
+
+            <div class="archive-top-right">
+                <div class="archive-search">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input
+                        type="text"
+                        id="archiveSearch"
+                        placeholder="Search name, ID, section, company..."
+                        autocomplete="off"
+                    >
+                </div>
+
+                <button type="button" class="back-btn" id="backBtn">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    Back to Dashboard
+                </button>
+            </div>
+
+        </div>
+
+        <!-- SUMMARY -->
+        <div class="archive-summary">
+            <div class="summary-chip">
+                <span class="summary-num" id="sumBatches">0</span>
+                <span class="summary-label">Archived Batches</span>
+            </div>
+            <div class="summary-chip">
+                <span class="summary-num" id="sumStudents">0</span>
+                <span class="summary-label">Archived Students</span>
+            </div>
+            <div class="summary-chip">
+                <span class="summary-num" id="sumReady">0</span>
+                <span class="summary-label">Ready to Archive</span>
+            </div>
+        </div>
+
+        <!-- TABS -->
+        <div class="archive-tabs">
+            <button type="button" class="tab-btn active" data-tab="archived">
+                <i class="fa-solid fa-box-archive"></i>
+                Archived Batches
+            </button>
+            <button type="button" class="tab-btn" data-tab="ready">
+                <i class="fa-solid fa-clipboard-check"></i>
+                Ready to Archive
+                <span class="tab-badge" id="readyBadge">0</span>
+            </button>
+        </div>
+
+        <!-- STATUS MESSAGE -->
+        <div class="archive-message" id="archiveMessage" hidden></div>
+
+        <!-- CONTENT -->
+        <div class="archive-body" id="archiveBody">
+            <div class="archive-empty">
+                <i class="fa-solid fa-spinner fa-spin"></i>
+                <p>Loading archive...</p>
+            </div>
+        </div>
+
+    </div>
+
+    <script type="module" src="completed-batch-archive.js"></script>
+
+</body>
+
+</html>

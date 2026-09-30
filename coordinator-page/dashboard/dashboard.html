@@ -92,7 +92,7 @@
                     <div class="stat-note muted" id="totalInternsNote">
                         <div class="stat-note-header">
                             <i class="fa-solid fa-user-plus"></i>
-                            <span class="stat-note-title">No Registered Interns Yet</span>
+                            <span class="stat-note-title">No Regist ered Interns Yet</span>
                         </div>
                         <p>
                             Students will appear here once they register.
@@ -221,7 +221,7 @@
 
             <!-- Graduated Interns -->
             <div
-                class="stat-card static-card"
+                class="stat-card clickable-card"
                 id="graduatedStudentsCard"
             >
 
@@ -1117,6 +1117,50 @@
                     <iframe
                         id="atRiskStudentsFrame"
                         title="At-Risk Students"
+                    ></iframe>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- =================================================
+             COMPLETED BATCH ARCHIVE MODAL
+             (Loads completed-batch-archive.html as a popup)
+        ================================================== -->
+        <div
+            class="modal-overlay"
+            id="completedBatchArchiveModal"
+        >
+
+            <div class="modal-card completed-students-modal-card">
+
+                <div class="modal-header">
+
+                    <h3>
+                        <i
+                            class="fa-solid fa-box-archive"
+                            style="color: #AB0A0A;"
+                        ></i>
+                        Completed Batch Archive
+                    </h3>
+
+                    <button
+                        class="close-btn"
+                        id="closeCompletedBatchArchiveModalBtn"
+                        type="button"
+                    >
+                        &times;
+                    </button>
+
+                </div>
+
+                <div class="modal-body completed-students-modal-body">
+
+                    <iframe
+                        id="completedBatchArchiveFrame"
+                        title="Completed Batch Archive"
                     ></iframe>
 
                 </div>

@@ -11,6 +11,9 @@
     <!-- Shared Layout -->
     <link rel="stylesheet" href="../sidebar/sidebar-web.css">
 
+    <!-- Shared Header -->
+    <link rel="stylesheet" href="../header/header.css">
+
     <!-- Reports CSS -->
     <link rel="stylesheet" href="reports.css">
 
@@ -20,6 +23,11 @@
     <!-- Font Awesome -->
     <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+
+    <!-- PDF / Excel export libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 </head>
 
@@ -33,408 +41,557 @@
 
     <main class="main">
 
-        <header>
-
-            <div>
-                <h2>Reports</h2>
-                <p>Generate, preview and export internship reports.</p>
-            </div>
-
-            <div class="top-right">
-
-                <div class="notification">
-                    <i class="fa-regular fa-bell"></i>
-                    <span class="badge">3</span>
-                </div>
-
-                <div class="profile">
-
-                    <div class="avatar">MS</div>
-
-                    <div class="profile-info">
-                        <h4>Coordinator</h4>
-                        <p>OJT Coordinator</p>
-                    </div>
-
-                    <i class="fa-solid fa-chevron-down"></i>
-
-                </div>
-
-            </div>
-
-        </header>
+        <!-- HEADER (shared: ../header/header.js + header.html)
+             data-school-year: ito lang ang page na dapat magpakita
+             ng School Year selector. -->
+        <header
+            id="header-container"
+            data-page-title="Reports"
+            data-page-subtitle="Generate and manage OJT reports for monitoring and documentation."
+            data-school-year
+        ></header>
 
         <div class="reports-content">
 
-            <!-- SUMMARY -->
+            <!-- ===================== TABS ===================== -->
 
-            <div class="reports-summary">
+            <div class="report-tabs" id="reportTabs">
 
-                <div class="summary-card">
+                <button class="report-tab active" data-tab="overview">
+                    <i class="fa-solid fa-file-lines"></i> Overview Report
+                </button>
 
-                    <div class="summary-icon blue">
-                        <i class="fa-solid fa-file-lines"></i>
-                    </div>
+                <button class="report-tab" data-tab="progress">
+                    <i class="fa-solid fa-user-graduate"></i> Student Progress
+                </button>
 
-                    <div>
-                        <h3>125</h3>
-                        <p>Total Reports</p>
-                    </div>
+                <button class="report-tab" data-tab="attendance">
+                    <i class="fa-solid fa-calendar-check"></i> Attendance Report
+                </button>
+
+                <button class="report-tab" data-tab="risk">
+                    <i class="fa-solid fa-triangle-exclamation"></i> At-Risk Report
+                </button>
+
+                <button class="report-tab" data-tab="company">
+                    <i class="fa-solid fa-building"></i> Company Deployment
+                </button>
+
+            </div>
+
+            <!-- ===================== TOOLBAR ===================== -->
+
+            <div class="toolbar-section">
+
+            <div class="report-toolbar">
+
+                <!-- SEARCH -->
+                <div class="search-box">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input
+                        type="text"
+                        id="searchReport"
+                        placeholder="Search students, company or section..."
+                    >
+                </div>
+
+                <!-- SECTION -->
+                <select id="sectionFilter">
+                    <option value="all">All Sections</option>
+                </select>
+
+                <!-- COMPANY -->
+                <select id="companyFilter">
+                    <option value="all">All Companies</option>
+                </select>
+
+                <!-- STATUS -->
+                <select id="statusFilter">
+                    <option value="all">All Status</option>
+                    <option value="On Track">On Track</option>
+                    <option value="Needs Monitoring">Needs Monitoring</option>
+                    <option value="At Risk">At Risk</option>
+                    <option value="Completed">Completed</option>
+                </select>
+
+                <!-- EXPORT / PRINT -->
+                <div class="report-actions">
+
+                    <button
+                        type="button"
+                        id="exportPdfBtn"
+                        class="report-action-btn pdf"
+                    >
+                        <i class="fa-solid fa-file-pdf"></i>
+                        Export PDF
+                    </button>
+
+                    <button
+                        type="button"
+                        id="exportExcelBtn"
+                        class="report-action-btn excel"
+                    >
+                        <i class="fa-solid fa-file-excel"></i>
+                        Export Excel
+                    </button>
+
+                    <button
+                        type="button"
+                        id="printReportBtn"
+                        class="report-action-btn print"
+                    >
+                        <i class="fa-solid fa-print"></i>
+                        Print
+                    </button>
 
                 </div>
 
-                <div class="summary-card">
+            </div>
 
-                    <div class="summary-icon green">
-                        <i class="fa-solid fa-file-circle-check"></i>
+        </div>
+
+            <!-- ===================== LOADING / ERROR ===================== -->
+
+            <div class="report-status" id="reportStatus" style="display:none;"></div>
+
+            <!-- ===================== OVERVIEW REPORT ===================== -->
+
+            <div class="report-panel active" id="panel-overview">
+                <div class="printable-report report-document" id="printableOverview">
+
+                    <div class="report-letterhead">
+
+                        <div class="letterhead-left">
+                            <div class="letterhead-logo grc-logo">
+                                <img src="/images/logo-grc.jpg" alt="Global Reciprocal Colleges Logo" style="width: 65px !important; height: 65px !important; max-width: 65px !important; object-fit: contain !important;">
+                            </div>
+                            <div>
+                                <h3>GLOBAL RECIPROCAL COLLEGES</h3>
+                                <p>Excel Today, Lead Tomorrow.</p>
+                            </div>
+                        </div>
+
+                        <div class="letterhead-right">
+                            <h4>OJT INTERNSHIP MONITORING REPORT</h4>
+                            <p>A SUMMARY OF STUDENT INTERNSHIP STATUS AND PERFORMANCE</p>
+                        </div>
+
                     </div>
 
-                    <div>
-                        <h3>18</h3>
-                        <p>Generated Today</p>
+                    <div class="report-meta">
+
+                        <div class="meta-col">
+                            <p><strong>School Year:</strong> <span id="metaSchoolYear">2026 &ndash; 2027</span></p>
+                            <p><strong>Semester:</strong> <span id="metaSemester">1st Semester</span></p>
+                            <p><strong>Generated On:</strong> <span id="metaGeneratedOn">&mdash;</span></p>
+                        </div>
+
+                        <div class="meta-col">
+                            <p><strong>Coordinator:</strong> <span id="metaCoordinator">OJT Coordinator</span></p>
+                            <p><strong>Section:</strong> <span id="metaSection">All Sections</span></p>
+                            <p><strong>Company:</strong> <span id="metaCompany">All Companies</span></p>
+                        </div>
+
                     </div>
 
-                </div>
+                    <!-- 1. OVERALL SUMMARY -->
 
-                <div class="summary-card">
+                    <h5 class="report-section-title">1. Overall Summary</h5>
 
-                    <div class="summary-icon orange">
-                        <i class="fa-solid fa-clock"></i>
+                    <div class="overview-stats" id="overviewStats">
+                        <!-- injected by JS -->
                     </div>
 
-                    <div>
-                        <h3>6</h3>
-                        <p>Pending Reports</p>
+                    <!-- 2 & 3: ATTENDANCE + PROGRESS -->
+
+                    <div class="report-split">
+
+                        <div class="report-block">
+                            <h5 class="report-section-title">2. Attendance Summary</h5>
+                            <table class="mini-table report-data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Status</th>
+                                        <th>Total Days</th>
+                                        <th>Percentage</th>
+                                        <th>Rendered Hours</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="attendanceSummaryBody"></tbody>
+                            </table>
+                        </div>
+
+                        <div class="report-block">
+                            <h5 class="report-section-title">3. Internship Progress Summary</h5>
+                            <table class="mini-table report-data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Progress Range</th>
+                                        <th>No. of Students</th>
+                                        <th>Percentage</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="progressSummaryBody"></tbody>
+                            </table>
+                        </div>
+
                     </div>
 
-                </div>
+                    <!-- 4. AT-RISK STUDENTS -->
 
-                <div class="summary-card">
+                    <h5 class="report-section-title">4. At-Risk Students</h5>
 
-                    <div class="summary-icon red">
-                        <i class="fa-solid fa-download"></i>
+                    <div class="table-container">
+                        <table class="mini-table wide report-data-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Student Name</th>
+                                    <th>Company</th>
+                                    <th>Progress</th>
+                                    <th>Risk Reason</th>
+                                    <th>Recommended Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="atRiskOverviewBody"></tbody>
+                        </table>
                     </div>
 
-                    <div>
-                        <h3>94</h3>
-                        <p>Exported Reports</p>
+                    <!-- 5. COMPANY DEPLOYMENT -->
+
+                    <h5 class="report-section-title">5. Company Deployment Summary</h5>
+
+                    <div class="table-container">
+                        <table class="mini-table wide report-data-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Company Name</th>
+                                    <th>No. of Interns</th>
+                                    <th>Completed</th>
+                                    <th>Ongoing</th>
+                                    <th>At Risk</th>
+                                </tr>
+                            </thead>
+                            <tbody id="companyOverviewBody"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="report-signature">
+                        <div></div>
+                        <div class="signature-block">
+                            <p class="signature-label">Prepared and Verified by:</p>
+                            <p class="signature-name" id="signatureName">Maria Santos</p>
+                            <p class="signature-role">OJT Coordinator</p>
+                            <p class="signature-org">Global Reciprocal Colleges</p>
+                        </div>
                     </div>
 
                 </div>
 
             </div>
 
-            <!-- REPORT LIST -->
+            <!-- ===================== STUDENT PROGRESS ===================== -->
 
-            <section class="reports-section">
+            <div class="report-panel" id="panel-progress">
 
-                <div class="section-header">
+                <div class="printable-report report-document" id="printableProgress">
 
-                    <h3>Generated Reports</h3>
-
-                    <div class="toolbar-right">
-
-                        <div class="search-box">
-
-                            <i class="fa-solid fa-search"></i>
-
-                            <input
-                                type="text"
-                                id="searchReport"
-                                placeholder="Search report...">
-
+                    <div class="report-letterhead">
+                        <div class="letterhead-left">
+                            <div class="letterhead-logo grc-logo">
+                                <img src="/images/logo-grc.jpg" alt="Global Reciprocal Colleges Logo" style="width: 65px !important; height: 65px !important; max-width: 65px !important; object-fit: contain !important;">
+                            </div>
+                            <div>
+                                <h3>GLOBAL RECIPROCAL COLLEGES</h3>
+                                <p>Excel Today, Lead Tomorrow.</p>
+                            </div>
                         </div>
 
-                        <select id="reportFilter">
+                        <div class="letterhead-right">
+                            <h4>STUDENT INTERNSHIP PROGRESS REPORT</h4>
+                            <p>SUMMARY OF STUDENT OJT HOURS AND COMPLETION STATUS</p>
+                        </div>
+                    </div>
 
-                            <option value="all">All Reports</option>
-                            <option value="attendance">Attendance</option>
-                            <option value="progress">Progress</option>
-                            <option value="risk">AI At-Risk</option>
-                            <option value="skill">AI Skill Gap</option>
-                            <option value="company">Company</option>
+                    <div class="report-meta">
+                        <div class="meta-col">
+                            <p><strong>School Year:</strong> <span class="report-school-year">2026 &ndash; 2027</span></p>
+                            <p><strong>Semester:</strong> <span class="report-semester">1st Semester</span></p>
+                            <p><strong>Generated On:</strong> <span class="report-generated-on">&mdash;</span></p>
+                        </div>
+                        <div class="meta-col">
+                            <p><strong>Coordinator:</strong> <span class="report-coordinator">OJT Coordinator</span></p>
+                            <p><strong>Section:</strong> <span class="report-section-filter">All Sections</span></p>
+                            <p><strong>Company:</strong> <span class="report-company-filter">All Companies</span></p>
+                        </div>
+                    </div>
 
-                        </select>
+                    <h5 class="report-section-title">1. Student Progress</h5>
 
+                    <div class="table-container report-table-print-wrap">
+                        <table class="reports-table report-data-table progress-print-table" id="progressReportTable">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Student Name</th>
+                                    <th>Student ID</th>
+                                    <th>Section</th>
+                                    <th>Company</th>
+                                    <th>Required Hours</th>
+                                    <th>Completed Hours</th>
+                                    <th>Remaining Hours</th>
+                                    <th>Progress</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="studentProgressTableBody">
+                                <tr>
+                                    <td colspan="10" class="table-empty">Loading student progress...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="report-note">
+                        <strong>Note:</strong> Progress is based on the student's recorded rendered hours against the required internship hours.
+                    </div>
+
+                    <div class="report-signature">
+                        <div></div>
+                        <div class="signature-block">
+                            <p class="signature-label">Prepared and Verified by:</p>
+                            <p class="signature-name report-signature-name">OJT Coordinator</p>
+                            <p class="signature-role">OJT Coordinator</p>
+                            <p class="signature-org">Global Reciprocal Colleges</p>
+                        </div>
                     </div>
 
                 </div>
 
-                <div class="table-container">
+            </div>
 
-                    <table class="reports-table">
+            <!-- ===================== ATTENDANCE REPORT ===================== -->
 
-                        <thead>
+            <div class="report-panel" id="panel-attendance">
 
-                            <tr>
+                <div class="printable-report report-document" id="printableAttendance">
 
-                                <th>Report Name</th>
-                                <th>Category</th>
-                                <th>Date Generated</th>
-                                <th>Status</th>
-                                <th>Action</th>
+                    <div class="report-letterhead">
+                        <div class="letterhead-left">
+                            <div class="letterhead-logo grc-logo">
+                                <img src="/images/logo-grc.jpg" alt="Global Reciprocal Colleges Logo" style="width: 65px !important; height: 65px !important; max-width: 65px !important; object-fit: contain !important;">
+                            </div>
+                            <div>
+                                <h3>GLOBAL RECIPROCAL COLLEGES</h3>
+                                <p>Excel Today, Lead Tomorrow.</p>
+                            </div>
+                        </div>
+                        <div class="letterhead-right">
+                            <h4>OJT ATTENDANCE REPORT</h4>
+                            <p>SUMMARY OF STUDENT ATTENDANCE AND RENDERED HOURS</p>
+                        </div>
+                    </div>
 
-                            </tr>
+                    <div class="report-meta">
+                        <div class="meta-col">
+                            <p><strong>School Year:</strong> <span class="report-school-year">2026 &ndash; 2027</span></p>
+                            <p><strong>Semester:</strong> <span class="report-semester">1st Semester</span></p>
+                            <p><strong>Generated On:</strong> <span class="report-generated-on">&mdash;</span></p>
+                        </div>
+                        <div class="meta-col">
+                            <p><strong>Coordinator:</strong> <span class="report-coordinator">OJT Coordinator</span></p>
+                            <p><strong>Section:</strong> <span class="report-section-filter">All Sections</span></p>
+                            <p><strong>Company:</strong> <span class="report-company-filter">All Companies</span></p>
+                        </div>
+                    </div>
 
-                        </thead>
+                    <h5 class="report-section-title">1. Attendance Records</h5>
 
-                        <tbody id="reportTable">
-                            <tr>
+                    <div class="table-container report-table-print-wrap">
+                        <table class="reports-table report-data-table" id="attendanceTable">
+                            <thead>
+                                <tr>
+                                    <th>Student Name</th>
+                                    <th>Section</th>
+                                    <th>Company</th>
+                                    <th>Present</th>
+                                    <th>Late</th>
+                                    <th>Absent</th>
+                                    <th>Rendered Hours</th>
+                                    <th>Attendance Rate</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendanceTableBody"></tbody>
+                        </table>
+                    </div>
 
-    <td>Attendance Report</td>
-    <td>Attendance</td>
-    <td>August 03, 2026</td>
+                    <div class="report-note" id="attendanceReportNote" style="display:none;">
+                        <i class="fa-solid fa-circle-info"></i> Some attendance values are estimated from rendered hours because no detailed attendance record is available.
+                    </div>
 
-    <td>
-        <span class="status ready">Ready</span>
-    </td>
+                    <div class="report-signature">
+                        <div></div>
+                        <div class="signature-block">
+                            <p class="signature-label">Prepared and Verified by:</p>
+                            <p class="signature-name report-signature-name">OJT Coordinator</p>
+                            <p class="signature-role">OJT Coordinator</p>
+                            <p class="signature-org">Global Reciprocal Colleges</p>
+                        </div>
+                    </div>
 
-    <td>
+                </div>
 
-        <button class="action-btn view">
-            <i class="fa-solid fa-eye"></i>
-        </button>
+            </div>
 
-        <button class="action-btn download">
-            <i class="fa-solid fa-download"></i>
-        </button>
+            <!-- ===================== AT-RISK REPORT ===================== -->
 
-        <button class="action-btn generate">
-            <i class="fa-solid fa-file-circle-plus"></i>
-        </button>
+            <div class="report-panel" id="panel-risk">
 
-    </td>
+                <div class="printable-report report-document" id="printableRisk">
 
-</tr>
+                    <div class="report-letterhead">
+                        <div class="letterhead-left">
+                            <div class="letterhead-logo grc-logo">
+                                <img src="/images/logo-grc.jpg" alt="Global Reciprocal Colleges Logo" style="width: 65px !important; height: 65px !important; max-width: 65px !important; object-fit: contain !important;">
+                            </div>
+                            <div>
+                                <h3>GLOBAL RECIPROCAL COLLEGES</h3>
+                                <p>Excel Today, Lead Tomorrow.</p>
+                            </div>
+                        </div>
+                        <div class="letterhead-right">
+                            <h4>AT-RISK STUDENT REPORT</h4>
+                            <p>STUDENTS REQUIRING ATTENTION AND FOLLOW-UP</p>
+                        </div>
+                    </div>
 
-<tr>
+                    <div class="report-meta">
+                        <div class="meta-col">
+                            <p><strong>School Year:</strong> <span class="report-school-year">2026 &ndash; 2027</span></p>
+                            <p><strong>Semester:</strong> <span class="report-semester">1st Semester</span></p>
+                            <p><strong>Generated On:</strong> <span class="report-generated-on">&mdash;</span></p>
+                        </div>
+                        <div class="meta-col">
+                            <p><strong>Coordinator:</strong> <span class="report-coordinator">OJT Coordinator</span></p>
+                            <p><strong>Section:</strong> <span class="report-section-filter">All Sections</span></p>
+                            <p><strong>Company:</strong> <span class="report-company-filter">All Companies</span></p>
+                        </div>
+                    </div>
 
-    <td>Internship Progress Report</td>
-    <td>Progress</td>
-    <td>August 03, 2026</td>
+                    <h5 class="report-section-title">1. Students Requiring Attention</h5>
 
-    <td>
-        <span class="status ready">Ready</span>
-    </td>
+                    <div class="table-container report-table-print-wrap">
+                        <table class="reports-table report-data-table" id="riskTable">
+                            <thead>
+                                <tr>
+                                    <th>Student Name</th>
+                                    <th>Section</th>
+                                    <th>Company</th>
+                                    <th>Progress</th>
+                                    <th>Attendance Rate</th>
+                                    <th>Risk Reason</th>
+                                    <th>Recommended Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="riskTableBody"></tbody>
+                        </table>
+                    </div>
 
-    <td>
+                    <div class="report-note">
+                        This report identifies students currently marked as At Risk based on the available internship monitoring data.
+                    </div>
 
-        <button class="action-btn view">
-            <i class="fa-solid fa-eye"></i>
-        </button>
+                    <div class="report-signature">
+                        <div></div>
+                        <div class="signature-block">
+                            <p class="signature-label">Prepared and Verified by:</p>
+                            <p class="signature-name report-signature-name">OJT Coordinator</p>
+                            <p class="signature-role">OJT Coordinator</p>
+                            <p class="signature-org">Global Reciprocal Colleges</p>
+                        </div>
+                    </div>
 
-        <button class="action-btn download">
-            <i class="fa-solid fa-download"></i>
-        </button>
+                </div>
 
-        <button class="action-btn generate">
-            <i class="fa-solid fa-file-circle-plus"></i>
-        </button>
+            </div>
 
-    </td>
+            <!-- ===================== COMPANY DEPLOYMENT ===================== -->
 
-</tr>
+            <div class="report-panel" id="panel-company">
 
-<tr>
+                <div class="printable-report report-document" id="printableCompany">
 
-    <td>AI At-Risk Report</td>
-    <td>Risk</td>
-    <td>August 03, 2026</td>
+                    <div class="report-letterhead">
+                        <div class="letterhead-left">
+                            <div class="letterhead-logo grc-logo">
+                                <img src="/images/logo-grc.jpg" alt="Global Reciprocal Colleges Logo" style="width: 65px !important; height: 65px !important; max-width: 65px !important; object-fit: contain !important;">
+                            </div>
+                            <div>
+                                <h3>GLOBAL RECIPROCAL COLLEGES</h3>
+                                <p>Excel Today, Lead Tomorrow.</p>
+                            </div>
+                        </div>
+                        <div class="letterhead-right">
+                            <h4>COMPANY DEPLOYMENT REPORT</h4>
+                            <p>SUMMARY OF STUDENT INTERNSHIP DEPLOYMENT</p>
+                        </div>
+                    </div>
 
-    <td>
-        <span class="status processing">Processing</span>
-    </td>
+                    <div class="report-meta">
+                        <div class="meta-col">
+                            <p><strong>School Year:</strong> <span class="report-school-year">2026 &ndash; 2027</span></p>
+                            <p><strong>Semester:</strong> <span class="report-semester">1st Semester</span></p>
+                            <p><strong>Generated On:</strong> <span class="report-generated-on">&mdash;</span></p>
+                        </div>
+                        <div class="meta-col">
+                            <p><strong>Coordinator:</strong> <span class="report-coordinator">OJT Coordinator</span></p>
+                            <p><strong>Section:</strong> <span class="report-section-filter">All Sections</span></p>
+                            <p><strong>Company:</strong> <span class="report-company-filter">All Companies</span></p>
+                        </div>
+                    </div>
 
-    <td>
+                    <h5 class="report-section-title">1. Company Deployment Summary</h5>
 
-        <button class="action-btn view">
-            <i class="fa-solid fa-eye"></i>
-        </button>
+                    <div class="table-container report-table-print-wrap">
+                        <table class="reports-table report-data-table" id="companyTable">
+                            <thead>
+                                <tr>
+                                    <th>Company Name</th>
+                                    <th>No. of Interns</th>
+                                    <th>Completed</th>
+                                    <th>Ongoing</th>
+                                    <th>At Risk</th>
+                                    <th>Avg. Progress</th>
+                                </tr>
+                            </thead>
+                            <tbody id="companyTableBody"></tbody>
+                        </table>
+                    </div>
 
-        <button class="action-btn download">
-            <i class="fa-solid fa-download"></i>
-        </button>
+                    <div class="report-signature">
+                        <div></div>
+                        <div class="signature-block">
+                            <p class="signature-label">Prepared and Verified by:</p>
+                            <p class="signature-name report-signature-name">OJT Coordinator</p>
+                            <p class="signature-role">OJT Coordinator</p>
+                            <p class="signature-org">Global Reciprocal Colleges</p>
+                        </div>
+                    </div>
 
-        <button class="action-btn generate">
-            <i class="fa-solid fa-file-circle-plus"></i>
-        </button>
+                </div>
 
-    </td>
-
-</tr>
-
-<tr>
-
-    <td>AI Skill Gap Report</td>
-    <td>Skill</td>
-    <td>August 03, 2026</td>
-
-    <td>
-        <span class="status ready">Ready</span>
-    </td>
-
-    <td>
-
-        <button class="action-btn view">
-            <i class="fa-solid fa-eye"></i>
-        </button>
-
-        <button class="action-btn download">
-            <i class="fa-solid fa-download"></i>
-        </button>
-
-        <button class="action-btn generate">
-            <i class="fa-solid fa-file-circle-plus"></i>
-        </button>
-
-    </td>
-
-</tr>
-
-<tr>
-
-    <td>Company Deployment Report</td>
-    <td>Company</td>
-    <td>August 03, 2026</td>
-
-    <td>
-        <span class="status ready">Ready</span>
-    </td>
-
-    <td>
-
-        <button class="action-btn view">
-            <i class="fa-solid fa-eye"></i>
-        </button>
-
-        <button class="action-btn download">
-            <i class="fa-solid fa-download"></i>
-        </button>
-
-        <button class="action-btn generate">
-            <i class="fa-solid fa-file-circle-plus"></i>
-        </button>
-
-    </td>
-
-</tr>
-
-</tbody>
-
-</table>
-
-</div>
-
-</section>
-
-<!-- REPORT STATISTICS -->
-
-<section class="reports-section">
-
-    <div class="section-header">
-        <h3>Report Statistics</h3>
-    </div>
-
-    <div class="statistics-grid">
-
-        <div class="stat-card">
-
-            <i class="fa-solid fa-chart-column"></i>
-
-            <h3>125</h3>
-
-            <p>Total Reports Generated</p>
+            </div>
 
         </div>
 
-        <div class="stat-card">
-
-            <i class="fa-solid fa-file-export"></i>
-
-            <h3>94</h3>
-
-            <p>Total Downloads</p>
-
-        </div>
-
-        <div class="stat-card">
-
-            <i class="fa-solid fa-star"></i>
-
-            <h3>Attendance</h3>
-
-            <p>Most Generated Report</p>
-
-        </div>
-
-        <div class="stat-card">
-
-            <i class="fa-solid fa-circle-check"></i>
-
-            <h3>98%</h3>
-
-            <p>Generation Success Rate</p>
-
-        </div>
-
-    </div>
-
-</section>
-
-<!-- EXPORT CENTER -->
-
-<section class="reports-section">
-
-    <div class="section-header">
-        <h3>Export Center</h3>
-    </div>
-
-    <div class="export-grid">
-
-        <button class="export-btn pdf">
-
-            <i class="fa-solid fa-file-pdf"></i>
-
-            Export PDF
-
-        </button>
-
-        <button class="export-btn excel">
-
-            <i class="fa-solid fa-file-excel"></i>
-
-            Export Excel
-
-        </button>
-
-        <button class="export-btn print">
-
-            <i class="fa-solid fa-print"></i>
-
-            Print Reports
-
-        </button>
-
-        <button class="export-btn all">
-
-            <i class="fa-solid fa-download"></i>
-
-            Export All
-
-        </button>
-
-    </div>
-
-</section>
-
-</div>
-
-</main>
+    </main>
 
 </div>
 
 <script src="../sidebar/sidebar-web.js"></script>
-<script src="reports.js"></script>
+<script type="module" src="../header/header.js"></script>
+<script type="module" src="reports.js"></script>
 
 </body>
 </html>

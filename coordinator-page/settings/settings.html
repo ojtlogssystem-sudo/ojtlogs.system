@@ -6,10 +6,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Settings | OJT-LOGS</title>
+    <title>Account Settings | OJT-LOGS</title>
 
     <!-- Shared Layout -->
     <link rel="stylesheet" href="../sidebar/sidebar-web.css">
+    <!-- Shared Header -->
+    <link rel="stylesheet" href="../header/header.css">
     <!-- Page CSS -->
     <link rel="stylesheet" href="settings.css">
 
@@ -34,67 +36,30 @@
 
 <main class="main">
 
-<header>
-
-    <div>
-        <h2>Settings</h2>
-        <p>Manage your profile information and account security.</p>
-    </div>
-
-    <div class="top-right">
-
-        <div class="notification">
-
-            <i class="fa-regular fa-bell"></i>
-            <span class="badge">3</span>
-
-        </div>
-
-        <div class="profile">
-
-            <div class="avatar" id="profileAvatar">
-                JD
-            </div>
-
-            <div class="profile-info">
-
-                <h4 id="profileName">
-                    John Doe
-                </h4>
-
-                <p>OJT Coordinator</p>
-
-            </div>
-
-            <i class="fa-solid fa-chevron-down"></i>
-
-        </div>
-
-    </div>
-
-</header>
+<!-- HEADER (shared: ../header/header.js + header.html)
+     Walang data-school-year dito - sa Reports page lang ang School Year. -->
+<header
+    id="header-container"
+    data-page-title="Account Settings"
+    data-page-subtitle="Manage your profile, sign-in details, and password."
+></header>
 
 <!-- ===================== SETTINGS ===================== -->
 
 <section class="settings-page">
 
-    <!-- PROFILE CARD -->
+    <!-- ============ PROFILE CARD ============ -->
 
     <div class="settings-card">
 
         <div class="card-header">
-
             <div>
-
                 <h3>
                     <i class="fa-solid fa-user"></i>
-                    Profile Information
+                    Profile information
                 </h3>
-
-                <p>Update your personal information.</p>
-
+                <p>This is what students and admins see about you.</p>
             </div>
-
         </div>
 
         <div class="profile-section">
@@ -104,21 +69,14 @@
             <div class="profile-photo">
 
                 <img src="../images/profile.png"
-                    id="previewImage"
-                    alt="Profile">
+                     id="previewImage"
+                     data-changed="false"
+                     alt="Profile photo">
 
                 <label class="upload-btn">
-
-                    <input
-                        type="file"
-                        id="imageUpload"
-                        accept="image/*"
-                        hidden>
-
+                    <input type="file" id="imageUpload" accept="image/*" hidden>
                     <i class="fa-solid fa-camera"></i>
-
-                    Change Photo
-
+                    Change photo
                 </label>
 
             </div>
@@ -128,70 +86,42 @@
             <div class="profile-form">
 
                 <div class="form-group">
-
-                    <label>
-                        Full Name
-                    </label>
-
-                    <input
-                        type="text"
-                        id="fullName"
-                        value="John Doe">
-
+                    <label for="fullName">Full name</label>
+                    <input type="text" id="fullName" placeholder="Your full name">
                 </div>
 
                 <div class="form-group">
-
-                    <label>
-                        Email Address
-                    </label>
-
-                    <input
-                        type="email"
-                        id="email"
-                        value="coordinator@grc.edu.ph">
-
+                    <label for="email">Sign-in email</label>
+                    <input type="email" id="email" readonly>
+                    <small class="field-hint">
+                        Change this in Account settings below.
+                    </small>
                 </div>
 
                 <div class="form-row">
 
                     <div class="form-group">
-
-                        <label>
-                            Phone Number
-                        </label>
-
-                        <input
-                            type="text"
-                            id="phone"
-                            value="+63 912 345 6789">
-
+                        <label for="phone">Phone number</label>
+                        <input type="text" id="phone" placeholder="+63 912 345 6789">
                     </div>
 
                     <div class="form-group">
-
-                        <label>
-                            Position
-                        </label>
-
-                        <input
-                            type="text"
-                            value="OJT Coordinator"
-                            readonly>
-
+                        <label for="position">Role</label>
+                        <input type="text" id="position" readonly>
                     </div>
 
                 </div>
-                                <div class="form-actions">
+
+                <div class="form-actions">
 
                     <button type="button" class="btn btn-secondary" id="cancelProfile">
                         <i class="fa-solid fa-rotate-left"></i>
-                        Cancel
+                        Discard
                     </button>
 
                     <button type="button" class="btn btn-primary" id="saveProfile">
                         <i class="fa-solid fa-floppy-disk"></i>
-                        Save Changes
+                        Save changes
                     </button>
 
                 </div>
@@ -202,45 +132,180 @@
 
     </div>
 
-    <!-- CHANGE PASSWORD -->
+    <!-- ============ ACCOUNT SETTINGS ============ -->
 
     <div class="settings-card">
 
         <div class="card-header">
-
             <div>
-
                 <h3>
-                    <i class="fa-solid fa-key"></i>
-                    Change Password
+                    <i class="fa-solid fa-id-badge"></i>
+                    Account settings
                 </h3>
+                <p>Your sign-in details and session information.</p>
+            </div>
+        </div>
 
-                <p>Keep your account secure by using a strong password.</p>
+        <div class="setting-list">
+
+            <!-- EMAIL -->
+
+            <div class="setting-row">
+
+                <div class="setting-text">
+                    <h4>Email address</h4>
+                    <p>
+                        <span id="accountEmail">—</span>
+                        <span class="status-pill" id="verifiedBadge"></span>
+                    </p>
+                </div>
+
+                <div class="setting-action">
+
+                    <button type="button" class="btn btn-ghost" id="resendVerification">
+                        <i class="fa-solid fa-paper-plane"></i>
+                        Resend verification
+                    </button>
+
+                    <button type="button" class="btn btn-secondary" id="changeEmailBtn">
+                        <i class="fa-solid fa-pen"></i>
+                        Change email
+                    </button>
+
+                </div>
 
             </div>
 
+            <!-- EMAIL CHANGE FORM -->
+
+            <div class="inline-panel" id="emailChangeBox">
+
+                <div class="form-row">
+
+                    <div class="form-group">
+                        <label for="newEmail">New email address</label>
+                        <input type="email" id="newEmail" placeholder="name@grc.edu.ph">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="emailPassword">Current password</label>
+                        <input type="password" id="emailPassword" placeholder="Confirm it's you">
+                    </div>
+
+                </div>
+
+                <small class="field-hint">
+                    We send a confirmation link to the new address. The change
+                    takes effect once you open that link.
+                </small>
+
+                <div class="form-actions">
+
+                    <button type="button" class="btn btn-secondary" id="cancelEmailChange">
+                        Cancel
+                    </button>
+
+                    <button type="button" class="btn btn-primary" id="confirmEmailChange">
+                        <i class="fa-solid fa-envelope-circle-check"></i>
+                        Send confirmation
+                    </button>
+
+                </div>
+
+            </div>
+
+            <!-- PASSWORD RESET -->
+
+            <div class="setting-row">
+
+                <div class="setting-text">
+                    <h4>Password reset link</h4>
+                    <p>Email yourself a link if you'd rather reset than type your current password.</p>
+                </div>
+
+                <div class="setting-action">
+                    <button type="button" class="btn btn-secondary" id="sendResetLink">
+                        <i class="fa-solid fa-link"></i>
+                        Send reset link
+                    </button>
+                </div>
+
+            </div>
+
+            <!-- SESSION INFO -->
+
+            <div class="setting-row">
+
+                <div class="setting-text">
+                    <h4>Session</h4>
+                    <p>
+                        Account created <strong id="accountCreated">—</strong> ·
+                        Last sign-in <strong id="lastSignIn">—</strong>
+                    </p>
+                    <p class="uid-line">User ID: <code id="accountUid">—</code></p>
+                </div>
+
+                <div class="setting-action">
+                    <button type="button" class="btn btn-secondary" id="signOutBtn">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                        Sign out
+                    </button>
+                </div>
+
+            </div>
+
+            <!-- DANGER ZONE -->
+
+            <div class="setting-row danger-row">
+
+                <div class="setting-text">
+                    <h4>Deactivate account</h4>
+                    <p>
+                        Signs you out and blocks sign-in until an administrator
+                        restores access. Your OJT records are kept.
+                    </p>
+                </div>
+
+                <div class="setting-action">
+                    <button type="button" class="btn btn-danger" id="deactivateAccount">
+                        <i class="fa-solid fa-user-slash"></i>
+                        Deactivate
+                    </button>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ============ CHANGE PASSWORD ============ -->
+
+    <div class="settings-card">
+
+        <div class="card-header">
+            <div>
+                <h3>
+                    <i class="fa-solid fa-key"></i>
+                    Change password
+                </h3>
+                <p>Use at least 8 characters with a mix of letters and numbers.</p>
+            </div>
         </div>
 
         <div class="password-form">
 
             <div class="form-group">
 
-                <label>Current Password</label>
+                <label for="currentPassword">Current password</label>
 
                 <div class="password-box">
 
-                    <input
-                        type="password"
-                        id="currentPassword"
-                        placeholder="Enter current password">
+                    <input type="password" id="currentPassword"
+                           placeholder="Enter current password">
 
-                    <button
-                        type="button"
-                        class="toggle-password"
-                        data-target="currentPassword">
-
+                    <button type="button" class="toggle-password" data-target="currentPassword">
                         <i class="fa-solid fa-eye"></i>
-
                     </button>
 
                 </div>
@@ -249,22 +314,15 @@
 
             <div class="form-group">
 
-                <label>New Password</label>
+                <label for="newPassword">New password</label>
 
                 <div class="password-box">
 
-                    <input
-                        type="password"
-                        id="newPassword"
-                        placeholder="Enter new password">
+                    <input type="password" id="newPassword"
+                           placeholder="Enter new password">
 
-                    <button
-                        type="button"
-                        class="toggle-password"
-                        data-target="newPassword">
-
+                    <button type="button" class="toggle-password" data-target="newPassword">
                         <i class="fa-solid fa-eye"></i>
-
                     </button>
 
                 </div>
@@ -272,14 +330,10 @@
                 <div class="password-strength">
 
                     <div class="strength-bar">
-
                         <div class="strength-fill" id="strengthFill"></div>
-
                     </div>
 
-                    <small id="strengthText">
-                        Password Strength
-                    </small>
+                    <small id="strengthText">Password strength</small>
 
                 </div>
 
@@ -287,22 +341,15 @@
 
             <div class="form-group">
 
-                <label>Confirm Password</label>
+                <label for="confirmPassword">Confirm new password</label>
 
                 <div class="password-box">
 
-                    <input
-                        type="password"
-                        id="confirmPassword"
-                        placeholder="Confirm new password">
+                    <input type="password" id="confirmPassword"
+                           placeholder="Re-enter new password">
 
-                    <button
-                        type="button"
-                        class="toggle-password"
-                        data-target="confirmPassword">
-
+                    <button type="button" class="toggle-password" data-target="confirmPassword">
                         <i class="fa-solid fa-eye"></i>
-
                     </button>
 
                 </div>
@@ -313,15 +360,9 @@
 
             <div class="form-actions">
 
-                <button
-                    type="button"
-                    class="btn btn-primary"
-                    id="updatePassword">
-
+                <button type="button" class="btn btn-primary" id="updatePassword">
                     <i class="fa-solid fa-shield-halved"></i>
-
-                    Update Password
-
+                    Update password
                 </button>
 
             </div>
@@ -336,20 +377,16 @@
 
 </div>
 
-<!-- SUCCESS TOAST -->
+<!-- TOAST -->
 
 <div class="toast" id="toast">
-
-    <i class="fa-solid fa-circle-check"></i>
-
-    <span id="toastMessage">
-        Changes saved successfully.
-    </span>
-
+    <i class="fa-solid fa-circle-check" id="toastIcon"></i>
+    <span id="toastMessage">Changes saved.</span>
 </div>
 
 <script src="../sidebar/sidebar-web.js"></script>
-<script src="settings.js"></script>
+<script type="module" src="../header/header.js"></script>
+<script type="module" src="settings.js"></script>
 
 </body>
-</html> 
+</html>

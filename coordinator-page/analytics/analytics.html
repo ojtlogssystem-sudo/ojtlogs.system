@@ -7,10 +7,13 @@
     <title>Analytics | OJT-LOGS</title>
 
     <link rel="stylesheet" href="../sidebar/sidebar-web.css">
+    <link rel="stylesheet" href="../header/header.css">
     <link rel="stylesheet" href="analytics.css">
 
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 </head>
 
 <body>
@@ -23,108 +26,15 @@
     <!-- MAIN CONTENT -->
     <main class="main">
 
-        <!-- HEADER -->
-        <header>
-            <div>
-                <h2>Analytics</h2>
-                <p>Monitor student performance and internship progress.</p>
-            </div>
-
-            <div class="top-right">
-                <div class="notification">
-                    <i class="fa-regular fa-bell"></i>
-                    <span class="badge">3</span>
-                </div>
-
-                <div class="profile">
-                    <div class="avatar" id="profileAvatar">MS</div>
-                    <div class="profile-info">
-                        <h4 id="profileName">Coordinator</h4>
-                        <p id="profileRole">OJT Coordinator</p>
-                    </div>
-                    <i class="fa-solid fa-chevron-down"></i>
-                </div>
-            </div>
-        </header>
+        <!-- HEADER (shared: ../header/header.js + header.html) -->
+        <header
+            id="header-container"
+            data-page-title="Analytics"
+            data-page-subtitle="Monitor student performance and internship progress."
+        ></header>
 
         <!-- ANALYTICS CONTENT -->
         <div class="analytics-content">
-
-            <!-- ==========================================
-                 SUMMARY CARDS
-            =========================================== -->
-            <div class="analytics-summary">
-
-                <!-- TOTAL STUDENTS -->
-                <div class="summary-card">
-                    <div class="summary-icon blue">
-                        <i class="fa-solid fa-user-graduate"></i>
-                    </div>
-                    <div class="stat-content">
-                        <p class="title">Total Student Interns</p>
-                        <h3>0</h3>
-                        <div class="stat-footer">
-                            <span class="positive">
-                                <i class="fa-solid fa-user-check"></i> Active
-                            </span>
-                            <small>Currently monitored</small>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- AVERAGE PROGRESS -->
-                <div class="summary-card">
-                    <div class="summary-icon green">
-                        <i class="fa-solid fa-chart-line"></i>
-                    </div>
-                    <div class="stat-content">
-                        <p class="title">Average Progress</p>
-                        <h3>0%</h3>
-                        <div class="stat-footer">
-                            <span class="positive">
-                                <i class="fa-solid fa-arrow-up"></i> Overall
-                            </span>
-                            <small>Internship progress</small>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- AT RISK -->
-                <div class="summary-card">
-                    <div class="summary-icon red">
-                        <i class="fa-solid fa-triangle-exclamation"></i>
-                    </div>
-                    <div class="stat-content">
-                        <p class="title">At-Risk Students</p>
-                        <h3>0</h3>
-                        <div class="stat-footer">
-                            <span class="negative">
-                                <i class="fa-solid fa-circle-exclamation"></i> Needs attention
-                            </span>
-                            <small>AI prediction</small>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ON TRACK -->
-                <div class="summary-card">
-                    <div class="summary-icon orange">
-                        <i class="fa-solid fa-circle-check"></i>
-                    </div>
-                    <div class="stat-content">
-                        <p class="title">On-Track Students</p>
-                        <h3>0</h3>
-                        <div class="stat-footer">
-                            <span class="positive">
-                                <i class="fa-solid fa-check"></i> On track
-                            </span>
-                            <small>Current status</small>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-
 
             <!-- ==========================================
                  STUDENT PERFORMANCE TABLE
@@ -137,24 +47,21 @@
                     </div>
 
                     <div class="table-header-right">
-                        <!-- SEARCH -->
                         <div class="search-box">
                             <i class="fa-solid fa-search"></i>
                             <input type="text" id="searchStudent" placeholder="Search student...">
                         </div>
 
-                        <!-- SECTION FILTER -->
+                        <!-- Sections are filled in by analytics.js from the student records -->
                         <select id="sectionFilter">
                             <option value="all">All Sections</option>
-                            <option value="3A">BSIT 3A</option>
-                            <option value="3B">BSIT 3B</option>
                         </select>
 
-                        <!-- STATUS FILTER -->
                         <select id="progressFilter">
                             <option value="all">All Status</option>
                             <option value="completed">Completed</option>
-                            <option value="ongoing">On Track</option>
+                            <option value="ontrack">On Track</option>
+                            <option value="monitoring">Needs Monitoring</option>
                             <option value="atrisk">At Risk</option>
                         </select>
                     </div>
@@ -170,13 +77,14 @@
                                 <th>Company</th>
                                 <th>Progress</th>
                                 <th>Hours</th>
+                                <th>Absences</th>
                                 <th>AI Status</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
                         <tbody id="studentTable">
                             <tr>
-                                <td colspan="8" style="text-align: center; color: #777; padding: 30px;">
+                                <td colspan="9" style="text-align: center; color: #777; padding: 30px;">
                                     Loading student records from database...
                                 </td>
                             </tr>
@@ -184,7 +92,6 @@
                     </table>
                 </div>
 
-                <!-- PAGINATION -->
                 <div class="table-footer">
                     <div class="pagination-info" id="paginationInfo">Showing 0 to 0 students</div>
                     <div class="pagination-controls">
@@ -205,7 +112,6 @@
                 </div>
             </section>
 
-
             <!-- ==========================================
                  AI AT-RISK ANALYSIS
             =========================================== -->
@@ -218,7 +124,7 @@
                 </div>
 
                 <div class="ai-risk-grid">
-                    <div class="ai-card risk">
+                    <div class="ai-card risk" id="riskCard" role="button" tabindex="0" aria-label="Show At Risk students">
                         <div class="ai-card-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
                         <div>
                             <p>At Risk</p>
@@ -227,7 +133,7 @@
                         </div>
                     </div>
 
-                    <div class="ai-card monitoring">
+                    <div class="ai-card monitoring" id="monitoringCard" role="button" tabindex="0" aria-label="Show students needing monitoring">
                         <div class="ai-card-icon"><i class="fa-solid fa-eye"></i></div>
                         <div>
                             <p>Needs Monitoring</p>
@@ -236,7 +142,7 @@
                         </div>
                     </div>
 
-                    <div class="ai-card safe">
+                    <div class="ai-card safe" id="onTrackCard" role="button" tabindex="0" aria-label="Show On Track students">
                         <div class="ai-card-icon"><i class="fa-solid fa-circle-check"></i></div>
                         <div>
                             <p>On Track</p>
@@ -246,12 +152,43 @@
                     </div>
                 </div>
 
-                <!-- AT RISK LIST -->
-                <div class="risk-list">
-                    <div class="subsection-title">
-                        <h4>Students Requiring Attention</h4>
+                <!-- ==========================================
+                     AI STATUS CHARTS
+                     (Graduated by Batch Chart at Pie Chart)
+                =========================================== -->
+                <div class="ai-risk-charts-grid">
+
+                    <div class="chart-card">
+                        <h4 class="chart-card-title">Graduated Students by Batch</h4>
+                        <p class="chart-card-desc">
+                            Registered students per batch compared with those who completed the
+                            required OJT hours. The batch is the year at the start of the Student ID
+                            (e.g. 2023-01-22112 is batch 2023). Only batches with registered students are shown.
+                        </p>
+                        <div class="chart-canvas-wrapper">
+                            <canvas id="graduatesByBatchChart"></canvas>
+                            <p class="chart-empty" id="graduatesByBatchEmpty">Loading batch data...</p>
+                        </div>
                     </div>
 
+                    <div class="chart-card">
+                        <h4 class="chart-card-title">Student Status Distribution</h4>
+                        <p class="chart-card-desc">
+                            Share of all registered students by AI status: At Risk (behind on hours
+                            or too many absences), Needs Monitoring, and On Track (including completed).
+                        </p>
+                        <div class="chart-canvas-wrapper">
+                            <canvas id="riskStatusPieChart"></canvas>
+                            <p class="chart-empty" id="riskStatusPieEmpty">Loading student data...</p>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="risk-list">
+                    <div class="subsection-title">
+                        <h4 id="studentStatusListTitle">Students Requiring Attention</h4>
+                    </div>
                     <div id="riskStudentsContainer">
                         <div style="padding: 20px; text-align: center; color: #777;">
                             No students currently flagged as At Risk.
@@ -259,7 +196,6 @@
                     </div>
                 </div>
             </section>
-
 
             <!-- ==========================================
                  COMPLETION FORECAST
@@ -294,15 +230,14 @@
                 </div>
             </section>
 
-
             <!-- ==========================================
-                COMPANY SKILL EXPOSURE (NAKABALIK NA)
+                COMPANY SKILL EXPOSURE
             ========================================== -->
             <section class="analytics-section">
                 <div class="section-header">
                     <div>
                         <h3>Company Skill Exposure</h3>
-                        <p class="section-description">View the skills and tasks commonly handled by interns in each partner company.</p>
+                        <p class="section-description">View partner companies, primary skills, and common tasks loaded from Firebase.</p>
                     </div>
                 </div>
 
@@ -317,77 +252,10 @@
                                 <th>Action</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="companySkillTableBody">
                             <tr>
-                                <td><strong>ABC Corporation</strong></td>
-                                <td><span class="skill-tag networking">Networking</span></td>
-                                <td>
-                                    <div class="company-progress">
-                                        <div class="company-progress-bar">
-                                            <div class="company-progress-fill networking-fill" style="width: 68%;"></div>
-                                        </div>
-                                        <span>68%</span>
-                                    </div>
-                                </td>
-                                <td>Network configuration, LAN setup, troubleshooting</td>
-                                <td>
-                                    <button class="company-view-btn" onclick="viewCompanySkill('ABC Corporation')">
-                                        <i class="fa-solid fa-eye"></i> View
-                                    </button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><strong>XYZ Solutions</strong></td>
-                                <td><span class="skill-tag software">Software</span></td>
-                                <td>
-                                    <div class="company-progress">
-                                        <div class="company-progress-bar">
-                                            <div class="company-progress-fill software-fill" style="width: 74%;"></div>
-                                        </div>
-                                        <span>74%</span>
-                                    </div>
-                                </td>
-                                <td>Web development, software testing, documentation</td>
-                                <td>
-                                    <button class="company-view-btn" onclick="viewCompanySkill('XYZ Solutions')">
-                                        <i class="fa-solid fa-eye"></i> View
-                                    </button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><strong>Tech Solutions</strong></td>
-                                <td><span class="skill-tag hardware">Hardware</span></td>
-                                <td>
-                                    <div class="company-progress">
-                                        <div class="company-progress-bar">
-                                            <div class="company-progress-fill hardware-fill" style="width: 61%;"></div>
-                                        </div>
-                                        <span>61%</span>
-                                    </div>
-                                </td>
-                                <td>PC setup, hardware troubleshooting, maintenance</td>
-                                <td>
-                                    <button class="company-view-btn" onclick="viewCompanySkill('Tech Solutions')">
-                                        <i class="fa-solid fa-eye"></i> View
-                                    </button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><strong>Digital Systems</strong></td>
-                                <td><span class="skill-tag database">Database</span></td>
-                                <td>
-                                    <div class="company-progress">
-                                        <div class="company-progress-bar">
-                                            <div class="company-progress-fill database-fill" style="width: 55%;"></div>
-                                        </div>
-                                        <span>55%</span>
-                                    </div>
-                                </td>
-                                <td>Database encoding, SQL queries, data management</td>
-                                <td>
-                                    <button class="company-view-btn" onclick="viewCompanySkill('Digital Systems')">
-                                        <i class="fa-solid fa-eye"></i> View
-                                    </button>
+                                <td colspan="5" style="text-align: center; color: #777; padding: 30px;">
+                                    Loading company skill data from Firebase...
                                 </td>
                             </tr>
                         </tbody>
@@ -395,30 +263,22 @@
                 </div>
             </section>
 
-
             <!-- ==========================================
-                COMPANY RECOMMENDATION (AI-DRIVEN)
-            ========================================== -->
+                COMPANY RECOMMENDATION (AI-DRIVEN) - UPDATED
+            =========================================== -->
             <section class="analytics-section">
                 <div class="section-header">
                     <div>
                         <h3>Company Recommendation</h3>
-                        <p class="section-description">Find partner companies that match a student's preferred skill development area.</p>
+                        <p class="section-description">Find partner companies that match your preferred skill development area.</p>
                     </div>
                 </div>
 
-                <div class="recommendation-filter">
-                    <div class="recommendation-field">
-                        <label for="recommendStudent">Student</label>
-                        <select id="recommendStudent">
-                            <option value="">Select Student</option>
-                        </select>
-                    </div>
-
-                    <div class="recommendation-field">
-                        <label for="skillFocus">Skill Focus</label>
-                        <select id="skillFocus">
-                            <option value="">Select Skill</option>
+                <div class="recommendation-filter" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+                    <div class="recommendation-field" style="flex: 1; min-width: 250px;">
+                        <label for="skillFocus" style="display: block; margin-bottom: 5px; font-weight: 500;">Skill Focus</label>
+                        <select id="skillFocus" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ccc;">
+                            <option value="">Select Skill Focus</option>
                             <option value="networking">Networking</option>
                             <option value="software">Software Development</option>
                             <option value="hardware">Hardware</option>
@@ -426,20 +286,14 @@
                         </select>
                     </div>
 
-                    <button class="recommend-btn" id="recommendCompanyBtn">
+                    <button class="recommend-btn" id="recommendCompanyBtn" style="padding: 10px 20px; background: rgb(135, 44, 44); color: #fff; border: none; border-radius: 6px; cursor: pointer;">
                         <i class="fa-solid fa-wand-magic-sparkles"></i> Find Recommended Companies
                     </button>
                 </div>
 
-                <div class="recommendation-results" id="recommendationResults">
-                    <div class="recommendation-company">
-                        <div class="recommendation-company-info">
-                            <div class="company-icon"><i class="fa-solid fa-building"></i></div>
-                            <div>
-                                <h4>ABC Corporation</h4>
-                                <p>Strong Networking exposure</p>
-                            </div>
-                        </div>
+                <div class="recommendation-results" id="recommendationResults" style="margin-top: 20px;">
+                    <div style="color: #777; text-align: center; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+                        Select a skill focus and click "Find Recommended Companies" to view AI suggestions.
                     </div>
                 </div>
             </section>
@@ -448,7 +302,59 @@
     </main>
 </div>
 
+<!-- COMPANY SKILL DRILL-DOWN MODAL -->
+<div id="companyModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
+    <div class="modal-content" style="background-color: #fff; margin: 10% auto; padding: 20px; border-radius: 8px; width: 70%; max-height: 80vh; overflow-y: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">
+            <h3 id="modalCompanyName" style="margin: 0; color: #333;">Company Details</h3>
+            <button onclick="closeCompanyModal()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #777;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <p id="modalCompanySubtitle" style="color: #666; font-size: 14px; margin-bottom: 15px;"></p>
+        
+        <div class="table-container">
+            <table class="students-table" style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #f8f9fa; text-align: left;">
+                        <th style="padding: 10px;">Student Name</th>
+                        <th style="padding: 10px;">Course & Section</th>
+                        <th style="padding: 10px;">Submitted Tasks / Attendance</th>
+                        <th style="padding: 10px;">AI Status Match</th>
+                    </tr>
+                </thead>
+                <tbody id="modalStudentTableBody">
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: #777; padding: 20px;">No students loaded.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- STUDENT ATTENDANCE MODAL (Present/Absent by date) -->
+<div id="attendanceModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
+    <div class="modal-content" style="background-color: #fff; margin: 6% auto; padding: 20px; border-radius: 8px; width: 70%; max-width: 800px; max-height: 82vh; overflow-y: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">
+            <div>
+                <h3 id="attendanceModalName" style="margin: 0; color: #333;">Student Attendance</h3>
+                <p id="attendanceModalSubtitle" style="color: #666; font-size: 13px; margin: 4px 0 0;"></p>
+            </div>
+            <button onclick="closeAttendanceModal()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #777;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div id="attendanceModalLoading" style="text-align:center; color:#777; padding:20px;">Loading attendance records...</div>
+
+        <div id="attendanceSummaryRow" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:15px;"></div>
+
+        <div class="chart-canvas-wrapper" style="position:relative; height:280px;">
+            <canvas id="attendanceLineChart"></canvas>
+            <p class="chart-empty" id="attendanceChartEmpty" style="display:none;">No attendance records yet for this student.</p>
+        </div>
+    </div>
+</div>
+
 <script src="../sidebar/sidebar-web.js"></script>
+<script type="module" src="../header/header.js"></script>
 <script type="module" src="analytics.js"></script>
 
 </body>

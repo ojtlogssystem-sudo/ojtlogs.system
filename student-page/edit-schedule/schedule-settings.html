@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schedule Settings</title>
+
+    <link rel="stylesheet" href="../settings/settings.css">
+    <!-- Ginagamit din natin yung profile.css para magamit yung existing
+         na schedule/modality/day-btn/switch styles (Step 2 sa profile) -->
+    <link rel="stylesheet" href="../profile/profile.css">
+
+    <link rel="stylesheet" href="../templated/header.css">
+    <link rel="stylesheet" href="../templated/sidebar.css">
+
+    <!-- Huling na-load: dito na natin ino-override yung .main max-width
+         na galing sa profile.css (mobile-only standalone page dati), para
+         bumalik sa full-width dashboard layout sa desktop. -->
+    <link rel="stylesheet" href="schedule-settings.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+
+    <!-- FAILSAFE: inline overrides mismo dito sa html (hindi na umaasa sa
+         schedule-settings.css sa case na hindi ito ma-load/na-cache).
+         (1) Tinatanggal yung .main max-width:430px na galing sa profile.css
+             para umabot sa buong lapad ng screen ang header sa desktop.
+         (2) Ginagawang proper button (may container) yung Back to Settings
+             link sa halip na plain underlined text. -->
+    <style>
+        .main {
+            max-width: none !important;
+            margin: 0 !important;
+        }
+
+        .back-link {
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            font-size: 11px !important;
+            font-weight: 600 !important;
+            color: #AB0A0A !important;
+            text-decoration: none !important;
+            margin-bottom: 8px !important;
+            padding: 8px 14px !important;
+            background: #ffffff !important;
+            border: 1px solid #f0f0f0 !important;
+            border-radius: 10px !important;
+            box-shadow: 0 4px 18px rgba(0,0,0,.04) !important;
+        }
+
+        .back-link:hover {
+            background: #fdeaea !important;
+            border-color: #AB0A0A !important;
+            text-decoration: none !important;
+        }
+
+        /* (3) Success popup pagkatapos ma-save ang schedule — parehong
+               dahilan kung bakit inilagay dito: para hindi na-aapekto ng
+               schedule-settings.css na hindi ma-load/na-cache. */
+        .success-modal-overlay {
+            display: none !important;
+            position: fixed !important;
+            inset: 0 !important;
+            background: rgba(0, 0, 0, 0.45) !important;
+            z-index: 2000 !important;
+            justify-content: center !important;
+            align-items: center !important;
+            padding: 16px !important;
+        }
+
+        .success-modal-overlay.show {
+            display: flex !important;
+        }
+
+        .success-modal {
+            background: #ffffff !important;
+            border-radius: 20px !important;
+            padding: 28px 24px !important;
+            width: 100% !important;
+            max-width: 320px !important;
+            text-align: center !important;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18) !important;
+            animation: popIn 0.25s ease-out !important;
+        }
+
+        .success-modal-icon {
+            width: 56px !important;
+            height: 56px !important;
+            margin: 0 auto 16px !important;
+            border-radius: 50% !important;
+            background: #e6f7ee !important;
+            color: #1e7e45 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-size: 22px !important;
+        }
+
+        .success-modal h3 {
+            font-size: 15px !important;
+            font-weight: 700 !important;
+            color: #1a1a1a !important;
+            margin-bottom: 6px !important;
+        }
+
+        .success-modal p {
+            font-size: 12px !important;
+            color: #707070 !important;
+            line-height: 1.5 !important;
+        }
+
+        @keyframes popIn {
+            from { opacity: 0; transform: scale(0.92); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        @media (max-width: 480px) {
+            .success-modal-overlay {
+                align-items: flex-end !important;
+                padding: 0 !important;
+            }
+
+            .success-modal {
+                max-width: 100% !important;
+                width: 100% !important;
+                border-radius: 20px 20px 0 0 !important;
+                padding: 24px 20px 32px !important;
+                animation: slideUp 0.28s ease-out !important;
+            }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard">
+        <div id="sidebar-container"></div>
+
+        <main class="main">
+            <header id="header-container"></header>
+
+            <section class="settings-container">
+
+                <!-- Page Header -->
+                <div class="settings-page-header">
+                    <a href="../settings/settings.html" class="back-link">
+                        <i class="fa-solid fa-arrow-left"></i> Back to Settings
+                    </a>
+                    <h2>Schedule</h2>
+                    <p>Update your internship days, work modality, and work hours</p>
+                </div>
+
+                <!-- SCHEDULE CARD (gaya ng step2Content sa profile.html) -->
+                <div class="settings-card">
+
+                    <div class="card-title">
+                        <span class="vertical-line red"></span>
+                        <h2>Internship Schedule</h2>
+                    </div>
+
+                    <div id="alertMessageSchedule" class="alert-banner" style="display: none;"></div>
+                    <div id="successMessageSchedule" class="alert-banner success-banner" style="display: none;"></div>
+
+                    <div class="schedule-section">
+
+                        <div class="schedule-label">
+                            <i class="fa-solid fa-house-laptop"></i>
+                            <span>Work Modality</span>
+                        </div>
+
+                        <div class="modality-options">
+
+                            <label class="modality-option">
+                                <input
+                                    type="radio"
+                                    name="workModality"
+                                    id="onSiteModality"
+                                    value="On-site"
+                                    checked
+                                >
+
+                                <span class="modality-card">
+                                    <span class="modality-icon">
+                                        <i class="fa-solid fa-building"></i>
+                                    </span>
+
+                                    <span class="modality-info">
+                                        <strong>On-site</strong>
+                                        <small>Work at the company premises</small>
+                                    </span>
+                                </span>
+                            </label>
+
+
+                            <label class="modality-option">
+                                <input
+                                    type="radio"
+                                    name="workModality"
+                                    id="wfhModality"
+                                    value="Work From Home"
+                                >
+
+                                <span class="modality-card">
+                                    <span class="modality-icon">
+                                        <i class="fa-solid fa-house"></i>
+                                    </span>
+
+                                    <span class="modality-info">
+                                        <strong>Work From Home</strong>
+                                        <small>Perform internship tasks remotely</small>
+                                    </span>
+                                </span>
+                            </label>
+
+                        </div>
+
+                        <div class="schedule-label">
+                            <i class="fa-regular fa-calendar"></i>
+                            <span>Internship Days</span>
+                        </div>
+
+                        <div class="days-grid">
+                            <button type="button" class="day-btn" data-day="Monday">Mon</button>
+                            <button type="button" class="day-btn" data-day="Tuesday">Tue</button>
+                            <button type="button" class="day-btn" data-day="Wednesday">Wed</button>
+                            <button type="button" class="day-btn" data-day="Thursday">Thu</button>
+                            <button type="button" class="day-btn" data-day="Friday">Fri</button>
+                            <button type="button" class="day-btn" data-day="Saturday">Sat</button>
+                            <button type="button" class="day-btn" data-day="Sunday">Sun</button>
+                        </div>
+
+                    </div>
+
+                    <div class="afternoon-toggle-card">
+                        <div class="session-title">
+                            <i class="fa-regular fa-sun"></i>
+                            <div>
+                                <h3>Morning Session</h3>
+                                <p id="morningStatus">Enabled</p>
+                            </div>
+                        </div>
+
+                        <label class="switch">
+                            <input type="checkbox" id="morningEnabled" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="schedule-session" id="morningSchedule">
+                        <div class="session-title">
+                            <i class="fa-regular fa-sun"></i>
+                            <div>
+                                <h3>Morning</h3>
+                                <p>Set your morning working hours</p>
+                            </div>
+                        </div>
+
+                        <div class="time-group">
+                            <label><i class="fa-regular fa-clock"></i> TIME IN</label>
+                            <input type="time" id="morningTimeIn" value="08:00">
+                        </div>
+
+                        <div class="time-group">
+                            <label><i class="fa-regular fa-clock"></i> TIME OUT</label>
+                            <input type="time" id="morningTimeOut" value="12:00">
+                        </div>
+                    </div>
+
+                    <div class="afternoon-toggle-card">
+                        <div class="session-title">
+                            <i class="fa-regular fa-sun"></i>
+                            <div>
+                                <h3>Afternoon Session</h3>
+                                <p id="afternoonStatus">Enabled</p>
+                            </div>
+                        </div>
+
+                        <label class="switch">
+                            <input type="checkbox" id="afternoonEnabled" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="schedule-session" id="afternoonSchedule">
+                        <div class="session-title">
+                            <i class="fa-solid fa-sun"></i>
+                            <div>
+                                <h3>Afternoon</h3>
+                                <p>Set your afternoon working hours</p>
+                            </div>
+                        </div>
+
+                        <div class="time-group">
+                            <label><i class="fa-regular fa-clock"></i> TIME IN</label>
+                            <input type="time" id="afternoonTimeIn" value="13:00">
+                        </div>
+
+                        <div class="time-group">
+                            <label><i class="fa-regular fa-clock"></i> TIME OUT</label>
+                            <input type="time" id="afternoonTimeOut" value="17:00">
+                        </div>
+                    </div>
+
+                    <button type="button" class="continue-btn" id="saveScheduleBtn">
+                        Save Changes
+                    </button>
+
+                </div>
+
+            </section>
+        </main>
+    </div>
+
+    <!-- SUCCESS POPUP (lalabas pagkatapos ma-save ang schedule) -->
+    <div class="success-modal-overlay" id="successModalOverlay">
+        <div class="success-modal">
+            <div class="success-modal-icon">
+                <i class="fa-solid fa-check"></i>
+            </div>
+            <h3>Schedule Updated</h3>
+            <p>Your internship schedule has been saved successfully.</p>
+        </div>
+    </div>
+
+    <script src="../templated/sidebar-loader.js"></script>
+    <script type="module" src="schedule-settings.js"></script>
+</body>
+</html>

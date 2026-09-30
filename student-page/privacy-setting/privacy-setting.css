@@ -1,0 +1,376 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+:root{
+    --primary:#AB0A0A;
+    --primary-hover:#8E0909;
+    --white:#ffffff;
+    --light:#f4f6f9;
+    --text:#333333;
+    --gray:#666666;
+}
+
+/* ========================================
+   BASE RESET (mirrors student_dashboard.css so this page matches even
+   though it's a separate stylesheet from the dashboard)
+======================================== */
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Poppins',sans-serif;
+}
+
+body{
+    background:var(--light);
+    overflow-x:hidden;
+}
+
+a{
+    text-decoration:none;
+    color:inherit;
+}
+
+ul{
+    list-style:none;
+}
+
+button{
+    border:none;
+    background:none;
+    cursor:pointer;
+}
+
+.dashboard{
+    display:flex;
+    flex-direction: column;
+    width:100%;
+    min-height:100vh;
+}
+
+.main{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    width: 100%;
+}
+
+.vertical-line.red {
+    display: inline-block;
+    width: 3px;
+    height: 16px;
+    background-color: #AB0A0A;
+    border-radius: 5px;
+    margin-right: 8px;
+}
+
+.section-title{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:14px;
+}
+
+.title-left {
+    display: flex;
+    align-items: center;
+}
+
+.title-left h3{
+    font-size:14px;
+    font-weight:600;
+    color:#222;
+}
+
+/* ========================================
+   SETTINGS PAGE LAYOUT
+======================================== */
+.settings-page{
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+    padding: 16px;
+}
+
+.settings-intro{
+    padding: 4px 4px 0;
+}
+
+.settings-intro h2{
+    font-size:19px;
+    font-weight:700;
+    color:#111827;
+    margin-bottom:4px;
+}
+
+.settings-intro p{
+    font-size:12.5px;
+    color:#6b7280;
+}
+
+.settings-card{
+    background:#fff;
+    border-radius:14px;
+    box-shadow:0 4px 12px rgba(0,0,0,.05);
+    padding: 16px;
+}
+
+/* ========================================
+   TOGGLE ROWS (visibility / notifications)
+======================================== */
+.setting-row{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding: 12px 4px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.setting-row:last-child{
+    border-bottom: none;
+    padding-bottom: 4px;
+}
+
+.setting-row:first-child{
+    padding-top: 0;
+}
+
+.setting-icon{
+    flex-shrink:0;
+    width:38px;
+    height:38px;
+    border-radius:12px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-size:15px;
+}
+
+.green-icon{ background:rgba(34,197,94,.15); color:#22c55e; }
+.blue-icon{ background:rgba(59,130,246,.15); color:#3b82f6; }
+.orange-icon{ background:rgba(249,115,22,.15); color:#f97316; }
+.purple-icon{ background:rgba(147,51,234,.15); color:#9333ea; }
+.red-icon{ background:#fde8e8; color:#ab0a0a; }
+
+.setting-text{
+    flex:1;
+    min-width:0;
+}
+
+.setting-text h4{
+    font-size:13.5px;
+    font-weight:600;
+    color:#222;
+    margin-bottom:2px;
+}
+
+.setting-text p{
+    font-size:11.5px;
+    color:#777;
+    line-height:1.4;
+}
+
+.setting-control{
+    flex-shrink:0;
+    display:flex;
+    align-items:center;
+    gap:8px;
+}
+
+/* Little "Saved" flash shown briefly after a toggle auto-saves */
+.save-flash{
+    font-size:10.5px;
+    font-weight:600;
+    color:#16a34a;
+    opacity:0;
+    transition: opacity 0.25s ease;
+    white-space:nowrap;
+}
+
+.save-flash.show{
+    opacity:1;
+}
+
+/* Toggle switch */
+.switch{
+    position:relative;
+    display:inline-block;
+    width:42px;
+    height:24px;
+    flex-shrink:0;
+}
+
+.switch input{
+    opacity:0;
+    width:0;
+    height:0;
+}
+
+.switch .slider{
+    position:absolute;
+    cursor:pointer;
+    top:0; left:0; right:0; bottom:0;
+    background-color:#e2e8f0;
+    border-radius:24px;
+    transition: background-color 0.2s ease;
+}
+
+.switch .slider::before{
+    position:absolute;
+    content:"";
+    height:18px;
+    width:18px;
+    left:3px;
+    bottom:3px;
+    background-color:#fff;
+    border-radius:50%;
+    transition: transform 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,.25);
+}
+
+.switch input:checked + .slider{
+    background-color: var(--primary);
+}
+
+.switch input:checked + .slider::before{
+    transform: translateX(18px);
+}
+
+.switch input:disabled + .slider{
+    opacity:0.5;
+    cursor:not-allowed;
+}
+
+/* ========================================
+   PASSWORD & SECURITY FORM
+======================================== */
+.password-form{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+    max-width:420px;
+}
+
+.form-field{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+}
+
+.form-field label{
+    font-size:12px;
+    font-weight:600;
+    color:#374151;
+}
+
+.password-input-wrap{
+    position:relative;
+    display:flex;
+    align-items:center;
+}
+
+.password-input-wrap input{
+    width:100%;
+    padding: 11px 40px 11px 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background:#f8fafc;
+    font-size: 13px;
+    color:#111827;
+    font-family: 'Poppins', sans-serif;
+    outline:none;
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.password-input-wrap input:focus{
+    border-color: var(--primary);
+    background:#fff;
+}
+
+.password-input-wrap .toggle-visibility{
+    position:absolute;
+    right:10px;
+    color:#9ca3af;
+    font-size:14px;
+    padding:4px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.password-input-wrap .toggle-visibility:hover{
+    color:#4b5563;
+}
+
+.password-feedback{
+    font-size:12px;
+    font-weight:500;
+    min-height:16px;
+}
+
+.password-feedback.error{ color:#dc2626; }
+.password-feedback.success{ color:#16a34a; }
+
+.update-password-btn{
+    align-self:flex-start;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding: 11px 20px;
+    background: var(--primary);
+    color:#fff;
+    border-radius: 10px;
+    font-size:13px;
+    font-weight:600;
+    font-family:'Poppins', sans-serif;
+    transition: background 0.2s ease;
+}
+
+.update-password-btn:hover{
+    background: var(--primary-hover);
+}
+
+.update-password-btn:disabled{
+    background:#f0a8a8;
+    cursor:not-allowed;
+}
+
+/* ========================================
+   MOBILE
+======================================== */
+@media (max-width: 480px) {
+    .settings-page{
+        padding: 12px;
+        gap: 12px;
+    }
+
+    .settings-card{
+        padding: 14px;
+    }
+
+    .setting-row{
+        gap: 10px;
+    }
+
+    .setting-icon{
+        width:34px;
+        height:34px;
+        font-size:13px;
+    }
+
+    .setting-text h4{
+        font-size:12.5px;
+    }
+
+    .setting-text p{
+        font-size:11px;
+    }
+
+    .save-flash{
+        display:none;
+    }
+
+    .update-password-btn{
+        align-self:stretch;
+        justify-content:center;
+    }
+}

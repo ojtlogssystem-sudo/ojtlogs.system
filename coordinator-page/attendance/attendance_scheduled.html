@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Scheduled Today | OJT-LOGS</title>
+
+    <link rel="stylesheet" href="attendance_list.css">
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+
+</head>
+
+
+<body data-type="scheduled">
+
+    <!-- PRINT-ONLY HEADER -->
+    <div class="print-header">
+        <h1>OJT-LOGS</h1>
+        <h2 id="printTitle">Scheduled Today</h2>
+        <p id="printMeta"></p>
+    </div>
+
+
+    <!-- TOP BAR -->
+    <div class="list-topbar">
+
+        <div class="list-heading">
+            <h2 id="listTitle">Scheduled Today</h2>
+            <p id="listSubtitle">Loading...</p>
+        </div>
+
+        <div class="list-actions">
+
+            <span class="list-count" id="listCount">0 students</span>
+
+            <div class="list-search">
+                <i class="fa-solid fa-search"></i>
+                <input type="text" id="listSearch" placeholder="Search student...">
+            </div>
+
+            <button type="button" class="list-btn print-btn" id="printBtn">
+                <i class="fa-solid fa-print"></i>
+                Print
+            </button>
+
+            <button type="button" class="list-btn back-btn" id="backBtn" hidden>
+                <i class="fa-solid fa-arrow-left"></i>
+                Back
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- TABLE -->
+    <div class="list-card">
+
+        <div class="list-table-wrap">
+
+            <table class="list-table">
+
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Student Name</th>
+                        <th>Course</th>
+                        <th>Section</th>
+                        <th>Company</th>
+                        <th>Schedule</th>
+                        <th>Time In</th>
+                        <th>Time Out</th>
+                        <th>Total Hours</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+
+                <tbody id="listBody">
+                    <tr>
+                        <td colspan="10" class="empty-cell">Loading...</td>
+                    </tr>
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+
+    <script type="module" src="attendance_list.js"></script>
+
+</body>
+
+</html>

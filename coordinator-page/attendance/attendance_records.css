@@ -355,7 +355,7 @@
 ======================================== */
 .status {
     display: inline-block;
-    padding: 4px 11px;
+    padding: 3px 11px;
     border-radius: 14px;
     font-size: 11px;
     font-weight: 600;
@@ -389,102 +389,149 @@
 }
 
 .action-btn {
-    width: 36px;
-    height: 36px;
+    height: 34px;
+    padding: 0 14px;
     border-radius: 8px;
-    display: flex;
+    display: inline-flex;
     justify-content: center;
     align-items: center;
-    color: #fff;
-    border: none;
+    gap: 6px;
     cursor: pointer;
     transition: .25s;
+    font-family: 'Poppins', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
 }
 
 .action-btn:hover {
-    transform: translateY(-2px);
+    transform: translateY(-1px);
 }
 
-.view-btn { background: #4f8dfd; }
-.view-btn:hover { background: #2f73f2; }
+.view-btn {
+    background: #fff;
+    color: #ab0a0a;
+    border: 1px solid #ab0a0a;
+}
+.view-btn:hover { background: #fff5f5; }
 
-.edit-btn { background: #33b864; }
-.edit-btn:hover { background: #269c52; }
+.edit-btn {
+    background: #fff;
+    color: #33b864;
+    border: 1px solid #33b864;
+}
+.edit-btn:hover { background: #f2fbf6; }
 
 /* ========================================
-   TABLE FOOTER & PAGINATION
+   STUDENT TABLE FOOTER / PAGINATION
+   DASHBOARD STYLE
 ======================================== */
+
 .table-footer {
-    padding: 14px 25px;
+    padding: 12px 20px;
     border-top: 1px solid #ececec;
     background: #fafafa;
+
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 15px;
+
+    gap: 12px;
     flex-wrap: wrap;
-    margin-top: auto; /* PERMANENTENG IDIDIKIT SA DULO */
+
+    margin-top: auto;
 }
 
-.pagination-info {
-    font-size: 13px;
-    color: #666;
+.showing-text {
+    font-size: 11px;
+    color: #888;
+    font-weight: 400;
 }
 
 .pagination-controls {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
 }
 
 .page-numbers {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
 }
 
-.page-btn, .page-num {
-    height: 34px;
-    min-width: 34px;
-    padding: 0 8px;
+.page-btn,
+.page-num {
+    height: 30px;
+    min-width: 30px;
+    padding: 0 7px;
+
     background: #fff;
-    border: 1px solid #dcdcdc;
+    border: 1px solid #e5e5e5;
     border-radius: 6px;
-    color: #333;
-    font-size: 13px;
+
+    color: #666;
+
+    font-size: 11px;
     font-weight: 500;
+
     display: flex;
     align-items: center;
     justify-content: center;
+
     cursor: pointer;
+
     transition: all 0.2s ease;
 }
 
 .page-num.active {
-    background: var(--primary, #ab0a0a);
-    color: #ffffff;
-    border-color: var(--primary, #ab0a0a);
+    background: #ab0a0a;
+    color: #fff;
+    border-color: #ab0a0a;
     font-weight: 600;
+}
+
+.page-btn:hover:not(:disabled),
+.page-num:hover:not(.active) {
+    border-color: #d5d5d5;
+    background: #fff;
+    color: #ab0a0a;
+}
+
+.page-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
 }
 
 .rows-per-page {
     display: flex;
     align-items: center;
-    gap: 10px;
-    font-size: 13px;
-    color: #666;
+    gap: 8px;
+
+    font-size: 11px;
+    color: #888;
 }
 
 .rows-per-page select {
-    height: 34px;
-    padding: 0 10px;
+    height: 30px;
+
+    padding: 0 8px;
+
     background: #fff;
-    border: 1px solid #dcdcdc;
+    border: 1px solid #e5e5e5;
     border-radius: 6px;
-    font-size: 13px;
-    font-weight: 600;
-    color: #333;
+
+    font-size: 11px;
+    font-weight: 500;
+
+    color: #666;
+
     outline: none;
+    cursor: pointer;
+}
+
+.rows-per-page select:focus {
+    border-color: #ab0a0a;
 }
 
 /* ========================================
@@ -594,11 +641,11 @@
     height: 32px;
     padding: 0 11px;
 
-    border: 1px solid #d9e3ff;
+    border: 1px solid #f5c6c6;
     border-radius: 7px;
 
-    background: #eef4ff;
-    color: #4f8dfd;
+    background: #fde8e8;
+    color: #ab0a0a;
 
     font-family: 'Poppins', sans-serif;
     font-size: 11px;
@@ -616,9 +663,9 @@
 }
 
 .photo-proof-btn:hover {
-    background: #4f8dfd;
+    background: #ab0a0a;
     color: #fff;
-    border-color: #4f8dfd;
+    border-color: #ab0a0a;
 
     transform: translateY(-1px);
 }
@@ -745,4 +792,184 @@
     object-fit: contain;
 
     border-radius: 8px;
+}
+
+
+/* ========================================
+   LIVE DATE & TIME BAR
+======================================== */
+
+.datetime-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+
+    flex-shrink: 0;
+
+    background: #fff;
+    border: 1px solid #ececec;
+    border-radius: 14px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .03);
+
+    padding: 12px 22px;
+    margin-bottom: 20px;
+}
+
+.datetime-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.datetime-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    background: #fde8e8;
+    color: #ab0a0a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+.datetime-item small {
+    display: block;
+    font-size: 11px;
+    color: #999;
+    margin-bottom: 2px;
+}
+
+.datetime-item strong {
+    font-size: 16px;
+    font-weight: 600;
+    color: #222;
+    font-variant-numeric: tabular-nums;
+}
+
+
+/* ========================================
+   EXTRA STATUS BADGES
+======================================== */
+
+.status.pending {
+    background: #eef2f7;
+    color: #64748b;
+    border: 1px solid #cbd5e1;
+}
+
+.status.rejected {
+    background: #f3e8ff;
+    color: #8e44ad;
+    border: 1px solid #d8b4fe;
+}
+
+
+
+/* ========================================
+   CLICKABLE SUMMARY CARDS
+======================================== */
+
+.summary-card.clickable-card {
+    cursor: pointer;
+}
+
+.summary-card.clickable-card:focus-visible {
+    outline: 2px solid #ab0a0a;
+    outline-offset: 2px;
+}
+
+
+/* ========================================
+   CARD LIST MODAL (iframe popup)
+======================================== */
+
+.attendance-list-overlay {
+    position: fixed;
+    inset: 0;
+
+    display: none;
+    align-items: center;
+    justify-content: center;
+
+    background: rgba(0, 0, 0, 0.5);
+
+    z-index: 9998;
+}
+
+.attendance-list-overlay.show {
+    display: flex;
+}
+
+.attendance-list-card {
+    width: 94%;
+    max-width: 1150px;
+    height: 88vh;
+
+    display: flex;
+    flex-direction: column;
+
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+
+    overflow: hidden;
+
+    animation: attendanceListFadeIn 0.2s ease-in-out;
+}
+
+@keyframes attendanceListFadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.attendance-list-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 16px 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.attendance-list-header h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    font-size: 16px;
+    font-weight: 600;
+    color: #222;
+    margin: 0;
+}
+
+.attendance-list-header h3 i {
+    color: #ab0a0a;
+}
+
+.attendance-list-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    line-height: 1;
+    color: #888;
+    cursor: pointer;
+}
+
+.attendance-list-close:hover {
+    color: #000;
+}
+
+.attendance-list-body {
+    flex: 1;
+    min-height: 0;
+}
+
+.attendance-list-body iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: none;
 }

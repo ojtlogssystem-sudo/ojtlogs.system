@@ -5,7 +5,8 @@ import {
     getDocs, 
     doc, 
     getDoc, 
-    updateDoc 
+    updateDoc,
+    serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { 
     getAuth, 
@@ -30,27 +31,91 @@ const auth = getAuth(app);
 const usersRef = collection(db, "users");
 const attendanceRef = collection(db, "attendance");
 
-// Generates First Initial + Last Initial (e.g., "Mark Daniel Beato" -> "MB")
+// Generates First Initial + Last Initial
+// Mirrors student_dashboard.js's calculateHoursFromTime() exactly, so any
+// record lacking a saved todayHours string is treated the same on both pages.
+function calculateHoursFromTime(timeIn, timeOut) {
+    if (!timeIn || !timeOut || timeIn === "--" || timeOut === "--") return 0;
+    try {
+        const parseToMinutes = (timeStr) => {
+            let parts = timeStr.trim().split(" ");
+            let time = parts[0];
+            let modifier = parts[1] ? parts[1].toUpperCase() : "";
+            let [hours, minutes] = time.split(":").map(Number);
+
+            if (modifier === "PM" && hours < 12) hours += 12;
+            if (modifier === "AM" && hours === 12) hours = 0;
+            return (hours * 60) + (minutes || 0);
+        };
+
+        const inMinutes = parseToMinutes(timeIn);
+        const outMinutes = parseToMinutes(timeOut);
+
+        if (outMinutes <= inMinutes) return 0;
+        return (outMinutes - inMinutes) / 60;
+    } catch (e) {
+        console.error("Error parsing time string:", e);
+        return 0;
+    }
+}
+
+// Rejected na record = 0 minuto. Ginagamit ng overview total at ng reject action.
+function isRejectedRecord(r) {
+    return String((r && r.status) || "").toLowerCase() === "rejected";
+}
+
+// Net minutes ng isang attendance record (parehong logic ng student_dashboard.js).
+function getRecordMinutes(r) {
+    if (!r || isRejectedRecord(r)) return 0;
+    let minutes = 0;
+    if (r.todayHours) {
+        const matchHours = String(r.todayHours).match(/(\d+)\s*h/i);
+        const matchMins = String(r.todayHours).match(/(\d+)\s*m/i);
+        if (matchHours) minutes += parseInt(matchHours[1]) * 60;
+        if (matchMins) minutes += parseInt(matchMins[1]);
+    } else if (r.timeIn && r.timeOut && r.timeOut !== "--") {
+        const rawHours = calculateHoursFromTime(r.timeIn, r.timeOut);
+        minutes = Math.max(0, Math.round(rawHours * 60) - 60);
+    } else if (r.hoursRendered) {
+        minutes = Math.round((parseFloat(r.hoursRendered) || 0) * 60);
+    }
+    return minutes;
+}
+
 function getInitials(name) {
-    if (!name || typeof name !== 'string') return 'MB';
-    
+    if (!name || typeof name !== 'string') return 'N/A';
     const cleanName = name.replace(/\b[A-Za-z]\.\b/g, '').trim();
     const words = cleanName.split(/\s+/).filter(w => w.length > 0);
     
-    if (words.length === 0) return 'MB';
+    if (words.length === 0) return 'N/A';
     if (words.length === 1) return words[0].charAt(0).toUpperCase();
     
-    const firstInitial = words[0].charAt(0);
-    const lastInitial = words[words.length - 1].charAt(0);
-    
-    return (firstInitial + lastInitial).toUpperCase();
+    return (words[0].charAt(0) + words[words.length - 1].charAt(0)).toUpperCase();
 }
 
 document.addEventListener("DOMContentLoaded", () => {
     const tableBody = document.querySelector(".history-table tbody");
 
+    // Sinasalo ang iba't ibang posibleng pangalan ng URL parameter mula sa kabilang pahina
     const urlParams = new URLSearchParams(window.location.search);
-    const paramId = urlParams.get("id");
+    const paramId = urlParams.get("id") || urlParams.get("userId") || urlParams.get("uid") || urlParams.get("studentId");
+
+    // ==========================================
+    // DYNAMIC BACK BUTTON
+    // ==========================================
+
+    const backBtn = document.getElementById("backBtn");
+    const backBtnText = document.getElementById("backBtnText");
+
+    const fromPage = urlParams.get("from");
+
+    if (fromPage === "students") {
+    backBtn.href = "../students/students.html";
+    backBtnText.textContent = "Back to Students";
+    } else {
+        backBtn.href = "../attendance/attendance_records.html";
+        backBtnText.textContent = "Back to Attendance Records";
+    }
 
     let currentAttendanceData = null;
     let allStudentAttendance = [];
@@ -58,110 +123,113 @@ document.addEventListener("DOMContentLoaded", () => {
     async function fetchAttendanceDetails() {
         try {
             let matchedUser = null;
-            let targetUserId = paramId;
+            let targetUserId = null;
 
             if (paramId) {
-                // 1. Subukang i-check kung direct User Document ID ito
+                // Hakbang 1: Subukang direktang basahin sa "users" collection gamit ang ID
                 const userDocRef = doc(db, "users", paramId);
                 const userDocSnap = await getDoc(userDocRef);
 
                 if (userDocSnap.exists()) {
                     matchedUser = userDocSnap.data();
+                    targetUserId = paramId;
                 } else {
-                    // 2. Kung Attendance Document ID pala ito
+                    // Hakbang 2: Kung wala sa users, baka Attendance ID ito
                     const attDocRef = doc(db, "attendance", paramId);
                     const attDocSnap = await getDoc(attDocRef);
 
                     if (attDocSnap.exists()) {
                         currentAttendanceData = { id: attDocSnap.id, ...attDocSnap.data() };
-                        targetUserId = currentAttendanceData.userId;
+                        targetUserId = currentAttendanceData.userId || currentAttendanceData.uid;
 
                         if (targetUserId) {
                             const uSnap = await getDoc(doc(db, "users", targetUserId));
-                            if (uSnap.exists()) matchedUser = uSnap.data();
+                            if (uSnap.exists()) {
+                                matchedUser = uSnap.data();
+                            }
                         }
                     }
                 }
             }
 
-            // Fallback Search via User Email kung hindi nahanap sa ID
-            if (!matchedUser && currentAttendanceData?.userEmail) {
+            // Hakbang 3: Kung hindi pa rin mahanap, i-scan ang buong users collection para hanapin ang tugmang email o studentNumber
+            if (!matchedUser) {
                 const usersSnapshot = await getDocs(usersRef);
                 usersSnapshot.forEach(uDoc => {
                     const uData = uDoc.data();
-                    if (uData.email && uData.email.toLowerCase() === currentAttendanceData.userEmail.toLowerCase()) {
+                    if (paramId && (uDoc.id === paramId || uData.studentNumber === paramId)) {
                         matchedUser = uData;
+                        targetUserId = uDoc.id;
+                    } else if (currentAttendanceData?.userEmail && uData.email && uData.email.toLowerCase() === currentAttendanceData.userEmail.toLowerCase()) {
+                        matchedUser = uData;
+                        targetUserId = uDoc.id;
                     }
                 });
             }
 
-            // Gamitin ang totoong values mula sa database o fallback sa defaults
-            const studentName = matchedUser?.name || matchedUser?.fullName || currentAttendanceData?.userName || "Mark Daniel Beato";
-            const studentCompany = matchedUser?.companyName || matchedUser?.company || currentAttendanceData?.company || "Cloudstaff";
-            const studentEmail = matchedUser?.email || currentAttendanceData?.userEmail || "beatosenku@gmail.com";
-            const studentIdVal = matchedUser?.studentNumber || matchedUser?.uid || targetUserId || "2023-08-01448";
+            // Pagkuha ng mga eksaktong field batay sa iyong Firestore schema screenshot
+            const studentName = matchedUser?.name || matchedUser?.fullName || currentAttendanceData?.userName || "Unknown Student";
+            const studentCompany = matchedUser?.companyName || matchedUser?.company || "Not Specified";
+            const studentEmail = matchedUser?.email || currentAttendanceData?.userEmail || "No Email Provided";
+            const studentIdVal = matchedUser?.studentNumber || targetUserId || "N/A";
 
-            // --- KINUHA ANG COURSE AT SECTION MULA SA FIREBASE ---
-            const studentCourse = matchedUser?.course || currentAttendanceData?.course || "";
-            const studentSection = matchedUser?.section || currentAttendanceData?.section || "";
+            // Pag-format ng Course at Section na may gitling (-) tulad ng "BSIT - 403"
+            const studentCourse = matchedUser?.course || "";
+            let studentSection = matchedUser?.section || "";
             
             let fullCourseSection = "N/A";
-            if (studentCourse && studentSection) {
-                fullCourseSection = `${studentCourse} - ${studentSection}`;
+            if (studentSection && studentCourse) {
+                let cleanSec = studentSection.trim();
+                const regex = new RegExp(`^${studentCourse}\\s*[-–]?\\s*`, 'i');
+                cleanSec = cleanSec.replace(regex, '').trim();
+                
+                fullCourseSection = `${studentCourse} - ${cleanSec}`;
             } else if (studentCourse) {
                 fullCourseSection = studentCourse;
             } else if (studentSection) {
                 fullCourseSection = studentSection;
             }
 
-            // --- FETCH SUPERVISOR NAME MULA SA COMPANIES COLLECTION ---
-            let studentSupervisor = matchedUser?.supervisor || matchedUser?.supervisorName || currentAttendanceData?.supervisor;
+            // Supervisor Name mula sa field na "supervisorName" sa database
+            const studentSupervisor = matchedUser?.supervisorName || matchedUser?.supervisor || "Not Assigned";
 
-            if (!studentSupervisor && studentCompany) {
-                try {
-                    const companiesRef = collection(db, "companies");
-                    const compSnapshot = await getDocs(companiesRef);
-                    
-                    compSnapshot.forEach(compDoc => {
-                        const cData = compDoc.data();
-                        if (cData.companyName && cData.companyName.toLowerCase() === studentCompany.toLowerCase()) {
-                            studentSupervisor = cData.supervisorName || cData.supervisor;
-                        }
-                    });
-                } catch (cErr) {
-                    console.warn("Could not fetch supervisor from companies collection:", cErr);
-                }
-            }
-
-            if (!studentSupervisor) {
-                studentSupervisor = "Not Assigned";
-            }
-
-            // Update Name at Profile Circle Avatar
+            // Pag-update ng UI elements sa Profile / Account Details section
             const nameHeading = document.getElementById("profileNameHeading");
             if (nameHeading) nameHeading.textContent = studentName;
 
             const profileAvatarCircle = document.getElementById("profileAvatarCircle");
+            const studentPhoto = matchedUser?.photo || matchedUser?.profilePic || matchedUser?.photoURL || matchedUser?.image || matchedUser?.avatar;
             if (profileAvatarCircle) {
-                profileAvatarCircle.textContent = getInitials(studentName);
+                if (studentPhoto) {
+                    profileAvatarCircle.innerHTML = `<img src="${studentPhoto}" alt="${studentName}">`;
+                } else {
+                    profileAvatarCircle.textContent = getInitials(studentName);
+                }
             }
 
-            // Update Student Details List
             if (document.getElementById("infoSection")) document.getElementById("infoSection").textContent = fullCourseSection;
             if (document.getElementById("infoCompany")) document.getElementById("infoCompany").textContent = studentCompany;
             if (document.getElementById("infoStudentId")) document.getElementById("infoStudentId").textContent = studentIdVal;
             if (document.getElementById("infoEmail")) document.getElementById("infoEmail").textContent = studentEmail;
             if (document.getElementById("infoSupervisor")) document.getElementById("infoSupervisor").textContent = studentSupervisor;
 
-            // Fetch History Table
+            // Pagkuha ng attendance records na pagmamay-ari lamang ng user na ito
             try {
                 const allAttSnapshot = await getDocs(attendanceRef);
                 allStudentAttendance = [];
 
                 allAttSnapshot.forEach(docSnap => {
                     const data = docSnap.data();
-                    const isSameUserId = targetUserId && data.userId === targetUserId;
-                    const isSameEmail = studentEmail && data.userEmail && (data.userEmail.toLowerCase() === studentEmail.toLowerCase());
+                    const isSameUserId = targetUserId && (data.userId === targetUserId || data.uid === targetUserId);
+                    // Only fall back to matching by email when the record has NO
+                    // userId/uid at all. Previously this was an independent OR,
+                    // so any record whose email happened to match — even if its
+                    // userId pointed to a different account — got counted too,
+                    // inflating this page's total above the student dashboard's
+                    // (which strictly queries by userId only). Matching this way
+                    // keeps both pages summing the exact same set of records.
+                    const hasOwnerId = !!(data.userId || data.uid);
+                    const isSameEmail = !hasOwnerId && studentEmail && data.userEmail && (data.userEmail.toLowerCase() === studentEmail.toLowerCase());
 
                     if (isSameUserId || isSameEmail) {
                         allStudentAttendance.push({ id: docSnap.id, ...data });
@@ -202,6 +270,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 statusClass = "absent";
             } else if (lowerStatus === "rejected") {
                 statusClass = "rejected";
+            } else if (lowerStatus === "excused") {
+                statusClass = "excused";
             }
 
             const row = document.createElement("tr");
@@ -213,13 +283,31 @@ document.addEventListener("DOMContentLoaded", () => {
                 <td>${item.day || '-'}</td>
                 <td class="${lowerStatus === 'rejected' ? 'text-rejected' : 'text-green'}">${item.timeIn || '--'}</td>
                 <td class="${lowerStatus === 'rejected' ? 'text-rejected' : 'text-green'}">${item.timeOut || '--'}</td>
-                <td>${item.todayHours || (item.hoursRendered ? item.hoursRendered + ' hrs' : '0h 0m')}</td>
+                <td>${lowerStatus === 'rejected' ? '0h 0m' : (item.todayHours || (item.hoursRendered ? item.hoursRendered + ' hrs' : '0h 0m'))}</td>
                 <td><span class="status ${statusClass}">${statusText}</span></td>
                 <td>${item.remarks || '-'}</td>
                 <td>
-                    <div class="action-buttons">
-                        <button type="button" class="action-btn edit-btn" title="Edit attendance"><i class="fa-solid fa-pen-to-square"></i><span>Edit</span></button>
-                        <button type="button" class="action-btn reject-btn" title="Reject attendance"><i class="fa-solid fa-xmark"></i><span>Reject</span></button>
+                    <div class="action-menu">
+                        <button type="button" class="action-menu-toggle" title="More actions">
+                            <i class="fa-solid fa-ellipsis-vertical"></i>
+                        </button>
+
+                        <div class="action-dropdown">
+                            <button type="button" class="action-btn edit-btn" title="Edit attendance">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                                <span>Edit</span>
+                            </button>
+
+                            <button type="button" class="action-btn excuse-btn" title="Excuse student for this day">
+                                <i class="fa-solid fa-user-check"></i>
+                                <span>Excuse</span>
+                            </button>
+
+                            <button type="button" class="action-btn reject-btn" title="Reject attendance">
+                                <i class="fa-solid fa-xmark"></i>
+                                <span>Reject</span>
+                            </button>
+                        </div>
                     </div>
                 </td>
             `;
@@ -245,14 +333,7 @@ document.addEventListener("DOMContentLoaded", () => {
             else if (status.includes("late")) lateCount++;
             else if (status.includes("absent")) absentCount++;
 
-            if (r.todayHours) {
-                const matchHours = r.todayHours.match(/(\d+)\s*h/i);
-                const matchMins = r.todayHours.match(/(\d+)\s*m/i);
-                if (matchHours) totalMinutes += parseInt(matchHours[1]) * 60;
-                if (matchMins) totalMinutes += parseInt(matchMins[1]);
-            } else if (r.hoursRendered) {
-                totalMinutes += parseFloat(r.hoursRendered) * 60;
-            }
+            totalMinutes += getRecordMinutes(r);
         });
 
         const finalHours = Math.floor(totalMinutes / 60);
@@ -273,21 +354,46 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Modal Events
+    // Modal Events at Actions
     const editModal = document.getElementById("editAttendanceModal");
     const rejectModal = document.getElementById("rejectAttendanceModal");
+    const excuseModal = document.getElementById("excuseAttendanceModal");
     const editAttendanceDate = document.getElementById("editAttendanceDate");
+    const excuseAttendanceDate = document.getElementById("excuseAttendanceDate");
+    const excuseReason = document.getElementById("excuseReason");
     const editTimeIn = document.getElementById("editTimeIn");
     const editTimeOut = document.getElementById("editTimeOut");
     const saveAttendanceBtn = document.getElementById("saveAttendanceBtn");
     const confirmRejectBtn = document.getElementById("confirmRejectBtn");
+    const confirmExcuseBtn = document.getElementById("confirmExcuseBtn");
 
     let activeDocIdToModify = null;
+
+    // Three-dot action menu
+    document.addEventListener("click", function (e) {
+        const toggle = e.target.closest(".action-menu-toggle");
+
+        // Close all other menus
+        document.querySelectorAll(".action-menu.open").forEach(menu => {
+            if (!toggle || !menu.contains(toggle)) {
+                menu.classList.remove("open");
+            }
+        });
+
+        // Open clicked menu
+        if (toggle) {
+            const menu = toggle.closest(".action-menu");
+            if (menu) {
+                menu.classList.toggle("open");
+            }
+        }
+    });
 
     if (tableBody) {
         tableBody.addEventListener("click", function (e) {
             const editBtn = e.target.closest(".edit-btn");
             const rejectBtn = e.target.closest(".reject-btn");
+            const excuseBtn = e.target.closest(".excuse-btn");
             const tr = e.target.closest("tr");
             if (tr) {
                 activeDocIdToModify = tr.getAttribute("data-doc-id");
@@ -312,6 +418,15 @@ document.addEventListener("DOMContentLoaded", () => {
                     rejectModal.style.display = "flex";
                 }
             }
+
+            if (excuseBtn && selectedItem) {
+                if (excuseAttendanceDate) excuseAttendanceDate.textContent = selectedItem.formattedDate || selectedItem.date || "—";
+                if (excuseReason) excuseReason.value = "";
+                if (excuseModal) {
+                    excuseModal.classList.add("show");
+                    excuseModal.style.display = "flex";
+                }
+            }
         });
     }
 
@@ -320,12 +435,20 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!activeDocIdToModify) return;
             try {
                 const attDocRef = doc(db, "attendance", activeDocIdToModify);
-                await updateDoc(attDocRef, {
+                const editedItem = allStudentAttendance.find(i => i.id === activeDocIdToModify);
+                const editUpdates = {
                     timeIn: editTimeIn ? editTimeIn.value : "",
                     timeOut: editTimeOut ? editTimeOut.value : "",
                     status: "Adjusted",
                     remarks: "Time adjusted by Coordinator."
-                });
+                };
+                // Kung dating Rejected ang record, ibalik ang oras na nabawas
+                // para hindi ma-stuck sa 0h 0m pagkatapos i-edit.
+                if (isRejectedRecord(editedItem)) {
+                    if (editedItem.originalTodayHours != null) editUpdates.todayHours = editedItem.originalTodayHours;
+                    if (editedItem.originalHoursRendered != null) editUpdates.hoursRendered = editedItem.originalHoursRendered;
+                }
+                await updateDoc(attDocRef, editUpdates);
                 alert("Attendance updated successfully!");
                 if (editModal) { editModal.classList.remove("show"); editModal.style.display = "none"; }
                 fetchAttendanceDetails(); 
@@ -340,12 +463,34 @@ document.addEventListener("DOMContentLoaded", () => {
         confirmRejectBtn.addEventListener("click", async function () {
             if (!activeDocIdToModify) return;
             try {
+                const rejectedItem = allStudentAttendance.find(i => i.id === activeDocIdToModify);
+
+                // Nare-reject na dati - huwag nang ulitin (mao-overwrite ang orihinal na oras).
+                if (isRejectedRecord(rejectedItem)) {
+                    alert("This attendance is already rejected.");
+                    if (rejectModal) { rejectModal.classList.remove("show"); rejectModal.style.display = "none"; }
+                    return;
+                }
+
+                // Ilang minuto ang ibabawas sa total ng estudyante
+                const deductedMinutes = getRecordMinutes(rejectedItem);
+
                 const attDocRef = doc(db, "attendance", activeDocIdToModify);
                 await updateDoc(attDocRef, {
                     status: "Rejected",
-                    remarks: "Attendance rejected by Coordinator."
+                    remarks: "Attendance rejected by Coordinator.",
+                    // Naka-zero ang oras ng araw na ito; nakatabi ang orihinal
+                    // para maibalik kung ie-edit ulit ng coordinator.
+                    originalTodayHours: (rejectedItem && rejectedItem.todayHours) ?? null,
+                    originalHoursRendered: (rejectedItem && rejectedItem.hoursRendered) ?? null,
+                    todayHours: "0h 0m (Rejected)",
+                    hoursRendered: 0,
+                    // Ginagamit ng notification bell ng estudyante
+                    rejectedMinutes: deductedMinutes,
+                    rejectedAt: serverTimestamp(),
+                    rejectedBy: (auth.currentUser && auth.currentUser.uid) || null
                 });
-                alert("Attendance marked as rejected.");
+                alert("Attendance rejected. The student has been notified and the hours were deducted.");
                 if (rejectModal) { rejectModal.classList.remove("show"); rejectModal.style.display = "none"; }
                 fetchAttendanceDetails(); 
             } catch (err) {
@@ -355,21 +500,43 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    if (confirmExcuseBtn) {
+        confirmExcuseBtn.addEventListener("click", async function () {
+            if (!activeDocIdToModify) return;
+            try {
+                const reasonText = excuseReason && excuseReason.value.trim()
+                    ? excuseReason.value.trim()
+                    : "Excused by Coordinator.";
+
+                const attDocRef = doc(db, "attendance", activeDocIdToModify);
+                await updateDoc(attDocRef, {
+                    status: "Excused",
+                    remarks: reasonText
+                });
+                alert("Student has been excused for this day.");
+                if (excuseModal) { excuseModal.classList.remove("show"); excuseModal.style.display = "none"; }
+                fetchAttendanceDetails();
+            } catch (err) {
+                console.error("Error excusing attendance:", err);
+                alert("Failed to excuse student.");
+            }
+        });
+    }
+
     document.querySelectorAll(".modal-overlay, [data-close-modal]").forEach(el => {
         el.addEventListener("click", function () {
             if (editModal) { editModal.classList.remove("show"); editModal.style.display = "none"; }
             if (rejectModal) { rejectModal.classList.remove("show"); rejectModal.style.display = "none"; }
+            if (excuseModal) { excuseModal.classList.remove("show"); excuseModal.style.display = "none"; }
         });
     });
 
-    // Update Logged-In User Header Profile Icon
     onAuthStateChanged(auth, async (user) => {
         const profileNameEl = document.getElementById("profileName");
         const headerAvatarEl = document.getElementById("headerAvatar");
 
         if (user) {
             let displayName = user.displayName || user.email || "Coordinator";
-            
             try {
                 const loggedUserDoc = await getDoc(doc(db, "users", user.uid));
                 if (loggedUserDoc.exists()) {

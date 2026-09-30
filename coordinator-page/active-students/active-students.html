@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Active Interns</title>
+
+    <link rel="stylesheet" href="../active-students/active-students.css">
+
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+
+<body>
+
+<div class="page-container">
+
+    <div class="page-header">
+
+    <div class="page-header-left">
+
+        <div class="back-button-container">
+
+            <button
+                type="button"class="back-btn"id="backToDashboardBtn">
+                <i class="fa-solid fa-arrow-left"></i>
+                <span>Back to Dashboard</span>
+            </button>
+
+        </div>
+
+        <div>
+            <h1>Active Interns</h1>
+
+            <p>
+                Students who are currently ongoing with their
+                required internship hours.
+            </p>
+        </div>
+
+    </div>
+
+
+    <button
+        class="print-btn"
+        id="printReportBtn"
+    >
+        <i class="fa-solid fa-print"></i>
+        Print Report
+    </button>
+
+</div>
+
+
+
+    <!-- ========================================
+         SUMMARY CARDS
+    ======================================== -->
+
+    <div class="completed-summary-cards">
+
+
+        <!-- TOTAL ACTIVE -->
+
+        <div class="stat-card completed-stat-card">
+
+            <div class="stat-icon">
+
+                <i class="fa-solid fa-circle-check"></i>
+
+            </div>
+
+
+            <div class="stat-content">
+
+                <p class="title">
+                    Total Active
+                </p>
+
+
+                <h2 id="total-count">
+                    0
+                </h2>
+
+
+                <div class="stat-footer">
+
+                    <span class="positive">
+
+                        <i class="fa-solid fa-arrow-up"></i>
+
+                        On Track
+
+                    </span>
+
+
+                    <small>
+                        Students
+                    </small>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- TOTAL RENDERED HOURS -->
+
+        <div class="stat-card completed-stat-card">
+
+            <div class="stat-icon">
+
+                <i class="fa-solid fa-clock"></i>
+
+            </div>
+
+
+            <div class="stat-content">
+
+                <p class="title">
+                    Total Rendered Hours
+                </p>
+
+
+                <h2 id="total-rendered-hours">
+                    0.0 hrs
+                </h2>
+
+
+                <div class="stat-footer">
+
+                    <span class="positive">
+
+                        <i class="fa-solid fa-arrow-up"></i>
+
+                        Ongoing
+
+                    </span>
+
+
+                    <small>
+                        Rendered Hours
+                    </small>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- ========================================
+         ACTIVE STUDENTS TABLE
+    ======================================== -->
+
+    <div class="table-card">
+
+
+        <div class="table-header">
+
+            <div>
+
+                <h2>
+                    Active Students
+                </h2>
+
+
+                <p>
+                    Students currently ongoing with their internship
+                    and on track to complete their required hours.
+                </p>
+
+            </div>
+
+
+            <!-- SEARCH -->
+
+            <div class="search-box">
+
+                <i class="fa-solid fa-magnifying-glass"></i>
+
+
+                <input
+                    type="text"
+                    id="student-search"
+                    placeholder="Search student..."
+                >
+
+            </div>
+
+        </div>
+
+
+
+        <!-- TABLE -->
+
+        <div class="table-wrapper">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>#</th>
+
+                        <th>
+                            Student ID
+                        </th>
+
+                        <th>
+                            Student Name
+                        </th>
+
+                        <th>
+                            Section
+                        </th>
+
+                        <th>
+                            Company
+                        </th>
+
+                        <th>
+                            Required Hours
+                        </th>
+
+                        <th>
+                            Rendered Hours
+                        </th>
+
+                        <th>
+                            Status
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody id="students-body">
+
+                    <tr>
+
+                        <td
+                            colspan="8"
+                            class="loading-row"
+                        >
+                            Loading active students...
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- ========================================
+         PRINT-ONLY REPORT
+
+         This section is hidden on screen
+         and shown only when printing.
+    ======================================== -->
+
+    <div
+        class="print-report"
+        style="display: none;"
+    >
+
+
+        <!-- ====================================
+             PRINT HEADER
+        ==================================== -->
+
+        <div class="print-header">
+
+            <h1>
+                Active Interns Report
+            </h1>
+
+
+            <p>
+                Ongoing Internship Summary
+            </p>
+
+
+            <div class="print-date">
+
+                <span class="print-date-label">
+                    Date
+                </span>
+
+
+                <span
+                    class="print-date-value"
+                    id="print-report-date"
+                >
+                </span>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- ====================================
+             PRINT SUMMARY
+        ==================================== -->
+
+        <div class="print-summary">
+
+
+            <!-- ACTIVE -->
+
+            <div class="print-summary-box highlight">
+
+                <span class="print-summary-label">
+                    Active
+                </span>
+
+
+                <span
+                    class="print-summary-value"
+                    id="print-total-students"
+                >
+                    0
+                </span>
+
+
+                <span class="print-summary-unit">
+                    students
+                </span>
+
+            </div>
+
+
+
+            <!-- REQUIRED -->
+
+            <div class="print-summary-box">
+
+                <span class="print-summary-label">
+                    Required
+                </span>
+
+
+                <span
+                    class="print-summary-value"
+                    id="print-required-hours"
+                >
+                    0
+                </span>
+
+
+                <span class="print-summary-unit">
+                    hrs
+                </span>
+
+            </div>
+
+
+
+            <!-- RENDERED -->
+
+            <div class="print-summary-box">
+
+                <span class="print-summary-label">
+                    Rendered
+                </span>
+
+
+                <span
+                    class="print-summary-value"
+                    id="print-rendered-hours"
+                >
+                    0
+                </span>
+
+
+                <span class="print-summary-unit">
+                    hrs
+                </span>
+
+            </div>
+
+
+
+            <!-- AVG COMPLETION -->
+
+            <div class="print-summary-box">
+
+                <span class="print-summary-label">
+                    Avg. Completion
+                </span>
+
+
+                <span
+                    class="print-summary-value"
+                    id="print-completion-rate"
+                >
+                    0
+                </span>
+
+
+                <span class="print-summary-unit">
+                    %
+                </span>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- ====================================
+             ACTIVE STUDENTS TITLE
+        ==================================== -->
+
+        <div class="print-section-title">
+
+            Active Internship Students
+
+        </div>
+
+
+
+        <!-- ====================================
+             PRINT STUDENTS TABLE
+        ==================================== -->
+
+        <table class="print-student-table">
+
+            <thead>
+
+                <tr>
+
+                    <th style="width:4%;">
+                        #
+                    </th>
+
+                    <th style="width:14%;">
+                        Student ID
+                    </th>
+
+                    <th style="width:20%;">
+                        Student Name
+                    </th>
+
+                    <th style="width:10%;">
+                        Section
+                    </th>
+
+                    <th style="width:16%;">
+                        Company
+                    </th>
+
+                    <th style="width:10%;">
+                        Required
+                    </th>
+
+                    <th style="width:10%;">
+                        Rendered
+                    </th>
+
+                    <th style="width:9%;">
+                        Status
+                    </th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody id="print-students-body">
+
+            </tbody>
+
+        </table>
+
+
+
+        <!-- ====================================
+             TOTAL RENDERED HOURS
+        ==================================== -->
+
+        <div class="print-total">
+
+            <span>
+                TOTAL RENDERED HOURS
+            </span>
+
+
+            <span
+                class="print-total-hours"
+                id="print-total-hours"
+            >
+                0 hrs
+            </span>
+
+        </div>
+
+
+
+        <!-- ====================================
+             PRINT FOOTER
+        ==================================== -->
+
+        <div class="print-footer">
+
+            <span>
+                OJT-LOGS • Internship Monitoring System
+            </span>
+
+
+            <span>
+                Coordinator Copy
+            </span>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<!-- ========================================
+     JAVASCRIPT
+======================================== -->
+
+<script
+    type="module"
+    src="../active-students/active-students.js"
+></script>
+
+
+</body>
+
+</html>

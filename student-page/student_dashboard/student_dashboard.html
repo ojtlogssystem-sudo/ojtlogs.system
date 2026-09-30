@@ -13,51 +13,22 @@
 </head>
 <body>
 
+<!-- INITIAL LOADING OVERLAY
+     Itinatago ito ng student_dashboard.js pagkatapos matapos ang unang
+     pag-fetch ng student profile at unang snapshot ng attendance/activity
+     data, para hindi makita ng user ang mga placeholder ("Loading...",
+     "0 hours", "--") bago pa man dumating ang tunay na datos. -->
+<div class="page-loading-overlay" id="dashboard-loading-overlay">
+    <div class="loading-spinner" aria-hidden="true"></div>
+    <p>Loading your dashboard…</p>
+</div>
+
 <div class="dashboard">
     <div id="sidebar-container"></div>
 
     <main class="main">
-        <!-- Header Bar -->
-        <header id="header-container" class="dashboard-header">
-            <div class="header-left">
-                <button id="mobile-menu" class="mobile-menu-btn"><i class="fa-solid fa-bars"></i></button>
-                <h2 id="page-title">Dashboard</h2>
-            </div>
-            
-            <div class="header-right">
-                <div class="notification">
-                    <i class="fa-regular fa-bell"></i>
-                    <span class="notification-badge">3</span>
-                </div>
-
-                <div class="user-profile" id="profile-dropdown-btn">
-                    <div class="profile-circle" id="user-initials">--</div>
-                    <i class="fa-solid fa-chevron-down"></i>
-                </div>
-
-                <div class="profile-card-dropdown" id="profile-dropdown-menu">
-                    <div class="profile-card-header">
-                        <h4 id="dropdown-user-fullname">Loading...</h4>
-                        <p class="role-title">Student Intern</p>
-                    </div>
-
-                    <div class="profile-card-body">
-                        <a href="/profile/profile.html" class="profile-menu-item">
-                            <i class="fa-regular fa-user"></i>
-                            <span>My Profile</span>
-                        </a>
-                        <a href="/settings/settings.html" class="profile-menu-item">
-                            <i class="fa-solid fa-gear"></i>
-                            <span>Settings</span>
-                        </a>
-                        <a href="#" id="logout-btn" class="profile-menu-item logout">
-                            <i class="fa-solid fa-arrow-right-from-bracket"></i>
-                            <span>Logout</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </header>
+        <!-- Header Bar (populated at runtime by loadHeader() from ../templated/header.html) -->
+        <header id="header-container"></header>
 
         <!-- Summary Cards -->
         <section class="summary-cards">
@@ -66,10 +37,6 @@
                     <div>
                         <h5>Hours Completed</h5>
                         <h2>0 hours</h2>
-                    </div>
-
-                    <div class="card-icon green-icon">
-                        <i class="fa-regular fa-clock"></i>
                     </div>
                 </div>
 
@@ -87,10 +54,6 @@
                             <h5>Required Hours</h5>
                             <h2>-- hours</h2>
                         </div>
-
-                        <div class="card-icon blue-icon">
-                            <i class="fa-solid fa-bullseye"></i>
-                        </div>
                     </div>
 
                     <p class="card-sub">-- hours remaining</p>
@@ -102,10 +65,6 @@
                             <h5>Internship Status</h5>
                             <h2>Loading...</h2>
                         </div>
-
-                        <div class="card-icon purple-icon">
-                            <i class="fa-solid fa-shield-halved"></i>
-                        </div>
                     </div>
 
                     <span class="status-text">
@@ -115,9 +74,40 @@
             </div>
         </section>
 
+        <!-- Internship Calendar -->
+        <section class="calendar-card">
+            <div class="calendar-header">
+                <div class="calendar-month-title">
+                    <span class="calendar-accent"></span>
+                    <h3 id="calendar-month">Sep 2026</h3>
+                </div>
+                <div class="calendar-controls">
+                    <button type="button" class="calendar-btn" id="calendar-btn">
+                        <i class="fa-regular fa-calendar"></i>
+                        <span>Calendar</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="calendar-divider"></div>
+
+            <div class="calendar-body-wrapper">
+                <button type="button" class="calendar-nav" id="calendar-prev" aria-label="Previous day">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+
+                <div class="calendar-days">
+                    <div class="calendar-day-list week-view" id="calendar-day-list"></div>
+                </div>
+
+                <button type="button" class="calendar-nav" id="calendar-next" aria-label="Next day">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+        </section>
+
         <!-- Main Content Sections -->
         <section class="dashboard-content">
-
             <!-- Today's Attendance -->
             <div class="attendance-card">
                 <div class="section-title">
@@ -209,25 +199,36 @@
             </div>
         </section>
 
-        <!-- Sa Recent Activity List -->
-            <div class="activity-card">
-                <div class="section-title">
-                    <div class="title-left">
-                        <span class="vertical-line red"></span>
-                        <h3>Recent Activity</h3>
-                    </div>
-                    <a href="../activities/activities.html" id="view-all-btn" style="text-decoration: none; color: #0284c7; font-weight: 500; font-size: 14px;">View All</a>
+        <!-- Recent Activity List -->
+        <div class="activity-card">
+            <div class="section-title">
+                <div class="title-left">
+                    <span class="vertical-line red"></span>
+                    <h3>Recent Activity</h3>
                 </div>
+                <button type="button" id="view-all-btn" class="view-all-btn">View All</button>
+            </div>
 
-                <div class="activity-list" id="recent-activity-list">
-                    <!-- Dito kusang mag-a-appear ang dynamic items mula sa Firebase -->
+            <div class="activity-list" id="recent-activity-list"></div>
+        </div>
+
+        <!-- All Activities Modal (opened by the "View All" button) -->
+        <div id="modal-container-wrapper">
+            <div class="modal-overlay" id="activities-modal-overlay">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Activity History</h3>
+                        <button type="button" class="close-btn" id="explicit-close-btn" aria-label="Close">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+
+                    <div class="activity-list" id="all-activities-list"></div>
                 </div>
             </div>
         </div>
     </main>
 </div>
-
-
 
 <script type="module" src="student_dashboard.js"></script>
 

@@ -14,6 +14,15 @@
 </head>
 
 <body>
+    <!-- INITIAL LOADING OVERLAY
+         Itinatago ito ng settings.js pagkatapos ma-load ang sidebar at
+         header, para hindi makita ng user ang blangkong layout habang
+         nilo-load pa ang mga ito. -->
+    <div class="page-loading-overlay" id="settings-loading-overlay">
+        <div class="loading-spinner" aria-hidden="true"></div>
+        <p>Loading settings…</p>
+    </div>
+
     <div class="dashboard">
         <div id="sidebar-container"></div>
 
@@ -59,7 +68,7 @@
                         <div class="item-divider"></div>
 
                         <!-- Privacy Settings -->
-                        <a href="privacy-settings.html" class="settings-item">
+                        <a href="../privacy-setting/privacy-setting.html" class="settings-item">
                             <div class="icon-circle">
                                 <i class="fa-solid fa-shield-halved"></i>
                             </div>
@@ -80,26 +89,26 @@
                     </div>
 
                     <div class="settings-list">
-                        <!-- Language -->
-                        <div class="settings-item">
+                        <!-- Schedule -->
+                        <a href="../edit-schedule/schedule-settings.html" class="settings-item">
                             <div class="icon-circle">
-                                <i class="fa-solid fa-globe"></i>
+                                <i class="fa-regular fa-calendar-days"></i>
                             </div>
                             <div class="item-info">
-                                <h4>Language</h4>
-                                <p>Choose your preferred<br>language</p>
+                                <h4>Schedule</h4>
+                                <p>Manage your internship days, modality, and work hours</p>
                             </div>
-                            <div class="select-wrapper">
-                                <span class="selected-lang">English</span>
-                                <i class="fa-solid fa-chevron-down arrow-icon"></i>
-                            </div>
-                        </div>
+                            <i class="fa-solid fa-chevron-right arrow-icon"></i>
+                        </a>
+
+                        <div class="item-divider"></div>
+
                     </div>
                 </div>
 
                 <!-- LOGOUT CARD SECTION -->
                 <div class="settings-card logout-card">
-                    <a href="#" class="settings-item logout-item" id="logout-btn">
+                    <a href="../student_login/student_login.html" class="settings-item logout-item" id="logout-btn">
                         <div class="icon-circle">
                             <i class="fa-solid fa-right-from-bracket"></i>
                         </div>
@@ -116,17 +125,6 @@
 
     <!-- Pinalitan ang / ng ../ -->
     <script src="../templated/sidebar-loader.js"></script>
-    <script src="../templated/header-loader.js"></script>
-
-    <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            if (typeof loadSidebar === "function") {
-                loadSidebar("Settings");
-            }
-            if (typeof loadHeader === "function") {
-                loadHeader("Settings");
-            }
-        });
-    </script>
+    <script type="module" src="settings.js"></script>
 </body>
 </html>

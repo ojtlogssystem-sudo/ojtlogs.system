@@ -13,6 +13,9 @@
     <!-- MAIN ATTENDANCE CSS -->
     <link rel="stylesheet" href="attendance_records.css">
 
+    <!-- Shared Coordinator Header CSS -->
+    <link rel="stylesheet" href="../header/header.css">
+
     <link
         href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
@@ -36,63 +39,17 @@
     <main class="main">
 
 
-        <!-- HEADER -->
-
-        <header>
-
-            <div>
-
-                <h2>Attendance</h2>
-
-                <p>
-                    Monitor student attendance and view complete attendance records.
-                </p>
-
-            </div>
-
-
-            <div class="top-right">
-
-                <div class="notification">
-
-                    <i class="fa-regular fa-bell"></i>
-
-                    <span class="badge">3</span>
-
-                </div>
-
-
-                <div class="profile">
-
-                    <div
-                        class="avatar"
-                        id="profileAvatar">
-
-                        CO
-
-                    </div>
-
-
-                    <div class="profile-info">
-
-                        <h4 id="profileName">
-                            Coordinator
-                        </h4>
-
-                        <p id="profileRole">
-                            OJT Coordinator
-                        </p>
-
-                    </div>
-
-
-                    <i class="fa-solid fa-chevron-down"></i>
-
-                </div>
-
-            </div>
-
-        </header>
+        <!-- =================================================
+             HEADER
+             (Loaded from ../header/header.html by
+             ../header/header.js - iisang file na lang ang
+             ie-edit kapag may babaguhin sa header.)
+        ================================================== -->
+        <header
+            id="header-container"
+            data-page-title="Attendance"
+            data-page-subtitle="Monitor student attendance and view complete attendance records."
+        ></header>
 
 
 
@@ -105,181 +62,99 @@
                  SUMMARY CARDS
             =========================================== -->
 
+            <!-- ==========================================
+                 LIVE DATE & TIME
+            =========================================== -->
+
+            <div class="datetime-bar">
+
+                <div class="datetime-item">
+                    <div class="datetime-icon"><i class="fa-regular fa-calendar"></i></div>
+                    <div>
+                        <small>Today</small>
+                        <strong id="currentDate">--</strong>
+                    </div>
+                </div>
+
+                <div class="datetime-item">
+                    <div class="datetime-icon"><i class="fa-regular fa-clock"></i></div>
+                    <div>
+                        <small>Current Time</small>
+                        <strong id="currentTime">--:--:--</strong>
+                    </div>
+                </div>
+
+            </div>
+
+
+            <!-- ==========================================
+                 SUMMARY CARDS (based on today's schedule)
+            =========================================== -->
+
             <div class="attendance-summary">
 
-
-                <!-- TOTAL STUDENTS -->
-
-                <div class="summary-card">
-
-                    <div class="summary-icon">
-
-                        <i class="fa-solid fa-users"></i>
-
-                    </div>
-
-
+                <!-- SCHEDULED TODAY -->
+                <div class="summary-card clickable-card" id="scheduledCard" role="button" tabindex="0" title="View scheduled students">
+                    <div class="summary-icon"><i class="fa-solid fa-users"></i></div>
                     <div class="stat-content">
-
-                        <p class="title">
-                            Total Students
-                        </p>
-
-                        <h3>
-                            --
-                        </h3>
-
-
+                        <p class="title">Scheduled Today</p>
+                        <h3 id="statScheduled">--</h3>
                         <div class="stat-footer">
-
                             <span class="positive">
-
-                                <i class="fa-solid fa-arrow-up"></i>
-
-                                Active
-
+                                <i class="fa-solid fa-calendar-check"></i>
+                                Scheduled
                             </span>
-
-                            <small>
-                                100% Total
-                            </small>
-
+                            <small id="statPending">0 pending</small>
                         </div>
-
                     </div>
-
                 </div>
-
-
 
                 <!-- PRESENT -->
-
-                <div class="summary-card">
-
-                    <div class="summary-icon">
-
-                        <i class="fa-solid fa-user-check"></i>
-
-                    </div>
-
-
+                <div class="summary-card clickable-card" id="presentCard" role="button" tabindex="0" title="View present students">
+                    <div class="summary-icon"><i class="fa-solid fa-user-check"></i></div>
                     <div class="stat-content">
-
-                        <p class="title">
-                            Present Today
-                        </p>
-
-                        <h3>
-                            --
-                        </h3>
-
-
+                        <p class="title">Present Today</p>
+                        <h3 id="statPresent">--</h3>
                         <div class="stat-footer">
-
                             <span class="positive">
-
                                 <i class="fa-solid fa-arrow-up"></i>
-
-                                0%
-
+                                <span id="statPresentPct">0%</span>
                             </span>
-
-                            <small>
-                                of students
-                            </small>
-
+                            <small>of scheduled</small>
                         </div>
-
                     </div>
-
                 </div>
-
-
 
                 <!-- LATE -->
-
-                <div class="summary-card">
-
-                    <div class="summary-icon">
-
-                        <i class="fa-solid fa-clock"></i>
-
-                    </div>
-
-
+                <div class="summary-card clickable-card" id="lateCard" role="button" tabindex="0" title="View late students">
+                    <div class="summary-icon"><i class="fa-solid fa-clock"></i></div>
                     <div class="stat-content">
-
-                        <p class="title">
-                            Late
-                        </p>
-
-                        <h3>
-                            --
-                        </h3>
-
-
+                        <p class="title">Late</p>
+                        <h3 id="statLate">--</h3>
                         <div class="stat-footer">
-
                             <span class="negative">
-
                                 <i class="fa-solid fa-arrow-down"></i>
-
-                                0%
-
+                                <span id="statLatePct">0%</span>
                             </span>
-
-                            <small>
-                                of students
-                            </small>
-
+                            <small>of scheduled</small>
                         </div>
-
                     </div>
-
                 </div>
 
-
-
                 <!-- ABSENT -->
-
-                <div class="summary-card">
-
-                    <div class="summary-icon">
-
-                        <i class="fa-solid fa-user-xmark"></i>
-
-                    </div>
-
-
+                <div class="summary-card clickable-card" id="absentCard" role="button" tabindex="0" title="View absent students">
+                    <div class="summary-icon"><i class="fa-solid fa-user-xmark"></i></div>
                     <div class="stat-content">
-
-                        <p class="title">
-                            Absent
-                        </p>
-
-                        <h3>
-                            --
-                        </h3>
-
-
+                        <p class="title">Absent</p>
+                        <h3 id="statAbsent">--</h3>
                         <div class="stat-footer">
-
                             <span class="negative">
-
                                 <i class="fa-solid fa-arrow-down"></i>
-
-                                0%
-
+                                <span id="statAbsentPct">0%</span>
                             </span>
-
-                            <small>
-                                of students
-                            </small>
-
+                            <small>of scheduled</small>
                         </div>
-
                     </div>
-
                 </div>
 
             </div>
@@ -296,7 +171,7 @@
                 <div class="table-header">
 
                     <h3>
-                        Attendance Records
+                        Today's Attendance
                     </h3>
 
 
@@ -346,6 +221,10 @@
                                 Late
                             </option>
 
+                            <option value="Pending">
+                                Pending
+                            </option>
+
                             <option value="Absent">
                                 Absent
                             </option>
@@ -375,61 +254,52 @@
 
                                 <th>
                                     Student Name
-                                    <i class="fa-solid fa-arrow-down-up-across-line"></i>
+                                    
                                 </th>
 
 
                                 <th>
                                     Course
-                                    <i class="fa-solid fa-arrow-down-up-across-line"></i>
                                 </th>
 
 
                                 <th>
                                     Section
-                                    <i class="fa-solid fa-arrow-down-up-across-line"></i>
                                 </th>
 
 
                                 <th>
                                     Company
-                                    <i class="fa-solid fa-arrow-down-up-across-line"></i>
                                 </th>
 
 
                                 <th>
                                     Time In
-                                    <i class="fa-solid fa-arrow-down-up-across-line"></i>
                                 </th>
 
 
                                 <th>
                                     Time Out
-                                    <i class="fa-solid fa-arrow-down-up-across-line"></i>
                                 </th>
 
 
                                 <th>
                                     Total Hours
-                                    <i class="fa-solid fa-arrow-down-up-across-line"></i>
                                 </th>
 
 
                                 <th>
                                     Photo Proof
-                                    <i class="fa-solid fa-arrow-down-up-across-line"></i>
                                 </th>
 
 
                                 <th>
                                     Status
-                                    <i class="fa-solid fa-arrow-down-up-across-line"></i>
                                 </th>
 
 
                                 <th>
                                     Actions
-                                    <i class="fa-solid fa-arrow-down-up-across-line"></i>
                                 </th>
 
                             </tr>
@@ -594,7 +464,54 @@
 
 
 
+<!-- ==========================================
+     CARD LIST MODAL
+     (Nilo-load ang attendance_scheduled / present /
+     late / absent.html sa loob ng iframe)
+=========================================== -->
+
+<div
+    id="attendanceListModal"
+    class="attendance-list-overlay">
+
+    <div class="attendance-list-card">
+
+        <div class="attendance-list-header">
+
+            <h3>
+                <i id="attendanceListModalIcon" class="fa-solid fa-users"></i>
+                <span id="attendanceListModalTitle">Attendance</span>
+            </h3>
+
+            <button
+                type="button"
+                class="attendance-list-close"
+                id="closeAttendanceListModalBtn"
+                aria-label="Close">
+
+                &times;
+
+            </button>
+
+        </div>
+
+        <div class="attendance-list-body">
+
+            <iframe
+                id="attendanceListFrame"
+                title="Attendance List"></iframe>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
 <script src="../sidebar/sidebar-web.js"></script>
+
+<script type="module" src="../header/header.js"></script>
 
 <script
     type="module"

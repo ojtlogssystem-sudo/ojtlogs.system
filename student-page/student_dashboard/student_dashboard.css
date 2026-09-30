@@ -207,6 +207,8 @@ button{
 .blue-icon{ background:rgba(59,130,246,.15); color:#3b82f6; }
 .orange-icon{ background:rgba(249,115,22,.15); color:#f97316; }
 .purple-icon{ background:rgba(147,51,234,.15); color:#9333ea; }
+.red-icon{ background:#fde8e8; color:#ab0a0a; }
+.pink-icon{ background:#fde8e8; color:#ab0a0a; }
 
 .progress{
     width:100%;
@@ -464,108 +466,10 @@ button{
     flex-shrink:0;
 }
 
-.header-right {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    margin-left: auto;
-    position: relative;
-}
-
-.user-profile {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-}
-
-.profile-circle {
-    width: 38px;
-    height: 38px;
-    background-color: #a80000;
-    color: #ffffff;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    font-weight: 700;
-    user-select: none;
-}
-
-.dashboard-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 20px;
-    background: #ffffff;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
-    position: relative;
-}
-
-.profile-card-dropdown {
-    display: none;
-    position: absolute;
-    top: 48px;
-    right: 0;
-    width: 200px;
-    background: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
-    border: 1px solid #eaeaea;
-    z-index: 1000;
-    overflow: hidden;
-}
-
-.profile-card-dropdown.show {
-    display: block;
-}
-
-.profile-card-header {
-    padding: 12px 14px 10px 14px;
-    border-bottom: 1px solid #f0f0f0;
-}
-
-.profile-card-header h4 {
-    font-size: 13px;
-    font-weight: 700;
-    color: #111827;
-    margin: 0;
-}
-
-.profile-card-header .role-title {
-    font-size: 11px;
-    color: #6b7280;
-    margin-top: 2px;
-}
-
-.profile-card-body {
-    padding: 6px;
-}
-
-.profile-menu-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 10px;
-    border-radius: 6px;
-    color: #374151;
-    font-size: 13px;
-    font-weight: 500;
-    text-decoration: none;
-}
-
-.profile-menu-item:hover {
-    background-color: #f3f4f6;
-}
-
-.profile-menu-item.logout {
-    color: #dc2626;
-}
-
 /* =========================================
    MODAL POP-UP STYLES (PARA SA VIEW ALL)
    ========================================= */
+/* Hidden by default; JS toggles .show so the modal never flashes on load. */
 .modal-overlay {
     position: fixed !important;
     top: 0 !important;
@@ -573,11 +477,16 @@ button{
     width: 100vw !important;
     height: 100vh !important;
     background-color: rgba(0, 0, 0, 0.5) !important;
-    display: flex !important;
+    display: none !important;
     justify-content: center !important;
     align-items: center !important;
     z-index: 99999 !important;
     backdrop-filter: blur(4px);
+    padding: 16px;
+}
+
+.modal-overlay.show {
+    display: flex !important;
 }
 
 #modal-container-wrapper .modal-content {
@@ -642,3 +551,558 @@ button{
 .activity-info{ flex:1; }
 .activity-info h4{ font-size:13px; font-weight:600; color:#222; }
 .activity-info p{ font-size:11px; color:#777; }
+
+/* ========================================
+   INTERNSHIP CALENDAR
+======================================== */
+
+.calendar-card {
+    background: #ffffff;
+    border: 1px solid #ececec;
+    border-radius: 14px;
+    padding: 8px 16px 16px;
+    margin: 0 16px 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.calendar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+
+.calendar-month-title {
+    display: flex;
+    align-items: center;
+}
+
+.calendar-accent {
+    width: 3px;
+    height: 17px;
+    background: #AB0A0A;
+    border-radius: 2px;
+    margin-right: 10px;
+}
+
+.calendar-month-title h3 {
+    margin: 0;
+    color: #111827;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.calendar-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.calendar-action-btn {
+    height: 28px;
+    padding: 0 11px;
+    border-radius: 8px;
+    background: #f7f8fa;
+    color: #111827;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* ========================================
+   CALENDAR CONTROLS
+======================================== */
+
+.calendar-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* PLUS BUTTON */
+.calendar-add-btn {
+    width: 42px;
+    height: 42px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: none;
+    border-radius: 12px;
+
+    background: #f7f8fa;
+    color: #111827;
+
+    font-size: 15px;
+    cursor: pointer;
+
+    transition: all 0.2s ease;
+}
+
+.calendar-add-btn:hover {
+    background: #fceaea;
+    color: #ab0a0a;
+}
+
+/* CALENDAR BUTTON */
+.calendar-btn {
+    height: 42px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 8px;
+
+    padding: 0 15px;
+
+    border: none;
+    border-radius: 12px;
+
+    background: #f7f8fa;
+    color: #111827;
+
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition: all 0.2s ease;
+}
+
+.calendar-btn i {
+    font-size: 15px;
+}
+
+.calendar-btn:hover {
+    background: #fceaea;
+    color: #ab0a0a;
+}
+
+.calendar-action-btn:hover {
+    background: #fceaea;
+    color: #AB0A0A;
+    border: 1px solid #e8a8a8;
+}
+
+.calendar-divider {
+    height: 1px;
+    background: #eeeeee;
+    margin: 14px 0 16px;
+}
+
+.calendar-days {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    width: 100%;
+    /* visible, not hidden: a clipped ancestor was cutting off the
+       "Note: ..." popup that appears when a day is tapped. */
+    overflow: visible;
+}
+
+.calendar-day-list {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex: 1;
+    min-width: 0;
+    overflow: visible;
+}
+
+/* DATE BOX */
+.calendar-day { 
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 58px;
+    height: 60px; 
+    border: 1px solid transparent; 
+    background: #f7f8fa; 
+    border-radius: 13px; 
+    color: #111827; 
+ 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: center; 
+    gap: 5px; 
+ 
+    font-family: 'Poppins', sans-serif; 
+    cursor: pointer; 
+ 
+    transition: 
+        background-color 0.2s ease, 
+        border-color 0.2s ease; 
+}
+
+/* NUMBER */
+.calendar-day .day-number {
+    font-size: 17px;
+    line-height: 1;
+    font-weight: 600;
+}
+
+/* DAY NAME */
+.calendar-day .day-name {
+    font-size: 9px;
+    line-height: 1;
+    color: #6b7280;
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+/* HOVER */
+.calendar-day:hover {
+    background: #fceaea;
+    border-color: #e8baba;
+}
+
+/* SELECTED */
+.calendar-day.active {
+    background: #AB0A0A;
+    border-color: #AB0A0A;
+    color: #ffffff;
+    box-shadow: none;
+}
+
+.calendar-day.active .day-name {
+    color: #ffffff;
+}
+
+/* TODAY — NO BORDER */
+.calendar-day.today:not(.active) {
+    border-color: transparent;
+}
+
+/* HOURS LOGGED ON A DUTY DAY (e.g. "8h") */
+.calendar-day .calendar-day-hours {
+    font-size: 9px;
+    font-weight: 700;
+    color: #16a34a;
+    line-height: 1;
+    margin-top: 1px;
+}
+
+.calendar-day.active .calendar-day-hours {
+    color: #dcfce7;
+}
+
+/* Subtle green tint on days that already have logged hours */
+.calendar-day.has-duty:not(.active) {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+
+/* ARROWS */
+.calendar-body-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.calendar-days {
+    flex: 1;
+    min-width: 0;
+    overflow: visible;
+}
+
+.calendar-day-list {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-start;
+    min-width: 0;
+}
+
+.calendar-nav {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 10px;
+    color: #333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.2s;
+}
+
+.calendar-nav:hover {
+    background-color: #f1f5f9;
+}
+
+/* ========================================
+   FULL MONTH CALENDAR
+======================================== */
+
+.calendar-day-list.month-view {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+}
+
+
+/* WEEKDAY LABELS */
+
+.calendar-day-list.month-view .calendar-weekday {
+    width: 100%;
+    height: 28px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-family: 'Poppins', sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+
+    color: #6b7280;
+}
+
+
+/* EMPTY CELLS */
+
+.calendar-day-list.month-view .calendar-empty {
+    width: 100%;
+    height: 46px;
+}
+
+
+/* DATE BOXES */
+
+.calendar-day-list.month-view .calendar-month-day {
+    width: 100%;
+    height: 33px;
+
+    padding: 0;
+    margin: 0;
+
+    border: 1px solid #eeeeee;
+    border-radius: 10px;
+
+    background: #f7f8fa;
+    color: #111827;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-family: 'Poppins', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+
+    cursor: pointer;
+
+    box-sizing: border-box;
+
+    transition:
+        background-color 0.2s ease,
+        border-color 0.2s ease,
+        color 0.2s ease;
+}
+
+
+/* HOVER */
+
+.calendar-day-list.month-view .calendar-month-day:hover {
+    background: #fceaea;
+    border-color: #e8baba;
+    color: #ab0a0a;
+}
+
+
+/* SELECTED DATE */
+
+.calendar-day-list.month-view .calendar-month-day.active {
+    background: #ab0a0a;
+    border-color: #ab0a0a;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+
+/* TODAY */
+
+.calendar-day-list.month-view
+.calendar-month-day.today:not(.active) {
+    border-color: #e8baba;
+}
+
+/* Subtle green tint on days that already have logged hours (tap the day
+   to see the exact hours rendered, shown in the popup tooltip). */
+.calendar-day-list.month-view .calendar-month-day.has-duty:not(.active) {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+    color: #15803d;
+}
+
+/* Red tint on past duty days with no logged hours and no excuse/holiday
+   on file — the same treatment as the green "has-duty" tint above, just
+   for the opposite case (absent instead of present). */
+.calendar-day-list.month-view .calendar-month-day.absent-day:not(.active) {
+    background: #fef2f2;
+    border-color: #fca5a5;
+    color: #b91c1c;
+}
+
+.calendar-day.absent-day:not(.active) {
+    background: #fef2f2;
+    border-color: #fca5a5;
+}
+
+/* EMPTY CELLS */
+
+.calendar-day-list.month-view .calendar-empty {
+    width: 100%;
+    height: 42px;
+    margin: 0;
+    padding: 0;
+}
+
+/* Note: .notification / .notification-badge styling now lives entirely
+   in the shared ../templated/header.css so the dashboard's header stays
+   in sync with every other page instead of keeping its own copy. */
+
+/* "View All" trigger in the Recent Activity header */
+.view-all-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: #0284c7;
+    font-family: inherit;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.view-all-btn:hover {
+    text-decoration: underline;
+}
+
+.activity-duration {
+    font-size: 10px;
+    font-weight: 600;
+    color: #64748b;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 5px 10px;
+    margin-left: auto;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+/* ========================================
+   RESPONSIVE: MOBILE CALENDAR
+   The week-view day boxes now flex to share whatever width is left
+   after the two nav arrows (see ".calendar-day" above), so they
+   shrink instead of overflowing and pushing the right arrow off
+   screen. This just tightens spacing/fonts on narrow phones so the
+   shrunk boxes stay readable.
+======================================== */
+@media (max-width: 480px) {
+    .calendar-card {
+        padding: 8px 10px 12px;
+        margin: 0 12px 16px;
+    }
+
+    .calendar-body-wrapper {
+        gap: 4px;
+    }
+
+    .calendar-nav {
+        padding: 6px;
+        font-size: 15px;
+        flex-shrink: 0;
+    }
+
+    .calendar-day-list {
+        gap: 5px;
+    }
+
+    .calendar-day {
+        height: 54px;
+        gap: 3px;
+    }
+
+    .calendar-day .day-number {
+        font-size: 14px;
+    }
+
+    .calendar-day .day-name {
+        font-size: 7.5px;
+    }
+
+    .calendar-day .calendar-day-hours {
+        font-size: 7.5px;
+    }
+
+    .calendar-btn span {
+        display: none;
+    }
+
+    .calendar-btn {
+        padding: 0 10px;
+        width: 42px;
+    }
+}
+/* ==========================================
+   INITIAL PAGE LOADING OVERLAY
+   Ipinapakita habang hindi pa tapos ang unang
+   pag-fetch ng student profile (loadStudentData)
+   at unang snapshot ng attendance/activity data
+   mula Firestore. Pinipigilan nito na makita ng
+   user ang mga placeholder values ("Loading...",
+   "0 hours", "--") bago pa dumating ang totoong
+   datos.
+========================================== */
+.page-loading-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(2px);
+    transition: opacity 0.25s ease;
+}
+
+.page-loading-overlay.fade-out {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.page-loading-overlay .loading-spinner {
+    width: 42px;
+    height: 42px;
+    border: 4px solid #e5e7eb;
+    border-top-color: #AB0A0A;
+    border-radius: 50%;
+    animation: dashboard-loading-spin 0.8s linear infinite;
+}
+
+.page-loading-overlay p {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    font-family: 'Poppins', sans-serif;
+}
+
+@keyframes dashboard-loading-spin {
+    to { transform: rotate(360deg); }
+}

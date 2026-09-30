@@ -267,3 +267,44 @@ body{
     width: 100%;
     cursor: pointer;
 }
+
+/* INITIAL LOADING OVERLAY */
+.page-loading-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(2px);
+    transition: opacity 0.25s ease;
+}
+
+.page-loading-overlay.fade-out {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.page-loading-overlay .loading-spinner {
+    width: 42px;
+    height: 42px;
+    border: 4px solid #e5e7eb;
+    border-top-color: var(--primary, #AB0A0A);
+    border-radius: 50%;
+    animation: tasks-loading-spin 0.8s linear infinite;
+}
+
+.page-loading-overlay p {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    font-family: 'Poppins', sans-serif;
+}
+
+@keyframes tasks-loading-spin {
+    to { transform: rotate(360deg); }
+}

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>OJT Deadline | OJT-LOGS</title>
+
+    <!-- Shared Layout -->
+    <link rel="stylesheet" href="../sidebar/sidebar-web.css">
+    <!-- Shared Header -->
+    <link rel="stylesheet" href="../header/header.css">
+    <!-- Same design system as the other Settings pages -->
+    <link rel="stylesheet" href="settings.css">
+
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+
+    <style>
+        /* ============ CUSTOM CONFIRM MODAL ============
+           Pinapalitan yung native window.confirm() popup
+           (yung "127.0.0.1:5501 says..." na browser dialog)
+           ng sarili nating themed modal.
+        */
+        .confirm-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            background: rgba(15, 23, 42, 0.55);
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .confirm-overlay.show {
+            display: flex;
+        }
+
+        .confirm-box {
+            background: #fff;
+            width: 100%;
+            max-width: 420px;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .confirm-box h3 {
+            margin: 0 0 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 17px;
+        }
+
+        .confirm-box h3 i {
+            color: #f59e0b;
+        }
+
+        .confirm-box p {
+            margin: 0 0 20px;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #475569;
+        }
+
+        .confirm-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+    </style>
+
+</head>
+
+<body>
+
+<div class="dashboard">
+
+<!-- ===================== SIDEBAR ===================== -->
+
+<div id="sidebar-container"></div>
+
+<!-- ===================== MAIN CONTENT ===================== -->
+
+<main class="main">
+
+<!-- HEADER (shared: ../header/header.js + header.html) -->
+<header
+    id="header-container"
+    data-page-title="OJT Deadline"
+    data-page-subtitle="Set the internship completion deadline used for at-risk predictions and reports."
+></header>
+
+<section class="settings-page">
+
+    <!-- ============ CURRENT DEADLINE ============ -->
+
+    <div class="settings-card">
+
+        <div class="card-header">
+            <div>
+                <h3>
+                    <i class="fa-regular fa-calendar-check"></i>
+                    Current OJT deadline
+                </h3>
+                <p>This is the target completion date used by the at-risk prediction and every student's progress report.</p>
+            </div>
+        </div>
+
+        <div class="setting-list">
+
+            <div class="setting-row">
+                <div class="setting-text">
+                    <h4>Deadline date</h4>
+                    <p>
+                        <span id="currentDeadlineText">Loading&hellip;</span>
+                        <span class="status-pill" id="deadlineCountdown"></span>
+                    </p>
+                </div>
+            </div>
+
+            <div class="setting-row">
+                <div class="setting-text">
+                    <h4>Last updated</h4>
+                    <p>
+                        <span id="lastUpdatedText">&mdash;</span>
+                    </p>
+                </div>
+            </div>
+
+            <div class="setting-row">
+                <div class="setting-text">
+                    <h4>Students using this deadline</h4>
+                    <p>
+                        <span id="affectedCountText">&mdash;</span>
+                    </p>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ============ SET NEW DEADLINE ============ -->
+
+    <div class="settings-card">
+
+        <div class="card-header">
+            <div>
+                <h3>
+                    <i class="fa-solid fa-pen-to-square"></i>
+                    Set a new deadline
+                </h3>
+                <p>Applies to every student account. Individual students can still be given their own deadline from the Students page.</p>
+            </div>
+        </div>
+
+        <div class="profile-form">
+
+            <div class="form-row">
+
+                <div class="form-group">
+                    <label for="newDeadline">New deadline date</label>
+                    <input type="date" id="newDeadline">
+                </div>
+
+                <div class="form-group">
+                    <label for="deadlineNote">Note (optional)</label>
+                    <input type="text" id="deadlineNote" placeholder="e.g. Extended due to holiday break">
+                </div>
+
+            </div>
+
+            <small class="field-hint">
+                This updates the <code>deadlineDate</code> field of every student account and is picked up
+                immediately by the At-Risk analysis the next time it runs.
+            </small>
+
+            <div class="form-actions">
+
+                <button type="button" class="btn btn-secondary" id="resetDeadlineForm">
+                    <i class="fa-solid fa-rotate-left"></i>
+                    Discard
+                </button>
+
+                <button type="button" class="btn btn-primary" id="applyDeadlineBtn">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    Apply to all students
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+</main>
+
+</div>
+
+<!-- TOAST -->
+
+<div class="toast" id="toast">
+    <i class="fa-solid fa-circle-check" id="toastIcon"></i>
+    <span id="toastMessage">Changes saved.</span>
+</div>
+
+<!-- CUSTOM CONFIRM MODAL (replaces window.confirm) -->
+
+<div class="confirm-overlay" id="confirmOverlay">
+    <div class="confirm-box">
+        <h3><i class="fa-solid fa-triangle-exclamation"></i> Confirm deadline change</h3>
+        <p id="confirmMessage">Are you sure?</p>
+        <div class="confirm-actions">
+            <button type="button" class="btn btn-secondary" id="confirmCancelBtn">Cancel</button>
+            <button type="button" class="btn btn-primary" id="confirmOkBtn">OK</button>
+        </div>
+    </div>
+</div>
+
+<script src="../sidebar/sidebar-web.js"></script>
+<script type="module" src="../header/header.js"></script>
+<script type="module" src="ojt-deadline.js"></script>
+
+</body>
+</html>

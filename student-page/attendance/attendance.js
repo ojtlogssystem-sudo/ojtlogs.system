@@ -1230,7 +1230,23 @@ function initAttendanceSystem(currentUser) {
             return;
         }
 
-        const activeDocId = localStorage.getItem("current_attendance_doc_id");
+        const now = await getCurrentNTPTime();
+        const timeOutStr = formatAMPM(now);
+        const todayStr = getLocalYYYYMMDD(now);
+
+        // Fallback: kung nawala/nabura ang localStorage doc id (e.g. ibang
+        // device/browser o na-clear ang site data), hanapin sa naka-fetch nang
+        // attendance history ang Active record ngayong araw — parehong paraan
+        // ginagamit ng refreshAttendanceUI() para i-display ang "Active" badge.
+        let activeDocId = localStorage.getItem("current_attendance_doc_id");
+        if (!activeDocId || (!activeDocId.startsWith("local_") && !fullAttendanceHistory.some(i => i.id === activeDocId))) {
+            const fallbackSession = fullAttendanceHistory.find(i => i.status === "Active" && i.date === todayStr);
+            if (fallbackSession) {
+                activeDocId = fallbackSession.id;
+                localStorage.setItem("current_attendance_doc_id", activeDocId);
+            }
+        }
+
         if (!activeDocId) {
             showToast("No active Time In session found.", "error");
             return;
@@ -1238,9 +1254,6 @@ function initAttendanceSystem(currentUser) {
 
         submitTaskBtn.disabled = true;
         submitTaskBtn.textContent = "Updating Record...";
-
-        const now = await getCurrentNTPTime();
-        const timeOutStr = formatAMPM(now);
 
         try {
             if (!activeDocId.startsWith("local_")) {

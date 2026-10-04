@@ -140,6 +140,13 @@ const NOTIF_PROFILE_MAX_AGE_DAYS = 30;
 
 // Saan pupunta kapag pinindot ang notification (null = walang pupuntahan).
 // Ang at-risk ay pupunta sa Analytics page - baguhin kung iba ang folder.
+// Pupuntahan kapag nag-logout o kapag walang naka-login.
+// Absolute path (galing sa root ng site) para tama ito kahit
+// anong folder ang kinaroroonan ng page na gumagamit ng header.
+const STUDENT_LOGIN_URL =
+    "/student-page/student_login/student_login.html";
+
+
 const NOTIF_LINKS = {
     report: null,
     risk: "../analytics/analytics.html",
@@ -245,7 +252,7 @@ async function loadHeader() {
         if (!user) {
 
             window.location.href =
-                "/student_login.html";
+                STUDENT_LOGIN_URL;
 
             return;
 
@@ -623,7 +630,7 @@ function initLogout() {
             await signOut(auth);
 
             window.location.href =
-                "/student_login.html";
+                STUDENT_LOGIN_URL;
 
         } catch (err) {
 

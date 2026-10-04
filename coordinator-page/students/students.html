@@ -86,10 +86,10 @@
                                     <option value="Completed">Completed</option>
                                 </select>
 
-                                <!-- Year filter (base sa student number) -
+                                <!-- Academic Year filter (base sa student number) -
                                      awtomatikong pinupunan ng students.js -->
                                 <select id="yearFilter">
-                                    <option value="All Years">All Years</option>
+                                    <option value="All Academic Years">All Academic Years</option>
                                 </select>
                             </div>
                         </div>
@@ -98,6 +98,7 @@
                             <table class="students-table">
                                 <thead>
                                     <tr>
+                                        <th class="col-no">No.</th>
                                         <th>Photo</th>
                                         <th>Student ID</th>
                                         <th>Name</th>
@@ -111,7 +112,7 @@
                                 
                                 <tbody id="studentTable">
                                     <tr>
-                                        <td colspan="8" style="text-align: center; padding: 25px; color: #888;">
+                                        <td colspan="9" style="text-align: center; padding: 25px; color: #888;">
                                             Loading student data...
                                         </td>
                                     </tr>
@@ -190,11 +191,11 @@
                 <div class="modal-header">
                     <div class="modal-title-wrapper">
                         <div class="modal-icon-badge">
-                            <i class="fa-solid fa-user-pen"></i>
+                            <i class="fa-solid fa-calendar"></i>
                         </div>
                         <div>
-                            <h3>Edit Student Profile</h3>
-                            <p>Update intern details, status, and weekly schedule.</p>
+                            <h3>Edit OJT Schedule</h3>
+                            <p>Update intern weekly schedule.</p>
                         </div>
                     </div>
                     <button type="button" class="close-modal-btn" id="closeEditModalBtn">
@@ -206,74 +207,8 @@
                     <input type="hidden" id="editStudentEmail">
                     
                     <div class="modal-body-scroll">
-                        <!-- Basic Information Section -->
-                        <div class="form-section-title">Basic Information</div>
-
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label>Student ID</label>
-                                <div class="input-with-icon">
-                                    <i class="fa-solid fa-id-card"></i>
-                                    <input type="text" id="editStudentId" placeholder="e.g. 2024001">
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label>Gender</label>
-                                <div class="input-with-icon">
-                                    <i class="fa-solid fa-venus-mars"></i>
-                                    <select id="editStudentGender" class="modal-select">
-                                        <option value="">Not specified</option>
-                                        <option value="Male">Male</option>
-                                        <option value="Female">Female</option>
-                                        <option value="Other">Other</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label>Full Name</label>
-                                <div class="input-with-icon">
-                                    <i class="fa-regular fa-user"></i>
-                                    <input type="text" id="editStudentName" required placeholder="Full Name">
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label>Section / Program</label>
-                                <div class="input-with-icon">
-                                    <i class="fa-solid fa-graduation-cap"></i>
-                                    <input type="text" id="editStudentSection" placeholder="BSIT 304">
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label>Company</label>
-                                <div class="input-with-icon">
-                                    <i class="fa-solid fa-building"></i>
-                                    <input type="text" id="editStudentCompany" placeholder="Company Name">
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label>Status</label>
-                                <div class="input-with-icon">
-                                    <i class="fa-solid fa-chart-line"></i>
-                                    <select id="editStudentStatus" class="modal-select">
-                                        <option value="Pending">Pending</option>
-                                        <option value="Active">Active</option>
-                                        <option value="Completed">Completed</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
                         <!-- Schedule Section -->
-                        <div class="form-section-title" style="margin-top: 20px;">OJT Schedule & Shift</div>
+                        <div class="form-section-title">OJT Schedule & Shift</div>
 
                         <div class="form-group" style="margin-bottom: 14px;">
                             <label>Days of the Week</label>
@@ -443,13 +378,26 @@
                         </div>
                     </div>
 
+                    <!-- HOURS PERMISSION (coordinator approval to continue OJT hours) -->
+                    <div class="permission-card" id="hoursPermissionCard">
+                        <div class="icon-box"><i class="fa-solid fa-user-clock"></i></div>
+                        <div class="detail-info permission-info">
+                            <label>HOURS PERMISSION</label>
+                            <span id="hoursPermissionText">Not allowed to continue hours</span>
+                            <small id="hoursPermissionMeta"></small>
+                        </div>
+                        <button type="button" class="btn-permission allow" id="hoursPermissionBtn" onclick="toggleContinueHoursPermission()">
+                            <i class="fa-solid fa-unlock"></i> <span>Allow to Continue</span>
+                        </button>
+                    </div>
+
                     <div class="profile-actions">
                         <button type="button" class="btn-view-details" onclick="viewFullAccountDetails()">
                             <i class="fa-solid fa-user-gear"></i> View Account Details
                         </button>
 
                         <button type="button" class="btn-edit-modal" onclick="openEditModalFromProfile()">
-                            <i class="fa-solid fa-pen-to-square"></i> Edit Profile
+                            <i class="fa-solid fa-pen-to-square"></i> Edit Intern Schedule 
                         </button>       
                     </div>     
                 </div>

@@ -35,6 +35,92 @@ let activeStudents = [];
 
 
 /* ========================================
+   RENDERED HOURS (single source of truth)
+   Kinukuha ang unang field na may valid
+   na numero, hindi lang ang unang truthy,
+   at hindi kailanman negative/NaN.
+======================================== */
+
+function getRenderedHours(data) {
+
+    const fields = [
+        data.renderedHours,
+        data.hoursRendered,
+        data.completedHours,
+        data.totalHours
+    ];
+
+    for (const value of fields) {
+
+        if (value === undefined || value === null || value === "") {
+            continue;
+        }
+
+        const n = Number(value);
+
+        if (Number.isFinite(n) && n >= 0) {
+            return n;
+        }
+
+    }
+
+    return 0;
+
+}
+
+
+/* ========================================
+   HOURS FORMAT
+   (max 2 decimals, walang trailing zeros)
+   8.016666666666667 -> 8.02
+   600               -> 600
+======================================== */
+
+function formatHours(value) {
+
+    const n = Number(value) || 0;
+
+    return (Math.round(n * 100) / 100)
+        .toLocaleString(
+            "en-US",
+            { maximumFractionDigits: 2 }
+        );
+
+}
+
+
+/* ========================================
+   PENDING CHECK (same rule as students.js)
+   Kailangan: email, tapos na ang profile
+   setup, may student number, at may company.
+======================================== */
+
+function isPendingStudent(data) {
+
+    const email =
+        String(data.email || "").trim();
+
+    const profileDone =
+        data.isProfileComplete === true ||
+        data.profileCompleted === true;
+
+    const hasStudentNumber =
+        !!(data.studentNumber || data.studentId);
+
+    const hasCompany =
+        !!(data.companyName || data.company);
+
+    return !(
+        email &&
+        profileDone &&
+        hasStudentNumber &&
+        hasCompany
+    );
+
+}
+
+
+/* ========================================
    LOAD ACTIVE STUDENTS
 ======================================== */
 
@@ -66,14 +152,49 @@ async function loadActiveStudents() {
             }
 
 
+            /* ARCHIVED (completed batch) - nasa Completed
+               Batch Archive na, hindi na active. */
+
+            if (data.archived === true) {
+                return;
+            }
+
+
+            /* DELETED (soft delete) na ng coordinator */
+
+            if (data.accountDisabled === true) {
+                return;
+            }
+
+
             /*
                 ACTIVE CONDITION
 
-                Student is considered active when
-                their status is explicitly "Active".
+                Kapareho ng rule sa students.js:
+                Active = hindi pending (tapos na ang
+                profile setup, may student number, at
+                may company) at hindi pa Completed /
+                At-Risk.
             */
 
-            if (data.status !== "Active") {
+            const rawStatus =
+                String(data.status || "").toLowerCase();
+
+            const aiStatus =
+                String(data.internshipStatus || "");
+
+            if (
+                rawStatus === "completed" ||
+                rawStatus === "at-risk" ||
+                rawStatus === "at risk" ||
+                aiStatus === "Completed" ||
+                aiStatus === "At Risk" ||
+                aiStatus === "Graduated"
+            ) {
+                return;
+            }
+
+            if (isPendingStudent(data)) {
                 return;
             }
 
@@ -84,12 +205,7 @@ async function loadActiveStudents() {
                 600;
 
             const renderedHours =
-                Number(
-                    data.renderedHours ||
-                    data.completedHours ||
-                    data.totalHours ||
-                    0
-                );
+                getRenderedHours(data);
 
 
             activeStudents.push({
@@ -133,7 +249,8 @@ async function loadActiveStudents() {
         });
 
 
-        renderStudents(activeStudents);
+        populateFilterOptions();
+        applyFilters();
         updateSummary(activeStudents);
 
     }
@@ -216,11 +333,11 @@ function renderStudents(students) {
                     </td>
 
                     <td>
-                        ${student.requiredHours} hrs
+                        ${formatHours(student.requiredHours)} hrs
                     </td>
 
                     <td>
-                        ${student.renderedHours} hrs
+                        ${formatHours(student.renderedHours)} hrs
                     </td>
 
                     <td>
@@ -260,20 +377,116 @@ function updateSummary(students) {
     document.getElementById(
         "total-rendered-hours"
     ).textContent =
-        `${totalHours.toFixed(1)} hrs`;
+        `${formatHours(totalHours)} hrs`;
 
 }
 
 
 /* ========================================
-   SEARCH
+   SEARCH + FILTER + SORT
 ======================================== */
 
 const searchInput =
     document.getElementById("student-search");
 
+const filterSection =
+    document.getElementById("filter-section");
 
-searchInput.addEventListener("input", () => {
+const filterCompany =
+    document.getElementById("filter-company");
+
+const sortSelect =
+    document.getElementById("sort-students");
+
+const resetFiltersBtn =
+    document.getElementById("reset-filters");
+
+
+/* Fill Section / Company dropdowns from the loaded data */
+
+function populateFilterOptions() {
+
+    const fill = (select, label, values) => {
+
+        const current = select.value;
+
+        const unique =
+            [...new Set(values.filter(Boolean))]
+                .sort((a, b) =>
+                    a.localeCompare(
+                        b,
+                        undefined,
+                        { numeric: true }
+                    )
+                );
+
+        select.innerHTML =
+            `<option value="">${label}</option>` +
+            unique.map((v) =>
+                `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`
+            ).join("");
+
+        select.value =
+            unique.includes(current) ? current : "";
+
+    };
+
+    fill(
+        filterSection,
+        "All Sections",
+        activeStudents.map((s) => s.section)
+    );
+
+    fill(
+        filterCompany,
+        "All Companies",
+        activeStudents.map((s) => s.company)
+    );
+
+}
+
+
+function compareStudents(a, b, mode) {
+
+    const [key, dir] = mode.split("-");
+
+    const m = dir === "desc" ? -1 : 1;
+
+    const text = (x, y) =>
+        String(x).localeCompare(
+            String(y),
+            undefined,
+            { numeric: true, sensitivity: "base" }
+        );
+
+    switch (key) {
+
+        case "name":
+            return m * text(a.name, b.name);
+
+        case "id":
+            return m * text(a.studentId, b.studentId);
+
+        case "section":
+            return m * text(a.section, b.section) ||
+                   text(a.name, b.name);
+
+        case "company":
+            return m * text(a.company, b.company) ||
+                   text(a.name, b.name);
+
+        case "hours":
+            return m * (a.renderedHours - b.renderedHours) ||
+                   text(a.name, b.name);
+
+    }
+
+    return 0;
+
+}
+
+
+function applyFilters() {
 
     const keyword =
         searchInput.value
@@ -282,38 +495,65 @@ searchInput.addEventListener("input", () => {
 
 
     const filtered =
-        activeStudents.filter(student => {
+        activeStudents.filter((student) => {
+
+            if (
+                filterSection.value &&
+                student.section !== filterSection.value
+            ) {
+                return false;
+            }
+
+            if (
+                filterCompany.value &&
+                student.company !== filterCompany.value
+            ) {
+                return false;
+            }
+
+            if (!keyword) {
+                return true;
+            }
 
             return (
 
-                student.name
-                    .toLowerCase()
-                    .includes(keyword)
+                student.name.toLowerCase().includes(keyword) ||
 
-                ||
+                student.studentId.toLowerCase().includes(keyword) ||
 
-                student.studentId
-                    .toLowerCase()
-                    .includes(keyword)
+                student.section.toLowerCase().includes(keyword) ||
 
-                ||
-
-                student.section
-                    .toLowerCase()
-                    .includes(keyword)
-
-                ||
-
-                student.company
-                    .toLowerCase()
-                    .includes(keyword)
+                student.company.toLowerCase().includes(keyword)
 
             );
 
         });
 
 
+    filtered.sort((a, b) =>
+        compareStudents(a, b, sortSelect.value)
+    );
+
+
     renderStudents(filtered);
+
+}
+
+
+searchInput.addEventListener("input", applyFilters);
+filterSection.addEventListener("change", applyFilters);
+filterCompany.addEventListener("change", applyFilters);
+sortSelect.addEventListener("change", applyFilters);
+
+
+resetFiltersBtn.addEventListener("click", () => {
+
+    searchInput.value = "";
+    filterSection.value = "";
+    filterCompany.value = "";
+    sortSelect.value = "name-asc";
+
+    applyFilters();
 
 });
 
@@ -410,12 +650,12 @@ function preparePrintReport() {
     document.getElementById(
         "print-required-hours"
     ).textContent =
-        totalRequired.toLocaleString();
+        formatHours(totalRequired);
 
     document.getElementById(
         "print-rendered-hours"
     ).textContent =
-        totalRendered.toLocaleString();
+        formatHours(totalRendered);
 
     document.getElementById(
         "print-completion-rate"
@@ -425,7 +665,7 @@ function preparePrintReport() {
     document.getElementById(
         "print-total-hours"
     ).textContent =
-        `${totalRendered.toLocaleString()} hrs`;
+        `${formatHours(totalRendered)} hrs`;
 
 
     const printBody =
@@ -461,11 +701,11 @@ function preparePrintReport() {
                     </td>
 
                     <td>
-                        ${student.requiredHours} hrs
+                        ${formatHours(student.requiredHours)} hrs
                     </td>
 
                     <td class="hours">
-                        ${student.renderedHours} hrs
+                        ${formatHours(student.renderedHours)} hrs
                     </td>
 
                     <td class="print-status-active">

@@ -19,6 +19,8 @@
 .report-tabs{
     display:flex;
     gap:6px;
+    width:100%;
+    max-width:720px; /* hindi na buong haba ng page */
     background:#fff;
     border-radius:12px;
     padding:6px;
@@ -29,6 +31,9 @@
 .report-tab{
     display:flex;
     align-items:center;
+    justify-content:center;
+    flex:1;            /* pantay-pantay, hati sa tatlo */
+    min-width:fit-content;
     gap:8px;
     white-space:nowrap;
     padding:10px 18px;
@@ -658,14 +663,14 @@
 .status.ready,
 .status.ontrack,
 .status.completed{
-    background:#dcfce7;
+    background:transparent;
     color:#15803d;
 }
 
 .status.processing,
 .status.monitoring{
-    background:#fef3c7;
-    color:#b45309;
+    background:transparent;
+    color:#ef6c00;
 }
 
 .status.risk{   
@@ -866,7 +871,7 @@
 }
 
 .progress-status.completed {
-    background: #e8f5e9;
+    background: transparent;
     color: #2e7d32;
 }
 
@@ -875,7 +880,7 @@
 }
 
 .progress-status.monitoring {
-    background: #fff3e0;
+    background: transparent;
     color: #ef6c00;
 }
 
@@ -885,7 +890,9 @@
 .progress-status, 
 .status {
     font-size: 13px !important;   /* Dati ay 10px/12px */
-    padding: 10px 8px !important; /* Binawasan rin ang padding para mas maliit ang pill */
+    padding: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
 }
 
 /* ========================================
@@ -1212,20 +1219,20 @@
     text-align:center;
 }
 
-.report-document .progress-print-table th:nth-child(6),
 .report-document .progress-print-table th:nth-child(7),
 .report-document .progress-print-table th:nth-child(8),
-.report-document .progress-print-table td:nth-child(6),
+.report-document .progress-print-table th:nth-child(9),
 .report-document .progress-print-table td:nth-child(7),
-.report-document .progress-print-table td:nth-child(8){
+.report-document .progress-print-table td:nth-child(8),
+.report-document .progress-print-table td:nth-child(9){
     text-align:center;
     white-space:nowrap;
 }
 
-.report-document .progress-print-table th:nth-child(9),
-.report-document .progress-print-table td:nth-child(9),
 .report-document .progress-print-table th:nth-child(10),
-.report-document .progress-print-table td:nth-child(10){
+.report-document .progress-print-table td:nth-child(10),
+.report-document .progress-print-table th:nth-child(11),
+.report-document .progress-print-table td:nth-child(11){
     text-align:center;
 }
 
@@ -1498,19 +1505,14 @@
     width: 12% !important;
 }
 
-#panel-progress .progress-print-table th:nth-child(4),
-#panel-progress .progress-print-table td:nth-child(4) {
-    width: 9% !important;
-}
-
 #panel-progress .progress-print-table th:nth-child(5),
 #panel-progress .progress-print-table td:nth-child(5) {
-    width: 12% !important;
+    width: 9% !important;
 }
 
 #panel-progress .progress-print-table th:nth-child(6),
 #panel-progress .progress-print-table td:nth-child(6) {
-    width: 10% !important;
+    width: 12% !important;
 }
 
 #panel-progress .progress-print-table th:nth-child(7),
@@ -1520,16 +1522,21 @@
 
 #panel-progress .progress-print-table th:nth-child(8),
 #panel-progress .progress-print-table td:nth-child(8) {
-    width: 11% !important;
+    width: 10% !important;
 }
 
 #panel-progress .progress-print-table th:nth-child(9),
 #panel-progress .progress-print-table td:nth-child(9) {
-    width: 8% !important;
+    width: 11% !important;
 }
 
 #panel-progress .progress-print-table th:nth-child(10),
 #panel-progress .progress-print-table td:nth-child(10) {
+    width: 8% !important;
+}
+
+#panel-progress .progress-print-table th:nth-child(11),
+#panel-progress .progress-print-table td:nth-child(11) {
     width: 9% !important;
 }
 
@@ -1577,8 +1584,8 @@
    SECTION & COMPANY
 ========================================== */
 
-#panel-progress .progress-print-table td:nth-child(4),
-#panel-progress .progress-print-table td:nth-child(5) {
+#panel-progress .progress-print-table td:nth-child(5),
+#panel-progress .progress-print-table td:nth-child(6) {
     text-align: left !important;
     white-space: normal !important;
     overflow-wrap: break-word !important;
@@ -1589,9 +1596,9 @@
    HOURS
 ========================================== */
 
-#panel-progress .progress-print-table td:nth-child(6),
 #panel-progress .progress-print-table td:nth-child(7),
-#panel-progress .progress-print-table td:nth-child(8) {
+#panel-progress .progress-print-table td:nth-child(8),
+#panel-progress .progress-print-table td:nth-child(9) {
     text-align: left !important;
     white-space: nowrap !important;
 }
@@ -1600,11 +1607,11 @@
    PROGRESS
 ========================================== */
 
-#panel-progress .progress-print-table td:nth-child(9) {
+#panel-progress .progress-print-table td:nth-child(10) {
     text-align: left !important;
 }
 
-#panel-progress .progress-print-table td:nth-child(9) .progress-value {
+#panel-progress .progress-print-table td:nth-child(10) .progress-value {
     display: inline-block !important;
     text-align: left !important;
 }
@@ -1613,12 +1620,12 @@
    STATUS
 ========================================== */
 
-#panel-progress .progress-print-table td:nth-child(10) {
+#panel-progress .progress-print-table td:nth-child(11) {
     text-align: left !important;
 }
 
-#panel-progress .progress-print-table td:nth-child(10) .progress-status,
-#panel-progress .progress-print-table td:nth-child(10) .status {
+#panel-progress .progress-print-table td:nth-child(11) .progress-status,
+#panel-progress .progress-print-table td:nth-child(11) .status {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: flex-start !important;
@@ -1899,22 +1906,47 @@
     #panel-progress .progress-print-table td:nth-child(2)  { width: 15% !important; }
     #panel-progress .progress-print-table th:nth-child(3),
     #panel-progress .progress-print-table td:nth-child(3)  { width: 12% !important; }
-    #panel-progress .progress-print-table th:nth-child(4),
-    #panel-progress .progress-print-table td:nth-child(4)  { width: 9% !important; }
     #panel-progress .progress-print-table th:nth-child(5),
-    #panel-progress .progress-print-table td:nth-child(5)  { width: 11% !important; }
+    #panel-progress .progress-print-table td:nth-child(5)  { width: 9% !important; }
     #panel-progress .progress-print-table th:nth-child(6),
-    #panel-progress .progress-print-table td:nth-child(6)  { width: 9% !important; }
+    #panel-progress .progress-print-table td:nth-child(6)  { width: 11% !important; }
     #panel-progress .progress-print-table th:nth-child(7),
-    #panel-progress .progress-print-table td:nth-child(7)  { width: 10% !important; }
+    #panel-progress .progress-print-table td:nth-child(7)  { width: 9% !important; }
     #panel-progress .progress-print-table th:nth-child(8),
     #panel-progress .progress-print-table td:nth-child(8)  { width: 10% !important; }
     #panel-progress .progress-print-table th:nth-child(9),
-    #panel-progress .progress-print-table td:nth-child(9)  { width: 9% !important; }
+    #panel-progress .progress-print-table td:nth-child(9)  { width: 10% !important; }
     #panel-progress .progress-print-table th:nth-child(10),
-    #panel-progress .progress-print-table td:nth-child(10) {
+    #panel-progress .progress-print-table td:nth-child(10)  { width: 9% !important; }
+    #panel-progress .progress-print-table th:nth-child(11),
+    #panel-progress .progress-print-table td:nth-child(11) {
         width: 11% !important;
         overflow: visible !important;
     }
 
 }
+
+
+/* Batch dropdown sa toolbar - kapareho ng ibang filter */
+#batchFilter {
+    min-width: 130px;
+}
+
+
+/* ==========================================
+   STUDENT PROGRESS - 11 COLUMNS (may Course na)
+   #, Name, Student ID, Course, Section, Company,
+   Required, Completed, Remaining, Progress, Status
+========================================== */
+
+#panel-progress .progress-print-table th:nth-child(1),  #panel-progress .progress-print-table td:nth-child(1)  { width: 4%  !important; }
+#panel-progress .progress-print-table th:nth-child(2),  #panel-progress .progress-print-table td:nth-child(2)  { width: 14% !important; }
+#panel-progress .progress-print-table th:nth-child(3),  #panel-progress .progress-print-table td:nth-child(3)  { width: 11% !important; }
+#panel-progress .progress-print-table th:nth-child(4),  #panel-progress .progress-print-table td:nth-child(4)  { width: 6%  !important; }
+#panel-progress .progress-print-table th:nth-child(5),  #panel-progress .progress-print-table td:nth-child(5)  { width: 6%  !important; }
+#panel-progress .progress-print-table th:nth-child(6),  #panel-progress .progress-print-table td:nth-child(6)  { width: 12% !important; }
+#panel-progress .progress-print-table th:nth-child(7),  #panel-progress .progress-print-table td:nth-child(7)  { width: 9%  !important; }
+#panel-progress .progress-print-table th:nth-child(8),  #panel-progress .progress-print-table td:nth-child(8)  { width: 9%  !important; }
+#panel-progress .progress-print-table th:nth-child(9),  #panel-progress .progress-print-table td:nth-child(9)  { width: 10% !important; }
+#panel-progress .progress-print-table th:nth-child(10), #panel-progress .progress-print-table td:nth-child(10) { width: 9%  !important; }
+#panel-progress .progress-print-table th:nth-child(11), #panel-progress .progress-print-table td:nth-child(11) { width: 10% !important; }

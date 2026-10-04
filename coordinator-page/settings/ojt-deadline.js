@@ -70,6 +70,21 @@ const FALLBACK_DEADLINE = "2026-12-31";
 
 const SETTINGS_DOC = doc(db, "settings", "ojtDeadline");
 
+// Kapareho ng rule ng app.py (/api/predict-risk): kasama ang lahat ng
+// user na role == "student" AT pati yung walang "role" field. Hindi
+// kayang i-query ng Firestore ang "field na wala", kaya kinukuha lahat
+// ng users at sinasala dito.
+async function getStudentDocs() {
+
+    const snap = await getDocs(collection(db, "users"));
+
+    return snap.docs.filter((d) => {
+        const role = String(d.data().role || "").toLowerCase();
+        return role === "student" || !d.data().role;
+    });
+
+}
+
 
 /* ==========================================
    STATE
@@ -77,6 +92,7 @@ const SETTINGS_DOC = doc(db, "settings", "ojtDeadline");
 
 let currentUser = null;
 let coordinatorName = "OJT Coordinator";
+let savedDeadline = FALLBACK_DEADLINE;   // huling deadline na naka-save
 
 
 /* ==========================================
@@ -339,6 +355,8 @@ async function loadCurrentDeadline() {
 
     }
 
+    savedDeadline = String(deadlineDate).slice(0, 10);
+
     $("currentDeadlineText").textContent =
         formatDeadline(deadlineDate) + (note ? ` — ${note}` : "");
 
@@ -369,15 +387,10 @@ async function loadAffectedCount() {
 
     try {
 
-        const studentsQuery = query(
-            collection(db, "users"),
-            where("role", "==", "student")
-        );
-
-        const snap = await getDocs(studentsQuery);
+        const studentDocs = await getStudentDocs();
 
         label.textContent =
-            `${snap.size} student account${snap.size === 1 ? "" : "s"}`;
+            `${studentDocs.length} student account${studentDocs.length === 1 ? "" : "s"}`;
 
     } catch (error) {
 
@@ -408,8 +421,30 @@ $("applyDeadlineBtn").addEventListener("click", async () => {
 
     const formattedForConfirm = formatDeadline(newDeadline);
 
+    // Ilang araw ang inilipat kumpara sa kasalukuyang deadline
+    const shiftDays = Math.round(
+        (new Date(`${newDeadline}T00:00:00`) - new Date(`${savedDeadline}T00:00:00`))
+        / (1000 * 60 * 60 * 24)
+    );
+
+    if (shiftDays === 0) {
+        showToast("Pareho lang ito sa kasalukuyang deadline.", "error");
+        return;
+    }
+
+    const shiftText =
+        shiftDays > 0
+            ? `This extends the deadline by ${shiftDays} day${shiftDays === 1 ? "" : "s"}, giving students more time to catch up. `
+            : `This moves the deadline ${Math.abs(shiftDays)} day${Math.abs(shiftDays) === 1 ? "" : "s"} earlier, so more students may be flagged At Risk. `;
+
+    const pastText =
+        daysUntil(newDeadline) < 0
+            ? "Warning: this date is already in the past. "
+            : "";
+
     const confirmed = await showConfirmModal(
         `Set ${formattedForConfirm} as the OJT deadline for every student account? ` +
+        shiftText + pastText +
         `Students with their own custom deadline on the Students page will also be overwritten.`
     );
 
@@ -420,16 +455,9 @@ $("applyDeadlineBtn").addEventListener("click", async () => {
 
     try {
 
-        const studentsQuery = query(
-            collection(db, "users"),
-            where("role", "==", "student")
-        );
-
-        const snap = await getDocs(studentsQuery);
-
         // Firestore caps a single batch sa 500 na operations - hinahati
         // dito sa mga pangkat na 450 para may buffer.
-        const docs = snap.docs;
+        const docs = await getStudentDocs();
         const CHUNK_SIZE = 450;
 
         for (let i = 0; i < docs.length; i += CHUNK_SIZE) {
@@ -458,7 +486,8 @@ $("applyDeadlineBtn").addEventListener("click", async () => {
         });
 
         showToast(
-            `Deadline updated for ${docs.length} student${docs.length === 1 ? "" : "s"}.`
+            `Deadline updated for ${docs.length} student${docs.length === 1 ? "" : "s"}. ` +
+            `Open Analytics to see the refreshed risk status.`
         );
 
         noteInput.value = "";

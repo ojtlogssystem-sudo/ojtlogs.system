@@ -60,16 +60,20 @@ const ESTIMATED_HOURS_PER_DAY = 8;
 let allStudents = [];
 let allWeeklyReports = [];
 let attendanceIsEstimated = false;
+let reportDataLoaded = false;
 
-let currentTab = "overview";
+let currentTab = "progress";
 
 let coordinatorName = "OJT Coordinator";
 
 const filters = {
     search: "",
+    batch: "all",
     section: "all",
     company: "all",
-    status: "all"
+    status: "all",
+    internCount: "all",
+    deployment: "all"
 };
 
 
@@ -89,6 +93,27 @@ const filters = {
 function applySchoolYearToReport(schoolYear) {
 
     if (!schoolYear || !schoolYear.label) return;
+
+    // Ang napiling School Year (Academic Year) ang batch, kapareho ng
+    // Batch Archive: "2024 - 2025" -> AY 2024-2025.
+    // Lalabas lang ang mga estudyanteng ang OJT ay sa academic year
+    // na iyon. Ang taon sa student number ay taon ng pagpasok, kaya
+    // ang student number na 2021-... ay nasa AY 2024-2025
+    // (2021 + 3 = 2024). Tingnan ang getBatch().
+    const yearMatch =
+        String(schoolYear.label).match(/(?:19|20)\d{2}/) ||
+        String(schoolYear.value || "").match(/(?:19|20)\d{2}/);
+
+    const newBatch = yearMatch ? yearMatch[0] : "all";
+
+    const batchChanged = newBatch !== filters.batch;
+
+    filters.batch = newBatch;
+
+    if (batchChanged && reportDataLoaded) {
+        populateFilterOptions();
+        renderActiveTab();
+    }
 
     const el =
         document.getElementById("metaSchoolYear");
@@ -257,9 +282,23 @@ async function loadAllData() {
 
     studentsSnap.forEach(docSnap => {
 
+        const data = docSnap.data();
+
+        // Hindi isinasama ang mga WALANG PANG ACCESS sa system
+        // (pending approval / na-invite pa lang ni coordinator).
+        if (isPendingStudent(data)) {
+            return;
+        }
+
+        // Hindi rin isinasama ang mga COMPLETED na (tapos na ang 600
+        // hours / graduated / nasa Batch Archive).
+        if (isCompletedStudent(data)) {
+            return;
+        }
+
         allStudents.push({
             id: docSnap.id,
-            ...docSnap.data()
+            ...data
         });
 
     });
@@ -359,7 +398,162 @@ async function loadAllData() {
     }
 
 
+    reportDataLoaded = true;
+
     hideStatus();
+
+}
+
+
+// ========================================
+// PENDING / NO-ACCESS STUDENTS
+// (kapareho ng logic sa app.py -> _is_pending_student)
+// ========================================
+
+const PENDING_STATUS_VALUES = [
+    "pending", "pending approval", "for approval", "awaiting approval",
+    "unverified", "not approved",
+    "invited", "invite sent", "invite pending", "pending invite",
+    "pending invitation", "invitation sent", "awaiting registration",
+    "unregistered", "not registered", "not activated",
+    "disabled", "deactivated", "suspended", "revoked"
+];
+
+const PENDING_STATUS_FIELDS = [
+    "status", "accountStatus", "approvalStatus", "registrationStatus",
+    "inviteStatus", "invitationStatus", "accessStatus"
+];
+
+const ACCESS_FLAG_FIELDS = [
+    "approved", "isApproved", "hasAccess", "accessGranted",
+    "activated", "isActivated", "registered", "isRegistered",
+    "inviteAccepted", "invitationAccepted"
+];
+
+function isPendingStudent(data) {
+
+    if (data.pending === true || data.isPending === true) {
+        return true;
+    }
+
+    if (ACCESS_FLAG_FIELDS.some(field => data[field] === false)) {
+        return true;
+    }
+
+    return PENDING_STATUS_FIELDS.some(field =>
+        PENDING_STATUS_VALUES.includes(
+            String(data[field] || "").trim().toLowerCase()
+        )
+    );
+
+}
+
+
+// ========================================
+// COMPLETED / ARCHIVED STUDENTS
+// ========================================
+
+function isCompletedStudent(data) {
+
+    if (
+        data.archived === true ||
+        data.isArchived === true ||
+        data.archivedAt ||
+        data.archivedDate ||
+        data.graduated === true ||
+        data.isGraduated === true
+    ) {
+        return true;
+    }
+
+    const status =
+        String(data.internshipStatus || data.status || "")
+            .trim()
+            .toLowerCase();
+
+    if (
+        status === "completed" ||
+        status.includes("graduated") ||
+        status.includes("archiv")
+    ) {
+        return true;
+    }
+
+    const hours = Number(
+        data.renderedHours ||
+        data.completedHours ||
+        data.hoursRendered ||
+        0
+    );
+
+    return hours >= REQUIRED_HOURS_PER_STUDENT;
+
+}
+
+
+// ========================================
+// BATCH = ACADEMIC YEAR (kapareho ng Batch Archive)
+// Ang taon sa umpisa ng student ID ay taon ng pagpasok.
+// Sa 4-year course, ang OJT / pagtatapos ay sa ika-4 na taon:
+//
+//   2021-01-09980 -> AY 2024-2025  (ibabalik: "2024")
+//   2022-01-11872 -> AY 2025-2026  (ibabalik: "2025")
+//   2023-07-01081 -> AY 2026-2027  (ibabalik: "2026")
+//
+// Ibinabalik ay ang unang taon ng academic year, para tumugma sa
+// napiling School Year sa header ("2024 - 2025" -> "2024").
+// Kung walang taon sa ID, gagamitin ang batch / school year field
+// ng student.
+// ========================================
+
+// Dapat pareho sa COURSE_YEARS sa completed-batch-archive.js
+const COURSE_YEARS = 4;
+
+const STUDENT_ID_FIELDS = [
+    "studentId", "studentID", "studentNumber", "idNumber",
+    "schoolId", "studentNo", "id_number"
+];
+
+const BATCH_FIELDS = [
+    "batch", "batchYear", "batch_year",
+    "schoolYear", "school_year",
+    "academicYear", "academic_year", "sy"
+];
+
+function getBatch(student) {
+
+    for (const field of STUDENT_ID_FIELDS) {
+
+        const value = student[field];
+
+        if (value === undefined || value === null || value === "") continue;
+
+        const match =
+            String(value).match(/^\s*((?:19|20)\d{2})\s*[-/\s]\s*\d/);
+
+        if (match) return String(Number(match[1]) + COURSE_YEARS - 1);
+
+        break;   // unang student ID lang ang titingnan
+
+    }
+
+    for (const field of BATCH_FIELDS) {
+
+        const value = student[field];
+
+        if (value !== undefined && value !== null && String(value).trim() !== "") {
+
+            // Academic year na ang naka-save (hal. "2024-2025"):
+            // unang taon ang gamitin para tumugma sa filter.
+            const year = String(value).match(/(?:19|20)\d{2}/);
+
+            return year ? year[0] : String(value).trim();
+
+        }
+
+    }
+
+    return "-";
 
 }
 
@@ -404,22 +598,56 @@ function getName(student) {
 
 function getStudentNumber(student) {
 
-    return (
-        student.studentNumber ||
-        student.idNumber ||
-        "-"
-    );
+    for (const field of STUDENT_ID_FIELDS) {
+
+        if (student[field] !== undefined && student[field] !== null && student[field] !== "") {
+            return student[field];
+        }
+
+    }
+
+    return "-";
 
 }
 
+// Ang section ay numero/letra lang (hal. "405"), kaya tinatanggal
+// ang course prefix kung nakasama (hal. "BSIT 405" -> "405").
 function getSection(student) {
 
-    return (
-        student.section &&
-        String(student.section).trim()
+    const raw =
+        student.section
             ? String(student.section).trim()
-            : "-"
-    );
+            : "";
+
+    if (!raw) return "-";
+
+    const match =
+        raw.match(/^[A-Za-z][A-Za-z.]*[\s-]+(\d.*)$/);
+
+    return match ? match[1].trim() : raw;
+
+}
+
+// Course lang ang ilalagay (hal. "BSIT"). Kung walang course field,
+// kukunin sa unahan ng section (hal. "BSIT 405" -> "BSIT").
+function getCourse(student) {
+
+    const course =
+        student.course
+            ? String(student.course).trim()
+            : "";
+
+    if (course) return course;
+
+    const raw =
+        student.section
+            ? String(student.section).trim()
+            : "";
+
+    const match =
+        raw.match(/^([A-Za-z][A-Za-z.]*)[\s-]+\d/);
+
+    return match ? match[1].toUpperCase() : "-";
 
 }
 
@@ -441,44 +669,100 @@ function getCompany(student) {
 }
 
 
-function getRenderedHours(student) {
+// ----------------------------------------
+// PERCENT HELPERS
+// ----------------------------------------
+// Floor (hindi round) sa 1 decimal para hindi tumaas ang
+// percentage nang hindi pa totoong umaabot. Halimbawa 599/600 =
+// 99.83% -> 99.8% (hindi 100%). Ang maliit na epsilon ay para
+// hindi magkamali dahil sa floating-point (hal. 83.3 na naging
+// 83.29999...).
+function roundToOneDecimal(value) {
+    return Math.round((value + 1e-9) * 10) / 10;
+}
 
-    return Number(
 
-        student.renderedHours ||
+function floorToOneDecimal(value) {
 
-        student.completedHours ||
+    return Math.floor((value + 1e-9) * 10) / 10;
 
-        student.hoursRendered ||
+}
 
-        0
+// Oras na may hanggang 2 decimal lang (tinatanggal ang sobra, hindi nire-round).
+// Halimbawa: 8.017 -> 8.01, 591.983 -> 591.98
+function formatHours(value) {
+    const truncated =
+        Math.floor((Number(value) + 1e-9) * 100) / 100;
 
+    return truncated.toLocaleString(
+        undefined,
+        { maximumFractionDigits: 2 }
     );
+}
+
+
+function formatPercent(value) {
+
+    return Number(value.toFixed(1)) + "%";
 
 }
 
 
-function getProgress(student) {
+function getRenderedHours(student) {
+
+    const raw =
+        student.renderedHours ||
+        student.completedHours ||
+        student.hoursRendered ||
+        0;
+
+    const hours = Number(raw);
+
+    // Iwas NaN / negative na oras
+    return Number.isFinite(hours)
+        ? Math.max(0, hours)
+        : 0;
+
+}
+
+
+// Eksaktong progress (walang rounding) - ito ang gagamitin sa
+// pag-average para hindi mag-ipon ang rounding error.
+function getProgressExact(student) {
 
     const hours =
         getRenderedHours(student);
 
     return Math.max(
-
         0,
-
         Math.min(
-
             100,
-
-            Math.round(
-                (hours /
-                    REQUIRED_HOURS_PER_STUDENT) *
-                100
-            )
-
+            (hours * 100) /
+            REQUIRED_HOURS_PER_STUDENT
         )
+    );
 
+}
+
+
+// Progress na ipinapakita sa table (1 decimal, naka-floor).
+// Lalabas lang ang 100% kapag talagang kumpleto na ang oras.
+function getProgress(student) {
+
+    const hours =
+        getRenderedHours(student);
+
+    if (hours >= REQUIRED_HOURS_PER_STUDENT) {
+        return 100;
+    }
+
+    // Normal rounding sa 1 decimal (28/600 = 4.666... -> 4.7%).
+    // Hindi lalampas sa 99.9% hangga't hindi kumpleto ang oras.
+    return Math.min(
+        99.9,
+        roundToOneDecimal(
+            getProgressExact(student)
+        )
     );
 
 }
@@ -618,6 +902,13 @@ function getAttendance(student) {
 
 function getAttendanceRate(att) {
 
+    // Ang estimate (hours / 8) ay walang absent kaya laging 100%
+    // ang lalabas - hindi totoong rate 'yon, kaya "-" ang ipapakita.
+    if (att.isEstimate) {
+        return null;
+    }
+
+
     const total =
         att.present +
         att.late +
@@ -629,8 +920,9 @@ function getAttendanceRate(att) {
     }
 
 
-    return Math.round(
-        (att.present / total) * 100
+    // Pumasok pa rin ang late, kaya kasama sa attended.
+    return floorToOneDecimal(
+        ((att.present + att.late) / total) * 100
     );
 
 }
@@ -735,6 +1027,11 @@ function statusPillClass(status) {
 
 function getFilteredStudents() {
 
+    // Sa Company Deployment tab, company lang ang may saysay:
+    // hindi ginagamit ang section at status filter dito.
+    const isCompanyTab =
+        currentTab === "company";
+
     return allStudents.filter(student => {
 
         const name =
@@ -756,13 +1053,24 @@ function getFilteredStudents() {
                 filters.search.toLowerCase();
 
 
+            const course =
+                getCourse(student).toLowerCase();
+
             const matches =
 
+                isCompanyTab
+                    ? company.includes(keyword)
+                    : (
                 name.includes(keyword) ||
 
                 company.includes(keyword) ||
 
-                section.includes(keyword);
+                section.includes(keyword) ||
+
+                course.includes(keyword) ||
+
+                `${course} ${section}`.includes(keyword)
+                    );
 
 
             if (!matches) {
@@ -773,6 +1081,18 @@ function getFilteredStudents() {
 
 
         if (
+            filters.batch !== "all" &&
+            getBatch(student) !==
+                filters.batch
+        ) {
+
+            return false;
+
+        }
+
+
+        if (
+            !isCompanyTab &&
             filters.section !== "all" &&
             getSection(student) !==
                 filters.section
@@ -795,6 +1115,7 @@ function getFilteredStudents() {
 
 
         if (
+            !isCompanyTab &&
             filters.status !== "all" &&
             status !== filters.status
         ) {
@@ -828,10 +1149,19 @@ function populateFilterOptions() {
         );
 
 
+    // Ang mga option ay galing lang sa mga estudyante ng napiling
+    // school year (batch).
+    const pool =
+        allStudents.filter(student =>
+            filters.batch === "all" ||
+            getBatch(student) === filters.batch
+        );
+
+
     const sections =
         [
             ...new Set(
-                allStudents.map(getSection)
+                pool.map(getSection)
             )
         ].sort();
 
@@ -839,9 +1169,19 @@ function populateFilterOptions() {
     const companies =
         [
             ...new Set(
-                allStudents.map(getCompany)
+                pool.map(getCompany)
             )
         ].sort();
+
+
+    // Kung wala na sa listahan ang napiling section/company, ibalik sa "all"
+    if (filters.section !== "all" && !sections.includes(filters.section)) {
+        filters.section = "all";
+    }
+
+    if (filters.company !== "all" && !companies.includes(filters.company)) {
+        filters.company = "all";
+    }
 
 
     if (sectionSelect) {
@@ -860,6 +1200,8 @@ function populateFilterOptions() {
                         </option>`
                 )
                 .join("");
+
+        sectionSelect.value = filters.section;
 
     }
 
@@ -880,6 +1222,8 @@ function populateFilterOptions() {
                         </option>`
                 )
                 .join("");
+
+        companySelect.value = filters.company;
 
     }
 
@@ -1004,6 +1348,30 @@ function initToolbar() {
             }
         );
 
+    }
+
+
+    // ------------------------------------
+    // INTERN COUNT / DEPLOYMENT (Company tab lang)
+    // ------------------------------------
+    const internCountFilter =
+        document.getElementById("internCountFilter");
+
+    if (internCountFilter) {
+        internCountFilter.addEventListener("change", () => {
+            filters.internCount = internCountFilter.value;
+            renderActiveTab();
+        });
+    }
+
+    const deploymentFilter =
+        document.getElementById("deploymentFilter");
+
+    if (deploymentFilter) {
+        deploymentFilter.addEventListener("change", () => {
+            filters.deployment = deploymentFilter.value;
+            renderActiveTab();
+        });
     }
 
 
@@ -1241,41 +1609,42 @@ function initTabs() {
 // RENDER ACTIVE TAB
 // ========================================
 
+function updateToolbarForTab() {
+
+    const isCompany =
+        currentTab === "company";
+
+    const show = (id, visible) => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.style.display =
+                visible ? "" : "none";
+        }
+    };
+
+    show("sectionFilter", !isCompany);
+    show("statusFilter", !isCompany);
+    show("internCountFilter", isCompany);
+    show("deploymentFilter", isCompany);
+
+    const search =
+        document.getElementById("searchReport");
+
+    if (search) {
+        search.placeholder = isCompany
+            ? "Search company..."
+            : "Search students, company or section...";
+    }
+
+}
+
+
 function renderActiveTab() {
 
-    const filtered =
+    updateToolbarForTab();
+
+const filtered =
         getFilteredStudents();
-
-
-    const metaSection =
-        document.getElementById(
-            "metaSection"
-        );
-
-    const metaCompany =
-        document.getElementById(
-            "metaCompany"
-        );
-
-
-    if (metaSection) {
-
-        metaSection.textContent =
-            filters.section === "all"
-                ? "All Sections"
-                : filters.section;
-
-    }
-
-
-    if (metaCompany) {
-
-        metaCompany.textContent =
-            filters.company === "all"
-                ? "All Companies"
-                : filters.company;
-
-    }
 
 
     document
@@ -1308,13 +1677,6 @@ function renderActiveTab() {
 
     switch (currentTab) {
 
-        case "overview":
-
-            renderOverview(filtered);
-
-            break;
-
-
         case "progress":
 
             renderStudentProgressTab(
@@ -1333,15 +1695,6 @@ function renderActiveTab() {
             break;
 
 
-        case "risk":
-
-            renderRiskTab(
-                filtered
-            );
-
-            break;
-
-
         case "company":
 
             renderCompanyTab(
@@ -1351,718 +1704,6 @@ function renderActiveTab() {
             break;
 
     }
-
-}
-
-
-// ========================================
-// OVERVIEW REPORT
-// ========================================
-
-function renderOverview(students) {
-
-    const total =
-        students.length;
-
-
-    const completed =
-        students.filter(
-            s =>
-                [
-                    "Completed",
-                    "Graduated"
-                ].includes(
-                    normalizeStatus(s)
-                )
-        ).length;
-
-
-    const atRisk =
-        students.filter(
-            s =>
-                normalizeStatus(s) ===
-                "At Risk"
-        ).length;
-
-
-    const ongoing =
-        Math.max(
-            0,
-            total -
-            completed -
-            atRisk
-        );
-
-
-    const completionRate =
-        total > 0
-            ? Math.round(
-                (completed / total) *
-                100
-            )
-            : 0;
-
-
-    const ongoingRate =
-        total > 0
-            ? Math.round(
-                (ongoing / total) *
-                100
-            )
-            : 0;
-
-
-    const atRiskRate =
-        total > 0
-            ? Math.round(
-                (atRisk / total) *
-                100
-            )
-            : 0;
-
-
-    const avgProgress =
-        total > 0
-
-            ? Math.round(
-
-                students.reduce(
-                    (sum, s) =>
-                        sum +
-                        getProgress(s),
-                    0
-                ) / total
-
-            )
-
-            : 0;
-
-
-    const statsContainer =
-        document.getElementById(
-            "overviewStats"
-        );
-
-
-    if (statsContainer) {
-
-        statsContainer.innerHTML = `
-
-            <div class="stat-pill">
-                <i class="fa-solid fa-users"></i>
-                <h3>${total}</h3>
-                <p>
-                    Total Interns<br>
-                    100% of deployed students
-                </p>
-            </div>
-
-            <div class="stat-pill">
-                <i class="fa-solid fa-circle-check"></i>
-                <h3>${completed}</h3>
-                <p>
-                    Completed<br>
-                    ${completionRate}% completion rate
-                </p>
-            </div>
-
-            <div class="stat-pill">
-                <i class="fa-regular fa-clock"></i>
-                <h3>${ongoing}</h3>
-                <p>
-                    Ongoing<br>
-                    ${ongoingRate}% currently active
-                </p>
-            </div>
-
-            <div class="stat-pill warn">
-                <i class="fa-solid fa-triangle-exclamation"></i>
-                <h3>${atRisk}</h3>
-                <p>
-                    At Risk<br>
-                    ${atRiskRate}% needs intervention
-                </p>
-            </div>
-
-            <div class="stat-pill">
-                <i class="fa-solid fa-book"></i>
-                <h3>
-                    ${REQUIRED_HOURS_PER_STUDENT} hrs
-                </h3>
-                <p>
-                    Required Hours<br>
-                    Per student
-                </p>
-            </div>
-
-            <div class="stat-pill">
-                <i class="fa-solid fa-chart-line"></i>
-                <h3>${avgProgress}%</h3>
-                <p>
-                    Average Progress<br>
-                    Overall performance
-                </p>
-            </div>
-
-        `;
-
-    }
-
-
-    renderAttendanceSummary(
-        students
-    );
-
-    renderProgressSummary(
-        students
-    );
-
-    renderAtRiskOverviewTable(
-        students
-    );
-
-    renderCompanyOverviewTable(
-        students
-    );
-
-}
-
-
-// ========================================
-// ATTENDANCE SUMMARY
-// ========================================
-
-function renderAttendanceSummary(
-    students
-) {
-
-    const body =
-        document.getElementById(
-            "attendanceSummaryBody"
-        );
-
-
-    const badge =
-        document.getElementById(
-            "attendanceEstimateBadge"
-        );
-
-
-    if (!body) return;
-
-
-    let present = 0;
-    let late = 0;
-    let absent = 0;
-    let totalHours = 0;
-
-    let isEstimate = false;
-
-
-    students.forEach(s => {
-
-        const att =
-            getAttendance(s);
-
-
-        present +=
-            att.present;
-
-        late +=
-            att.late;
-
-        absent +=
-            att.absent;
-
-
-        if (att.isEstimate) {
-
-            isEstimate = true;
-
-        }
-
-
-        totalHours +=
-            getRenderedHours(s);
-
-    });
-
-
-    attendanceIsEstimated =
-        isEstimate;
-
-
-    if (badge) {
-
-        badge.style.display =
-            isEstimate
-                ? "inline-flex"
-                : "none";
-
-    }
-
-
-    const totalDays =
-        present +
-        late +
-        absent;
-
-
-    const pct = n =>
-
-        totalDays > 0
-
-            ? `${Math.round(
-                (n / totalDays) * 100
-            )}%`
-
-            : "-";
-
-
-    body.innerHTML = `
-
-        <tr>
-            <td>Present</td>
-            <td>
-                ${present.toLocaleString()}
-            </td>
-            <td>
-                ${pct(present)}
-            </td>
-            <td>
-                ${totalHours.toLocaleString()} hrs
-            </td>
-        </tr>
-
-        <tr>
-            <td>Late</td>
-            <td>
-                ${late.toLocaleString()}
-            </td>
-            <td>
-                ${pct(late)}
-            </td>
-            <td>-</td>
-        </tr>
-
-        <tr>
-            <td>Absent</td>
-            <td>
-                ${absent.toLocaleString()}
-            </td>
-            <td>
-                ${pct(absent)}
-            </td>
-            <td>-</td>
-        </tr>
-
-        <tr class="total-row">
-            <td>Total</td>
-            <td>
-                ${totalDays.toLocaleString()}
-            </td>
-            <td>100%</td>
-            <td>
-                ${totalHours.toLocaleString()} hrs
-            </td>
-        </tr>
-
-    `;
-
-}
-
-
-// ========================================
-// PROGRESS SUMMARY
-// ========================================
-
-function renderProgressSummary(
-    students
-) {
-
-    const body =
-        document.getElementById(
-            "progressSummaryBody"
-        );
-
-
-    if (!body) return;
-
-
-    const buckets = [
-
-        {
-            label: "90% - 100%",
-            min: 90,
-            max: 100,
-            count: 0
-        },
-
-        {
-            label: "70% - 89%",
-            min: 70,
-            max: 89,
-            count: 0
-        },
-
-        {
-            label: "50% - 69%",
-            min: 50,
-            max: 69,
-            count: 0
-        },
-
-        {
-            label: "Below 50%",
-            min: 0,
-            max: 49,
-            count: 0
-        }
-
-    ];
-
-
-    students.forEach(s => {
-
-        const progress =
-            getProgress(s);
-
-
-        const bucket =
-            buckets.find(
-                b =>
-                    progress >= b.min &&
-                    progress <= b.max
-            );
-
-
-        if (bucket) {
-
-            bucket.count++;
-
-        }
-
-    });
-
-
-    const total =
-        students.length;
-
-
-    body.innerHTML =
-
-        buckets
-            .map(
-                b => `
-
-                    <tr>
-
-                        <td>
-                            ${b.label}
-                        </td>
-
-                        <td>
-                            ${b.count}
-                        </td>
-
-                        <td>
-                            ${
-                                total > 0
-                                    ? Math.round(
-                                        (b.count /
-                                            total) *
-                                        100
-                                    )
-                                    : 0
-                            }%
-                        </td>
-
-                    </tr>
-
-                `
-            )
-            .join("")
-
-        +
-
-        `
-
-            <tr class="total-row">
-
-                <td>Total</td>
-
-                <td>${total}</td>
-
-                <td>100%</td>
-
-            </tr>
-
-        `;
-
-}
-
-
-// ========================================
-// AT-RISK OVERVIEW
-// ========================================
-
-function renderAtRiskOverviewTable(
-    students
-) {
-
-    const body =
-        document.getElementById(
-            "atRiskOverviewBody"
-        );
-
-
-    if (!body) return;
-
-
-    const atRiskStudents =
-        students.filter(
-            s =>
-                normalizeStatus(s) ===
-                "At Risk"
-        );
-
-
-    if (
-        atRiskStudents.length === 0
-    ) {
-
-        body.innerHTML = `
-
-            <tr>
-
-                <td
-                    colspan="6"
-                    style="
-                        text-align:center;
-                        color:#999;
-                    "
-                >
-                    No at-risk students
-                    for the current filters.
-                </td>
-
-            </tr>
-
-        `;
-
-        return;
-
-    }
-
-
-    body.innerHTML =
-        atRiskStudents
-            .map((s, i) => {
-
-                const att =
-                    getAttendance(s);
-
-                const rate =
-                    getAttendanceRate(
-                        att
-                    );
-
-                const progress =
-                    getProgress(s);
-
-                const reason =
-                    getRiskReason(
-                        s,
-                        rate,
-                        progress
-                    );
-
-                const action =
-                    getRecommendedAction(
-                        reason
-                    );
-
-
-                return `
-
-                    <tr>
-
-                        <td>
-                            ${i + 1}
-                        </td>
-
-                        <td>
-                            ${escapeHtml(
-                                getName(s)
-                            )}
-                        </td>
-
-                        <td>
-                            ${escapeHtml(
-                                getCompany(s)
-                            )}
-                        </td>
-
-                        <td>
-                            ${progress}%
-                        </td>
-
-                        <td>
-                            ${reason}
-                        </td>
-
-                        <td>
-                            ${action}
-                        </td>
-
-                    </tr>
-
-                `;
-
-            })
-            .join("");
-
-}
-
-
-// ========================================
-// COMPANY OVERVIEW
-// ========================================
-
-function renderCompanyOverviewTable(
-    students
-) {
-
-    const body =
-        document.getElementById(
-            "companyOverviewBody"
-        );
-
-
-    if (!body) return;
-
-
-    const groups =
-        groupByCompany(
-            students
-        );
-
-
-    if (groups.length === 0) {
-
-        body.innerHTML = `
-
-            <tr>
-
-                <td
-                    colspan="6"
-                    style="
-                        text-align:center;
-                        color:#999;
-                    "
-                >
-                    No company data
-                    for the current filters.
-                </td>
-
-            </tr>
-
-        `;
-
-        return;
-
-    }
-
-
-    let totalInterns = 0;
-    let totalCompleted = 0;
-    let totalOngoing = 0;
-    let totalAtRisk = 0;
-
-
-    const rows =
-        groups.map((g, i) => {
-
-            totalInterns +=
-                g.total;
-
-            totalCompleted +=
-                g.completed;
-
-            totalOngoing +=
-                g.ongoing;
-
-            totalAtRisk +=
-                g.atRisk;
-
-
-            return `
-
-                <tr>
-
-                    <td>
-                        ${i + 1}
-                    </td>
-
-                    <td>
-                        ${escapeHtml(
-                            g.company
-                        )}
-                    </td>
-
-                    <td>
-                        ${g.total}
-                    </td>
-
-                    <td>
-                        ${g.completed}
-                    </td>
-
-                    <td>
-                        ${g.ongoing}
-                    </td>
-
-                    <td>
-                        ${g.atRisk}
-                    </td>
-
-                </tr>
-
-            `;
-
-        }).join("");
-
-
-    body.innerHTML =
-        rows +
-
-        `
-
-            <tr class="total-row">
-
-                <td></td>
-
-                <td>Total</td>
-
-                <td>
-                    ${totalInterns}
-                </td>
-
-                <td>
-                    ${totalCompleted}
-                </td>
-
-                <td>
-                    ${totalOngoing}
-                </td>
-
-                <td>
-                    ${totalAtRisk}
-                </td>
-
-            </tr>
-
-        `;
 
 }
 
@@ -2115,7 +1756,7 @@ function groupByCompany(
         entry.total++;
 
         entry.progressSum +=
-            getProgress(s);
+            getProgressExact(s);
 
 
         if (
@@ -2155,7 +1796,7 @@ function groupByCompany(
             avgProgress:
                 g.total > 0
 
-                    ? Math.round(
+                    ? roundToOneDecimal(
                         g.progressSum /
                         g.total
                     )
@@ -2239,12 +1880,6 @@ function renderAttendanceTab(
             }
 
 
-            const rate =
-                getAttendanceRate(
-                    att
-                );
-
-
             return `
 
                 <tr>
@@ -2252,6 +1887,12 @@ function renderAttendanceTab(
                     <td>
                         ${escapeHtml(
                             getName(s)
+                        )}
+                    </td>
+
+                    <td>
+                        ${escapeHtml(
+                            getCourse(s)
                         )}
                     </td>
 
@@ -2280,19 +1921,10 @@ function renderAttendanceTab(
                     </td>
 
                     <td>
-                        ${getRenderedHours(
-                            s
-                        ).toLocaleString()}
+                        ${formatHours(getRenderedHours(s))}
                         hrs
                     </td>
 
-                    <td>
-                        ${
-                            rate !== null
-                                ? rate + "%"
-                                : "-"
-                        }
-                    </td>
 
                 </tr>
 
@@ -2330,145 +1962,6 @@ function renderAttendanceTab(
 
 
 // ========================================
-// AT-RISK TAB
-// ========================================
-
-function renderRiskTab(
-    students
-) {
-
-    const body =
-        document.getElementById(
-            "riskTableBody"
-        );
-
-
-    if (!body) return;
-
-
-    const atRiskStudents =
-        students.filter(
-            s =>
-                normalizeStatus(s) ===
-                "At Risk"
-        );
-
-
-    if (
-        atRiskStudents.length === 0
-    ) {
-
-        body.innerHTML = `
-
-            <tr>
-
-                <td
-                    colspan="7"
-                    style="
-                        text-align:center;
-                        color:#999;
-                    "
-                >
-                    No at-risk students
-                    for the current filters.
-                </td>
-
-            </tr>
-
-        `;
-
-        return;
-
-    }
-
-
-    body.innerHTML =
-        atRiskStudents
-            .map(s => {
-
-                const att =
-                    getAttendance(s);
-
-                const rate =
-                    getAttendanceRate(
-                        att
-                    );
-
-                const progress =
-                    getProgress(s);
-
-                const reason =
-                    getRiskReason(
-                        s,
-                        rate,
-                        progress
-                    );
-
-                const action =
-                    getRecommendedAction(
-                        reason
-                    );
-
-
-                return `
-
-                    <tr>
-
-                        <td>
-                            ${escapeHtml(
-                                getName(s)
-                            )}
-                        </td>
-
-                        <td>
-                            ${escapeHtml(
-                                getSection(s)
-                            )}
-                        </td>
-
-                        <td>
-                            ${escapeHtml(
-                                getCompany(s)
-                            )}
-                        </td>
-
-                        <td>
-                            ${progress}%
-                        </td>
-
-                        <td>
-                            ${
-                                rate !== null
-                                    ? rate + "%"
-                                    : "-"
-                            }
-                        </td>
-
-                        <td>
-
-                            <span
-                                class="status risk"
-                            >
-                                ${reason}
-                            </span>
-
-                        </td>
-
-                        <td>
-                            ${action}
-                        </td>
-
-                    </tr>
-
-                `;
-
-            })
-            .join("");
-
-}
-
-
-// ========================================
 // COMPANY DEPLOYMENT TAB
 // ========================================
 
@@ -2488,7 +1981,35 @@ function renderCompanyTab(
     const groups =
         groupByCompany(
             students
-        );
+        ).filter(g => {
+
+            if (filters.internCount === "1" && g.total !== 1) return false;
+            if (filters.internCount === "2-5" && (g.total < 2 || g.total > 5)) return false;
+            if (filters.internCount === "6+" && g.total < 6) return false;
+
+            if (filters.deployment === "completed" && g.completed === 0) return false;
+            if (filters.deployment === "ongoing" && g.ongoing === 0) return false;
+
+            return true;
+
+        });
+
+
+    document
+        .querySelectorAll(".report-total-companies")
+        .forEach(el => {
+            el.textContent = groups.length;
+        });
+
+    document
+        .querySelectorAll(".report-total-interns")
+        .forEach(el => {
+            el.textContent = groups.reduce(
+                (sum, g) => sum + g.total,
+                0
+            );
+        });
+
 
 
     if (groups.length === 0) {
@@ -2546,7 +2067,7 @@ function renderCompanyTab(
                     </td>
 
                     <td>
-                        ${g.avgProgress}%
+                        ${formatPercent(g.avgProgress)}
                     </td>
 
                 </tr>
@@ -2588,7 +2109,7 @@ function renderStudentProgressTab(
             <tr>
 
                 <td
-                    colspan="10"
+                    colspan="11"
                     class="table-empty"
                 >
                     No student records found
@@ -2634,6 +2155,11 @@ function renderStudentProgressTab(
 
                     const studentNumber =
                         getStudentNumber(
+                            student
+                        );
+
+                    const course =
+                        getCourse(
                             student
                         );
 
@@ -2798,6 +2324,14 @@ function renderStudentProgressTab(
 
                             <td>
                                 ${escapeHtml(
+                                    course ||
+                                    "-"
+                                )}
+                            </td>
+
+
+                            <td>
+                                ${escapeHtml(
                                     section ||
                                     "-"
                                 )}
@@ -2821,7 +2355,7 @@ function renderStudentProgressTab(
                             <td>
 
                                 <strong>
-                                    ${completedHours.toLocaleString()}
+                                    ${formatHours(completedHours)}
                                     hrs
                                 </strong>
 
@@ -2829,7 +2363,7 @@ function renderStudentProgressTab(
 
 
                             <td>
-                                ${remainingHours.toLocaleString()}
+                                ${formatHours(remainingHours)}
                                 hrs
                             </td>
 
@@ -2846,7 +2380,7 @@ function renderStudentProgressTab(
                                             ${progressClass}
                                         "
                                     >
-                                        ${progress}%
+                                        ${formatPercent(progress)}
                                     </div>
 
 

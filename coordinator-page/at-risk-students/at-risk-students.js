@@ -1,4 +1,7 @@
 let riskStudents = [];
+let filteredStudents = [];
+let currentPage = 1;
+let rowsPerPage = 10;
 
 
 /* ========================================
@@ -44,14 +47,44 @@ async function loadAtRiskStudents() {
         (result.data || []).forEach((student) => {
 
             /*
-                AT-RISK CONDITION
+                Kapareho ng rules sa dashboard.js para pareho
+                ang bilang:
 
-                Student is considered at-risk when the
-                AI backend's aiStatus is exactly "At Risk"
-                (set by app.py's /api/predict-risk).
+                - accountDisabled (deleted) -> hindi binibilang
+                - archived / graduated      -> hindi binibilang
+                - PENDING (kulang ang email, profile setup,
+                  student number o company) -> hindi at-risk
+                - Completed (manual o AI)   -> hindi at-risk
+                - At Risk = AI status "At Risk" o manual status
             */
 
-            if ((student.aiStatus || "") !== "At Risk") {
+            if (
+                student.accountDisabled === true ||
+                student.archived === true
+            ) {
+                return;
+            }
+
+            if (student.isPending === true) {
+                return;
+            }
+
+            const manualStatus =
+                String(student.manualStatus || "").toLowerCase();
+
+            if (
+                manualStatus === "completed" ||
+                student.aiStatus === "Completed"
+            ) {
+                return;
+            }
+
+            const isAtRisk =
+                student.aiStatus === "At Risk" ||
+                manualStatus === "at-risk" ||
+                manualStatus === "at risk";
+
+            if (!isAtRisk) {
                 return;
             }
 
@@ -94,7 +127,8 @@ async function loadAtRiskStudents() {
         });
 
 
-        renderStudents(riskStudents);
+        populateFilterOptions();
+        applyFilters();
         updateSummary(riskStudents);
 
     }
@@ -134,7 +168,7 @@ async function loadAtRiskStudents() {
    DISPLAY TABLE
 ======================================== */
 
-function renderStudents(students) {
+function renderStudents(students, startIndex = 0) {
 
     const tableBody =
         document.getElementById("students-body");
@@ -167,7 +201,7 @@ function renderStudents(students) {
                 <tr title="${escapeHtml(student.riskReason || "")}">
 
                     <td>
-                        ${index + 1}
+                        ${startIndex + index + 1}
                     </td>
 
                     <td>
@@ -237,14 +271,110 @@ function updateSummary(students) {
 
 
 /* ========================================
-   SEARCH
+   SEARCH + FILTER + SORT
 ======================================== */
 
 const searchInput =
     document.getElementById("student-search");
 
+const filterSection =
+    document.getElementById("filter-section");
 
-searchInput.addEventListener("input", () => {
+const filterCompany =
+    document.getElementById("filter-company");
+
+const sortSelect =
+    document.getElementById("sort-students");
+
+const resetFiltersBtn =
+    document.getElementById("reset-filters");
+
+
+/* Fill Section / Company dropdowns from the loaded data */
+
+function populateFilterOptions() {
+
+    const fill = (select, label, values) => {
+
+        const current = select.value;
+
+        const unique =
+            [...new Set(values.filter(Boolean))]
+                .sort((a, b) =>
+                    a.localeCompare(
+                        b,
+                        undefined,
+                        { numeric: true }
+                    )
+                );
+
+        select.innerHTML =
+            `<option value="">${label}</option>` +
+            unique.map((v) =>
+                `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`
+            ).join("");
+
+        select.value =
+            unique.includes(current) ? current : "";
+
+    };
+
+    fill(
+        filterSection,
+        "All Sections",
+        riskStudents.map((s) => s.section)
+    );
+
+    fill(
+        filterCompany,
+        "All Companies",
+        riskStudents.map((s) => s.company)
+    );
+
+}
+
+
+function compareStudents(a, b, mode) {
+
+    const [key, dir] = mode.split("-");
+
+    const m = dir === "desc" ? -1 : 1;
+
+    const text = (x, y) =>
+        String(x).localeCompare(
+            String(y),
+            undefined,
+            { numeric: true, sensitivity: "base" }
+        );
+
+    switch (key) {
+
+        case "name":
+            return m * text(a.name, b.name);
+
+        case "id":
+            return m * text(a.studentId, b.studentId);
+
+        case "section":
+            return m * text(a.section, b.section) ||
+                   text(a.name, b.name);
+
+        case "company":
+            return m * text(a.company, b.company) ||
+                   text(a.name, b.name);
+
+        case "hours":
+            return m * (a.renderedHours - b.renderedHours) ||
+                   text(a.name, b.name);
+
+    }
+
+    return 0;
+
+}
+
+
+function applyFilters() {
 
     const keyword =
         searchInput.value
@@ -253,38 +383,178 @@ searchInput.addEventListener("input", () => {
 
 
     const filtered =
-        riskStudents.filter(student => {
+        riskStudents.filter((student) => {
+
+            if (
+                filterSection.value &&
+                student.section !== filterSection.value
+            ) {
+                return false;
+            }
+
+            if (
+                filterCompany.value &&
+                student.company !== filterCompany.value
+            ) {
+                return false;
+            }
+
+            if (!keyword) {
+                return true;
+            }
 
             return (
 
-                student.name
-                    .toLowerCase()
-                    .includes(keyword)
+                student.name.toLowerCase().includes(keyword) ||
 
-                ||
+                student.studentId.toLowerCase().includes(keyword) ||
 
-                student.studentId
-                    .toLowerCase()
-                    .includes(keyword)
+                student.section.toLowerCase().includes(keyword) ||
 
-                ||
-
-                student.section
-                    .toLowerCase()
-                    .includes(keyword)
-
-                ||
-
-                student.company
-                    .toLowerCase()
-                    .includes(keyword)
+                student.company.toLowerCase().includes(keyword)
 
             );
 
         });
 
 
-    renderStudents(filtered);
+    filtered.sort((a, b) =>
+        compareStudents(a, b, sortSelect.value)
+    );
+
+
+    filteredStudents = filtered;
+    currentPage = 1;
+
+    renderPage();
+
+}
+
+
+/* ========================================
+   PAGINATION
+======================================== */
+
+function renderPage() {
+
+    const total = filteredStudents.length;
+
+    const totalPages =
+        Math.max(1, Math.ceil(total / rowsPerPage));
+
+    if (currentPage > totalPages) {
+        currentPage = totalPages;
+    }
+
+    const startIndex = (currentPage - 1) * rowsPerPage;
+
+    const endIndex =
+        Math.min(startIndex + rowsPerPage, total);
+
+    renderStudents(
+        filteredStudents.slice(startIndex, endIndex),
+        startIndex
+    );
+
+    updatePaginationUI(
+        total > 0 ? startIndex + 1 : 0,
+        endIndex,
+        total,
+        totalPages
+    );
+
+}
+
+
+function updatePaginationUI(start, end, total, totalPages) {
+
+    const info =
+        document.getElementById("paginationInfo");
+
+    info.textContent =
+        total > 0
+            ? `Showing ${start} to ${end} of ${total} records`
+            : "Showing 0 records";
+
+    document.getElementById("prevPageBtn").disabled =
+        currentPage <= 1;
+
+    document.getElementById("nextPageBtn").disabled =
+        currentPage >= totalPages || total === 0;
+
+    const pageNumbers =
+        document.getElementById("pageNumbers");
+
+    pageNumbers.innerHTML = "";
+
+    if (total === 0) {
+        return;
+    }
+
+    for (let i = 1; i <= totalPages; i++) {
+
+        const btn = document.createElement("button");
+
+        btn.type = "button";
+        btn.className =
+            `page-num ${i === currentPage ? "active" : ""}`;
+        btn.textContent = i;
+
+        btn.addEventListener("click", () => {
+            currentPage = i;
+            renderPage();
+        });
+
+        pageNumbers.appendChild(btn);
+
+    }
+
+}
+
+
+document
+    .getElementById("prevPageBtn")
+    .addEventListener("click", () => {
+        if (currentPage > 1) {
+            currentPage--;
+            renderPage();
+        }
+    });
+
+document
+    .getElementById("nextPageBtn")
+    .addEventListener("click", () => {
+        const totalPages =
+            Math.ceil(filteredStudents.length / rowsPerPage);
+        if (currentPage < totalPages) {
+            currentPage++;
+            renderPage();
+        }
+    });
+
+document
+    .getElementById("rowsPerPageSelect")
+    .addEventListener("change", (e) => {
+        rowsPerPage = parseInt(e.target.value, 10) || 10;
+        currentPage = 1;
+        renderPage();
+    });
+
+
+searchInput.addEventListener("input", applyFilters);
+filterSection.addEventListener("change", applyFilters);
+filterCompany.addEventListener("change", applyFilters);
+sortSelect.addEventListener("change", applyFilters);
+
+
+resetFiltersBtn.addEventListener("click", () => {
+
+    searchInput.value = "";
+    filterSection.value = "";
+    filterCompany.value = "";
+    sortSelect.value = "name-asc";
+
+    applyFilters();
 
 });
 

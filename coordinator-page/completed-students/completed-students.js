@@ -35,6 +35,116 @@ let completedStudents = [];
 
 
 /* ========================================
+   RENDERED HOURS (single source of truth)
+======================================== */
+
+function getRenderedHours(data) {
+
+    const fields = [
+        data.renderedHours,
+        data.hoursRendered,
+        data.completedHours,
+        data.totalHours
+    ];
+
+    for (const value of fields) {
+
+        if (value === undefined || value === null || value === "") {
+            continue;
+        }
+
+        const n = Number(value);
+
+        if (Number.isFinite(n) && n >= 0) {
+            return n;
+        }
+
+    }
+
+    return 0;
+
+}
+
+
+/* HOURS FORMAT (max 2 decimals, walang trailing zeros) */
+
+function formatHours(value) {
+
+    const n = Number(value) || 0;
+
+    return (Math.round(n * 100) / 100)
+        .toLocaleString(
+            "en-US",
+            { maximumFractionDigits: 2 }
+        );
+
+}
+
+
+/* ========================================
+   PENDING CHECK (same rule as students.js)
+======================================== */
+
+function isPendingStudent(data) {
+
+    const email =
+        String(data.email || "").trim();
+
+    const profileDone =
+        data.isProfileComplete === true ||
+        data.profileCompleted === true;
+
+    const hasStudentNumber =
+        !!(data.studentNumber || data.studentId);
+
+    const hasCompany =
+        !!(data.companyName || data.company);
+
+    return !(
+        email &&
+        profileDone &&
+        hasStudentNumber &&
+        hasCompany
+    );
+
+}
+
+
+/* ========================================
+   COMPLETION DATE
+   (kapareho ng fields sa completed archive)
+======================================== */
+
+function toDate(v) {
+
+    if (!v) {
+        return null;
+    }
+
+    if (typeof v.toDate === "function") {
+        return v.toDate();
+    }
+
+    const dt = new Date(v);
+
+    return isNaN(dt) ? null : dt;
+
+}
+
+function formatDate(d) {
+
+    return d
+        ? d.toLocaleDateString(
+            "en-US",
+            { year: "numeric", month: "short", day: "numeric" }
+        )
+        : "";
+
+}
+
+
+
+/* ========================================
    LOAD COMPLETED STUDENTS
 ======================================== */
 
@@ -66,78 +176,110 @@ async function loadCompletedStudents() {
             }
 
 
+            /* ARCHIVED - nasa Completed Batch Archive na,
+               hindi na dapat lumabas dito. */
+
+            if (data.archived === true) {
+                return;
+            }
+
+
+            /* DELETED (soft delete) na ng coordinator */
+
+            if (data.accountDisabled === true) {
+                return;
+            }
+
+
             const requiredHours =
                 Number(data.requiredHours) ||
                 Number(data.requiredHoursTotal) ||
                 600;
 
             const renderedHours =
-                Number(
-                    data.renderedHours ||
-                    data.completedHours ||
-                    data.totalHours ||
-                    0
-                );
+                getRenderedHours(data);
 
 
             /*
                 COMPLETED CONDITION
 
-                Student is considered completed when:
-                rendered hours >= required hours
+                Completed kapag:
+                (a) na-mark na "Completed" ang status
+                    (kapareho ng nasa Completed Batch
+                    Archive / students.js), O
+                (b) rendered hours >= required hours
+                    (at hindi pa pending ang student)
             */
 
-            if (
+            const isMarkedCompleted =
+                String(data.status || "").toLowerCase() === "completed";
+
+            const reachedHours =
                 requiredHours > 0 &&
-                renderedHours >= requiredHours
-            ) {
+                renderedHours >= requiredHours &&
+                !isPendingStudent(data);
 
-                completedStudents.push({
-
-                    id: docSnap.id,
-
-                    studentId:
-                        data.studentId ||
-                        data.studentID ||
-                        data.studentNumber ||
-                        data.idNumber ||
-                        data.schoolId ||
-                        data.studentNo ||
-                        data.id_number ||
-                        "",
-
-                    name:
-                        data.fullName ||
-                        data.name ||
-                        "",
-
-                    section:
-                        data.section || "",
-
-                    company:
-                        data.companyName ||
-                        data.company ||
-                        "",
-
-                    requiredHours:
-                        requiredHours,
-
-                    renderedHours:
-                        renderedHours,
-
-                    completionDate:
-                        data.completionDate || "",
-
-                    status:
-                        "Completed"
-                });
-
+            if (!isMarkedCompleted && !reachedHours) {
+                return;
             }
+
+
+            const completedOn =
+                toDate(
+                    data.completedAt ||
+                    data.completionDate ||
+                    data.completedDate ||
+                    data.dateCompleted
+                );
+
+            completedStudents.push({
+
+                id: docSnap.id,
+
+                studentId:
+                    data.studentId ||
+                    data.studentID ||
+                    data.studentNumber ||
+                    data.idNumber ||
+                    data.schoolId ||
+                    data.studentNo ||
+                    data.id_number ||
+                    "",
+
+                name:
+                    data.fullName ||
+                    data.name ||
+                    "",
+
+                section:
+                    data.section || "",
+
+                company:
+                    data.companyName ||
+                    data.company ||
+                    "",
+
+                requiredHours:
+                    requiredHours,
+
+                renderedHours:
+                    renderedHours,
+
+                completionDate:
+                    completedOn ? formatDate(completedOn) : "",
+
+                completionTime:
+                    completedOn ? completedOn.getTime() : 0,
+
+                status:
+                    "Completed"
+            });
 
         });
 
 
-        renderCompletedStudents(completedStudents);
+        populateFilterOptions();
+        applyFilters();
         updateSummary(completedStudents);
 
     }
@@ -214,11 +356,11 @@ function renderCompletedStudents(students) {
                     </td>
 
                     <td>
-                        ${student.requiredHours} hrs
+                        ${formatHours(student.requiredHours)} hrs
                     </td>
 
                     <td>
-                        ${student.renderedHours} hrs
+                        ${formatHours(student.renderedHours)} hrs
                     </td>
 
                     <td>
@@ -264,20 +406,118 @@ function updateSummary(students) {
     document.getElementById(
         "total-rendered-hours"
     ).textContent =
-        `${totalHours.toFixed(1)} hrs`;
+        `${formatHours(totalHours)} hrs`;
 
 }
 
 
 /* ========================================
-   SEARCH
+   SEARCH + FILTER + SORT
 ======================================== */
 
 const searchInput =
     document.getElementById("student-search");
 
+const filterSection =
+    document.getElementById("filter-section");
 
-searchInput.addEventListener("input", () => {
+const filterCompany =
+    document.getElementById("filter-company");
+
+const sortSelect =
+    document.getElementById("sort-students");
+
+const resetFiltersBtn =
+    document.getElementById("reset-filters");
+
+
+function populateFilterOptions() {
+
+    const fill = (select, label, values) => {
+
+        const current = select.value;
+
+        const unique =
+            [...new Set(values.filter(Boolean))]
+                .sort((a, b) =>
+                    a.localeCompare(
+                        b,
+                        undefined,
+                        { numeric: true }
+                    )
+                );
+
+        select.innerHTML =
+            `<option value="">${label}</option>` +
+            unique.map((v) =>
+                `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`
+            ).join("");
+
+        select.value =
+            unique.includes(current) ? current : "";
+
+    };
+
+    fill(
+        filterSection,
+        "All Sections",
+        completedStudents.map((s) => s.section)
+    );
+
+    fill(
+        filterCompany,
+        "All Companies",
+        completedStudents.map((s) => s.company)
+    );
+
+}
+
+
+function compareStudents(a, b, mode) {
+
+    const [key, dir] = mode.split("-");
+
+    const m = dir === "desc" ? -1 : 1;
+
+    const text = (x, y) =>
+        String(x).localeCompare(
+            String(y),
+            undefined,
+            { numeric: true, sensitivity: "base" }
+        );
+
+    switch (key) {
+
+        case "name":
+            return m * text(a.name, b.name);
+
+        case "id":
+            return m * text(a.studentId, b.studentId);
+
+        case "section":
+            return m * text(a.section, b.section) ||
+                   text(a.name, b.name);
+
+        case "company":
+            return m * text(a.company, b.company) ||
+                   text(a.name, b.name);
+
+        case "hours":
+            return m * (a.renderedHours - b.renderedHours) ||
+                   text(a.name, b.name);
+
+        case "date":
+            return m * (a.completionTime - b.completionTime) ||
+                   text(a.name, b.name);
+
+    }
+
+    return 0;
+
+}
+
+
+function applyFilters() {
 
     const keyword =
         searchInput.value
@@ -286,38 +526,65 @@ searchInput.addEventListener("input", () => {
 
 
     const filtered =
-        completedStudents.filter(student => {
+        completedStudents.filter((student) => {
+
+            if (
+                filterSection.value &&
+                student.section !== filterSection.value
+            ) {
+                return false;
+            }
+
+            if (
+                filterCompany.value &&
+                student.company !== filterCompany.value
+            ) {
+                return false;
+            }
+
+            if (!keyword) {
+                return true;
+            }
 
             return (
 
-                student.name
-                    .toLowerCase()
-                    .includes(keyword)
+                student.name.toLowerCase().includes(keyword) ||
 
-                ||
+                student.studentId.toLowerCase().includes(keyword) ||
 
-                student.studentId
-                    .toLowerCase()
-                    .includes(keyword)
+                student.section.toLowerCase().includes(keyword) ||
 
-                ||
-
-                student.section
-                    .toLowerCase()
-                    .includes(keyword)
-
-                ||
-
-                student.company
-                    .toLowerCase()
-                    .includes(keyword)
+                student.company.toLowerCase().includes(keyword)
 
             );
 
         });
 
 
+    filtered.sort((a, b) =>
+        compareStudents(a, b, sortSelect.value)
+    );
+
+
     renderCompletedStudents(filtered);
+
+}
+
+
+searchInput.addEventListener("input", applyFilters);
+filterSection.addEventListener("change", applyFilters);
+filterCompany.addEventListener("change", applyFilters);
+sortSelect.addEventListener("change", applyFilters);
+
+
+resetFiltersBtn.addEventListener("click", () => {
+
+    searchInput.value = "";
+    filterSection.value = "";
+    filterCompany.value = "";
+    sortSelect.value = "name-asc";
+
+    applyFilters();
 
 });
 
@@ -402,13 +669,13 @@ function preparePrintReport() {
     document.getElementById(
         "print-rendered-hours"
     ).textContent =
-        totalRendered.toLocaleString();
+        formatHours(totalRendered);
 
 
     document.getElementById(
         "print-total-hours"
     ).textContent =
-        `${totalRendered.toLocaleString()} hrs`;
+        `${formatHours(totalRendered)} hrs`;
 
 
     const printBody =
@@ -444,11 +711,11 @@ function preparePrintReport() {
                     </td>
 
                     <td>
-                        ${student.requiredHours} hrs
+                        ${formatHours(student.requiredHours)} hrs
                     </td>
 
                     <td class="hours">
-                        ${student.renderedHours} hrs
+                        ${formatHours(student.renderedHours)} hrs
                     </td>
 
                     <td>

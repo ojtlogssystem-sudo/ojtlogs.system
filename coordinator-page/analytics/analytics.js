@@ -9,6 +9,48 @@
 
 
 // ==========================================
+// API (Flask AI server)
+// Sinusubukan ang mga address nang paisa-isa para gumana kahit
+// "localhost" o "127.0.0.1" ang ginamit sa pagbukas ng page, o
+// kung ang Flask mismo (port 5000) ang nag-serve ng page.
+// ==========================================
+
+const API_BASES = (function () {
+    const list = [];
+    if (/^https?:$/.test(location.protocol) && location.port === "5000") {
+        list.push(location.origin);
+    }
+    list.push("http://localhost:5000", "http://127.0.0.1:5000");
+    return [...new Set(list)];
+})();
+
+let apiBaseInUse = null;
+
+async function apiFetch(path, options) {
+
+    const bases =
+        apiBaseInUse
+            ? [apiBaseInUse, ...API_BASES.filter(b => b !== apiBaseInUse)]
+            : API_BASES;
+
+    let lastError = null;
+
+    for (const base of bases) {
+        try {
+            const response = await fetch(base + path, options);
+            apiBaseInUse = base;
+            return response;
+        } catch (error) {
+            lastError = error;   // network error -> subukan ang susunod
+        }
+    }
+
+    throw lastError || new Error("Failed to fetch");
+
+}
+
+
+// ==========================================
 // CHARTS (BAR + PIE) - gamit ang Chart.js
 //
 // Kulay ng system:
@@ -151,6 +193,7 @@ function renderRiskStatusCharts(atRiskCount, monitoringCount, onTrackCount) {
             maintainAspectRatio: false,
             plugins: {
                 legend: {
+                    display: false,
                     position: "bottom",
                     labels: {
                         usePointStyle: true,
@@ -199,25 +242,44 @@ function renderRiskStatusCharts(atRiskCount, monitoringCount, onTrackCount) {
 
 
 // ------------------------------------------
-// BAR - GRADUATED STUDENTS BY BATCH
+// BAR - COMPLETED STUDENTS BY ACADEMIC YEAR
 //
-// Ang batch ay ang TAON sa umpisa ng Student ID:
-//     2023-01-22112  ->  2023
-//     2026-21-01233  ->  2026
+// Academic Year = taon sa umpisa ng Student ID + 3:
+//     2023-01-22112  ->  A.Y. 2026 - 2027
+//     2021-21-01233  ->  A.Y. 2024 - 2025
 // Lahat ng estudyanteng nakarehistro sa system ay
 // binibilang (Registered); ang natapos na ang required
 // OJT hours ay binibilang din bilang Graduated.
 // Batch lang na may nakarehistrong estudyante ang lalabas.
 // ------------------------------------------
 
-function getBatchFromStudentId(studentId) {
+// Dapat pareho sa COURSE_YEARS sa reports.js at completed-batch-archive.js
+const COURSE_YEARS = 4;
 
+function getBatchFromStudentId(studentId) {
     const match =
         String(studentId ?? "")
             .match(/^\s*((?:19|20)\d{2})\s*[-/\s]\s*\d/);
-
     return match ? match[1] : "";
+}
 
+// Unang taon ng Academic Year ng student:
+//   Student ID year + COURSE_YEARS - 1
+//   2021-xx-xxxxx -> 2024  (A.Y. 2024 - 2025)
+//   2023-xx-xxxxx -> 2026  (A.Y. 2026 - 2027)
+// Kung walang Student ID, gagamitin ang batch/school year field:
+//   "2024-2025" -> 2024 (academic year na, walang shift)
+//   "2021"      -> 2021 + 3 = 2024 (taon ng batch)
+function getAcademicYearStart(item) {
+    const fromId = getBatchFromStudentId(item.studentId);
+    if (fromId) {
+        return Number(fromId) + COURSE_YEARS - 1;
+    }
+    const raw = String(item.batch ?? "").trim();
+    const years = raw.match(/(?:19|20)\d{2}/g) || [];
+    if (years.length >= 2) return Number(years[0]);
+    if (years.length === 1) return Number(years[0]) + COURSE_YEARS - 1;
+    return null;
 }
 
 
@@ -227,23 +289,39 @@ function buildGraduatesByBatchData(records) {
 
     records.forEach(item => {
 
-        // Unahin ang batch mula sa backend (app.py); kung wala,
-        // basahin mismo sa Student ID.
-        const batch =
-            String(item.batch ?? "").trim() ||
-            getBatchFromStudentId(item.studentId);
+        // Academic Year ng student (Student ID year + 3).
+        const startYear = getAcademicYearStart(item);
 
-        if (!batch) return;
+        if (startYear === null) return;
+
+        const batch = `${startYear} - ${startYear + 1}`;
 
         const entry =
             batches.get(batch) ||
-            { batch, registered: 0, graduated: 0 };
+            { batch, startYear, registered: 0, graduated: 0 };
 
         entry.registered++;
 
+        const progressValue = Number(item.progress);
+        const currentHours = Number(item.currentHours);
+        const targetHours = Number(item.targetHours);
+
+        // Completed kung alinman dito ay totoo:
+        //  - may graduated flag o naka-archive na (completed batch archive)
+        //  - "completed" ang AI status o forecast
+        //  - 100% na ang progress o abot na ang target hours
         const isGraduated =
             Boolean(item.graduated) ||
-            (item.aiStatus || "").toLowerCase().includes("completed");
+            item.archived === true ||
+            (item.aiStatus || "").toLowerCase().includes("completed") ||
+            item.forecast === "completed" ||
+            (Number.isFinite(progressValue) && progressValue >= 100) ||
+            (
+                Number.isFinite(currentHours) &&
+                Number.isFinite(targetHours) &&
+                targetHours > 0 &&
+                currentHours >= targetHours
+            );
 
         if (isGraduated) entry.graduated++;
 
@@ -252,7 +330,7 @@ function buildGraduatesByBatchData(records) {
     });
 
     return [...batches.values()].sort((a, b) =>
-        a.batch.localeCompare(b.batch, undefined, { numeric: true })
+        a.startYear - b.startYear
     );
 
 }
@@ -317,7 +395,7 @@ function renderGraduatesByBatchChart(batchRows) {
 
         setChartMessage(
             "graduatesByBatchEmpty",
-            "No batches registered in the system yet."
+            "No academic years registered in the system yet."
         );
         return;
 
@@ -331,15 +409,7 @@ function renderGraduatesByBatchChart(batchRows) {
             labels: batchRows.map(r => r.batch),
             datasets: [
                 {
-                    label: "Registered",
-                    data: batchRows.map(r => r.registered),
-                    backgroundColor: CHART_COLORS.primarySoft,
-                    hoverBackgroundColor: CHART_COLORS.primarySoftHover,
-                    borderRadius: 6,
-                    maxBarThickness: 40
-                },
-                {
-                    label: "Graduated",
+                    label: "Completed",
                     data: batchRows.map(r => r.graduated),
                     backgroundColor: CHART_COLORS.primary,
                     hoverBackgroundColor: CHART_COLORS.primaryHover,
@@ -368,7 +438,7 @@ function renderGraduatesByBatchChart(batchRows) {
                     padding: 10,
                     cornerRadius: 8,
                     callbacks: {
-                        title: (items) => `Batch ${items[0].label}`,
+                        title: (items) => `A.Y. ${items[0].label}`,
                         label: (ctx) =>
                             ` ${ctx.dataset.label}: ${ctx.parsed.y}`
                     }
@@ -380,7 +450,7 @@ function renderGraduatesByBatchChart(batchRows) {
                     border: { color: CHART_COLORS.grid },
                     title: {
                         display: true,
-                        text: "Batch (year in Student ID)",
+                        text: "Academic Year",
                         color: CHART_COLORS.muted
                     }
                 },
@@ -407,6 +477,7 @@ function renderGraduatesByBatchChart(batchRows) {
 // ==========================================
 
 let globalStudentRecords = [];
+let archivedStudentRecords = [];
 let globalCompanyExposureData = [];
 
 
@@ -498,52 +569,8 @@ const SAMPLE_RISK_MONITORING_RECORDS = [
 
 document.addEventListener("DOMContentLoaded", () => {
 
-    const studentTable =
-        document.getElementById("studentTable");
-
-    if (!studentTable) return;
-
-
-    const searchInput =
-        document.getElementById("searchStudent");
-
-    const sectionFilter =
-        document.getElementById("sectionFilter");
-
-    const progressFilter =
-        document.getElementById("progressFilter");
-
-    const paginationInfo =
-        document.getElementById("paginationInfo");
-
-
-    // ==========================================
-    // TABLE ERROR MESSAGE
-    // Para hindi mag-"Loading..." nang walang katapusan
-    // kapag hindi maabot ang AI server.
-    // ==========================================
-
-    function showStudentTableError(message) {
-
-        studentTable.innerHTML = `
-            <tr>
-                <td
-                    colspan="9"
-                    style="text-align:center;color:#dc2626;padding:30px;"
-                >
-                    ${escapeHtml(message)}
-                </td>
-            </tr>
-        `;
-
-        if (paginationInfo) {
-
-            paginationInfo.textContent = "Showing 0 to 0 students";
-
-        }
-
-    }
-
+    // Student Performance Analysis table ay tinanggal na sa page.
+    // Ang Completion Forecast na ang gumagamit ng student records.
 
     // ==========================================
     // FETCH ALL STUDENTS
@@ -555,8 +582,8 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
 
             const response =
-                await fetch(
-                    "http://localhost:5000/api/predict-risk"
+                await apiFetch(
+                    "/api/predict-risk"
                 );
 
 
@@ -592,12 +619,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 }
 
-                showStudentTableError(
-                    "Hindi ma-load ang student records - may error mula sa AI server."
-                );
 
                 showChartsUnavailable(
                     "Unable to load chart data - the AI server returned an error."
+                );
+
+                showForecastError(
+                    "Unable to load forecast data - the AI server returned an error."
                 );
 
                 return;
@@ -605,9 +633,17 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
 
-            // KEEP ALL EXISTING BACKEND DATA
+            // Ang mga completed na na-archive na sa Completed Batch
+            // Archive ay hindi na lalabas sa table, risk list, cards,
+            // pie chart at forecast. Binibilang pa rin sila sa
+            // "Graduated by Batch" chart kasi sila ang mga nag-graduate.
+            const allBackendRecords = result.data || [];
+
+            archivedStudentRecords =
+                allBackendRecords.filter(item => item.archived === true);
+
             globalStudentRecords =
-                result.data;
+                allBackendRecords.filter(item => item.archived !== true);
 
 
             // I-DAGDAG ANG SAMPLE "AT RISK" / "NEEDS
@@ -668,7 +704,9 @@ document.addEventListener("DOMContentLoaded", () => {
             );
 
             renderGraduatesByBatchChart(
-                buildGraduatesByBatchData(globalStudentRecords)
+                buildGraduatesByBatchData(
+                    globalStudentRecords.concat(archivedStudentRecords)
+                )
             );
 
 
@@ -719,12 +757,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
             // ==========================================
-            // STUDENT TABLE
+            // COMPLETION FORECAST
             // ==========================================
 
-            populateSectionFilter();
-
-            filterAndRenderTable();
+            renderCompletionForecast();
 
 
             // ==========================================
@@ -785,12 +821,13 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
 
-            showStudentTableError(
-                "Hindi maabot ang AI Server (Flask, port 5000). Siguraduhing tumatakbo ang app.py."
-            );
 
             showChartsUnavailable(
                 "Unable to load chart data - the AI server is unreachable."
+            );
+
+            showForecastError(
+                "Unable to load forecast data - the AI server is unreachable."
             );
 
             fetchCompanySkillExposureAI();
@@ -819,8 +856,8 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
 
             const response =
-                await fetch(
-                    "http://localhost:5000/api/company-skill-exposure",
+                await apiFetch(
+                    "/api/company-skill-exposure",
                     {
                         method: "POST",
                         headers: {
@@ -1076,7 +1113,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     "atrisk",
 
                 icon:
-                    "fa-brain",
+                    "",
 
                 iconColor:
                     "#ff6b6b"
@@ -1155,6 +1192,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const CONSECUTIVE_ABSENCE_RISK_THRESHOLD = 3;
 
 
+    // Section na numero lang ("BSIT 406" -> "406") dahil may
+    // hiwalay nang Course column / info para sa course.
+    function formatSection(value) {
+
+        return String(value ?? "")
+            .trim()
+            .replace(/^[A-Za-z]+[\s-]+(?=\d)/, "");
+
+    }
+
+
     function escapeHtml(value) {
 
         return String(value ?? "")
@@ -1202,7 +1250,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     class="absence-badge"
                     title="Wala pang nababasang attendance record para sa estudyanteng ito"
                 >
-                    <i class="fa-solid fa-calendar-xmark"></i>
                     No attendance yet
                 </span>
             `;
@@ -1222,7 +1269,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 class="absence-badge ${getAbsenceLevel(item)}"
                 title="${title}"
             >
-                <i class="fa-solid fa-calendar-xmark"></i>
                 ${label}
             </span>
         `;
@@ -1251,9 +1297,211 @@ document.addEventListener("DOMContentLoaded", () => {
     // pinakamaraming absent / pinakamahabang streak.
     // ==========================================
 
+    // PAGINATION / FILTER / SORT STATE (status list)
+    let riskPage = 1;
+    let riskRowsPerPage = 5;
+    let riskLastCategory = null;
+    let riskLastRecords = [];
+
+    let riskSearch = "";
+    let riskSectionFilter = "all";
+    let riskCompanyFilter = "all";
+    let riskSortKey = "attention";   // default: pinakamaraming absent muna
+    let riskSortDir = "desc";
+
+    function getRiskPageList(totalPages, page) {
+
+        if (totalPages <= 7) {
+            return Array.from({ length: totalPages }, (_, i) => i + 1);
+        }
+
+        const sorted =
+            [...new Set([1, totalPages, page - 1, page, page + 1])]
+                .filter(p => p >= 1 && p <= totalPages)
+                .sort((a, b) => a - b);
+
+        const result = [];
+
+        sorted.forEach((p, i) => {
+            if (i > 0 && p - sorted[i - 1] > 1) result.push("...");
+            result.push(p);
+        });
+
+        return result;
+
+    }
+
+    function renderRiskPagination(total, startIndex, shown) {
+
+        const footer = document.getElementById("riskListFooter");
+
+        if (!footer) return;
+
+        if (total === 0) {
+            footer.style.display = "none";
+            return;
+        }
+
+        footer.style.display = "flex";
+
+        const totalPages = Math.max(1, Math.ceil(total / riskRowsPerPage));
+
+        const info = document.getElementById("riskPaginationInfo");
+        const numbers = document.getElementById("riskPageNumbers");
+        const prev = document.getElementById("riskPrevPageBtn");
+        const next = document.getElementById("riskNextPageBtn");
+
+        if (info) {
+            info.textContent =
+                `Showing ${startIndex + 1} to ${startIndex + shown} of ${total} students`;
+        }
+
+        if (numbers) {
+            numbers.innerHTML =
+                getRiskPageList(totalPages, riskPage)
+                    .map(p =>
+                        p === "..."
+                            ? `<span style="padding:0 4px;color:#999;">…</span>`
+                            : `<button type="button" class="page-num ${p === riskPage ? "active" : ""}" data-risk-page="${p}">${p}</button>`
+                    )
+                    .join("");
+        }
+
+        if (prev) prev.disabled = riskPage <= 1;
+        if (next) next.disabled = riskPage >= totalPages;
+
+    }
+
+    function goToRiskPage(page) {
+
+        riskPage = Math.max(1, page);
+
+        renderStatusStudents(riskLastRecords, riskLastCategory, true);
+
+    }
+
+    // Ibalik sa default ang search/filter/sort
+    function resetRiskFilters() {
+
+        riskSearch = "";
+        riskSectionFilter = "all";
+        riskCompanyFilter = "all";
+        riskSortKey = "attention";
+        riskSortDir = "desc";
+
+        const searchEl = document.getElementById("riskSearch");
+        if (searchEl) searchEl.value = "";
+
+    }
+
+    // Punuin ang Section at Company dropdown galing sa mga
+    // estudyante ng kasalukuyang status.
+    function fillRiskFilterOptions(list) {
+
+        const sectionEl = document.getElementById("riskSectionFilter");
+        const companyEl = document.getElementById("riskCompanyFilter");
+
+        const build = (el, allLabel, values, current) => {
+
+            if (!el) return current;
+
+            const unique =
+                [...new Set(values.filter(Boolean))]
+                    .sort((a, b) =>
+                        a.localeCompare(b, undefined, { numeric: true })
+                    );
+
+            el.innerHTML =
+                `<option value="all">${allLabel}</option>` +
+                unique
+                    .map(v =>
+                        `<option value="${escapeHtml(v.toLowerCase())}">${escapeHtml(v)}</option>`
+                    )
+                    .join("");
+
+            const keep =
+                unique.some(v => v.toLowerCase() === current) ? current : "all";
+
+            el.value = keep;
+
+            return keep;
+
+        };
+
+        riskSectionFilter = build(
+            sectionEl,
+            "All Sections",
+            list.map(i => formatSection(i.section)),
+            riskSectionFilter
+        );
+
+        riskCompanyFilter = build(
+            companyEl,
+            "All Companies",
+            list.map(i => String(i.company || "").trim()),
+            riskCompanyFilter
+        );
+
+    }
+
+    function compareRiskRows(a, b) {
+
+        const text = (x, y) =>
+            String(x || "").localeCompare(
+                String(y || ""),
+                undefined,
+                { numeric: true, sensitivity: "base" }
+            );
+
+        const absent = i => Number(i.absentCount) || 0;
+        const streak = i => Number(i.consecutiveAbsences) || 0;
+
+        let result = 0;
+
+        switch (riskSortKey) {
+
+            case "name":    result = text(a.name, b.name); break;
+            case "course":  result = text(a.course, b.course); break;
+            case "section": result = text(formatSection(a.section), formatSection(b.section)); break;
+            case "company": result = text(a.company, b.company); break;
+
+            case "absences":
+                result = absent(a) - absent(b) || streak(a) - streak(b);
+                break;
+
+            default: // "attention"
+                result = streak(a) - streak(b) || absent(a) - absent(b);
+
+        }
+
+        if (result === 0) result = text(a.name, b.name);
+
+        return riskSortDir === "asc" ? result : -result;
+
+    }
+
+    function riskHeaderCell(key, label) {
+
+        const plainHeaderKeys = ["course", "section", "company"];
+        if (plainHeaderKeys.includes(key)) {
+            // Text lang - hindi sortable ang Course, Section, Company
+            return `<th>${label}</th>`;
+        }
+        const active = riskSortKey === key;
+
+        const arrow =
+            active
+                ? `<i class="fa-solid fa-arrow-${riskSortDir === "asc" ? "up" : "down"} risk-sort-ind"></i>`
+                : `<i class="fa-solid fa-sort risk-sort-ind muted"></i>`;
+
+        return `<th class="sortable-th" data-risk-sort="${key}">${label}${arrow}</th>`;
+
+    }
+
     function renderStatusStudents(
         records,
-        category
+        category,
+        keepPage = false
     ) {
 
         const riskContainer =
@@ -1262,30 +1510,34 @@ document.addEventListener("DOMContentLoaded", () => {
         const titleElement =
             document.getElementById("studentStatusListTitle");
 
+        const toolbar =
+            document.getElementById("riskToolbar");
+
         if (!riskContainer) return;
+
+        // Ibang status ang pinili -> reset page, filters at sort
+        if (!keepPage && category !== riskLastCategory) {
+            riskPage = 1;
+            resetRiskFilters();
+        }
+
+        riskLastCategory = category;
+        riskLastRecords = records;
 
         const config = getStatusConfig(category);
 
-        const filteredList =
-            records
-                .filter(
-                    item =>
-                        getStudentStatusCategory(item) === category
-                )
-                .sort((a, b) =>
-                    (Number(b.consecutiveAbsences) || 0) -
-                        (Number(a.consecutiveAbsences) || 0) ||
-                    (Number(b.absentCount) || 0) -
-                        (Number(a.absentCount) || 0)
-                );
+        const categoryList =
+            records.filter(
+                item => getStudentStatusCategory(item) === category
+            );
 
         if (titleElement) {
-
             titleElement.textContent = config.title;
-
         }
 
-        if (filteredList.length === 0) {
+        if (categoryList.length === 0) {
+
+            if (toolbar) toolbar.style.display = "none";
 
             riskContainer.innerHTML = `
                 <div style="padding:20px;text-align:center;color:#777;">
@@ -1293,29 +1545,65 @@ document.addEventListener("DOMContentLoaded", () => {
                 </div>
             `;
 
+            renderRiskPagination(0, 0, 0);
+
             return;
 
         }
 
-        riskContainer.innerHTML =
-            filteredList
-                .map(item => {
+        if (toolbar) toolbar.style.display = "flex";
 
-                    const studentName = item.name || "Student";
+        fillRiskFilterOptions(categoryList);
 
-                    const initials =
-                        studentName
-                            .split(" ")
-                            .filter(Boolean)
-                            .map(part => part[0])
-                            .join("")
-                            .toUpperCase()
-                            .substring(0, 2) || "ST";
+        const keyword = riskSearch.toLowerCase().trim();
 
-                    const subInfo =
-                        [item.course, item.section, item.company]
-                            .filter(Boolean)
-                            .join(" · ");
+        const filteredList =
+            categoryList
+                .filter(item => {
+
+                    const name = String(item.name || "").toLowerCase();
+                    const sid = String(item.studentId || "").toLowerCase();
+                    const section = formatSection(item.section).toLowerCase();
+                    const company = String(item.company || "").trim().toLowerCase();
+
+                    return (
+                        (!keyword || name.includes(keyword) || sid.includes(keyword)) &&
+                        (riskSectionFilter === "all" || section === riskSectionFilter) &&
+                        (riskCompanyFilter === "all" || company === riskCompanyFilter)
+                    );
+
+                })
+                .sort(compareRiskRows);
+
+        if (filteredList.length === 0) {
+
+            riskContainer.innerHTML = `
+                <div style="padding:20px;text-align:center;color:#777;">
+                    No students match your search or filters.
+                </div>
+            `;
+
+            renderRiskPagination(0, 0, 0);
+
+            return;
+
+        }
+
+        const riskTotalPages =
+            Math.max(1, Math.ceil(filteredList.length / riskRowsPerPage));
+
+        if (riskPage > riskTotalPages) riskPage = riskTotalPages;
+
+        const riskStart = (riskPage - 1) * riskRowsPerPage;
+
+        const pagedList =
+            filteredList.slice(riskStart, riskStart + riskRowsPerPage);
+
+        renderRiskPagination(filteredList.length, riskStart, pagedList.length);
+
+        const rowsHtml =
+            pagedList
+                .map((item, index) => {
 
                     const reason =
                         item.riskReason ||
@@ -1328,59 +1616,76 @@ document.addEventListener("DOMContentLoaded", () => {
                         );
 
                     return `
-                        <div
-                            class="risk-row"
+                        <tr
+                            class="risk-table-row"
                             data-student-id="${escapeHtml(item.id)}"
-                            role="button"
                             tabindex="0"
                             style="cursor:pointer;"
                             title="Click to view attendance history"
                         >
 
-                            <!-- STUDENT -->
-                            <div class="student-mini">
+                            <td class="risk-num-cell">${riskStart + index + 1}</td>
 
-                                <div class="student-avatar">
-                                    ${escapeHtml(initials)}
-                                </div>
+                            <td>
+                                <strong>${escapeHtml(item.name || "Student")}</strong>
+                                <br>
+                                <small style="color:#777;">
+                                    ${escapeHtml(item.studentId)}
+                                </small>
+                            </td>
 
-                                <div>
-                                    <strong>${escapeHtml(studentName)}</strong>
-                                    <small>${escapeHtml(subInfo)}</small>
-                                </div>
+                            <td>${escapeHtml(item.course)}</td>
 
-                            </div>
+                            <td>${escapeHtml(formatSection(item.section))}</td>
 
+                            <td>${escapeHtml(item.company)}</td>
 
-                            <!-- REASON + ATTENDANCE -->
-                            <div class="risk-reason">
-
-                                <span>
-                                    <i
-                                        class="fa-solid ${config.icon}"
-                                        style="color:${config.iconColor};margin-right:5px;"
-                                    ></i>
-                                    ${escapeHtml(reason)}
-                                </span>
-
+                            <td>
                                 <div class="risk-attendance">
                                     ${renderAbsenceBadge(item)}
                                     ${renderStreakBadge(item)}
                                 </div>
+                            </td>
 
-                            </div>
+                            <td class="risk-reason-cell">
+                                ${config.icon ? `<i
+                                    class="fa-solid ${config.icon}"
+                                    style="color:${config.iconColor};margin-right:5px;"
+                                ></i>` : ""}
+                                ${escapeHtml(reason)}
+                            </td>
 
+                            <td>
+                                <span class="status ${config.badgeClass}">
+                                    ${config.badge}
+                                </span>
+                            </td>
 
-                            <!-- STATUS -->
-                            <span class="status ${config.badgeClass}">
-                                ${config.badge}
-                            </span>
-
-                        </div>
+                        </tr>
                     `;
 
                 })
                 .join("");
+
+        riskContainer.innerHTML = `
+            <div class="table-container">
+                <table class="students-table risk-table">
+                    <thead>
+                        <tr>
+                            <th class="risk-num-cell">#</th>
+                            ${riskHeaderCell("name", "Student Name")}
+                            ${riskHeaderCell("course", "Course")}
+                            ${riskHeaderCell("section", "Section")}
+                            ${riskHeaderCell("company", "Company")}
+                            ${riskHeaderCell("absences", "Absences")}
+                            <th>AI Reason</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rowsHtml}</tbody>
+                </table>
+            </div>
+        `;
 
     }
 
@@ -1581,252 +1886,551 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     // ==========================================
-    // SECTION FILTER
-    // Ang mga section ay galing na sa totoong
-    // student records (hindi na hardcoded 3A / 3B).
+    // COMPLETION FORECAST
+    //
+    // Binabasa ang forecast na kinompute ng
+    // /api/predict-risk (app.py): estimated completion
+    // date base sa kasalukuyang pace ng estudyante, at
+    // kung kaya pa ba niyang humabol bago ang deadline.
     // ==========================================
 
-    function populateSectionFilter() {
+    const FORECAST_META = {
+        miss:      { label: "Will Miss Deadline", cls: "fc-miss",     icon: "fa-circle-xmark",       order: 0 },
+        speed_up:  { label: "Needs to Speed Up",  cls: "fc-speed",    icon: "fa-gauge-high",         order: 1 },
+        catch_up:  { label: "Can Catch Up",       cls: "fc-catch",    icon: "fa-person-running",     order: 2 },
+        too_early: { label: "Too Early",          cls: "fc-early",    icon: "fa-hourglass-start",    order: 3 },
+        on_time:   { label: "On Time",            cls: "fc-ontime",   icon: "fa-circle-check",       order: 4 },
+        completed: { label: "Completed",          cls: "fc-done",     icon: "fa-flag-checkered",     order: 5 }
+    };
 
-        if (!sectionFilter) return;
+    let forecastPage = 1;
+    let forecastRowsPerPage = 6;
+    let forecastFilterValue = "all";
+    let forecastSearch = "";
+    let forecastSectionFilter = "all";
+    let forecastCompanyFilter = "all";
+    let forecastSortKey = "forecast";   // default: pinakamalala muna
+    let forecastSortDir = "asc";
 
-        const previous = sectionFilter.value;
+    function formatForecastDate(value) {
 
-        const sections = new Map();
+        if (!value) return "—";
 
-        globalStudentRecords.forEach(item => {
+        const d = new Date(`${String(value).slice(0, 10)}T00:00:00`);
 
-            const section = String(item.section || "").trim();
+        if (Number.isNaN(d.getTime())) return "—";
 
-            if (!section || sections.has(section.toLowerCase())) return;
-
-            sections.set(
-                section.toLowerCase(),
-                [item.course, section].filter(Boolean).join(" ")
-            );
-
+        return d.toLocaleDateString("en-PH", {
+            year: "numeric",
+            month: "short",
+            day: "numeric"
         });
 
-        sectionFilter.innerHTML =
-            `<option value="all">All Sections</option>` +
-            [...sections.entries()]
-                .sort((a, b) => a[1].localeCompare(b[1], undefined, { numeric: true }))
-                .map(([value, label]) =>
-                    `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`
-                )
-                .join("");
+    }
 
-        if (previous && sections.has(previous)) {
+    function getForecastKey(item) {
 
-            sectionFilter.value = previous;
-
+        if (item.forecast && FORECAST_META[item.forecast]) {
+            return item.forecast;
         }
+
+        // Fallback para sa mga record na walang forecast (hal. sample data)
+        if ((item.aiStatus || "").toLowerCase().includes("completed")) {
+            return "completed";
+        }
+
+        return null;
 
     }
 
+    function forecastNote(item, key) {
 
-    // ==========================================
-    // STATUS FILTER MATCHER
-    // (gumagamit ng parehong category rules gaya
-    // ng AI At-Risk Analysis para pare-pareho ang
-    // resulta sa buong page)
-    // ==========================================
+        const needed = Number(item.hoursPerDutyDayNeeded);
+        const hasNeeded = Number.isFinite(needed) && item.hoursPerDutyDayNeeded !== null;
 
-    function matchesStatusFilter(item, filterValue) {
+        switch (key) {
 
-        if (filterValue === "all") return true;
+            case "on_time": {
+                const early = Number(item.daysEarly) || 0;
+                return early > 0
+                    ? `Finishes ${early} day${early === 1 ? "" : "s"} before the deadline`
+                    : "Finishes right at the deadline";
+            }
 
-        const status = (item.aiStatus || "").toLowerCase();
+            case "catch_up":
+                return hasNeeded
+                    ? `Behind pace, but only ~${needed} hrs per duty day is needed`
+                    : "Behind pace, but still has time to catch up";
 
-        if (filterValue === "completed") {
+            case "speed_up":
+                return hasNeeded
+                    ? `Needs ~${needed} hrs per duty day to finish in time`
+                    : "Needs to speed up to finish in time";
 
-            return status.includes("completed");
+            case "miss": {
+                if ((Number(item.dutyDaysLeft) || 0) <= 0) {
+                    return "Deadline reached with hours still remaining";
+                }
+                return hasNeeded
+                    ? `Would need ~${needed} hrs per duty day - more than a full duty day`
+                    : "Cannot finish the remaining hours in time";
+            }
+
+            case "too_early":
+                return "Just started - not enough data yet";
+
+            case "completed":
+                return "Required hours completed";
 
         }
 
-        const category = getStudentStatusCategory(item);
-
-        if (filterValue === "atrisk") return category === "risk";
-
-        if (filterValue === "monitoring") return category === "monitoring";
-
-        if (filterValue === "ontrack") {
-
-            return category === "ontrack" && !status.includes("completed");
-
-        }
-
-        return true;
+        return "";
 
     }
 
+    function getForecastPageList(totalPages, page) {
 
-    // ==========================================
-    // STUDENT TABLE FILTER
-    // ==========================================
+        if (totalPages <= 7) {
+            return Array.from({ length: totalPages }, (_, i) => i + 1);
+        }
 
-    function filterAndRenderTable() {
+        const sorted =
+            [...new Set([1, totalPages, page - 1, page, page + 1])]
+                .filter(p => p >= 1 && p <= totalPages)
+                .sort((a, b) => a - b);
 
-        const keyword =
-            searchInput ? searchInput.value.toLowerCase().trim() : "";
+        const result = [];
 
-        const sectionVal =
-            sectionFilter ? sectionFilter.value.toLowerCase() : "all";
+        sorted.forEach((p, i) => {
+            if (i > 0 && p - sorted[i - 1] > 1) result.push("...");
+            result.push(p);
+        });
 
-        const progressVal =
-            progressFilter ? progressFilter.value.toLowerCase() : "all";
+        return result;
 
-        const filtered =
-            globalStudentRecords.filter(item => {
+    }
 
-                const name = String(item.name || "").toLowerCase();
+    function showForecastError(message) {
 
-                const studentId = String(item.studentId || "").toLowerCase();
+        const body = document.getElementById("completionForecastTable");
 
-                const section = String(item.section || "").trim().toLowerCase();
+        if (body) {
+            body.innerHTML = `
+                <tr>
+                    <td colspan="10" style="text-align:center;color:#dc2626;padding:30px;">
+                        ${escapeHtml(message)}
+                    </td>
+                </tr>
+            `;
+        }
 
-                return (
-                    (name.includes(keyword) || studentId.includes(keyword)) &&
-                    (sectionVal === "all" || section === sectionVal) &&
-                    matchesStatusFilter(item, progressVal)
-                );
+        const footer = document.getElementById("forecastFooter");
+        if (footer) footer.style.display = "none";
 
+        const summary = document.getElementById("forecastSummary");
+        if (summary) summary.innerHTML = "";
+
+    }
+
+    // Ibalik sa default ang search/filter/sort
+    function resetForecastFilters() {
+
+        forecastSearch = "";
+        forecastFilterValue = "all";
+        forecastSectionFilter = "all";
+        forecastCompanyFilter = "all";
+        forecastSortKey = "forecast";
+        forecastSortDir = "asc";
+
+        const searchEl = document.getElementById("forecastSearch");
+        if (searchEl) searchEl.value = "";
+
+        const statusEl = document.getElementById("forecastFilter");
+        if (statusEl) statusEl.value = "all";
+
+    }
+
+    // Punuin ang Section at Company dropdown galing sa mga estudyante
+    function fillForecastFilterOptions(list) {
+
+        const sectionEl = document.getElementById("forecastSectionFilter");
+        const companyEl = document.getElementById("forecastCompanyFilter");
+
+        const build = (el, allLabel, values, current) => {
+
+            if (!el) return current;
+
+            const unique =
+                [...new Set(values.filter(Boolean))]
+                    .sort((a, b) =>
+                        a.localeCompare(b, undefined, { numeric: true })
+                    );
+
+            el.innerHTML =
+                `<option value="all">${allLabel}</option>` +
+                unique
+                    .map(v =>
+                        `<option value="${escapeHtml(v.toLowerCase())}">${escapeHtml(v)}</option>`
+                    )
+                    .join("");
+
+            const keep =
+                unique.some(v => v.toLowerCase() === current) ? current : "all";
+
+            el.value = keep;
+
+            return keep;
+
+        };
+
+        forecastSectionFilter = build(
+            sectionEl,
+            "All Sections",
+            list.map(i => formatSection(i.section)),
+            forecastSectionFilter
+        );
+
+        forecastCompanyFilter = build(
+            companyEl,
+            "All Companies",
+            list.map(i => String(i.company || "").trim()),
+            forecastCompanyFilter
+        );
+
+    }
+
+    function getForecastRemaining(item, key) {
+
+        if (key === "completed") return 0;
+
+        if (item.hoursRemaining !== undefined && item.hoursRemaining !== null) {
+            return Number(item.hoursRemaining) || 0;
+        }
+
+        const target = Number(item.targetHours) || 600;
+        const current = Number(item.currentHours) || 0;
+
+        return Math.max(target - current, 0);
+
+    }
+
+    function forecastDateValue(value) {
+
+        if (!value) return Infinity;
+
+        const t = new Date(`${String(value).slice(0, 10)}T00:00:00`).getTime();
+
+        return Number.isNaN(t) ? Infinity : t;
+
+    }
+
+    function compareForecastRows(a, b) {
+
+        const text = (x, y) =>
+            String(x || "").localeCompare(
+                String(y || ""),
+                undefined,
+                { numeric: true, sensitivity: "base" }
+            );
+
+        const progress = r => Number(r.item.progress) || 0;
+
+        let result = 0;
+
+        switch (forecastSortKey) {
+
+            case "name":    result = text(a.item.name, b.item.name); break;
+            case "course":  result = text(a.item.course, b.item.course); break;
+            case "section": result = text(formatSection(a.item.section), formatSection(b.item.section)); break;
+            case "company": result = text(a.item.company, b.item.company); break;
+
+            case "progress":
+                result = progress(a) - progress(b);
+                break;
+
+            case "remaining":
+                result =
+                    getForecastRemaining(a.item, a.key) -
+                    getForecastRemaining(b.item, b.key);
+                break;
+
+            case "estimated": {
+                const x = a.key === "completed" ? -Infinity : forecastDateValue(a.item.estimatedCompletion);
+                const y = b.key === "completed" ? -Infinity : forecastDateValue(b.item.estimatedCompletion);
+                result = x === y ? 0 : (x < y ? -1 : 1);
+                break;
+            }
+
+            case "deadline": {
+                const x = forecastDateValue(a.item.deadline);
+                const y = forecastDateValue(b.item.deadline);
+                result = x === y ? 0 : (x < y ? -1 : 1);
+                break;
+            }
+
+            default: // "forecast" - pinakamalala muna, tapos pinakakaunting progress
+                result =
+                    FORECAST_META[a.key].order - FORECAST_META[b.key].order ||
+                    progress(a) - progress(b);
+
+        }
+
+        if (result === 0) result = text(a.item.name, b.item.name);
+
+        return forecastSortDir === "asc" ? result : -result;
+
+    }
+
+    function forecastHeaderCell(key, label) {
+
+        const plainHeaderKeys = ["course", "section", "company"];
+        if (plainHeaderKeys.includes(key)) {
+            // Text lang - hindi sortable ang Course, Section, Company
+            return `<th>${label}</th>`;
+        }
+        const active = forecastSortKey === key;
+
+        const arrow =
+            active
+                ? `<i class="fa-solid fa-arrow-${forecastSortDir === "asc" ? "up" : "down"} risk-sort-ind"></i>`
+                : `<i class="fa-solid fa-sort risk-sort-ind muted"></i>`;
+
+        return `<th class="sortable-th" data-forecast-sort="${key}">${label}${arrow}</th>`;
+
+    }
+
+    function renderForecastHead() {
+
+        const head = document.getElementById("forecastHead");
+
+        if (!head) return;
+
+        head.innerHTML = `
+            <tr>
+                <th class="risk-num-cell">#</th>
+                ${forecastHeaderCell("name", "Student Name")}
+                ${forecastHeaderCell("course", "Course")}
+                ${forecastHeaderCell("section", "Section")}
+                ${forecastHeaderCell("company", "Company")}
+                ${forecastHeaderCell("progress", "Progress")}
+                ${forecastHeaderCell("remaining", "Remaining Hours")}
+                ${forecastHeaderCell("estimated", "Estimated Completion")}
+                ${forecastHeaderCell("deadline", "Deadline")}
+                ${forecastHeaderCell("forecast", "Forecast")}
+            </tr>
+        `;
+
+    }
+
+    function renderCompletionForecast() {
+
+        const body = document.getElementById("completionForecastTable");
+
+        if (!body) return;
+
+        const summaryEl = document.getElementById("forecastSummary");
+        const footer = document.getElementById("forecastFooter");
+
+        const all =
+            globalStudentRecords
+                .map(item => ({ item, key: getForecastKey(item) }))
+                .filter(row => row.key);
+
+        // SUMMARY CHIPS
+        if (summaryEl) {
+
+            const counts = {};
+
+            all.forEach(row => {
+                counts[row.key] = (counts[row.key] || 0) + 1;
             });
 
-        renderTableRows(filtered);
+            summaryEl.innerHTML =
+                Object.entries(FORECAST_META)
+                    .filter(([key]) => counts[key])
+                    .map(([key, meta]) => `
+                        <span class="forecast-chip ${meta.cls}">
+                            <i class="fa-solid ${meta.icon}"></i>
+                            ${meta.label}: <strong>${counts[key]}</strong>
+                        </span>
+                    `)
+                    .join("");
 
-    }
+        }
 
+        // SECTION / COMPANY DROPDOWN OPTIONS
+        fillForecastFilterOptions(all.map(row => row.item));
 
-    // ==========================================
-    // RENDER STUDENT TABLE
-    // ==========================================
+        // SORTABLE HEADERS
+        renderForecastHead();
 
-    function renderTableRows(
-        records
-    ) {
+        // SEARCH + FILTERS + SORT
+        const keyword = forecastSearch.toLowerCase().trim();
 
-        if (records.length === 0) {
+        const rows =
+            all
+                .filter(({ item, key }) => {
 
-            studentTable.innerHTML = `
+                    const name = String(item.name || "").toLowerCase();
+                    const sid = String(item.studentId || "").toLowerCase();
+                    const section = formatSection(item.section).toLowerCase();
+                    const company = String(item.company || "").trim().toLowerCase();
+
+                    return (
+                        (forecastFilterValue === "all" || key === forecastFilterValue) &&
+                        (!keyword || name.includes(keyword) || sid.includes(keyword)) &&
+                        (forecastSectionFilter === "all" || section === forecastSectionFilter) &&
+                        (forecastCompanyFilter === "all" || company === forecastCompanyFilter)
+                    );
+
+                })
+                .sort(compareForecastRows);
+
+        if (rows.length === 0) {
+
+            body.innerHTML = `
                 <tr>
-                    <td
-                        colspan="9"
-                        style="text-align:center;color:#777;padding:30px;"
-                    >
-                        No student records found.
+                    <td colspan="10" style="text-align:center;color:#777;padding:30px;">
+                        ${all.length === 0
+                            ? "No forecast data available yet."
+                            : "No students match your search or filters."}
                     </td>
                 </tr>
             `;
 
-            if (paginationInfo) {
-
-                paginationInfo.textContent =
-                    "Showing 0 to 0 students";
-
-            }
+            if (footer) footer.style.display = "none";
 
             return;
 
         }
 
-        studentTable.innerHTML =
-            records
-                .map(item => {
+        const totalPages = Math.max(1, Math.ceil(rows.length / forecastRowsPerPage));
 
-                    const category = getStudentStatusCategory(item);
+        if (forecastPage > totalPages) forecastPage = totalPages;
 
-                    const isCompleted =
-                        (item.aiStatus || "").toLowerCase().includes("completed");
+        const start = (forecastPage - 1) * forecastRowsPerPage;
+        const pageRows = rows.slice(start, start + forecastRowsPerPage);
 
-                    let statusClass = "ongoing";
+        body.innerHTML =
+            pageRows
+                .map(({ item, key }, index) => {
+
+                    const meta = FORECAST_META[key];
+
+                    const progress = Math.min(Number(item.progress) || 0, 100);
+
+                    const target = Number(item.targetHours) || 600;
+                    const current = Number(item.currentHours) || 0;
+
+                    const remaining = getForecastRemaining(item, key);
+
                     let barClass = "";
+                    if (key === "miss") barClass = "danger";
+                    else if (key === "speed_up" || key === "catch_up") barClass = "warning";
+                    else if (key === "completed") barClass = "complete";
 
-                    if (isCompleted) {
+                    let estimated = "—";
 
-                        statusClass = "completed";
-                        barClass = "complete";
-
-                    } else if (category === "risk") {
-
-                        statusClass = "atrisk";
-                        barClass = "danger";
-
-                    } else if (category === "monitoring") {
-
-                        statusClass = "monitoring";
-                        barClass = "warning";
-
+                    if (key === "completed") {
+                        estimated = "Done";
+                    } else if (item.estimatedCompletion) {
+                        estimated = formatForecastDate(item.estimatedCompletion);
+                    } else if (key === "too_early") {
+                        estimated = "Not enough data";
+                    } else {
+                        estimated = "No pace yet";
                     }
 
-                    const progress = Number(item.progress) || 0;
+                    const late = Number(item.daysLate) || 0;
+
+                    const lateNote =
+                        late > 0
+                            ? `<br><small class="fc-late">${late} day${late === 1 ? "" : "s"} after the deadline</small>`
+                            : "";
 
                     return `
-                        <tr>
+                        <tr
+                            class="risk-table-row"
+                            data-student-id="${escapeHtml(item.id)}"
+                            tabindex="0"
+                            style="cursor:pointer;"
+                            title="Click to view attendance history"
+                        >
+                            <td class="risk-num-cell">${start + index + 1}</td>
 
                             <td>
-                                <strong>${escapeHtml(item.name)}</strong>
+                                <strong>${escapeHtml(item.name || "Student")}</strong>
                                 <br>
-                                <small style="color:#777;">
-                                    ${escapeHtml(item.studentId)}
-                                </small>
+                                <small style="color:#777;">${escapeHtml(item.studentId)}</small>
                             </td>
 
                             <td>${escapeHtml(item.course)}</td>
 
-                            <td>${escapeHtml(item.section)}</td>
+                            <td>${escapeHtml(formatSection(item.section))}</td>
 
                             <td>${escapeHtml(item.company)}</td>
 
                             <td>
                                 <div class="progress-wrapper">
                                     <div class="progress">
-                                        <div
-                                            class="progress-bar ${barClass}"
-                                            style="width:${progress}%;"
-                                        ></div>
+                                        <div class="progress-bar ${barClass}" style="width:${progress}%;"></div>
                                     </div>
-                                    <span class="progress-value">
-                                        ${progress}%
-                                    </span>
+                                    <span class="progress-value">${progress}%</span>
                                 </div>
+                                <small style="color:#777;">${escapeHtml(current)} / ${escapeHtml(target)} hrs</small>
                             </td>
+
+                            <td>${key === "completed" ? "0 hrs" : `${escapeHtml(remaining)} hrs`}</td>
+
+                            <td>${escapeHtml(estimated)}${lateNote}</td>
+
+                            <td>${escapeHtml(formatForecastDate(item.deadline))}</td>
 
                             <td>
-                                ${escapeHtml(item.currentHours)}
-                                /
-                                ${escapeHtml(item.targetHours)}
+                                <span class="forecast-badge ${meta.cls}">${meta.label}</span>
+                                <br>
+                                <small class="fc-note">${escapeHtml(forecastNote(item, key))}</small>
                             </td>
-
-                            <td>${renderAbsenceBadge(item)}</td>
-
-                            <td>
-                                <span class="status ${statusClass}">
-                                    ${escapeHtml(item.aiStatus)}
-                                </span>
-                            </td>
-
-                            <td>
-                                <button
-                                    class="action-btn view-btn"
-                                    onclick="window.viewStudentProgress('${escapeHtml(item.id)}')"
-                                >
-                                    <i class="fa-solid fa-eye"></i>
-                                </button>
-                            </td>
-
                         </tr>
                     `;
 
                 })
                 .join("");
 
-        if (paginationInfo) {
+        // PAGINATION
+        if (footer) footer.style.display = "flex";
 
-            paginationInfo.textContent =
-                `Showing 1 to ${records.length} of ${records.length} students`;
+        const info = document.getElementById("forecastPaginationInfo");
+        const numbers = document.getElementById("forecastPageNumbers");
+        const prev = document.getElementById("forecastPrevBtn");
+        const next = document.getElementById("forecastNextBtn");
 
+        if (info) {
+            info.textContent =
+                `Showing ${start + 1} to ${start + pageRows.length} of ${rows.length} students`;
         }
+
+        if (numbers) {
+            numbers.innerHTML =
+                getForecastPageList(totalPages, forecastPage)
+                    .map(p =>
+                        p === "..."
+                            ? `<span style="padding:0 4px;color:#999;">…</span>`
+                            : `<button type="button" class="page-num ${p === forecastPage ? "active" : ""}" data-forecast-page="${p}">${p}</button>`
+                    )
+                    .join("");
+        }
+
+        if (prev) prev.disabled = forecastPage <= 1;
+        if (next) next.disabled = forecastPage >= totalPages;
+
+    }
+
+    function goToForecastPage(page) {
+
+        forecastPage = Math.max(1, page);
+
+        renderCompletionForecast();
 
     }
 
@@ -1899,8 +2503,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 try {
 
                     const response =
-                        await fetch(
-                            "http://localhost:5000/api/recommend-company",
+                        await apiFetch(
+                            "/api/recommend-company",
                             {
                                 method: "POST",
 
@@ -2112,35 +2716,123 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     // ==========================================
-    // SEARCH / FILTER EVENTS
+    // COMPLETION FORECAST EVENTS
     // ==========================================
 
-    if (searchInput) {
+    const forecastFilterEl = document.getElementById("forecastFilter");
+    const forecastRowsEl = document.getElementById("forecastRowsPerPage");
+    const forecastPrevEl = document.getElementById("forecastPrevBtn");
+    const forecastNextEl = document.getElementById("forecastNextBtn");
+    const forecastNumbersEl = document.getElementById("forecastPageNumbers");
 
-        searchInput.addEventListener(
-            "keyup",
-            filterAndRenderTable
-        );
-
+    if (forecastFilterEl) {
+        forecastFilterEl.addEventListener("change", () => {
+            forecastFilterValue = forecastFilterEl.value;
+            goToForecastPage(1);
+        });
     }
 
-
-    if (sectionFilter) {
-
-        sectionFilter.addEventListener(
-            "change",
-            filterAndRenderTable
-        );
-
+    if (forecastRowsEl) {
+        forecastRowsEl.addEventListener("change", () => {
+            forecastRowsPerPage = parseInt(forecastRowsEl.value, 10) || 6;
+            goToForecastPage(1);
+        });
     }
 
+    if (forecastPrevEl) {
+        forecastPrevEl.addEventListener("click", () => goToForecastPage(forecastPage - 1));
+    }
 
-    if (progressFilter) {
+    if (forecastNextEl) {
+        forecastNextEl.addEventListener("click", () => goToForecastPage(forecastPage + 1));
+    }
 
-        progressFilter.addEventListener(
-            "change",
-            filterAndRenderTable
-        );
+    if (forecastNumbersEl) {
+        forecastNumbersEl.addEventListener("click", (e) => {
+            const btn = e.target.closest("[data-forecast-page]");
+            if (btn) goToForecastPage(parseInt(btn.dataset.forecastPage, 10));
+        });
+    }
+
+    // SEARCH / SECTION / COMPANY / RESET (kapareho ng Students Requiring Attention)
+    const forecastSearchEl = document.getElementById("forecastSearch");
+    const forecastSectionEl = document.getElementById("forecastSectionFilter");
+    const forecastCompanyEl = document.getElementById("forecastCompanyFilter");
+    const forecastResetEl = document.getElementById("forecastResetFilters");
+
+    if (forecastSearchEl) {
+        forecastSearchEl.addEventListener("input", () => {
+            forecastSearch = forecastSearchEl.value;
+            goToForecastPage(1);
+        });
+    }
+
+    if (forecastSectionEl) {
+        forecastSectionEl.addEventListener("change", () => {
+            forecastSectionFilter = forecastSectionEl.value;
+            goToForecastPage(1);
+        });
+    }
+
+    if (forecastCompanyEl) {
+        forecastCompanyEl.addEventListener("change", () => {
+            forecastCompanyFilter = forecastCompanyEl.value;
+            goToForecastPage(1);
+        });
+    }
+
+    if (forecastResetEl) {
+        forecastResetEl.addEventListener("click", () => {
+            resetForecastFilters();
+            goToForecastPage(1);
+        });
+    }
+
+    // SORT (header click) at OPEN ATTENDANCE MODAL (row click / Enter / Space)
+    const forecastTableEl = document.getElementById("forecastTable");
+
+    if (forecastTableEl) {
+
+        forecastTableEl.addEventListener("click", (e) => {
+
+            const th = e.target.closest("th[data-forecast-sort]");
+
+            if (th) {
+
+                const key = th.dataset.forecastSort;
+
+                if (forecastSortKey === key) {
+                    forecastSortDir = forecastSortDir === "asc" ? "desc" : "asc";
+                } else {
+                    forecastSortKey = key;
+                    forecastSortDir = "asc";
+                }
+
+                goToForecastPage(1);
+                return;
+
+            }
+
+            const row = e.target.closest("tr[data-student-id]");
+
+            if (row && row.dataset.studentId) {
+                window.openAttendanceModal(row.dataset.studentId);
+            }
+
+        });
+
+        forecastTableEl.addEventListener("keydown", (e) => {
+
+            if (e.key !== "Enter" && e.key !== " ") return;
+
+            const row = e.target.closest("tr[data-student-id]");
+
+            if (row && row.dataset.studentId) {
+                e.preventDefault();
+                window.openAttendanceModal(row.dataset.studentId);
+            }
+
+        });
 
     }
 
@@ -2150,6 +2842,76 @@ document.addEventListener("DOMContentLoaded", () => {
     // ==========================================
 
     initStatusCards();
+
+
+    // ==========================================
+    // STATUS LIST PAGINATION EVENTS
+    // ==========================================
+
+    const riskRowsSelect = document.getElementById("riskRowsPerPageSelect");
+    const riskPrevBtn = document.getElementById("riskPrevPageBtn");
+    const riskNextBtn = document.getElementById("riskNextPageBtn");
+    const riskNumbers = document.getElementById("riskPageNumbers");
+
+    const riskSearchInput = document.getElementById("riskSearch");
+    const riskSectionSelect = document.getElementById("riskSectionFilter");
+    const riskCompanySelect = document.getElementById("riskCompanyFilter");
+    const riskResetBtn = document.getElementById("riskResetFilters");
+
+    function rerenderRiskList() {
+        riskPage = 1;
+        renderStatusStudents(riskLastRecords, riskLastCategory, true);
+    }
+
+    if (riskSearchInput) {
+        riskSearchInput.addEventListener("input", () => {
+            riskSearch = riskSearchInput.value;
+            rerenderRiskList();
+        });
+    }
+
+    if (riskSectionSelect) {
+        riskSectionSelect.addEventListener("change", () => {
+            riskSectionFilter = riskSectionSelect.value;
+            rerenderRiskList();
+        });
+    }
+
+    if (riskCompanySelect) {
+        riskCompanySelect.addEventListener("change", () => {
+            riskCompanyFilter = riskCompanySelect.value;
+            rerenderRiskList();
+        });
+    }
+
+    if (riskResetBtn) {
+        riskResetBtn.addEventListener("click", () => {
+            resetRiskFilters();
+            rerenderRiskList();
+        });
+    }
+
+    if (riskRowsSelect) {
+        riskRowsSelect.addEventListener("change", () => {
+            riskRowsPerPage = parseInt(riskRowsSelect.value, 10) || 5;
+            goToRiskPage(1);
+        });
+    }
+
+    if (riskPrevBtn) {
+        riskPrevBtn.addEventListener("click", () => goToRiskPage(riskPage - 1));
+    }
+
+    if (riskNextBtn) {
+        riskNextBtn.addEventListener("click", () => goToRiskPage(riskPage + 1));
+    }
+
+    if (riskNumbers) {
+        riskNumbers.addEventListener("click", (e) => {
+            const btn = e.target.closest("[data-risk-page]");
+            if (btn) goToRiskPage(parseInt(btn.dataset.riskPage, 10));
+        });
+    }
 
 
     // ==========================================
@@ -2167,7 +2929,27 @@ document.addEventListener("DOMContentLoaded", () => {
             "click",
             (e) => {
 
-                const row = e.target.closest(".risk-row");
+                // Sort kapag header ang na-click
+                const th = e.target.closest("th[data-risk-sort]");
+
+                if (th) {
+
+                    const key = th.dataset.riskSort;
+
+                    if (riskSortKey === key) {
+                        riskSortDir = riskSortDir === "asc" ? "desc" : "asc";
+                    } else {
+                        riskSortKey = key;
+                        riskSortDir = "asc";
+                    }
+
+                    riskPage = 1;
+                    renderStatusStudents(riskLastRecords, riskLastCategory, true);
+                    return;
+
+                }
+
+                const row = e.target.closest("tr[data-student-id]");
 
                 if (row && row.dataset.studentId) {
                     window.openAttendanceModal(row.dataset.studentId);
@@ -2182,7 +2964,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (e.key !== "Enter" && e.key !== " ") return;
 
-                const row = e.target.closest(".risk-row");
+                const row = e.target.closest("tr[data-student-id]");
 
                 if (row && row.dataset.studentId) {
                     e.preventDefault();
@@ -2202,20 +2984,6 @@ document.addEventListener("DOMContentLoaded", () => {
     fetchAllStudents();
 
 });
-
-
-// ==========================================
-// VIEW STUDENT PROGRESS
-// (Ngayon binubuksan na nito ang attendance modal
-// sa halip na alert lang)
-// ==========================================
-
-window.viewStudentProgress =
-    (id) => {
-
-        window.openAttendanceModal(id);
-
-    };
 
 
 // ==========================================
@@ -2268,8 +3036,8 @@ window.openAttendanceModal =
         try {
 
             const response =
-                await fetch(
-                    `http://localhost:5000/api/student-attendance/${encodeURIComponent(studentId)}`
+                await apiFetch(
+                    `/api/student-attendance/${encodeURIComponent(studentId)}`
                 );
 
             const result =
@@ -2299,7 +3067,7 @@ window.openAttendanceModal =
 
             if (subtitleEl) {
                 subtitleEl.textContent =
-                    [student.studentId, student.course, student.section, student.company]
+                    [student.studentId, student.course, formatSection(student.section), student.company]
                         .filter(Boolean)
                         .join(" · ");
             }
@@ -2690,3 +3458,61 @@ window.onclick =
         }
 
     };
+
+
+// ==========================================
+// ANALYTICS TABS
+// Student Analysis | Completion Forecast | Graduated by Batch |
+// Company Skill Exposure | Company Recommendation
+// ==========================================
+
+(function initAnalyticsTabs() {
+
+    function setup() {
+
+        const tabs = document.querySelectorAll(".analytics-tab");
+        const panels = document.querySelectorAll(".analytics-tab-panel");
+
+        if (!tabs.length) return;
+
+        function showTab(name) {
+
+            if (![...panels].some(p => p.dataset.panel === name)) {
+                name = "students";
+            }
+
+            tabs.forEach(t => t.classList.toggle("active", t.dataset.tab === name));
+            panels.forEach(p => p.classList.toggle("active", p.dataset.panel === name));
+
+            // Ang mga chart na na-render habang nakatago ang tab
+            // ay 0px ang laki, kaya i-resize pagka-show.
+            if (window.Chart && typeof Chart.getChart === "function") {
+                document
+                    .querySelectorAll(`.analytics-tab-panel[data-panel="${name}"] canvas`)
+                    .forEach(canvas => {
+                        const chart = Chart.getChart(canvas);
+                        if (chart) chart.resize();
+                    });
+            }
+
+            try { history.replaceState(null, "", "#" + name); } catch (e) { /* ignore */ }
+
+        }
+
+        tabs.forEach(tab =>
+            tab.addEventListener("click", () => showTab(tab.dataset.tab))
+        );
+
+        // Buksan ang tab na nasa URL hash (hal. analytics.html#skills)
+        const fromHash = (location.hash || "").replace("#", "");
+        if (fromHash) showTab(fromHash);
+
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", setup);
+    } else {
+        setup();
+    }
+
+})();

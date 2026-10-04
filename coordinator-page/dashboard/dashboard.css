@@ -2526,3 +2526,15 @@ body {
         height: 38px;
     }
 }
+
+
+/* ==========================================
+   STAT CARDS - walang pulang bar sa kaliwa
+========================================== */
+
+.stat-card::before,
+.stat-card:hover::before,
+.stat-card.static-card:hover::before {
+    display: none;
+    content: none;
+}

@@ -19,6 +19,7 @@ import {
     orderBy,
     limit,
     updateDoc,
+    serverTimestamp,
     getDocs,
     deleteDoc,
     deleteField
@@ -225,6 +226,55 @@ function safeInit(fn, label) {
 }
 
 /* ==========================================
+   AUTO-ARCHIVE kapag tapos na ang Academic Year
+   (kapareho ng logic sa completed-batch-archive.js)
+   - Natapos ang OJT -> archiveStatus: "Completed"
+   - Hindi natapos   -> archiveStatus: "Incomplete"
+   Hindi isasama ang student na pinayagan ng coordinator na
+   magpatuloy ng hours, hangga't hindi pa siya Completed.
+========================================== */
+const AY_END_MONTH = 6;   // June
+const AY_END_DAY = 30;
+let autoArchiveRan = false;
+
+function hasAcademicYearEnded(academicYear) {
+    const m = String(academicYear || "").match(/^(\d{4})-(\d{4})$/);
+    if (!m) return false;
+    const end = new Date(Number(m[2]), AY_END_MONTH - 1, AY_END_DAY, 23, 59, 59);
+    return new Date() > end;
+}
+
+async function autoArchiveEndedAcademicYears(usersSnapshot) {
+    if (autoArchiveRan) return;
+    autoArchiveRan = true;
+
+    const updates = [];
+    usersSnapshot.forEach((docSnap) => {
+        const d = docSnap.data();
+        if (d.archived === true || d.accountDisabled === true) return;
+
+        const studentNumber = d.studentNumber || d.studentId || d.idNumber;
+        if (!hasAcademicYearEnded(getStudentAcademicYear(studentNumber))) return;
+
+        const isDone = d.status === "Completed" || d.internshipStatus === "Completed";
+        if (d.allowContinueHours === true && !isDone) return;
+
+        updates.push(updateDoc(doc(db, "users", docSnap.id), {
+            archived: true,
+            archivedAt: serverTimestamp(),
+            archiveStatus: isDone ? "Completed" : "Incomplete",
+            autoArchived: true
+        }));
+    });
+
+    if (!updates.length) return;
+    const results = await Promise.allSettled(updates);
+    results.forEach((r) => {
+        if (r.status === "rejected") console.error("Auto-archive failed:", r.reason);
+    });
+}
+
+/* ==========================================
    REAL-TIME LISTENER & DATA MERGING
 ========================================== */
 function listenToStudentData() {
@@ -248,6 +298,11 @@ async function refreshAndRenderStudents() {
         const usersRef = collection(db, "users");
         const usersQuery = query(usersRef, where("role", "==", "student"));
         const usersSnapshot = await getDocs(usersQuery);
+
+        // Isang beses lang bawat page load: i-archive ang mga student ng
+        // academic year na tapos na. Kapag may na-update, mag-te-trigger
+        // ulit ang snapshot listener at mawawala na sila sa table.
+        autoArchiveEndedAcademicYears(usersSnapshot);
 
         const invitesRef = collection(db, "invitations");
         const invitesQuery = query(invitesRef, orderBy("createdAt", "desc"));
@@ -283,6 +338,13 @@ async function refreshAndRenderStudents() {
             // huwag na siyang ipakita sa table, kahit hindi pa physically
             // tinanggal ang Firestore doc.
             if (userData.accountDisabled === true) {
+                studentMap.delete(emailKey);
+                return;
+            }
+
+            // Na-archive na ang student (nasa Batch Archive na siya) -
+            // huwag na siyang ipakita sa Students table.
+            if (userData.archived === true) {
                 studentMap.delete(emailKey);
                 return;
             }
@@ -341,7 +403,10 @@ async function refreshAndRenderStudents() {
                 status: status,
                 profileDone: isProfileDone,
                 gender: normalizeGender(userData.gender || userData.sex || existingData.gender),
-                schedule: userData.schedule || null
+                schedule: userData.schedule || null,
+                allowContinueHours: userData.allowContinueHours === true,
+                continueHoursGrantedAt: userData.continueHoursGrantedAt || null,
+                continueHoursGrantedBy: userData.continueHoursGrantedBy || null
             });
         });
 
@@ -388,64 +453,61 @@ function setViewStudentGender(gender) {
     }
 }
 
-// Pino-populate ang gender select sa Edit modal
-function setEditStudentGender(gender) {
-    const select = document.getElementById("editStudentGender");
-    if (!select) return;
-
-    const value = normalizeGender(gender);
-
-    // Kung may ibang value na wala sa listahan, idagdag para hindi mawala.
-    if (value && !Array.from(select.options).some(opt => opt.value === value)) {
-        const extra = document.createElement("option");
-        extra.value = value;
-        extra.textContent = value;
-        select.appendChild(extra);
-    }
-
-    select.value = value;
-}
-
 /* ==========================================
-   YEAR FILTER (base sa Student Number)
+   ACADEMIC YEAR FILTER (base sa Student Number)
+   Kinukuha ang taon sa unahan ng student number at kino-compute
+   ang academic year ng graduation (hal. 2023 -> "2026-2027").
    Sinusuportahan ang mga format tulad ng:
    "2023001", "2023-0001", "23-0001"
 ========================================== */
-function getStudentYear(studentNumber) {
+const ALL_ACADEMIC_YEARS = "All Academic Years";
+// Ilang taon mula sa pagpasok (taon sa student number) bago sila gagraduate
+const YEARS_BEFORE_GRADUATION = 3;
+
+function getStudentAcademicYear(studentNumber) {
     const s = String(studentNumber || "").trim();
     if (!s || s === "-") return "";
 
+    let startYear = null;
+
     // 4-digit na taon sa unahan (hal. 2023001 / 2023-0001)
     const full = s.match(/^((?:19|20)\d{2})/);
-    if (full) return full[1];
+    if (full) {
+        startYear = parseInt(full[1], 10);
+    } else {
+        // 2-digit na taon sa unahan na may separator (hal. 23-0001)
+        const short = s.match(/^(\d{2})\D/);
+        if (short) startYear = 2000 + parseInt(short[1], 10);
+    }
 
-    // 2-digit na taon sa unahan na may separator (hal. 23-0001)
-    const short = s.match(/^(\d{2})\D/);
-    if (short) return String(2000 + parseInt(short[1], 10));
+    if (!startYear) return "";
 
-    return "";
+    // Academic year ng graduation: taon sa ID + YEARS_BEFORE_GRADUATION
+    // (hal. 2023 -> 2026-2027)
+    const gradYear = startYear + YEARS_BEFORE_GRADUATION;
+    return `${gradYear}-${gradYear + 1}`;
 }
 
-// Binubuo ang listahan ng years mula sa mga student (pinakabago muna)
+// Binubuo ang listahan ng academic years mula sa mga student (pinakabago muna)
 // at pinapanatili ang kasalukuyang napili kung nandoon pa rin.
 function populateYearFilter() {
     const yearSelect = document.getElementById("yearFilter");
     if (!yearSelect) return;
 
-    const previous = yearSelect.value || "All Years";
+    const previous = yearSelect.value || ALL_ACADEMIC_YEARS;
 
-    const years = Array.from(
+    const academicYears = Array.from(
         new Set(
             allStudents
-                .map(student => getStudentYear(student.studentId))
+                .map(student => getStudentAcademicYear(student.studentId))
                 .filter(Boolean)
         )
     ).sort((a, b) => b.localeCompare(a));
 
-    yearSelect.innerHTML = `<option value="All Years">All Years</option>` +
-        years.map(year => `<option value="${year}">${year}</option>`).join("");
+    yearSelect.innerHTML = `<option value="${ALL_ACADEMIC_YEARS}">${ALL_ACADEMIC_YEARS}</option>` +
+        academicYears.map(ay => `<option value="${ay}">AY ${ay}</option>`).join("");
 
-    yearSelect.value = years.includes(previous) ? previous : "All Years";
+    yearSelect.value = academicYears.includes(previous) ? previous : ALL_ACADEMIC_YEARS;
 }
 
 /* ==========================================
@@ -455,7 +517,7 @@ function applyFiltersAndPagination() {
     const searchVal = (document.getElementById("searchStudent")?.value || "").toLowerCase();
     const statusVal = (document.getElementById("statusFilter")?.value || "All Status").toLowerCase();
     const sortVal = document.getElementById("sortSelect")?.value || "Sort By";
-    const yearVal = document.getElementById("yearFilter")?.value || "All Years";
+    const yearVal = document.getElementById("yearFilter")?.value || ALL_ACADEMIC_YEARS;
 
     filteredStudents = allStudents.filter(student => {
         const matchesSearch = student.name.toLowerCase().includes(searchVal) ||
@@ -465,8 +527,8 @@ function applyFiltersAndPagination() {
         
         const matchesStatus = (statusVal === "all status") || (student.status.toLowerCase() === statusVal);
         
-        // Year filter: base sa taon na nasa student number
-        const matchesYear = (yearVal === "All Years") || (getStudentYear(student.studentId) === yearVal);
+        // Academic year filter: base sa taon na nasa student number
+        const matchesYear = (yearVal === ALL_ACADEMIC_YEARS) || (getStudentAcademicYear(student.studentId) === yearVal);
 
         return matchesSearch && matchesStatus && matchesYear;
     });
@@ -564,7 +626,7 @@ function renderTablePage() {
     if (filteredStudents.length === 0) {
         tableBody.innerHTML = `
             <tr>
-                <td colspan="8" style="text-align: center; padding: 25px; color: #888;">
+                <td colspan="9" style="text-align: center; padding: 25px; color: #888;">
                     No student intern records found.
                 </td>
             </tr>
@@ -583,8 +645,10 @@ function renderTablePage() {
     const endIndex = Math.min(startIndex + effectiveRows, totalRecords);
     const paginatedItems = filteredStudents.slice(startIndex, endIndex);
 
-    paginatedItems.forEach((student) => {
+    paginatedItems.forEach((student, index) => {
         const row = document.createElement("tr");
+        // Tuloy-tuloy ang numbering kahit lumipat ng page (page 2 = 9, 10, 11...)
+        const rowNumber = startIndex + index + 1;
         const statusClass = student.status.toLowerCase();
         const profileDone = !!student.profileDone;
         const initials = getInitials(student.name);
@@ -609,6 +673,7 @@ function renderTablePage() {
         const displayName = profileDone ? student.name : "-";
 
         row.innerHTML = `
+            <td class="col-no">${rowNumber}</td>
             <td>${photoMarkup}</td>
             <td>${student.studentId}</td>
             <td>
@@ -632,7 +697,7 @@ function renderTablePage() {
     for (let i = 0; i < emptySlots; i++) {
         const emptyRow = document.createElement("tr");
         emptyRow.className = "empty-slot-row";
-        emptyRow.innerHTML = `<td colspan="8">&nbsp;</td>`;
+        emptyRow.innerHTML = `<td colspan="9">&nbsp;</td>`;
         tableBody.appendChild(emptyRow);
     }
 
@@ -777,17 +842,17 @@ function attachActionEvents() {
         if (btn.classList.contains("view-btn")) {
             e.stopPropagation();
 
-            const photoImg = row.children[0].querySelector("img");
-            const studentId = row.children[1].textContent.trim();
-            const nameContainer = row.children[2];
+            const photoImg = row.children[1].querySelector("img");
+            const studentId = row.children[2].textContent.trim();
+            const nameContainer = row.children[3];
             const studentName = nameContainer.querySelector("strong") ? nameContainer.querySelector("strong").innerText : "";
             const studentEmail = nameContainer.querySelector("small") ? nameContainer.querySelector("small").innerText : "";
             
-            const courseCode = row.children[3].textContent.trim();
-            const sectionNum = row.children[4].textContent.trim();
+            const courseCode = row.children[4].textContent.trim();
+            const sectionNum = row.children[5].textContent.trim();
             const section = [courseCode, sectionNum].filter(v => v && v !== "-").join(" ");
-            const company = row.children[5].textContent.trim();
-            const status = row.children[6].textContent.trim();
+            const company = row.children[6].textContent.trim();
+            const status = row.children[7].textContent.trim();
 
             const nameEl = document.getElementById("viewStudentName");
             const emailEl = document.getElementById("viewStudentEmail");
@@ -807,6 +872,9 @@ function attachActionEvents() {
 
             // Gender (nasa kanan ng profile header)
             setViewStudentGender(currentStudent ? currentStudent.gender : "");
+
+            // Hours permission card (Allow / Revoke)
+            renderContinueHoursPermission(currentStudent);
 
             if (scheduleEl) {
                 if (currentStudent && currentStudent.schedule) {
@@ -882,7 +950,7 @@ function attachActionEvents() {
         // 2. ARCHIVE / DELETE BUTTON CLICK
         if (btn.classList.contains("archive-btn")) {
             e.stopPropagation();
-            const email = row.children[2].querySelector("small") ? row.children[2].querySelector("small").innerText.trim() : "";
+            const email = row.children[3].querySelector("small") ? row.children[3].querySelector("small").innerText.trim() : "";
             studentToDelete = { email, row };
 
             const deleteModal = document.getElementById("deleteConfirmModal");
@@ -1041,13 +1109,6 @@ function initEditModal() {
             const studentEmail = document.getElementById("editStudentEmail").value.trim();
             if (!studentEmail) return;
 
-            const name = document.getElementById("editStudentName").value.trim();
-            const studentId = document.getElementById("editStudentId").value.trim();
-            const section = document.getElementById("editStudentSection").value.trim();
-            const company = document.getElementById("editStudentCompany").value.trim();
-            const status = document.getElementById("editStudentStatus").value;
-            const gender = document.getElementById("editStudentGender")?.value || "";
-
             // Kunin ang mga in-input na oras mula sa modal inputs
             const morningIn = document.getElementById("editMorningIn")?.value || "";
             const morningOut = document.getElementById("editMorningOut")?.value || "";
@@ -1068,12 +1129,6 @@ function initEditModal() {
                     usersSnapshot.forEach(async (documentSnap) => {
                         const userDocRef = doc(db, "users", documentSnap.id);
                         await updateDoc(userDocRef, {
-                            fullName: name,
-                            studentNumber: studentId,
-                            section: section,
-                            companyName: company,
-                            status: status,
-                            gender: gender,
                             "schedule.days": selectedDays,
                             "schedule.morning": {
                                 timeIn: morningIn,
@@ -1249,34 +1304,96 @@ function initInviteModal() {
     }
 }
 
+/* ==========================================
+   HOURS PERMISSION (coordinator allows student to continue hours)
+========================================== */
+function renderContinueHoursPermission(student) {
+    const card = document.getElementById("hoursPermissionCard");
+    const text = document.getElementById("hoursPermissionText");
+    const meta = document.getElementById("hoursPermissionMeta");
+    const btn = document.getElementById("hoursPermissionBtn");
+    if (!card || !text || !btn) return;
+
+    const granted = !!(student && student.allowContinueHours);
+    card.classList.toggle("granted", granted);
+    btn.disabled = !student || !student.docId;
+
+    if (granted) {
+        text.textContent = "Allowed to continue hours";
+        let metaText = "";
+        if (student.continueHoursGrantedAt) {
+            const d = new Date(student.continueHoursGrantedAt);
+            if (!isNaN(d)) {
+                metaText = "Approved on " + d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+            }
+        }
+        if (meta) meta.textContent = metaText;
+        btn.className = "btn-permission revoke";
+        btn.innerHTML = '<i class="fa-solid fa-lock"></i> <span>Revoke</span>';
+    } else {
+        text.textContent = "Not allowed to continue hours";
+        if (meta) meta.textContent = "";
+        btn.className = "btn-permission allow";
+        btn.innerHTML = '<i class="fa-solid fa-unlock"></i> <span>Allow to Continue</span>';
+    }
+}
+
+window.toggleContinueHoursPermission = async function() {
+    const btn = document.getElementById("hoursPermissionBtn");
+    const studentEmail = document.getElementById("viewStudentEmail")?.textContent.trim().toLowerCase() || "";
+    const student = allStudents.find(s => s.email && s.email.toLowerCase().trim() === studentEmail);
+
+    if (!student || !student.docId) {
+        showToast("Hindi mahanap ang student record.", "error");
+        return;
+    }
+
+    const newValue = !student.allowContinueHours;
+    if (btn) btn.disabled = true;
+
+    try {
+        const grantedBy = (auth.currentUser && auth.currentUser.email) || null;
+        const nowIso = new Date().toISOString();
+
+        await updateDoc(doc(db, "users", student.docId), newValue
+            ? {
+                allowContinueHours: true,
+                continueHoursGrantedAt: nowIso,
+                continueHoursGrantedBy: grantedBy
+            }
+            : {
+                allowContinueHours: false,
+                continueHoursGrantedAt: null,
+                continueHoursGrantedBy: null
+            });
+
+        // I-sync ang local state para tama agad ang UI
+        student.allowContinueHours = newValue;
+        student.continueHoursGrantedAt = newValue ? nowIso : null;
+        student.continueHoursGrantedBy = newValue ? grantedBy : null;
+
+        renderContinueHoursPermission(student);
+        showToast(
+            newValue
+                ? "Permission granted. The student can now continue their hours."
+                : "Permission revoked.",
+            "success"
+        );
+    } catch (error) {
+        console.error("Error updating hours permission:", error);
+        showToast("Hindi na-save ang permission. Subukan ulit.", "error");
+        if (btn) btn.disabled = false;
+    }
+};
+
 window.openEditModalFromProfile = function() {
     const viewModal = document.getElementById("viewStudentModal");
     if (viewModal) viewModal.classList.remove("active");
 
     const studentEmail = document.getElementById("viewStudentEmail")?.textContent.trim() || "";
-    const studentName = document.getElementById("viewStudentName")?.textContent.trim() || "";
-    const studentId = document.getElementById("viewStudentId")?.textContent.trim() || "";
-    const sectionText = document.getElementById("viewStudentCourseDetail")?.textContent.trim() || "";
-    const company = document.getElementById("viewStudentCompany")?.textContent.trim() || "";
-    const status = document.getElementById("viewStudentStatus")?.textContent.trim() || "Pending";
-
     if (document.getElementById("editStudentEmail")) document.getElementById("editStudentEmail").value = studentEmail;
-    if (document.getElementById("editStudentId")) document.getElementById("editStudentId").value = (studentId === "-") ? "" : studentId;
-    if (document.getElementById("editStudentName")) document.getElementById("editStudentName").value = studentName;
-    if (document.getElementById("editStudentSection")) document.getElementById("editStudentSection").value = (sectionText === "-") ? "" : sectionText;
-    if (document.getElementById("editStudentCompany")) document.getElementById("editStudentCompany").value = (company === "Pending Assignment") ? "" : company;
-    
-    const editStatusSelect = document.getElementById("editStudentStatus");
-    if (editStatusSelect) {
-        const matchingOption = Array.from(editStatusSelect.options).find(
-            opt => opt.value.toLowerCase() === status.toLowerCase()
-        );
-        if (matchingOption) editStatusSelect.value = matchingOption.value;
-    }
-
     // Populate schedule details & times mula sa current loaded student state
     const currentStudent = allStudents.find(s => s.email && s.email.toLowerCase().trim() === studentEmail.toLowerCase().trim());
-    setEditStudentGender(currentStudent ? currentStudent.gender : "");
     if (currentStudent && currentStudent.schedule) {
         const sched = currentStudent.schedule;
 

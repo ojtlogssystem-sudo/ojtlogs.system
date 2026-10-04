@@ -235,6 +235,151 @@ function setStatNote(id, hasData, filled, empty) {
 
 
 // ========================================
+// PENDING STUDENTS (single source of truth)
+// Kapareho ng Pending sa Students page:
+//  - invited na wala pang account, o
+//  - may account pero kulang pa ang profile setup,
+//    student number, o company
+// Isang entry bawat email.
+// ========================================
+
+async function getPendingStudents() {
+
+    const [usersSnap, invitesSnap] = await Promise.all([
+        getDocs(query(collection(db, "users"), where("role", "==", "student"))),
+        getDocs(collection(db, "invitations"))
+    ]);
+
+    const keyOf = (email) =>
+        String(email || "").toLowerCase().trim();
+
+    const pending = new Map();
+
+    invitesSnap.forEach((inviteDoc) => {
+
+        const data = inviteDoc.data();
+        const key = keyOf(data.email);
+
+        if (!key) return;
+
+        pending.set(key, {
+            email: data.email,
+            createdAt: data.createdAt || null,
+            kind: "invited"
+        });
+
+    });
+
+    usersSnap.forEach((userDoc) => {
+
+        const u = userDoc.data();
+        const key = keyOf(u.email);
+
+        if (!key) return;
+
+        // Deleted na ng coordinator
+        if (u.accountDisabled === true) {
+            pending.delete(key);
+            return;
+        }
+
+        const status = String(u.status || "").toLowerCase();
+        const internshipStatus = String(u.internshipStatus || "");
+
+        const isFinished =
+            status === "completed" ||
+            internshipStatus === "Completed" ||
+            internshipStatus === "Graduated" ||
+            u.archived === true;
+
+        const profileDone =
+            u.isProfileComplete === true ||
+            u.profileCompleted === true;
+
+        const isReady =
+            profileDone &&
+            !!(u.studentNumber || u.studentId) &&
+            !!(u.companyName || u.company);
+
+        if (isFinished || isReady) {
+            pending.delete(key);
+            return;
+        }
+
+        const previous = pending.get(key);
+
+        pending.set(key, {
+            email: u.email,
+            createdAt: u.createdAt || (previous && previous.createdAt) || null,
+            kind: "setup"
+        });
+
+    });
+
+    return Array.from(pending.values());
+
+}
+
+
+// ========================================
+// BATCH HELPER (Batch Archive)
+// ========================================
+
+// Kinukuha ang batch (hal. "2023") ng archived student.
+// Sinusubukan muna ang batch fields, tapos ang petsa
+// kung kailan na-archive / nag-graduate.
+function getBatchLabel(data) {
+
+    const batchFields = [
+        data.batch,
+        data.batchYear,
+        data.batchName,
+        data.batchId,
+        data.archivedBatch,
+        data.schoolYear,
+        data.academicYear
+    ];
+
+    for (const value of batchFields) {
+
+        if (value === undefined || value === null) continue;
+
+        const text = String(value).trim();
+
+        if (!text) continue;
+
+        const yearMatch = text.match(/(19|20)\d{2}/);
+
+        return yearMatch ? yearMatch[0] : text;
+
+    }
+
+    const dateFields = [
+        data.archivedAt,
+        data.graduatedAt,
+        data.completedAt
+    ];
+
+    for (const value of dateFields) {
+
+        if (!value) continue;
+
+        const ms = value.seconds
+            ? value.seconds * 1000
+            : value;
+
+        const year = new Date(ms).getFullYear();
+
+        if (!Number.isNaN(year)) return String(year);
+
+    }
+
+    return null;
+
+}
+
+
+// ========================================
 // DASHBOARD STATISTICS
 // ========================================
 
@@ -256,61 +401,130 @@ async function loadDashboardStats() {
 
 
         let total = 0;
+        let pending = 0;
         let active = 0;
         let completed = 0;
         let atRisk = 0;
         let graduated = 0;
+        const archivedBatches = new Set();
 
+
+        /*
+            Kapareho ng rules sa active-students.js at
+            at-risk-students.js para pare-pareho ang bilang:
+
+            - accountDisabled (deleted) -> hindi binibilang
+            - archived / Graduated      -> Batch Archive
+            - pending (kulang ang email, profile setup,
+              student number o company) -> hindi active,
+              hindi at-risk, hindi completed
+            - Completed                 -> manual status o AI
+            - At Risk                   -> AI (internshipStatus)
+        */
 
         snapshot.forEach((docSnap) => {
-
-            total++;
 
             const data =
                 docSnap.data();
 
-            /*
-                IMPORTANT:
-                The AI backend (app.py, /api/predict-risk)
-                writes its result to the "internshipStatus"
-                field on each user doc - NOT "status" - with
-                values: "Completed", "At Risk",
-                "Needs Monitoring", "On Track", or
-                "Graduated".
-            */
+            if (data.accountDisabled === true) {
+                return;
+            }
+
+            const rawStatus =
+                String(data.status || "").toLowerCase();
 
             const internshipStatus =
-                data.internshipStatus || "";
+                String(data.internshipStatus || "");
 
 
-            if (internshipStatus === "Completed") {
+            // ARCHIVED / GRADUATED
 
-                completed++;
-
-            } else if (internshipStatus === "Graduated") {
-
-                // Graduated na = hindi na dapat mabilang
-                // as active pa rin sa OJT.
+            if (
+                data.archived === true ||
+                internshipStatus === "Graduated"
+            ) {
                 graduated++;
 
-            } else {
+                const batchLabel = getBatchLabel(data);
 
-                // Hindi pa completed/graduated = active
-                // pa rin sa OJT (On Track, Needs
-                // Monitoring, At Risk, o wala pang status).
-                active++;
+                if (batchLabel) {
+                    archivedBatches.add(batchLabel);
+                }
 
+                return;
             }
 
 
-            if (internshipStatus === "At Risk") {
+            // PENDING - hindi pa registered, kaya hindi
+            // kasama sa total, active, completed o at-risk.
+            // Kapareho ng isPendingStudent() sa
+            // registered-students.js (manual "completed"
+            // lang ang exempted sa check na ito).
 
+            const profileDone =
+                data.isProfileComplete === true ||
+                data.profileCompleted === true;
+
+            const isPending =
+                rawStatus !== "completed" &&
+                !(
+                    String(data.email || "").trim() &&
+                    profileDone &&
+                    (data.studentNumber || data.studentId) &&
+                    (data.companyName || data.company)
+                );
+
+            if (isPending) {
+                pending++;
+                return;
+            }
+
+
+            // REGISTERED - ito ang laman ng Registered
+            // Students page
+            total++;
+
+
+            // COMPLETED
+
+            if (
+                rawStatus === "completed" ||
+                internshipStatus === "Completed"
+            ) {
+                completed++;
+                return;
+            }
+
+
+            // AT RISK
+
+            if (
+                internshipStatus === "At Risk" ||
+                rawStatus === "at-risk" ||
+                rawStatus === "at risk"
+            ) {
                 atRisk++;
-
+                return;
             }
+
+
+            // ACTIVE (On Track / Needs Monitoring / walang
+            // AI status pa)
+
+            active++;
 
         });
 
+
+        // Kapareho ng Pending Invitations card at ng Students page
+        let pendingTotal = pending;
+
+        try {
+            pendingTotal = (await getPendingStudents()).length;
+        } catch (pendingError) {
+            console.error("Unable to count pending students:", pendingError);
+        }
 
         const totalElem =
             document.getElementById(
@@ -370,10 +584,14 @@ async function loadDashboardStats() {
         }
 
 
+        // Batches ang binibilang (hal. 2023), hindi students.
+        // Kung walang makitang batch, students ang fallback.
+        const batchCount = archivedBatches.size;
+
         if (graduatedElem) {
 
             graduatedElem.textContent =
-                graduated;
+                batchCount > 0 ? batchCount : graduated;
 
         }
 
@@ -391,8 +609,10 @@ async function loadDashboardStats() {
             {
                 tone: "success",
                 icon: "fa-user-check",
-                title: "Currently Active",
-                text: "Monitor student progress and internship status."
+                title: "Registered Students",
+                text: pendingTotal > 0
+                    ? `${pendingTotal} not yet registered students.`
+                    : "All registered students completed their setup."
             },
             {
                 tone: "muted",
@@ -409,7 +629,7 @@ async function loadDashboardStats() {
                 tone: "success",
                 icon: "fa-check",
                 title: "Progressing Normally",
-                text: "Continue regular monitoring and support."
+                text: `${active} ongoing and on track. Continue regular monitoring.`
             },
             {
                 tone: "muted",
@@ -426,7 +646,7 @@ async function loadDashboardStats() {
                 tone: "success",
                 icon: "fa-clipboard-check",
                 title: "Internship Completed",
-                text: "Students who finished their required hours."
+                text: `${completed} ${completed === 1 ? "student has" : "students have"} finished the required hours.`
             },
             {
                 tone: "muted",
@@ -442,8 +662,8 @@ async function loadDashboardStats() {
             {
                 tone: "danger",
                 icon: "fa-circle-exclamation",
-                title: "Needs Intervention",
-                text: "Review flagged students and address their risk factors."
+                title: "Needs Attention",
+                text: `${atRisk} ${atRisk === 1 ? "student may" : "students may"} not finish the internship.`
             },
             {
                 tone: "success",
@@ -459,14 +679,16 @@ async function loadDashboardStats() {
             {
                 tone: "success",
                 icon: "fa-box-archive",
-                title: "Batches Archived",
-                text: "View completed students grouped by batch."
+                title: batchCount === 1 ? "Batch Archived" : "Batches Archived",
+                text: batchCount > 0
+                    ? `${batchCount} ${batchCount === 1 ? "batch has" : "batches have"} been archived.`
+                    : `${graduated} archived ${graduated === 1 ? "student" : "students"}, grouped by batch.`
             },
             {
                 tone: "muted",
                 icon: "fa-box-archive",
-                title: "No Completed Batch Archive Yet",
-                text: "Completed batch students will be recorded here."
+                title: "No Batch Archive Yet",
+                text: "Students are recorded here once their batch's OJT ends."
             }
         );
 
@@ -666,108 +888,13 @@ async function loadPendingCounts() {
 
     try {
 
-        const usersRef =
-            collection(db, "users");
-
-
-        const registeredStudentsQuery =
-            query(
-                usersRef,
-                where("role", "==", "student")
-            );
-
-
-        const registeredSnap =
-            await getDocs(
-                registeredStudentsQuery
-            );
-
-
-        // NOTE: dapat lahat ng estudyanteng may account
-        // na sa "users" collection ang i-exclude dito -
-        // hindi lang yung status == "Active". Kung
-        // naka-Completed (o anumang status) na siya,
-        // ibig sabihin naka-register na siya at hindi
-        // na dapat lumabas bilang "pending" invitation,
-        // kahit anong laman ng status field ng kanyang
-        // invitation doc.
-
-        const registeredEmails =
-            new Set();
-
-
-        registeredSnap.forEach(docSnap => {
-
-            const data =
-                docSnap.data();
-
-
-            if (data.email) {
-
-                registeredEmails.add(
-                    data.email
-                        .toLowerCase()
-                        .trim()
-                );
-
-            }
-
-        });
-
-
-        const invitesRef =
-            collection(db, "invitations");
-
-
-        const qInvites =
-            query(
-                invitesRef,
-                where(
-                    "status",
-                    "in",
-                    ["pending", "Pending"]
-                )
-            );
-
-
-        const invitesSnap =
-            await getDocs(qInvites);
-
-
-        let realPendingCount = 0;
-
-
-        invitesSnap.forEach((docSnap) => {
-
-            const inviteEmail =
-                (
-                    docSnap.data().email ||
-                    ""
-                )
-                .toLowerCase()
-                .trim();
-
-
-            if (!registeredEmails.has(inviteEmail)) {
-
-                realPendingCount++;
-
-            }
-
-        });
-
+        const pendingList = await getPendingStudents();
 
         const inviteCountElem =
-            document.getElementById(
-                "pendingInvitationsCount"
-            );
-
+            document.getElementById("pendingInvitationsCount");
 
         if (inviteCountElem) {
-
-            inviteCountElem.textContent =
-                realPendingCount;
-
+            inviteCountElem.textContent = pendingList.length;
         }
 
 
@@ -828,165 +955,66 @@ async function loadPendingCounts() {
 async function fetchAndDisplayPendingInvitations() {
 
     const listContainer =
-        document.getElementById(
-            "invitationsList"
-        );
-
+        document.getElementById("invitationsList");
 
     if (!listContainer) return;
-
 
     listContainer.innerHTML =
         '<tr><td colspan="4" class="text-center">Loading pending items...</td></tr>';
 
-
     try {
 
-        let combinedRows = "";
+        const pendingList = await getPendingStudents();
 
-        let count = 0;
+        if (pendingList.length === 0) {
 
+            listContainer.innerHTML =
+                '<tr><td colspan="4" class="text-center">Walang pending student na nahanap.</td></tr>';
 
-        const usersRef =
-            collection(db, "users");
+        } else {
 
+            listContainer.innerHTML = pendingList.map((item) => {
 
-        const registeredStudentsQuery =
-            query(
-                usersRef,
-                where("role", "==", "student")
-            );
+                let dateSent = "N/A";
 
+                if (item.createdAt) {
 
-        const registeredSnap =
-            await getDocs(
-                registeredStudentsQuery
-            );
+                    const ms = item.createdAt.seconds
+                        ? item.createdAt.seconds * 1000
+                        : item.createdAt;
 
+                    const d = new Date(ms);
 
-        // Lahat ng estudyanteng may account na sa "users"
-        // (Active, Completed, atbp.) ang dapat i-exclude -
-        // hindi lang yung "Active" - kasi naka-register na
-        // sila kahit na hindi na-update yung status ng
-        // kanilang invitation doc.
+                    if (!isNaN(d)) {
+                        dateSent = d.toLocaleDateString();
+                    }
 
-        const registeredEmails =
-            new Set();
+                }
 
+                const label = item.kind === "setup"
+                    ? "Setting Up Profile"
+                    : "Invite Sent";
 
-        registeredSnap.forEach(docSnap => {
-
-            const data =
-                docSnap.data();
-
-
-            if (data.email) {
-
-                registeredEmails.add(
-                    data.email
-                        .toLowerCase()
-                        .trim()
-                );
-
-            }
-
-        });
-
-
-        const invitesRef =
-            collection(db, "invitations");
-
-
-        const qInvites =
-            query(
-                invitesRef,
-                where(
-                    "status",
-                    "in",
-                    ["pending", "Pending"]
-                )
-            );
-
-
-        const invitesSnap =
-            await getDocs(qInvites);
-
-
-        invitesSnap.forEach((docSnap) => {
-
-            const data =
-                docSnap.data();
-
-
-            const inviteEmail =
-                (
-                    data.email ||
-                    ""
-                )
-                .toLowerCase()
-                .trim();
-
-
-            if (!registeredEmails.has(inviteEmail)) {
-
-                count++;
-
-
-                const dateSent =
-                    data.createdAt
-                        ? new Date(
-                            data.createdAt.seconds
-                                ? data.createdAt.seconds * 1000
-                                : data.createdAt
-                        ).toLocaleDateString()
-                        : "N/A";
-
-
-                combinedRows += `
+                return `
                     <tr>
-                        <td>${data.email || "-"}</td>
-
+                        <td>${item.email || "-"}</td>
                         <td>${dateSent}</td>
-
                         <td>
-                            <span class="badge-pending">
-                                Invite Sent
-                            </span>
+                            <span class="badge-pending">${label}</span>
                         </td>
                     </tr>
                 `;
 
-            }
-
-        });
-
-
-        if (count === 0) {
-
-            listContainer.innerHTML =
-                '<tr><td colspan="4" class="text-center">Walang pending student invitation na nahanap.</td></tr>';
-
-        } else {
-
-            listContainer.innerHTML =
-                combinedRows;
+            }).join("");
 
         }
-
 
         const inviteCountElem =
-            document.getElementById(
-                "pendingInvitationsCount"
-            );
-
+            document.getElementById("pendingInvitationsCount");
 
         if (inviteCountElem) {
-
-            inviteCountElem.textContent =
-                count;
-
+            inviteCountElem.textContent = pendingList.length;
         }
-
 
     } catch (error) {
 
@@ -994,7 +1022,6 @@ async function fetchAndDisplayPendingInvitations() {
             "Error loading pending modal list:",
             error
         );
-
 
         listContainer.innerHTML =
             '<tr><td colspan="4" class="text-center text-danger">Error loading pending data.</td></tr>';

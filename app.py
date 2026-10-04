@@ -5,6 +5,7 @@ from firebase_admin import credentials, firestore
 from datetime import datetime, timedelta, timezone
 from collections import Counter
 import re
+import math
 import numpy as np
 from sklearn.linear_model import LinearRegression
 import os
@@ -156,6 +157,18 @@ def _weekdays_between(start_date, end_date):
         current += timedelta(days=1)
     return days
 
+def _count_duty_days(start_date, end_date):
+    """Bilang ng weekday duty days mula start_date hanggang end_date (inclusive)."""
+    if end_date < start_date:
+        return 0
+    total_days = (end_date - start_date).days + 1
+    full_weeks, extra = divmod(total_days, 7)
+    count = full_weeks * 5
+    for i in range(extra):
+        if (start_date + timedelta(days=i)).weekday() < 5:
+            count += 1
+    return count
+
 def _summarize_attendance(matched_records, start_date=None, today=None):
     absent_dates = set()
     present_dates = set()
@@ -233,12 +246,114 @@ def _get_batch_label(data):
 
     return ""
 
+# Mga status na ibig sabihin ay WALA PANG ACCESS sa system ang estudyante
+# (pending approval, na-invite pa lang ni coordinator, disabled, atbp.)
+PENDING_STATUS_VALUES = {
+    'pending', 'pending approval', 'for approval', 'awaiting approval',
+    'unverified', 'not approved',
+    'invited', 'invite sent', 'invite pending', 'pending invite',
+    'pending invitation', 'invitation sent', 'awaiting registration',
+    'unregistered', 'not registered', 'not activated',
+    'disabled', 'deactivated', 'suspended', 'revoked'
+}
+PENDING_STATUS_FIELDS = (
+    'status', 'accountStatus', 'approvalStatus', 'registrationStatus',
+    'inviteStatus', 'invitationStatus', 'accessStatus'
+)
+# Kapag explicit na False ang alinman dito, wala pang access
+ACCESS_FLAG_FIELDS = (
+    'approved', 'isApproved', 'hasAccess', 'accessGranted',
+    'activated', 'isActivated', 'registered', 'isRegistered',
+    'inviteAccepted', 'invitationAccepted'
+)
+
+def _is_pending_student(data):
+    """
+    True kung WALA PANG ACCESS sa system ang estudyante: hindi pa
+    na-approve, na-invite pa lang ni coordinator at hindi pa nakaka-register,
+    o naka-disable ang account.
+    """
+    if data.get('pending') is True or data.get('isPending') is True:
+        return True
+    for field in ACCESS_FLAG_FIELDS:
+        if data.get(field) is False:
+            return True
+    for field in PENDING_STATUS_FIELDS:
+        value = str(data.get(field) or '').strip().lower()
+        if value in PENDING_STATUS_VALUES:
+            return True
+    return False
+
+def _is_archived(data):
+    """True kung nasa Completed Batch Archive na ang estudyante."""
+    if data.get('archived') is True or data.get('isArchived') is True:
+        return True
+    if data.get('archivedAt') or data.get('archivedDate'):
+        return True
+    for field in ('status', 'accountStatus', 'internshipStatus'):
+        if 'archiv' in str(data.get(field) or '').strip().lower():
+            return True
+    return False
+
 def _is_graduated(data, ai_status):
     if data.get('graduated') is True or data.get('isGraduated') is True:
         return True
     if 'graduated' in str(data.get('status') or '').lower():
         return True
     return ai_status == "Completed"
+
+@app.route('/api/debug-student-access', methods=['GET'])
+def debug_student_access():
+    """
+    Diagnostic: ipinapakita kung sino ang binibilang / hindi binibilang sa
+    analytics at kung bakit. Buksan sa browser:
+    http://localhost:5000/api/debug-student-access
+    """
+    try:
+        watch = (
+            set(PENDING_STATUS_FIELDS) | set(ACCESS_FLAG_FIELDS) |
+            {'pending', 'isPending', 'archived', 'isArchived',
+             'archivedAt', 'archivedDate', 'invited', 'invitedBy',
+             'invitedAt', 'internshipStatus', 'graduated', 'isGraduated'}
+        )
+        rows = []
+        counted = 0
+        for doc in db.collection('users').stream():
+            data = doc.to_dict() or {}
+            role = str(data.get('role', '')).lower()
+            if role != 'student' and data.get('role'):
+                continue
+
+            pending = _is_pending_student(data)
+            archived = _is_archived(data)
+
+            if pending:
+                reason = 'excluded: no system access (pending/invited)'
+            elif archived:
+                reason = 'excluded: archived (Completed Batch Archive)'
+            else:
+                reason = 'counted'
+                counted += 1
+
+            rows.append({
+                "id": doc.id,
+                "name": data.get('name') or data.get('fullName'),
+                "result": reason,
+                "fields": {k: str(v) for k, v in data.items() if k in watch},
+                "allFieldNames": sorted(data.keys())
+            })
+
+        rows.sort(key=lambda r: (r["result"] == 'counted', str(r["name"])))
+
+        return jsonify({
+            "status": "success",
+            "counted": counted,
+            "totalStudentDocs": len(rows),
+            "students": rows
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 
 @app.route('/api/predict-risk', methods=['GET'])
 def predict_student_risk():
@@ -254,6 +369,13 @@ def predict_student_risk():
         BATCH_START_DATE = datetime(2026, 9, 14)
         GRACE_PERIOD_DAYS = 7
 
+        # Catch-up capacity: gaano karaming oras kada duty day ang kaya ng
+        # estudyante. Kapag inextend ng coordinator ang deadline, bumababa
+        # ang kailangang bilis kaya makakahabol pa sila.
+        MAX_DAILY_HOURS = 8
+        CATCHUP_COMFORTABLE_LOAD = 0.5   # <= 4 hrs/duty day ang kailangan
+        CATCHUP_TIGHT_LOAD = 0.75        # <= 6 hrs/duty day ang kailangan
+
         ABSENCE_MONITORING_THRESHOLD = 3
         ABSENCE_RISK_THRESHOLD = 8
         CONSECUTIVE_ABSENCE_RISK_THRESHOLD = 5
@@ -263,6 +385,10 @@ def predict_student_risk():
             role = str(data.get('role', '')).lower()
 
             if role != 'student' and data.get('role'):
+                continue
+
+            # Hindi isinasama sa analytics ang mga pending (hindi pa approved)
+            if _is_pending_student(data):
                 continue
 
             try:
@@ -334,14 +460,68 @@ def predict_student_risk():
                 consecutive_absences = attendance_summary["consecutive"]
                 attendance_record_count = attendance_summary["record_count"]
 
+                # --- Catch-up capacity (deadline-aware) ---
+                hours_remaining = max(target_hours - completed_hours, 0)
+                duty_days_left = _count_duty_days(
+                    (today_date + timedelta(days=1)).date(),
+                    deadline_dt.date()
+                )
+                if hours_remaining <= 0:
+                    catchup_load = 0.0
+                elif duty_days_left <= 0:
+                    catchup_load = float('inf')
+                else:
+                    catchup_load = (
+                        hours_remaining / duty_days_left
+                    ) / MAX_DAILY_HOURS
+                hours_per_duty_day_needed = (
+                    hours_remaining / duty_days_left
+                    if duty_days_left > 0 else None
+                )
+
+                projection_at_risk = projected_total_hours < target_hours * 0.85
+                projection_borderline = (
+                    not projection_at_risk and
+                    projected_total_hours < target_hours
+                )
+
+                # Kaya pa bang makahabol kung bibilis ang estudyante?
+                capacity_at_risk = catchup_load > CATCHUP_TIGHT_LOAD
+                capacity_borderline = (
+                    not capacity_at_risk and
+                    catchup_load > CATCHUP_COMFORTABLE_LOAD
+                )
+
+                # Mas magaan na verdict ang mananaig: kapag sapat ang oras
+                # para makahabol (hal. na-extend ang deadline), hindi na
+                # "At Risk" kahit mabagal pa ang kasalukuyang pace.
+                if projection_at_risk and capacity_at_risk:
+                    hours_level = "risk"
+                elif projection_at_risk and capacity_borderline:
+                    hours_level = "monitor"
+                elif projection_borderline and not capacity_at_risk and not capacity_borderline:
+                    hours_level = "ok"
+                elif projection_borderline:
+                    hours_level = "monitor"
+                elif projection_at_risk:
+                    hours_level = "ok"   # capacity comfortable -> makakahabol pa
+                else:
+                    hours_level = "ok"
+
+                # Imposible nang maabot kahit full-time -> laging At Risk
+                if catchup_load > 1:
+                    hours_level = "risk"
+
+                can_still_catch_up = (
+                    (projection_at_risk or projection_borderline) and
+                    hours_level == "ok"
+                )
+
                 is_hours_at_risk = (
-                    not is_new_student and
-                    projected_total_hours < target_hours * 0.85
+                    not is_new_student and hours_level == "risk"
                 )
                 is_hours_borderline = (
-                    not is_new_student and
-                    not is_hours_at_risk and
-                    projected_total_hours < target_hours
+                    not is_new_student and hours_level == "monitor"
                 )
 
                 is_attendance_risk = (
@@ -406,6 +586,12 @@ def predict_student_risk():
                         f"before the deadline - reaching only {int(projected_total_hours)} out of {target_hours} hrs, "
                         f"or falling short by {int(projected_shortfall)} hrs unless accelerated."
                     )
+                    if hours_per_duty_day_needed is not None:
+                        risk_reason += (
+                            f" To finish by the deadline, the student needs about "
+                            f"{hours_per_duty_day_needed:.1f} hrs per duty day "
+                            f"({duty_days_left} duty days left)."
+                        )
                     if absent_count > 0:
                         risk_reason += f" There are also {absent_count} recorded absences."
 
@@ -426,6 +612,16 @@ def predict_student_risk():
                         f"End of duty: {coordinator_deadline}."
                     )
 
+                elif can_still_catch_up:
+                    ai_status = "On Track"
+                    risk_reason = (
+                        f"Current pace is slow ({int(projected_total_hours)} projected hrs), "
+                        f"but the deadline ({coordinator_deadline}) leaves {duty_days_left} duty days - "
+                        f"only about {hours_per_duty_day_needed:.1f} hrs per duty day is needed "
+                        f"to reach {target_hours} hrs, so the student can still catch up. "
+                        f"({absent_count} absence so far)."
+                    )
+
                 else:
                     ai_status = "On Track"
                     risk_reason = (
@@ -434,6 +630,50 @@ def predict_student_risk():
                         f"on track ({coordinator_deadline}). "
                         f"Attendance is also regular ({absent_count} absence so far)."
                     )
+
+                # --- COMPLETION FORECAST ---
+                # Matatapos ba ng estudyante ang required OJT hours
+                # bago ang deadline, base sa kasalukuyang pace?
+                daily_rate = completed_hours / days_active if days_active else 0.0
+                estimated_completion = None
+                estimated_days = None
+
+                if hours_remaining > 0 and daily_rate > 0:
+                    estimated_days = hours_remaining / daily_rate
+                    if estimated_days <= 3650:
+                        estimated_completion = (
+                            today_date + timedelta(days=math.ceil(estimated_days))
+                        ).strftime('%Y-%m-%d')
+
+                finishes_on_time = (
+                    estimated_days is not None and
+                    estimated_days <= days_remaining_until_deadline
+                )
+
+                if hours_remaining <= 0:
+                    forecast_key = "completed"
+                elif is_new_student:
+                    forecast_key = "too_early"
+                elif finishes_on_time:
+                    forecast_key = "on_time"
+                elif catchup_load <= CATCHUP_COMFORTABLE_LOAD:
+                    forecast_key = "catch_up"
+                elif catchup_load <= 1:
+                    forecast_key = "speed_up"
+                else:
+                    forecast_key = "miss"
+
+                days_late = 0
+                if (
+                    estimated_days is not None and
+                    not finishes_on_time and
+                    days_remaining_until_deadline >= 0
+                ):
+                    days_late = int(math.ceil(estimated_days - days_remaining_until_deadline))
+
+                days_early = 0
+                if finishes_on_time:
+                    days_early = int(days_remaining_until_deadline - math.ceil(estimated_days))
 
                 batch_label = _get_batch_label(data)
                 graduated = _is_graduated(data, ai_status)
@@ -449,11 +689,23 @@ def predict_student_risk():
                     "currentHours": int(completed_hours),
                     "targetHours": target_hours,
                     "deadline": coordinator_deadline,
+                    "forecast": forecast_key,
+                    "estimatedCompletion": estimated_completion,
+                    "projectedHours": int(projected_total_hours),
+                    "hoursRemaining": int(math.ceil(hours_remaining)),
+                    "dutyDaysLeft": duty_days_left,
+                    "hoursPerDutyDayNeeded": (
+                        round(hours_per_duty_day_needed, 1)
+                        if hours_per_duty_day_needed is not None else None
+                    ),
+                    "daysLate": days_late,
+                    "daysEarly": days_early,
                     "absentCount": absent_count,
                     "consecutiveAbsences": consecutive_absences,
                     "attendanceRecords": attendance_record_count,
                     "batch": batch_label,
                     "graduated": graduated,
+                    "archived": _is_archived(data),
                     "aiStatus": ai_status,
                     "riskReason": risk_reason
                 }
@@ -473,11 +725,15 @@ def predict_student_risk():
                     "deadlineDate": coordinator_deadline,
                     "progressPercentage": progress_percentage,
                     "predictedTotalHours": int(projected_total_hours),
+                    "dutyDaysLeft": duty_days_left,
+                    "forecast": forecast_key,
+                    "estimatedCompletion": estimated_completion,
                     "absentCount": absent_count,
                     "consecutiveAbsences": consecutive_absences,
                     "attendanceRecords": attendance_record_count,
                     "batch": batch_label,
                     "graduated": graduated,
+                    "archived": _is_archived(data),
                     "aiStatus": ai_status,
                     "riskReason": risk_reason,
                     "lastUpdated": firestore.SERVER_TIMESTAMP
@@ -492,9 +748,12 @@ def predict_student_risk():
                 print(f"[predict-risk] Skipped doc {doc.id}: {doc_error}")
                 continue
 
-        status_counts = Counter(item["aiStatus"] for item in student_predictions)
+        status_counts = Counter(
+            item["aiStatus"] for item in student_predictions
+            if not item["archived"]
+        )
         summary = {
-            "total": len(student_predictions),
+            "total": sum(1 for item in student_predictions if not item["archived"]),
             "onTrack": status_counts.get("On Track", 0),
             "needsMonitoring": status_counts.get("Needs Monitoring", 0),
             "atRisk": status_counts.get("At Risk", 0),

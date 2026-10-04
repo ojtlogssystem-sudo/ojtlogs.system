@@ -37,80 +37,34 @@
         <div class="analytics-content">
 
             <!-- ==========================================
-                 STUDENT PERFORMANCE TABLE
+                 TABS
             =========================================== -->
-            <section class="table-card">
-                <div class="table-header">
-                    <div>
-                        <h3>Student Performance Analysis</h3>
-                        <p class="section-description">View internship progress and AI-based student status from database.</p>
-                    </div>
+            <div class="analytics-tabs" id="analyticsTabs" role="tablist">
 
-                    <div class="table-header-right">
-                        <div class="search-box">
-                            <i class="fa-solid fa-search"></i>
-                            <input type="text" id="searchStudent" placeholder="Search student...">
-                        </div>
+                <button class="analytics-tab active" data-tab="students" role="tab" type="button">
+                    <i class="fa-solid fa-chart-line"></i> Student Analysis
+                </button>
 
-                        <!-- Sections are filled in by analytics.js from the student records -->
-                        <select id="sectionFilter">
-                            <option value="all">All Sections</option>
-                        </select>
+                <button class="analytics-tab" data-tab="forecast" role="tab" type="button">
+                    <i class="fa-solid fa-hourglass-half"></i> Completion Forecast
+                </button>
 
-                        <select id="progressFilter">
-                            <option value="all">All Status</option>
-                            <option value="completed">Completed</option>
-                            <option value="ontrack">On Track</option>
-                            <option value="monitoring">Needs Monitoring</option>
-                            <option value="atrisk">At Risk</option>
-                        </select>
-                    </div>
-                </div>
+                <button class="analytics-tab" data-tab="graduates" role="tab" type="button">
+                    <i class="fa-solid fa-user-graduate"></i> Completed by Academic Year
+                </button>
 
-                <div class="table-container">
-                    <table class="students-table">
-                        <thead>
-                            <tr>
-                                <th>Student Name</th>
-                                <th>Course</th>
-                                <th>Section</th>
-                                <th>Company</th>
-                                <th>Progress</th>
-                                <th>Hours</th>
-                                <th>Absences</th>
-                                <th>AI Status</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="studentTable">
-                            <tr>
-                                <td colspan="9" style="text-align: center; color: #777; padding: 30px;">
-                                    Loading student records from database...
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+                <button class="analytics-tab" data-tab="skills" role="tab" type="button">
+                    <i class="fa-solid fa-screwdriver-wrench"></i> Company Skill Exposure
+                </button>
 
-                <div class="table-footer">
-                    <div class="pagination-info" id="paginationInfo">Showing 0 to 0 students</div>
-                    <div class="pagination-controls">
-                        <button class="page-btn" id="prevPageBtn" disabled><i class="fa-solid fa-chevron-left"></i></button>
-                        <div class="page-numbers" id="pageNumbers">
-                            <button class="page-num active">1</button>
-                        </div>
-                        <button class="page-btn" id="nextPageBtn" disabled><i class="fa-solid fa-chevron-right"></i></button>
-                    </div>
-                    <div class="rows-per-page">
-                        <span>Rows per page:</span>
-                        <select id="rowsPerPageSelect">
-                            <option value="6" selected>6</option>
-                            <option value="10">10</option>
-                            <option value="20">20</option>
-                        </select>
-                    </div>
-                </div>
-            </section>
+                <button class="analytics-tab" data-tab="recommend" role="tab" type="button">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Company Recommendation
+                </button>
+
+            </div>
+
+            <!-- TAB PANEL 1: STUDENT ANALYSIS -->
+            <div class="analytics-tab-panel active" data-panel="students">
 
             <!-- ==========================================
                  AI AT-RISK ANALYSIS
@@ -118,7 +72,7 @@
             <section class="analytics-section">
                 <div class="section-header">
                     <div>
-                        <h3>AI At-Risk Analysis</h3>
+                        <h3>At-Risk Analysis</h3>
                         <p class="section-description">Identify students who may need intervention based on their internship records.</p>
                     </div>
                 </div>
@@ -156,20 +110,7 @@
                      AI STATUS CHARTS
                      (Graduated by Batch Chart at Pie Chart)
                 =========================================== -->
-                <div class="ai-risk-charts-grid">
-
-                    <div class="chart-card">
-                        <h4 class="chart-card-title">Graduated Students by Batch</h4>
-                        <p class="chart-card-desc">
-                            Registered students per batch compared with those who completed the
-                            required OJT hours. The batch is the year at the start of the Student ID
-                            (e.g. 2023-01-22112 is batch 2023). Only batches with registered students are shown.
-                        </p>
-                        <div class="chart-canvas-wrapper">
-                            <canvas id="graduatesByBatchChart"></canvas>
-                            <p class="chart-empty" id="graduatesByBatchEmpty">Loading batch data...</p>
-                        </div>
-                    </div>
+                <div class="ai-risk-charts-grid single-chart">
 
                     <div class="chart-card">
                         <h4 class="chart-card-title">Student Status Distribution</h4>
@@ -186,50 +127,182 @@
                 </div>
 
                 <div class="risk-list">
-                    <div class="subsection-title">
+                    <div class="subsection-title risk-subsection-title">
                         <h4 id="studentStatusListTitle">Students Requiring Attention</h4>
+
+                        <div class="table-header-right risk-toolbar" id="riskToolbar" style="display:none;">
+                            <div class="search-box">
+                                <i class="fa-solid fa-search"></i>
+                                <input type="text" id="riskSearch" placeholder="Search student...">
+                            </div>
+
+                            <select id="riskSectionFilter">
+                                <option value="all">All Sections</option>
+                            </select>
+
+                            <select id="riskCompanyFilter">
+                                <option value="all">All Companies</option>
+                            </select>
+
+                            <button type="button" class="risk-reset-btn" id="riskResetFilters">
+                                <i class="fa-solid fa-rotate-left"></i> Reset
+                            </button>
+                        </div>
                     </div>
                     <div id="riskStudentsContainer">
                         <div style="padding: 20px; text-align: center; color: #777;">
                             No students currently flagged as At Risk.
                         </div>
                     </div>
+
+                    <!-- Pagination for the status list -->
+                    <div class="table-footer risk-list-footer" id="riskListFooter" style="display:none;">
+                        <div class="pagination-info" id="riskPaginationInfo">Showing 0 to 0 students</div>
+                        <div class="pagination-controls">
+                            <button class="page-btn" id="riskPrevPageBtn" type="button" disabled><i class="fa-solid fa-chevron-left"></i></button>
+                            <div class="page-numbers" id="riskPageNumbers"></div>
+                            <button class="page-btn" id="riskNextPageBtn" type="button" disabled><i class="fa-solid fa-chevron-right"></i></button>
+                        </div>
+                        <div class="rows-per-page">
+                            <span>Rows per page:</span>
+                            <select id="riskRowsPerPageSelect">
+                                <option value="5" selected>5</option>
+                                <option value="10">10</option>
+                                <option value="20">20</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
             </section>
 
+            </div>
+            <!-- /TAB PANEL 1 -->
+
+            <!-- TAB PANEL: COMPLETION FORECAST -->
+            <div class="analytics-tab-panel" data-panel="forecast">
+
             <!-- ==========================================
                  COMPLETION FORECAST
+                 Pino-predict kung matatapos ng estudyante ang
+                 required OJT hours bago ang deadline.
             =========================================== -->
             <section class="table-card">
                 <div class="table-header">
                     <div>
                         <h3>Completion Forecast</h3>
-                        <p class="section-description">Estimated internship completion based on current progress.</p>
+                        <p class="section-description">Predicts whether each student can finish the required OJT hours before the deadline, based on their current pace.</p>
+                    </div>
+
+                    <div class="table-header-right risk-toolbar">
+                        <div class="search-box">
+                            <i class="fa-solid fa-search"></i>
+                            <input type="text" id="forecastSearch" placeholder="Search student...">
+                        </div>
+
+                        <select id="forecastFilter">
+                            <option value="all">All Forecasts</option>
+                            <option value="on_time">On Time</option>
+                            <option value="catch_up">Can Catch Up</option>
+                            <option value="speed_up">Needs to Speed Up</option>
+                            <option value="miss">Will Miss Deadline</option>
+                            <option value="too_early">Too Early</option>
+                            <option value="completed">Completed</option>
+                        </select>
+
+                        <select id="forecastSectionFilter">
+                            <option value="all">All Sections</option>
+                        </select>
+
+                        <select id="forecastCompanyFilter">
+                            <option value="all">All Companies</option>
+                        </select>
+
+                        <button type="button" class="risk-reset-btn" id="forecastResetFilters">
+                            <i class="fa-solid fa-rotate-left"></i> Reset
+                        </button>
                     </div>
                 </div>
 
+                <div class="forecast-summary" id="forecastSummary"></div>
+
                 <div class="table-container">
-                    <table class="students-table">
-                        <thead>
+                    <table class="students-table risk-table forecast-table" id="forecastTable">
+                        <thead id="forecastHead">
                             <tr>
-                                <th>Student</th>
-                                <th>Progress</th>
-                                <th>Remaining Hours</th>
-                                <th>Estimated Completion</th>
-                                <th>Forecast</th>
+                                <th class="risk-num-cell">#</th>
+                                <th class="sortable-th" data-forecast-sort="name">Student Name<i class="fa-solid fa-sort risk-sort-ind muted"></i></th>
+                                <th>Course</th>
+                                <th>Section</th>
+                                <th>Company</th>
+                                <th class="sortable-th" data-forecast-sort="progress">Progress<i class="fa-solid fa-sort risk-sort-ind muted"></i></th>
+                                <th class="sortable-th" data-forecast-sort="remaining">Remaining Hours<i class="fa-solid fa-sort risk-sort-ind muted"></i></th>
+                                <th class="sortable-th" data-forecast-sort="estimated">Estimated Completion<i class="fa-solid fa-sort risk-sort-ind muted"></i></th>
+                                <th class="sortable-th" data-forecast-sort="deadline">Deadline<i class="fa-solid fa-sort risk-sort-ind muted"></i></th>
+                                <th class="sortable-th" data-forecast-sort="forecast">Forecast<i class="fa-solid fa-sort risk-sort-ind muted"></i></th>
                             </tr>
                         </thead>
                         <tbody id="completionForecastTable">
                             <tr>
-                                <td colspan="5" style="text-align: center; color: #777; padding: 20px;">
+                                <td colspan="10" style="text-align: center; color: #777; padding: 20px;">
                                     Loading forecast data...
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
+
+                <div class="table-footer" id="forecastFooter" style="display:none;">
+                    <div class="pagination-info" id="forecastPaginationInfo">Showing 0 to 0 students</div>
+                    <div class="pagination-controls">
+                        <button class="page-btn" id="forecastPrevBtn" type="button" disabled><i class="fa-solid fa-chevron-left"></i></button>
+                        <div class="page-numbers" id="forecastPageNumbers"></div>
+                        <button class="page-btn" id="forecastNextBtn" type="button" disabled><i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                    <div class="rows-per-page">
+                        <span>Rows per page:</span>
+                        <select id="forecastRowsPerPage">
+                            <option value="6" selected>6</option>
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                        </select>
+                    </div>
+                </div>
             </section>
 
+            </div>
+            <!-- /TAB PANEL: COMPLETION FORECAST -->
+
+            <!-- TAB PANEL 2: GRADUATED BY BATCH -->
+            <div class="analytics-tab-panel" data-panel="graduates">
+            <section class="analytics-section">
+                <div class="section-header">
+                    <div>
+                        <h3>Completed Students by Academic Year</h3>
+                        <p class="section-description">Students who completed the required OJT hours, grouped by academic year.</p>
+                    </div>
+                </div>
+
+                <div class="ai-risk-charts-grid single-chart">
+
+                    <div class="chart-card">
+                        <h4 class="chart-card-title">Completed Students by Academic Year</h4>
+                        <p class="chart-card-desc">
+                            Students who completed the required OJT hours, grouped by academic year. The academic year is based on the
+                            Student ID: the year at the start of the ID plus 3 (e.g. 2023-01-22112 is A.Y. 2026 - 2027).
+                        </p>
+                        <div class="chart-canvas-wrapper">
+                            <canvas id="graduatesByBatchChart"></canvas>
+                            <p class="chart-empty" id="graduatesByBatchEmpty">Loading academic year data...</p>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+            </div>
+            <!-- /TAB PANEL 2 -->
+
+            <!-- TAB PANEL 3: COMPANY SKILL EXPOSURE -->
+            <div class="analytics-tab-panel" data-panel="skills">
             <!-- ==========================================
                 COMPANY SKILL EXPOSURE
             ========================================== -->
@@ -263,6 +336,11 @@
                 </div>
             </section>
 
+            </div>
+            <!-- /TAB PANEL 3 -->
+
+            <!-- TAB PANEL 4: COMPANY RECOMMENDATION -->
+            <div class="analytics-tab-panel" data-panel="recommend">
             <!-- ==========================================
                 COMPANY RECOMMENDATION (AI-DRIVEN) - UPDATED
             =========================================== -->
@@ -297,6 +375,8 @@
                     </div>
                 </div>
             </section>
+            </div>
+            <!-- /TAB PANEL 4 -->
 
         </div>
     </main>

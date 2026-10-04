@@ -257,6 +257,15 @@ table thead th i {
     background: #fafafa;
 }
 
+/* Row number column */
+.students-table th.col-no,
+.students-table td.col-no {
+    width: 48px;
+    text-align: center;
+    color: #666;
+    font-weight: 600;
+}
+
 .empty-slot-row {
     pointer-events: none;
 }
@@ -1453,5 +1462,112 @@ table thead th i {
         flex-direction: row;
         align-items: center;
         justify-content: space-between;
+    }
+}
+
+/* ==========================================
+   HOURS PERMISSION CARD (Student Profile modal)
+========================================== */
+.permission-card {
+    background: #f8fafc;
+    border: 1px solid #f1f5f9;
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 16px;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.permission-card .icon-box {
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+    background: #ffffff;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ab0a0a;
+    font-size: 16px;
+}
+
+.permission-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.permission-info small {
+    font-size: 12px;
+    color: #64748b;
+}
+
+.permission-info small:empty {
+    display: none;
+}
+
+.permission-card.granted {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+
+.permission-card.granted .icon-box {
+    color: #15803d;
+    border-color: #bbf7d0;
+}
+
+.btn-permission {
+    flex-shrink: 0;
+    height: 40px;
+    padding: 0 16px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+}
+
+.btn-permission.allow {
+    background: #15803d;
+    color: #ffffff;
+    border: none;
+}
+
+.btn-permission.allow:hover {
+    background: #166534;
+}
+
+.btn-permission.revoke {
+    background: #ffffff;
+    color: #b91c1c;
+    border: 1px solid #fca5a5;
+}
+
+.btn-permission.revoke:hover {
+    background: #fef2f2;
+    border-color: #f87171;
+}
+
+.btn-permission:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+    .permission-card {
+        flex-wrap: wrap;
+    }
+    .btn-permission {
+        width: 100%;
     }
 }

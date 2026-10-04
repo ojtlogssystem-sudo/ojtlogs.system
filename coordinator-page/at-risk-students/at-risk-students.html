@@ -199,6 +199,44 @@
 
 
 
+        <!-- FILTER + SORT -->
+
+        <div class="filter-bar">
+
+            <label class="filter-field">
+                <span>Section</span>
+                <select id="filter-section">
+                    <option value="">All Sections</option>
+                </select>
+            </label>
+
+            <label class="filter-field">
+                <span>Company</span>
+                <select id="filter-company">
+                    <option value="">All Companies</option>
+                </select>
+            </label>
+
+            <label class="filter-field">
+                <span>Sort by</span>
+                <select id="sort-students">
+                    <option value="name-asc">Name (A–Z)</option>
+                    <option value="name-desc">Name (Z–A)</option>
+                    <option value="id-asc">Student ID (low–high)</option>
+                    <option value="id-desc">Student ID (high–low)</option>
+                    <option value="section-asc">Section</option>
+                    <option value="company-asc">Company</option>
+                    <option value="hours-desc">Rendered Hours (high–low)</option>
+                    <option value="hours-asc">Rendered Hours (low–high)</option>
+                </select>
+            </label>
+
+            <button type="button" class="filter-reset" id="reset-filters">
+                <i class="fa-solid fa-rotate-left"></i> Reset
+            </button>
+
+        </div>
+
         <!-- TABLE -->
 
         <div class="table-wrapper">
@@ -262,6 +300,39 @@
             </table>
 
         </div>
+
+        <!-- PAGINATION -->
+
+        <div class="table-footer">
+
+            <div class="showing-text" id="paginationInfo">
+                Showing 0 records
+            </div>
+
+            <div class="pagination-controls">
+                <button type="button" id="prevPageBtn" class="page-btn">
+                    <i class="fa-solid fa-chevron-left"></i> Prev
+                </button>
+
+                <div id="pageNumbers" class="page-numbers"></div>
+
+                <button type="button" id="nextPageBtn" class="page-btn">
+                    Next <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            </div>
+
+            <div class="rows-per-page">
+                <label for="rowsPerPageSelect">Rows per page:</label>
+                <select id="rowsPerPageSelect">
+                    <option value="5">5</option>
+                    <option value="10" selected>10</option>
+                    <option value="15">15</option>
+                    <option value="20">20</option>
+                </select>
+            </div>
+
+        </div>
+
 
     </div>
 

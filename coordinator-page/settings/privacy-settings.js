@@ -259,7 +259,7 @@ function lockSettings() {
         .querySelectorAll(".privacy-toggle input[type='checkbox']")
         .forEach((input) => { input.disabled = true; });
 
-    ["downloadData", "requestCorrection", "requestDeletion", "acknowledgePolicy"]
+    ["downloadData", "requestDeletion", "acknowledgePolicy"]
         .forEach((id) => {
             const button = $(id);
             if (button) button.disabled = true;
@@ -575,20 +575,6 @@ async function submitRequest(type, details, button) {
 }
 
 
-$("requestCorrection").addEventListener("click", () => {
-
-    const details = window.prompt(
-        "What needs to be corrected? Be specific, for example: " +
-        "\"My role should be OJT Coordinator, not Adviser.\""
-    );
-
-    if (!details || details.trim() === "") return;
-
-    submitRequest("correction", details.trim(), $("requestCorrection"));
-
-});
-
-
 $("requestDeletion").addEventListener("click", () => {
 
     const confirmed = window.confirm(
@@ -669,3 +655,41 @@ document.addEventListener("click", async (e) => {
     }
 
 });
+
+/* ==========================================
+   DATA PROTECTION AGREEMENT (modal)
+========================================== */
+
+(function setupAgreementModal() {
+
+    const modal = document.getElementById("agreementModal");
+    const openBtn = document.getElementById("openAgreement");
+    const closeBtn = document.getElementById("closeAgreement");
+
+    if (!modal || !openBtn || !closeBtn) return;
+
+    const open = () => {
+        modal.hidden = false;
+        document.body.style.overflow = "hidden";
+        closeBtn.focus();
+    };
+
+    const close = () => {
+        modal.hidden = true;
+        document.body.style.overflow = "";
+        openBtn.focus();
+    };
+
+    openBtn.addEventListener("click", open);
+    closeBtn.addEventListener("click", close);
+
+    // Click sa labas ng container = close
+    modal.addEventListener("click", (e) => {
+        if (e.target === modal) close();
+    });
+
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && !modal.hidden) close();
+    });
+
+})();

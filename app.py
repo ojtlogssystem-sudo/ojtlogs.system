@@ -282,6 +282,26 @@ def _is_pending_student(data):
         value = str(data.get(field) or '').strip().lower()
         if value in PENDING_STATUS_VALUES:
             return True
+
+    # Soft-deleted na ng coordinator
+    if data.get('accountDisabled') is True:
+        return True
+
+    # Pareho sa rule ng students.js / registered-students.js:
+    # hindi pa registered kung hindi pa tapos ang profile setup o
+    # kulang ang email, student number, o company.
+    # (Completed = manual final status, kaya hindi dumadaan dito.)
+    if str(data.get('status') or '').strip().lower() != 'completed':
+        email = str(data.get('email') or '').strip()
+        profile_done = (
+            data.get('isProfileComplete') is True or
+            data.get('profileCompleted') is True
+        )
+        has_student_number = bool(data.get('studentNumber') or data.get('studentId'))
+        has_company = bool(data.get('companyName') or data.get('company'))
+        if not (email and profile_done and has_student_number and has_company):
+            return True
+
     return False
 
 def _is_archived(data):
@@ -290,6 +310,10 @@ def _is_archived(data):
         return True
     if data.get('archivedAt') or data.get('archivedDate'):
         return True
+    for field in ('batchArchived', 'inArchive', 'isCompletedBatch',
+                  'completedBatchArchived', 'archiveId', 'archivedBatch'):
+        if data.get(field):
+            return True
     for field in ('status', 'accountStatus', 'internshipStatus'):
         if 'archiv' in str(data.get(field) or '').strip().lower():
             return True
@@ -862,124 +886,343 @@ def get_student_attendance(student_doc_id):
 
 # ==========================================
 # 2. ENDPOINT FOR COMPANY SKILL EXPOSURE
+#    (Primary Skill is now DERIVED from the tasks the students log)
 # ==========================================
+
+# skillKey -> (label shown in table, keywords found in task text)
+SKILL_CATEGORIES = {
+    "networking": ("Network", [
+        "router", "routing", "lan", "wan", "vlan", "switch", "cabling", "cable", "network",
+        "tcp", "ip address", "wifi", "wi-fi", "wireless", "subnet", "firewall", "cisco",
+        "crimp", "utp", "access point", "modem", "ethernet", "vpn", "patch panel",
+        "topology", "bandwidth", "connectivity", "internet connection"]),
+    "software": ("Web/Software Developer", [
+        "html", "css", "javascript", "js", "react", "api", "frontend", "front-end",
+        "backend", "back-end", "code", "coding", "program", "debug", "develop", "php",
+        "python", "java", "website", "web app", "ui", "ux", "flutter", "laravel",
+        "bug", "feature", "software", "git", "django", "node", "system design"]),
+    "hardware": ("Hardware", [
+        "pc", "computer", "laptop", "desktop", "hardware", "assemble", "assembly", "repair",
+        "component", "ram", "motherboard", "printer", "peripheral", "format", "diagnos",
+        "replace", "monitor", "keyboard", "upgrade", "os installation", "install windows",
+        "cleaning", "ups", "cctv"]),
+    "database": ("Database", [
+        "database", "sql", "mysql", "postgres", "mongodb", "firebase", "query", "queries",
+        "schema", "table", "backup", "migration", "data entry", "records", "encode", "spreadsheet"]),
+    "hosting": ("Hosting & Cloud", [
+        "server", "hosting", "domain", "cloud", "cpanel", "dns", "ssl", "deploy",
+        "aws", "azure", "vps", "linux", "nginx", "apache", "ftp", "uptime"]),
+    "support": ("IT Support", [
+        "helpdesk", "help desk", "support", "maintenance", "troubleshoot", "user assist",
+        "assist", "ticket", "technical", "documentation", "inventory", "antivirus",
+        "account", "install", "software installation", "user"]),
+}
+
+
+def _kw_pattern(kw):
+    # short keywords (lan, ip, pc...) must match as a whole word, longer ones as a word prefix
+    # (so "configur" style stems and plurals work, but "lan" won't match "plan"/"language")
+    esc = re.escape(kw)
+    return re.compile(r'\b' + esc + (r'\b' if len(kw) <= 3 else ''), re.IGNORECASE)
+
+
+_SKILL_PATTERNS = {
+    key: [_kw_pattern(k) for k in kws] for key, (_, kws) in SKILL_CATEGORIES.items()
+}
+
+
+LABEL_ALIASES = {
+    "networking": "networking", "network": "networking", "network administration": "networking",
+    "software development": "software", "web development": "software", "programming": "software",
+    "coding": "software", "ui/ux design": "software", "ui/ux": "software", "ui design": "software",
+    "system testing": "software", "testing": "software", "quality assurance": "software",
+    "database maintenance": "database", "database": "database", "data management": "database",
+    "hardware": "hardware", "hardware maintenance": "hardware", "pc repair": "hardware",
+    "hosting": "hosting", "cloud": "hosting", "server administration": "hosting",
+    "it support": "support", "technical support": "support", "helpdesk": "support",
+}
+_LABEL_RE = re.compile(r'^\s*([A-Za-z][A-Za-z/&\- ]{2,40}?)\s*:\s*(.+)$', re.S)
+
+
+def _split_label(text):
+    """'Networking: Set up router' -> ('Networking', 'Set up router')"""
+    m = _LABEL_RE.match(text or '')
+    if not m:
+        return None, text
+    return m.group(1).strip(), m.group(2).strip()
+
+
+def _classify_by_keywords(text):
+    best_key, best_score = None, 0
+    for key, patterns in _SKILL_PATTERNS.items():
+        score = sum(1 for p in patterns if p.search(text))
+        if score > best_score:  # ties -> the earlier category in SKILL_CATEGORIES wins
+            best_key, best_score = key, score
+    return best_key
+
+
+def classify_task_text(text):
+    """Return the skillKey for one task. Uses the student's own 'Category:' label when present,
+    otherwise reads the sentence itself and matches keywords."""
+    text = str(text or "").strip()
+    if not text:
+        return None
+    label, body = _split_label(text)
+    if label:
+        key = LABEL_ALIASES.get(label.lower()) or _classify_by_keywords(label)
+        if key:
+            return key
+        return _classify_by_keywords(body)
+    return _classify_by_keywords(text)
+
+
+def _top_common_tasks(task_texts, limit=3, max_len=90):
+    counts, original = Counter(), {}
+    for raw in task_texts:
+        _, body = _split_label(raw)
+        body = re.sub(r'\s+', ' ', body).strip(' .,;')
+        norm = body.lower()
+        counts[norm] += 1
+        original.setdefault(norm, body)
+    out = []
+    for n, _ in counts.most_common(limit):
+        t = original[n]
+        out.append(t if len(t) <= max_len else t[:max_len - 1].rstrip() + '\u2026')
+    return out
+
+
+MIN_SKILL_SHARE = 0.20       # a skill must be >= 20% of the company's tasks to be listed
+MAX_SKILLS_PER_COMPANY = 3   # at most 3 skills per company row
+
+
+# ---- Task discovery -------------------------------------------------------
+# Hindi fixed ang pangalan ng collection/field kung saan nilalagay ng students ang tasks,
+# kaya awtomatiko nating hinahanap: lahat ng top-level collections (maliban sa companies/users/analytics)
+# + subcollections ng bawat user + collection groups na may task-like na pangalan.
+TASK_SKIP_COLLECTIONS = {'companies', 'users', 'analytics'}
+TASK_GROUP_NAMES = ('tasks', 'taskLogs', 'logs', 'dailyLogs', 'dtr', 'journals', 'accomplishments')
+TASK_TEXT_FIELDS = {f.lower() for f in (
+    'taskDescription', 'taskName', 'taskTitle', 'task', 'tasks', 'taskDone', 'tasksDone',
+    'task_description', 'tasksPerformed', 'taskPerformed', 'description', 'activity', 'activities',
+    'accomplishment', 'accomplishments', 'workDone', 'work', 'workDescription', 'remarks',
+    'notes', 'summary', 'details', 'report', 'narrative', 'journal', 'title')}
+TASK_OWNER_FIELDS = ATTENDANCE_OWNER_FIELDS + ('studentName', 'name', 'student', 'fullName')
+
+
+def _flatten_text(value, depth=0):
+    if value is None or depth > 3:
+        return []
+    if isinstance(value, str):
+        parts = re.split(r'[\n;|\u2022]+', value)
+        return [p.strip(' -*\t') for p in parts if len(p.strip(' -*\t')) >= 3]
+    if isinstance(value, (list, tuple)):
+        out = []
+        for v in value:
+            out.extend(_flatten_text(v, depth + 1))
+        return out
+    if isinstance(value, dict):
+        out = []
+        for k, v in value.items():
+            if str(k).lower() in TASK_TEXT_FIELDS:
+                out.extend(_flatten_text(v, depth + 1))
+        return out
+    return []
+
+
+def _extract_task_texts(rec):
+    out = []
+    for k, v in rec.items():
+        if str(k).lower() in TASK_TEXT_FIELDS:
+            out.extend(_flatten_text(v))
+    return out
+
+
+def _load_task_records(students):
+    """Collect every Firestore record that could hold student tasks."""
+    records, seen = [], set()
+
+    def add(doc, src, parent=None):
+        path = doc.reference.path
+        if path in seen:
+            return
+        seen.add(path)
+        records.append({**doc.to_dict(), "_src": src, "_parent": parent})
+
+    try:
+        for col in db.collections():
+            if col.id in TASK_SKIP_COLLECTIONS:
+                continue
+            for doc in col.stream():
+                add(doc, col.id)
+    except Exception as e:
+        print(f"[skill-exposure] top-level scan failed: {e}")
+
+    for name in TASK_GROUP_NAMES:
+        try:
+            for doc in db.collection_group(name).stream():
+                add(doc, name)
+        except Exception as e:
+            print(f"[skill-exposure] collection_group '{name}' skipped: {e}")
+
+    for st in students:
+        try:
+            for sub in db.collection('users').document(st['id']).collections():
+                for doc in sub.stream():
+                    add(doc, f"users/*/{sub.id}", st['id'])
+        except Exception as e:
+            print(f"[skill-exposure] subcollections of {st['id']} skipped: {e}")
+
+    return records
+
+
+def _student_keys(st):
+    keys = {_norm(st.get('id')), _norm(_get_student_id_raw(st)), _norm(st.get('email')),
+            _norm(st.get('uid')), _norm(st.get('name')), _norm(st.get('fullName'))}
+    keys.discard(None)
+    return keys
+
+
+def _record_belongs_to(rec, keys):
+    if rec.get("_parent") and _norm(rec["_parent"]) in keys:
+        return True
+    owners = {_norm(rec.get(f)) for f in TASK_OWNER_FIELDS}
+    owners.discard(None)
+    return bool(keys & owners)
+
+
+def build_company_skill_profiles():
+    """Compute the skills (1..3) + exposure for every company from the students' logged tasks."""
+    companies = [{"id": d.id, **d.to_dict()} for d in db.collection('companies').stream()]
+    students = []
+    for d in db.collection('users').stream():
+        data = d.to_dict()
+        if str(data.get('role', '')).lower() == 'student' or not data.get('role'):
+            students.append({"id": d.id, **data})
+    records = _load_task_records(students)
+
+    profiles = []
+    for comp in companies:
+        company_name = comp.get('companyName', 'Unnamed Company')
+        cname = company_name.lower()
+        comp_students = [
+            s for s in students
+            if cname in str(s.get('companyName', '')).lower() or cname in str(s.get('company', '')).lower()
+        ]
+
+        skill_counts = Counter()
+        tasks_by_skill = {k: [] for k in SKILL_CATEGORIES}
+        per_student = []
+        raw_task_total = 0
+
+        for st in comp_students:
+            keys = _student_keys(st)
+            st_counts, st_texts = Counter(), []
+            for rec in records:
+                if not _record_belongs_to(rec, keys):
+                    continue
+                for text in _extract_task_texts(rec):
+                    raw_task_total += 1
+                    st_texts.append(text)
+                    key = classify_task_text(text)
+                    if key:
+                        skill_counts[key] += 1
+                        st_counts[key] += 1
+                        tasks_by_skill[key].append(text)
+            per_student.append({
+                "student": st, "name": st.get('name') or st.get('fullName') or 'Student',
+                "texts": st_texts, "counts": st_counts,
+                "top": st_counts.most_common(1)[0][0] if st_counts else None,
+            })
+
+        def course_section(p):
+            return f"{p['student'].get('course', 'BSIT')} {p['student'].get('section', '')}".strip()
+
+        classified_total = sum(skill_counts.values())
+
+        if classified_total == 0:
+            if not comp_students:
+                msg = "No students are assigned to this company yet."
+            elif raw_task_total == 0:
+                msg = f"{len(comp_students)} student(s) found, but no task records were matched to them."
+            else:
+                msg = (f"{raw_task_total} task(s) found, but none matched a known skill. "
+                       f"Samples: {', '.join(t for p in per_student for t in p['texts'][:1])[:150]}")
+            profiles.append({
+                "companyName": company_name, "primarySkill": "No task data yet",
+                "skillKey": "none", "exposure": 0, "commonTasks": msg, "skills": [],
+                "matchedStudents": [
+                    {"name": p["name"], "courseSection": course_section(p),
+                     "tasks": ", ".join(p["texts"][:3]) or "No tasks logged yet",
+                     "status": "NO MATCH DATA"} for p in per_student],
+            })
+            continue
+
+        # every skill that makes up a meaningful part of the logged tasks (max 3)
+        skills = []
+        for key, cnt in skill_counts.most_common():
+            share = cnt / classified_total
+            if skills and (share < MIN_SKILL_SHARE or len(skills) >= MAX_SKILLS_PER_COMPANY):
+                break
+            skills.append({
+                "skillKey": key,
+                "primarySkill": SKILL_CATEGORIES[key][0],
+                "exposure": round(share * 100),
+                "studentCount": sum(1 for p in per_student if p["counts"].get(key)),
+                "commonTasks": ", ".join(_top_common_tasks(tasks_by_skill[key], 3)),
+            })
+        top = skills[0]
+
+        matched = []
+        for p in per_student:
+            status = "NO MATCH DATA" if p["top"] is None else SKILL_CATEGORIES[p["top"]][0].upper()
+            matched.append({
+                "name": p["name"], "courseSection": course_section(p),
+                "tasks": ", ".join(_top_common_tasks(p["texts"], 3)) or "No tasks logged yet",
+                "status": status,
+            })
+
+        profiles.append({
+            "companyName": company_name,
+            # top-level fields = the strongest skill (kept for backward compatibility)
+            "primarySkill": top["primarySkill"], "skillKey": top["skillKey"],
+            "exposure": top["exposure"], "commonTasks": top["commonTasks"],
+            "skills": skills,
+            "totalStudents": len(comp_students),
+            "matchedStudents": matched,
+        })
+    return profiles
+
+
+@app.route('/api/debug-skill-sources', methods=['GET'])
+def debug_skill_sources():
+    """Open in the browser to see where tasks really live in Firestore."""
+    try:
+        students = [{"id": d.id, **d.to_dict()} for d in db.collection('users').stream()]
+        records = _load_task_records(students)
+        by_src = {}
+        for r in records:
+            info = by_src.setdefault(r["_src"], {"docs": 0, "withTaskText": 0, "sampleFields": [], "sampleTask": None})
+            info["docs"] += 1
+            texts = _extract_task_texts(r)
+            if texts:
+                info["withTaskText"] += 1
+                info["sampleTask"] = info["sampleTask"] or texts[0]
+            if not info["sampleFields"]:
+                info["sampleFields"] = [k for k in r.keys() if not k.startswith("_")]
+        return jsonify({"status": "success", "sources": by_src})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @app.route('/api/company-skill-exposure', methods=['GET', 'POST', 'OPTIONS'])
 def analyze_company_skill_exposure():
     try:
-        companies_ref = db.collection('companies').stream()
-        companies = [{"id": doc.id, **doc.to_dict()} for doc in companies_ref]
-        
-        users_ref = db.collection('users').stream()
-        students = [{"id": doc.id, **doc.to_dict()} for doc in users_ref if str(doc.to_dict().get('role', '')).lower() == 'student' or not doc.to_dict().get('role')]
-        
-        tasks_ref = db.collection('tasks').stream()
-        tasks = [{"id": doc.id, **doc.to_dict()} for doc in tasks_ref]
-        
-        results = []
-        
-        for comp in companies:
-            company_name = comp.get('companyName', 'Unnamed Company')
-            primary_skill = (comp.get('primarySkill') or comp.get('industry') or 'Software Development').strip()
-            skill_lower = primary_skill.lower()
-            
-            if "network" in skill_lower or "cisco" in skill_lower or "connectivity" in skill_lower:
-                skill_key = "networking"
-                default_common_tasks = "Router configuration, LAN/WAN setup, Network troubleshooting, Switch management"
-                keywords = ["router", "lan", "ip", "switch", "cabling", "network", "tcp", "wifi"]
-            elif "web" in skill_lower or "frontend" in skill_lower or "backend" in skill_lower or "fullstack" in skill_lower or "software" in skill_lower or "dev" in skill_lower:
-                skill_key = "software"
-                default_common_tasks = "UI/UX implementation, API integration, Frontend coding, Database querying"
-                keywords = ["html", "css", "js", "react", "api", "frontend", "backend", "code", "debug", "develop", "php"]
-            elif "hardware" in skill_lower or "support" in skill_lower or "tech" in skill_lower:
-                skill_key = "hardware"
-                default_common_tasks = "PC assembly, Hardware diagnostics, Component replacement, OS installation"
-                keywords = ["pc", "repair", "assemble", "hardware", "component", "diagnostics", "printer", "support"]
-            elif "database" in skill_lower or "sql" in skill_lower or "data" in skill_lower:
-                skill_key = "database"
-                default_common_tasks = "SQL querying, Database backup, Table indexing, Data migration"
-                keywords = ["sql", "query", "database", "table", "backup", "mysql", "mongodb"]
-            elif "hosting" in skill_lower or "cloud" in skill_lower or "server" in skill_lower:
-                skill_key = "networking"
-                default_common_tasks = "Server deployment, Domain configuration, Cloud hosting management, SSL setup"
-                keywords = ["server", "hosting", "domain", "cloud", "cpanel", "dns", "ssl"]
-            elif "it services" in skill_lower:
-                skill_key = "hardware"
-                default_common_tasks = "IT helpdesk support, System maintenance, Technical troubleshooting, User assistance"
-                keywords = ["support", "helpdesk", "maintenance", "troubleshoot", "system", "service"]
-            else:
-                skill_key = "software"
-                default_common_tasks = f"Tasks related to {primary_skill}, System monitoring"
-                keywords = [skill_lower, "system", "support", "task"]
-
-            comp_students = [s for s in students if company_name.lower() in s.get('companyName', '').lower() or company_name.lower() in s.get('company', '').lower()]
-            
-            valid_matched_count = 0
-            verified_tasks = []
-            matched_students_detail = []
-            
-            for st in comp_students:
-                st_id = st.get('id')
-                st_name = st.get('name', 'Student')
-                
-                st_tasks = [t for t in tasks if t.get('studentId') == st_id or t.get('studentName') == st_name]
-                st_matched_desc = []
-                
-                for t in st_tasks:
-                    desc = str(t.get('taskDescription') or t.get('taskName') or t.get('description', '')).lower()
-                    if any(kw in desc for kw in keywords):
-                        raw_desc = t.get('taskDescription') or t.get('taskName') or t.get('description')
-                        verified_tasks.append(raw_desc)
-                        st_matched_desc.append(raw_desc)
-                
-                if len(comp_students) > 0:
-                    valid_matched_count += 1
-                    matched_students_detail.append({
-                        "name": st_name,
-                        "courseSection": f"{st.get('course', 'BSIT')} {st.get('section', '3A')}",
-                        "tasks": ", ".join(st_matched_desc) if st_matched_desc else f"Active alignment with {primary_skill}",
-                        "status": "AI PASSED MATCH"
-                    })
-                    
-            exposure_pct = round((valid_matched_count / len(comp_students)) * 100) if len(comp_students) > 0 else 80
-            if exposure_pct == 0 and len(comp_students) > 0:
-                exposure_pct = 85
-
-            final_common_tasks = ", ".join(list(set(verified_tasks))[:3]) if verified_tasks else default_common_tasks
-            
-            results.append({
-                "companyName": company_name,
-                "primarySkill": primary_skill,
-                "skillKey": skill_key,
-                "exposure": exposure_pct,
-                "commonTasks": final_common_tasks,
-                "matchedStudents": matched_students_detail
-            })
-            
-        return jsonify({"status": "success", "data": results})
+        return jsonify({"status": "success", "data": build_company_skill_profiles()})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # ==========================================
 # 3. ENDPOINT FOR COMPANY RECOMMENDATION
 # ==========================================
-def classify_skill_key(primary_skill):
-    skill_lower = (primary_skill or "").strip().lower()
-
-    if "network" in skill_lower or "cisco" in skill_lower or "connectivity" in skill_lower:
-        return "networking"
-    elif "web" in skill_lower or "frontend" in skill_lower or "backend" in skill_lower or "fullstack" in skill_lower or "software" in skill_lower or "dev" in skill_lower:
-        return "software"
-    elif "hardware" in skill_lower or "support" in skill_lower or "tech" in skill_lower:
-        return "hardware"
-    elif "database" in skill_lower or "sql" in skill_lower or "data" in skill_lower:
-        return "database"
-    elif "hosting" in skill_lower or "cloud" in skill_lower or "server" in skill_lower:
-        return "networking"
-    elif "it services" in skill_lower:
-        return "hardware"
-    else:
-        return "software"
-
 @app.route('/api/recommend-company', methods=['POST', 'OPTIONS'])
 def recommend_company():
     try:
@@ -992,29 +1235,22 @@ def recommend_company():
                 "message": "Missing skillFocus in request body."
             }), 400
 
-        companies_ref = db.collection('companies').stream()
-        companies = [{"id": doc.id, **doc.to_dict()} for doc in companies_ref]
-
         matches = []
-
-        for comp in companies:
-            company_name = comp.get('companyName', 'Unnamed Company')
-            primary_skill = comp.get('primarySkill') or comp.get('industry') or 'Software Development'
-            skill_key = classify_skill_key(primary_skill)
-
-            if skill_key == skill_focus:
-                matches.append({
-                    "companyName": company_name,
-                    "primarySkill": primary_skill,
-                    "reasons": [
-                        f"Primary skill area matches your selected focus ('{skill_focus}').",
-                        f"Company is tagged under: {primary_skill}."
-                    ],
-                    "aiScore": 90
-                })
+        for prof in build_company_skill_profiles():
+            for sk in prof.get("skills", []):
+                if sk["skillKey"] == skill_focus:
+                    matches.append({
+                        "companyName": prof["companyName"],
+                        "primarySkill": sk["primarySkill"],
+                        "reasons": [
+                            f"Based on student tasks, {sk['exposure']}% of logged work here is {sk['primarySkill']} "
+                            f"({sk['studentCount']} student(s)).",
+                            f"Common tasks: {sk['commonTasks']}"
+                        ],
+                        "aiScore": sk["exposure"]
+                    })
 
         matches.sort(key=lambda m: m["aiScore"], reverse=True)
-
         return jsonify({"status": "success", "data": matches})
 
     except Exception as e:

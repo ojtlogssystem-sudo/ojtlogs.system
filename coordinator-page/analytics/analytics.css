@@ -2471,3 +2471,151 @@
     background: transparent;
     border: none;
 }
+
+/* ==========================================
+   COORDINATOR DATA PROTECTION AGREEMENT
+========================================== */
+.agreement-overlay[hidden] { display: none; }
+
+.agreement-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.agreement-box {
+    background: #fff;
+    width: 100%;
+    max-width: 720px;
+    max-height: 90vh;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.agreement-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.agreement-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #AB0A0A;
+    line-height: 1.4;
+}
+
+.agreement-header h3 i { margin-right: 6px; }
+
+.agreement-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #777;
+    cursor: pointer;
+}
+
+.agreement-body {
+    padding: 16px 20px;
+    overflow-y: auto;
+    font-size: 13.5px;
+    color: #333;
+    line-height: 1.55;
+}
+
+.agreement-notice {
+    margin: 0 0 12px;
+    padding: 10px 12px;
+    background: #faf1f1;
+    border-left: 3px solid #AB0A0A;
+    border-radius: 4px;
+}
+
+.agreement-body h4 {
+    margin: 14px 0 4px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #222;
+}
+
+.agreement-body ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.agreement-body li { margin-bottom: 4px; }
+
+.agreement-footer-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    padding: 14px 20px;
+    border-top: 1px solid #eee;
+    background: #fafafa;
+}
+
+.agreement-footer-bar [hidden] { display: none; }
+
+.agreement-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    flex: 1;
+    min-width: 220px;
+    font-size: 13px;
+    color: #444;
+    cursor: pointer;
+}
+
+.agreement-check input { margin-top: 3px; accent-color: #AB0A0A; }
+
+.agreement-accept {
+    padding: 10px 20px;
+    background: #AB0A0A;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: .2s;
+}
+
+.agreement-accept:hover:not(:disabled) { background: #8f0808; }
+
+.agreement-accept:disabled {
+    background: #cfa5a5;
+    cursor: not-allowed;
+}
+
+.agreement-footer {
+    text-align: center;
+    padding: 6px 0 2px;
+}
+
+.agreement-link {
+    background: none;
+    border: none;
+    font-family: inherit;
+    font-size: 12px;
+    color: #888;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.agreement-link:hover { color: #AB0A0A; }

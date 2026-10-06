@@ -227,7 +227,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
                             <div class="card-tags">
                                 <span><i class="fa-solid fa-location-dot"></i> ${data.location || 'N/A'}</span>
-                                <span><i class="fa-solid fa-tag"></i> ${data.industry || 'General'}</span>
                             </div>
 
                             <div class="card-stats">
@@ -359,7 +358,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const companyName = document.getElementById("newCompanyName").value.trim();
             const location = document.getElementById("newCompanyLocation").value.trim();
-            const industry = document.getElementById("newCompanyIndustry").value.trim();
             const saveBtn = document.getElementById("saveCompanyBtn");
             saveBtn.disabled = true;
             saveBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`;
@@ -376,7 +374,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     supervisorName: addSupNamesList.join(", "),
                     supervisorEmail: addSupEmailsList[0] || "",
                     location,
-                    industry,
                     qrToken: generatedQrToken,
                     qrImageUrl,
                     createdAt: serverTimestamp()
@@ -781,7 +778,30 @@ document.addEventListener("click", (e) => {
 
                 let companyInterns = Array.from(internsMap.values());
 
-                for (const email of evalEmailList) {
+                // ONE-TIME LANG: huwag nang magpadala sa supervisor email na napadalhan na dati
+                const existingSnap = await getDocs(
+                    query(collection(db, "guestEvaluationAccess"), where("companyId", "==", companyId))
+                );
+                const alreadySent = new Set();
+                existingSnap.forEach(docSnap => {
+                    const sentTo = String(docSnap.data().supervisorEmail || "").trim().toLowerCase();
+                    if (sentTo) alreadySent.add(sentTo);
+                });
+
+                const normalize = (value) => String(value || "").trim().toLowerCase();
+                const emailsToSend = evalEmailList.filter(email => !alreadySent.has(normalize(email)));
+                const skippedEmails = evalEmailList.filter(email => alreadySent.has(normalize(email)));
+
+                if (emailsToSend.length === 0) {
+                    showModalAlert(
+                        "evaluationAlert",
+                        `The evaluation link was already sent to ${skippedEmails.join(", ")}. It can only be sent once.`,
+                        "error"
+                    );
+                    return;
+                }
+
+                for (const email of emailsToSend) {
                     const guestToken = "EVAL-" + Date.now() + "-" + Math.random().toString(36).substring(2, 10).toUpperCase();
                     const evaluationLink = `${window.location.origin}/guest-access/guest-evaluation.html?token=${guestToken}`;
 
@@ -810,7 +830,10 @@ document.addEventListener("click", (e) => {
                     );
                 }
 
-                showModalAlert("evaluationAlert", `The link has been sent via email! Please check your Gmail.`, "success");
+                const skippedNote = skippedEmails.length
+                    ? ` (Skipped, already sent before: ${skippedEmails.join(", ")})`
+                    : "";
+                showModalAlert("evaluationAlert", `The link has been sent via email! Please check your Gmail.${skippedNote}`, "success");
                 
                 setTimeout(() => {
                     if (evaluationModal) evaluationModal.classList.remove("active");
@@ -970,7 +993,6 @@ document.addEventListener("click", async (e) => {
                 document.getElementById("editCompanyId").value = companyId;
                 document.getElementById("editCompanyName").value = data.companyName || "";
                 document.getElementById("editCompanyLocation").value = data.location || "";
-                document.getElementById("editCompanyIndustry").value = data.industry || "";
 
                 editSupNamesList = data.supervisorNames || (data.supervisorName ? [data.supervisorName] : []);
                 editSupEmailsList = data.supervisorEmails || (data.supervisorEmail ? [data.supervisorEmail] : []);
@@ -1031,7 +1053,6 @@ if (editCompanyForm) {
         const companyId = document.getElementById("editCompanyId").value;
         const companyName = document.getElementById("editCompanyName").value.trim();
         const location = document.getElementById("editCompanyLocation").value.trim();
-        const industry = document.getElementById("editCompanyIndustry").value.trim();
 
         if (editSupNamesList.length === 0 || editSupEmailsList.length === 0) {
             showModalAlert("editModalAlert", "Maglagay kahit isang Supervisor Name at Email.", "error");
@@ -1050,7 +1071,6 @@ if (editCompanyForm) {
                 supervisorName: editSupNamesList.join(", "),
                 supervisorEmail: editSupEmailsList[0] || "",
                 location,
-                industry,
                 updatedAt: serverTimestamp()
             });
             editCompanyModal.classList.remove("active");

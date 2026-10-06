@@ -147,6 +147,49 @@ function printStatusClass(status) {
 
 function isPendingStudent(data) {
 
+    /* Kapareho ng _is_pending_student() sa app.py para
+       pareho ang bilang dito at sa Completion Forecast. */
+
+    if (data.pending === true || data.isPending === true) {
+        return true;
+    }
+
+    const accessFlags = [
+        "approved", "isApproved", "hasAccess", "accessGranted",
+        "activated", "isActivated", "registered", "isRegistered",
+        "inviteAccepted", "invitationAccepted"
+    ];
+
+    if (accessFlags.some((field) => data[field] === false)) {
+        return true;
+    }
+
+    const pendingValues = [
+        "pending", "pending approval", "for approval",
+        "awaiting approval", "unverified", "not approved",
+        "invited", "invite sent", "invite pending",
+        "pending invite", "pending invitation",
+        "invitation sent", "awaiting registration",
+        "unregistered", "not registered", "not activated",
+        "disabled", "deactivated", "suspended", "revoked"
+    ];
+
+    const statusFields = [
+        "status", "accountStatus", "approvalStatus",
+        "registrationStatus", "inviteStatus",
+        "invitationStatus", "accessStatus"
+    ];
+
+    const hasPendingStatus = statusFields.some((field) =>
+        pendingValues.includes(
+            String(data[field] || "").trim().toLowerCase()
+        )
+    );
+
+    if (hasPendingStatus) {
+        return true;
+    }
+
     const isCompleted =
         String(data.status || "").toLowerCase() === "completed";
 
@@ -178,6 +221,38 @@ function isPendingStudent(data) {
 
 
 /* ========================================
+   ARCHIVED CHECK (same rule as _is_archived
+   sa app.py)
+======================================== */
+
+function isArchivedStudent(data) {
+
+    if (data.archived === true || data.isArchived === true) {
+        return true;
+    }
+
+    if (data.archivedAt || data.archivedDate) {
+        return true;
+    }
+
+    const archiveFlags = [
+        "batchArchived", "inArchive", "isCompletedBatch",
+        "completedBatchArchived", "archiveId", "archivedBatch"
+    ];
+
+    if (archiveFlags.some((field) => data[field])) {
+        return true;
+    }
+
+    return ["status", "accountStatus", "internshipStatus"].some(
+        (field) =>
+            String(data[field] || "").toLowerCase().includes("archiv")
+    );
+
+}
+
+
+/* ========================================
    LOAD REGISTERED STUDENTS
 ======================================== */
 
@@ -203,7 +278,7 @@ async function loadRegisteredStudents() {
                sa registered students. Nasa Completed Batch
                Archive na sila. */
 
-            if (data.archived === true) {
+            if (isArchivedStudent(data)) {
                 return;
             }
 

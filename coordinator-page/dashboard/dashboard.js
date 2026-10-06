@@ -57,6 +57,10 @@ let coordinatorExceptions = {};
 
 let currentReportPage = 1;
 let reportsPerPage = 8;
+
+// Napiling linggo ng Weekly Reports table (Monday, local midnight).
+// Default = kasalukuyang linggo, kaya nagre-reset ito tuwing Lunes.
+let selectedReportWeekStart = null;
 let filteredWeeklyReports = [];
 
 
@@ -155,6 +159,8 @@ document.addEventListener("DOMContentLoaded", () => {
     safeInit(initPendingModalEvents, "initPendingModalEvents");
 
     safeInit(initReportFilters, "initReportFilters");
+
+    safeInit(initReportWeekNav, "initReportWeekNav");
 
     // IMPORTANT:
     // Initialize Weekly Reports Pagination
@@ -325,56 +331,46 @@ async function getPendingStudents() {
 // BATCH HELPER (Batch Archive)
 // ========================================
 
-// Kinukuha ang batch (hal. "2023") ng archived student.
-// Sinusubukan muna ang batch fields, tapos ang petsa
-// kung kailan na-archive / nag-graduate.
+// SAME RULES as completed-batch-archive.js, para pareho ang bilang
+// ng Batch Archive card at ng Batch Archive page.
+//
+// BATCH = Academic Year ng pagtatapos (OJT). Ang year sa unahan ng
+// Student No. ay ang taon ng pagpasok; 4-year course, kaya:
+//   "2021-01-09980" -> "AY 2024-2025"
+const ARCHIVE_COURSE_YEARS = 4;
+const ARCHIVE_AY_END_MONTH = 6;   // June
+const ARCHIVE_AY_END_DAY = 30;
+
 function getBatchLabel(data) {
 
-    const batchFields = [
-        data.batch,
-        data.batchYear,
-        data.batchName,
-        data.batchId,
-        data.archivedBatch,
-        data.schoolYear,
-        data.academicYear
-    ];
+    const num = String(data.studentNumber || data.idNumber || "").trim();
+    const m = num.match(/^(\d{4})/);
 
-    for (const value of batchFields) {
-
-        if (value === undefined || value === null) continue;
-
-        const text = String(value).trim();
-
-        if (!text) continue;
-
-        const yearMatch = text.match(/(19|20)\d{2}/);
-
-        return yearMatch ? yearMatch[0] : text;
-
+    if (m) {
+        const start = Number(m[1]) + ARCHIVE_COURSE_YEARS - 1;
+        return `AY ${start}-${start + 1}`;
     }
 
-    const dateFields = [
-        data.archivedAt,
-        data.graduatedAt,
-        data.completedAt
-    ];
+    return data.batch || "Unassigned Batch";
 
-    for (const value of dateFields) {
+}
 
-        if (!value) continue;
+// "AY 2024-2025" -> tapos na pagkatapos ng June 30, 2025
+function hasBatchEnded(batchName, now = new Date()) {
 
-        const ms = value.seconds
-            ? value.seconds * 1000
-            : value;
+    const m = String(batchName || "")
+        .match(/(\d{4})\s*[-\u2013\u2014]\s*(\d{4})/);
 
-        const year = new Date(ms).getFullYear();
+    if (!m) return false;
 
-        if (!Number.isNaN(year)) return String(year);
+    const end = new Date(
+        Number(m[2]),
+        ARCHIVE_AY_END_MONTH - 1,
+        ARCHIVE_AY_END_DAY,
+        23, 59, 59
+    );
 
-    }
-
-    return null;
+    return now > end;
 
 }
 
@@ -427,7 +423,12 @@ async function loadDashboardStats() {
             const data =
                 docSnap.data();
 
-            if (data.accountDisabled === true) {
+            // Deleted na account: hindi binibilang, maliban kung
+            // archived na (kasama pa rin sila sa Batch Archive page).
+            if (
+                data.accountDisabled === true &&
+                data.archived !== true
+            ) {
                 return;
             }
 
@@ -439,16 +440,27 @@ async function loadDashboardStats() {
 
 
             // ARCHIVED / GRADUATED
+            // Archived na, O tapos na ang Academic Year ng batch
+            // (auto-archive ng Batch Archive page), maliban sa
+            // student na pinayagang magpatuloy ng hours.
 
-            if (
+            const batchLabel = getBatchLabel(data);
+
+            const isDone =
+                data.status === "Completed" ||
+                internshipStatus === "Completed";
+
+            const isArchived =
                 data.archived === true ||
-                internshipStatus === "Graduated"
-            ) {
+                (
+                    hasBatchEnded(batchLabel) &&
+                    !(data.allowContinueHours === true && !isDone)
+                );
+
+            if (isArchived || internshipStatus === "Graduated") {
                 graduated++;
 
-                const batchLabel = getBatchLabel(data);
-
-                if (batchLabel) {
+                if (isArchived) {
                     archivedBatches.add(batchLabel);
                 }
 
@@ -591,7 +603,7 @@ async function loadDashboardStats() {
         if (graduatedElem) {
 
             graduatedElem.textContent =
-                batchCount > 0 ? batchCount : graduated;
+                batchCount;
 
         }
 
@@ -675,14 +687,12 @@ async function loadDashboardStats() {
 
         setStatNote(
             "graduatedNote",
-            graduated > 0,
+            batchCount > 0,
             {
                 tone: "success",
                 icon: "fa-box-archive",
                 title: batchCount === 1 ? "Batch Archived" : "Batches Archived",
-                text: batchCount > 0
-                    ? `${batchCount} ${batchCount === 1 ? "batch has" : "batches have"} been archived.`
-                    : `${graduated} archived ${graduated === 1 ? "student" : "students"}, grouped by batch.`
+                text: `${batchCount} ${batchCount === 1 ? "batch has" : "batches have"} been archived.`
             },
             {
                 tone: "muted",
@@ -952,6 +962,24 @@ async function loadPendingCounts() {
 // FETCH PENDING INVITATIONS
 // ========================================
 
+// Helper: kunin ang timestamp (ms) ng Firestore Timestamp / number / Date
+// Walang date => 0 (mapupunta sa dulo ng list)
+function getDateMs(value) {
+    if (!value) return 0;
+    if (typeof value.toMillis === "function") return value.toMillis();
+    if (value.seconds) return value.seconds * 1000;
+    const d = new Date(value);
+    return isNaN(d) ? 0 : d.getTime();
+}
+
+// Sort direction: "desc" = pinakabago muna, "asc" = pinakaluma muna
+const PENDING_SORT_DIRECTION = "desc";
+
+function sortByDate(list, getValue) {
+    const dir = PENDING_SORT_DIRECTION === "asc" ? 1 : -1;
+    return [...list].sort((a, b) => dir * (getDateMs(getValue(a)) - getDateMs(getValue(b))));
+}
+
 async function fetchAndDisplayPendingInvitations() {
 
     const listContainer =
@@ -973,7 +1001,7 @@ async function fetchAndDisplayPendingInvitations() {
 
         } else {
 
-            listContainer.innerHTML = pendingList.map((item) => {
+            listContainer.innerHTML = sortByDate(pendingList, (item) => item.createdAt).map((item) => {
 
                 let dateSent = "N/A";
 
@@ -1076,7 +1104,12 @@ async function fetchAndDisplayPendingEvaluations() {
         let count = 0;
 
 
-        pendingEvalsSnap.forEach((docSnap) => {
+        const sortedEvalDocs = sortByDate(
+            pendingEvalsSnap.docs,
+            (docSnap) => docSnap.data().createdAt
+        );
+
+        sortedEvalDocs.forEach((docSnap) => {
 
             const data =
                 docSnap.data();
@@ -1323,6 +1356,71 @@ function normalizeCompanyValue(value) {
     return cleaned;
 }
 
+// ========================================
+// AUTO WEEKLY REPORT HELPERS (Monday - Sunday)
+// Kapareho ng week logic sa weeklyreport.js
+// ========================================
+function wrToDateStr(d) {
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function wrParseDateStr(str) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(str || "").trim());
+    if (!m) return null;
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return isNaN(d) ? null : d;
+}
+
+// Monday ng linggo kung saan nabibilang ang petsa
+function wrGetWeekStart(d) {
+    const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const day = x.getDay(); // 0 = Sunday
+    x.setDate(x.getDate() + (day === 0 ? -6 : 1 - day));
+    return x;
+}
+
+function wrFormatDate(d) {
+    return d.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric"
+    });
+}
+
+// Kapareho ng "Date:" sa weeklyreport.html -> "Sep 21 – Sep 27, 2026"
+// (buong linggo Mon - Sun; may taon sa simula lang kung magkaiba ang taon)
+function wrFormatWeekRange(weekStartStr) {
+    const start = wrParseDateStr(weekStartStr);
+    if (!start) return "";
+    const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
+    const short = { month: "short", day: "numeric" };
+    const full = { month: "short", day: "numeric", year: "numeric" };
+    const s = start.toLocaleDateString("en-US", start.getFullYear() !== end.getFullYear() ? full : short);
+    const e = end.toLocaleDateString("en-US", full);
+    return `${s} \u2013 ${e}`;
+}
+
+// Petsa ng isang attendance record bilang Date (local midnight)
+function wrGetAttendanceDate(log) {
+    const fromField = wrParseDateStr(log.date);
+    if (fromField) return fromField;
+    if (log.createdAt && typeof log.createdAt.toDate === "function") {
+        const c = log.createdAt.toDate();
+        return new Date(c.getFullYear(), c.getMonth(), c.getDate());
+    }
+    return null;
+}
+
+// Para sa lumang weekly_reports na walang weekStart field:
+// hulaan ang linggo mula sa unang petsa ng weekRange ("Sep 21, 2026 - Sep 24, 2026")
+function wrDeriveWeekStart(data) {
+    if (data.weekStart) return String(data.weekStart);
+    const first = String(data.weekRange || "").split(/\s[-\u2013]\s/)[0];
+    const d = new Date(first);
+    return isNaN(d) ? "" : wrToDateStr(wrGetWeekStart(d));
+}
+
 async function loadWeeklyReports() {
 
     const tableBody =
@@ -1566,12 +1664,154 @@ async function loadWeeklyReports() {
                 weekRange:
                     data.weekRange ||
                     data.week ||
-                    "Week Report"
+                    "Week Report",
+
+                weekStart:
+                    wrDeriveWeekStart(data),
+
+                studentUid:
+                    studentInfo.uid ||
+                    studentId,
+
+                isAuto:
+                    false
 
             });
 
         });
 
+
+        // ========================================
+        // AUTO-GENERATED WEEKLY REPORTS
+        // Galing sa "attendance" ng bawat student, naka-group
+        // kada linggo (Mon - Sun). Hindi na kailangan mag-submit
+        // ng student: bawat bagong linggo ay may sariling row,
+        // at ang kasalukuyang linggo ay nag-a-update habang
+        // nagdadagdag ng attendance.
+        // May sariling row na ang linggong naisubmit na dati,
+        // kaya hindi ito dinodoble.
+        // ========================================
+        try {
+
+            const attendanceSnap =
+                await getDocs(
+                    collection(db, "attendance")
+                );
+
+            const submittedKeys = new Set(
+                allWeeklyReports
+                    .filter(r => r.weekStart)
+                    .map(r => `${r.studentUid}|${r.weekStart}`)
+            );
+
+            // Monday ng kasalukuyang linggo (hindi pa tapos)
+            const currentWeekStartStr =
+                wrToDateStr(wrGetWeekStart(new Date()));
+
+            const weekGroups = new Map();
+
+            attendanceSnap.forEach(docSnap => {
+
+                const log = docSnap.data();
+
+                if (!log.userId) return;
+
+                const studentInfo =
+                    studentMapByUid[log.userId] ||
+                    studentMap[log.userId];
+
+                // Estudyante lang (skip kung wala na ang user)
+                if (!studentInfo) return;
+
+                // Walang mapapakita sa report ang rejected / absent
+                const status =
+                    String(log.status || "").toLowerCase();
+
+                if (status === "rejected" || status === "absent") return;
+
+                const logDate = wrGetAttendanceDate(log);
+
+                if (!logDate) return;
+
+                const weekStartStr =
+                    wrToDateStr(wrGetWeekStart(logDate));
+
+                const key = `${log.userId}|${weekStartStr}`;
+
+                // Hindi pa tapos ang linggo -> hindi pa lalabas.
+                // Lalabas lang ang report pagkatapos ng Linggo (simula Lunes).
+                if (weekStartStr >= currentWeekStartStr) return;
+
+                if (submittedKeys.has(key)) return;
+
+                if (!weekGroups.has(key)) {
+                    weekGroups.set(key, {
+                        userId: log.userId,
+                        studentInfo: studentInfo,
+                        weekStartStr: weekStartStr,
+                        first: logDate,
+                        last: logDate
+                    });
+                }
+
+                const group = weekGroups.get(key);
+
+                if (logDate < group.first) group.first = logDate;
+                if (logDate > group.last) group.last = logDate;
+
+            });
+
+            weekGroups.forEach((group) => {
+
+                const info = group.studentInfo;
+
+                allWeeklyReports.push({
+                    id:
+                        "",
+                    studentId:
+                        group.userId,
+                    studentUid:
+                        group.userId,
+                    // Report Date = huling araw na may attendance sa linggong iyon
+                    reportDate:
+                        wrFormatDate(group.last),
+                    timestamp:
+                        group.last.getTime(),
+                    studentName:
+                        info.fullName ||
+                        info.name ||
+                        "Unknown Student",
+                    studentNumber:
+                        info.studentNumber ||
+                        info.idNumber ||
+                        "-",
+                    section:
+                        info.section ||
+                        "-",
+                    company:
+                        normalizeCompanyValue(info.companyName) ||
+                        normalizeCompanyValue(info.company) ||
+                        "-",
+                    weekRange:
+                        `${wrFormatDate(group.first)} - ${wrFormatDate(group.last)}`,
+                    weekStart:
+                        group.weekStartStr,
+                    isAuto:
+                        true
+                });
+
+            });
+
+        } catch (autoError) {
+
+            // Kapag hindi mabasa ang attendance (hal. Firestore rules),
+            // ipakita pa rin ang mga naisubmit na report.
+            console.error(
+                "Unable to auto-generate weekly reports:",
+                autoError
+            );
+
+        }
 
         // ========================================
         // RENDER TABLE
@@ -1591,7 +1831,7 @@ async function loadWeeklyReports() {
         tableBody.innerHTML = `
             <tr>
                 <td
-                    colspan="6"
+                    colspan="5"
                     style="
                         text-align:center;
                         color:#ff5a5f;
@@ -1686,7 +1926,11 @@ function renderWeeklyReportsTable() {
                 );
 
 
-            return matchesSection && matchesSearch;
+            // Isang linggo lang (Mon - Sun) ang ipinapakita
+            const matchesWeek =
+                getReportWeekKey(item) === wrToDateStr(getSelectedReportWeekStart());
+
+            return matchesSection && matchesSearch && matchesWeek;
 
         });
 
@@ -1757,7 +2001,7 @@ function renderWeeklyReportsTable() {
         tableBody.innerHTML = `
             <tr>
                 <td
-                    colspan="6"
+                    colspan="5"
                     style="
                         text-align:center;
                         color:#888;
@@ -1854,12 +2098,6 @@ function renderWeeklyReportsTable() {
             <tr>
 
                 <td>
-                    <strong>
-                        ${report.reportDate}
-                    </strong>
-                </td>
-
-                <td>
                     ${report.studentName}
                 </td>
 
@@ -1884,7 +2122,7 @@ function renderWeeklyReportsTable() {
                             class="fa-solid fa-circle-check"
                         ></i>
 
-                        ${report.weekRange}
+                        ${wrFormatWeekRange(getReportWeekKey(report)) || report.weekRange}
 
                     </span>
 
@@ -1893,7 +2131,7 @@ function renderWeeklyReportsTable() {
                 <td>
 
                     <a
-                        href="../../student-page/reportform/weeklyreport.html?studentId=${encodeURIComponent(report.studentId ?? "")}&reportId=${encodeURIComponent(report.id ?? "")}"
+                        href="../../student-page/reportform/weeklyreport.html?studentId=${encodeURIComponent(report.studentId ?? "")}&reportId=${encodeURIComponent(report.id ?? "")}&week=${encodeURIComponent(report.weekStart ?? "")}"
                         class="btn-view-report"
                     >
 
@@ -2192,6 +2430,71 @@ function initReportPagination() {
 // ========================================
 // REPORT FILTERS
 // ========================================
+
+// ========================================
+// WEEKLY REPORTS - WEEK NAVIGATOR
+// ========================================
+function getSelectedReportWeekStart() {
+    if (!selectedReportWeekStart) {
+        selectedReportWeekStart = wrGetWeekStart(new Date());
+    }
+    return selectedReportWeekStart;
+}
+
+// "YYYY-MM-DD" ng Monday na kinabibilangan ng report
+function getReportWeekKey(item) {
+    if (item.weekStart) return item.weekStart;
+    if (item.timestamp) {
+        return wrToDateStr(wrGetWeekStart(new Date(item.timestamp)));
+    }
+    return "";
+}
+
+function updateReportWeekHeader() {
+    const start = getSelectedReportWeekStart();
+    const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
+
+    const label = document.getElementById("reportWeekLabel");
+    if (label) {
+        label.textContent = `${wrFormatDate(start)} - ${wrFormatDate(end)}`;
+    }
+
+    // Walang susunod na linggo na may report pa
+    const nextBtn = document.getElementById("reportNextWeekBtn");
+    if (nextBtn) {
+        nextBtn.disabled =
+            wrToDateStr(start) >= wrToDateStr(wrGetWeekStart(new Date()));
+    }
+}
+
+function initReportWeekNav() {
+    const prevBtn = document.getElementById("reportPrevWeekBtn");
+    const nextBtn = document.getElementById("reportNextWeekBtn");
+    const thisBtn = document.getElementById("reportThisWeekBtn");
+
+    const goTo = (weekStart) => {
+        selectedReportWeekStart = weekStart;
+        currentReportPage = 1;
+        updateReportWeekHeader();
+        renderWeeklyReportsTable();
+    };
+
+    const shift = (days) => {
+        const s = getSelectedReportWeekStart();
+        return new Date(s.getFullYear(), s.getMonth(), s.getDate() + days);
+    };
+
+    if (prevBtn) prevBtn.addEventListener("click", () => goTo(shift(-7)));
+
+    if (nextBtn) nextBtn.addEventListener("click", () => {
+        if (nextBtn.disabled) return;
+        goTo(shift(7));
+    });
+
+    if (thisBtn) thisBtn.addEventListener("click", () => goTo(wrGetWeekStart(new Date())));
+
+    updateReportWeekHeader();
+}
 
 function initReportFilters() {
 

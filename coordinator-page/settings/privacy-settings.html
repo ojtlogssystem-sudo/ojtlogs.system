@@ -46,82 +46,6 @@
 
 <section class="settings-page">
 
-    <!-- ============ PROFILE VISIBILITY ============ -->
-
-    <div class="settings-card">
-
-        <div class="card-header">
-            <div>
-                <h3>
-                    <i class="fa-solid fa-eye"></i>
-                    Profile visibility
-                </h3>
-                <p>Choose what students and other coordinators can see. Changes save right away.</p>
-            </div>
-        </div>
-
-        <div class="setting-list">
-
-            <div class="setting-row privacy-toggle">
-                <div class="setting-text">
-                    <h4>Show my email to students</h4>
-                    <p>Students can contact you directly from their portal.</p>
-                </div>
-                <label class="switch">
-                    <input type="checkbox" data-key="showEmail">
-                    <span class="slider"></span>
-                </label>
-            </div>
-
-            <div class="setting-row privacy-toggle">
-                <div class="setting-text">
-                    <h4>Show my phone number</h4>
-                    <p>Your number appears on your coordinator profile.</p>
-                </div>
-                <label class="switch">
-                    <input type="checkbox" data-key="showPhone">
-                    <span class="slider"></span>
-                </label>
-            </div>
-
-            <div class="setting-row privacy-toggle">
-                <div class="setting-text">
-                    <h4>Show my profile photo</h4>
-                    <p>When off, your initials are shown instead.</p>
-                </div>
-                <label class="switch">
-                    <input type="checkbox" data-key="showPhoto">
-                    <span class="slider"></span>
-                </label>
-            </div>
-
-            <div class="setting-row privacy-toggle">
-                <div class="setting-text">
-                    <h4>List me in the coordinator directory</h4>
-                    <p>Removing yourself hides your profile from search and browse lists.</p>
-                </div>
-                <label class="switch">
-                    <input type="checkbox" data-key="listedInDirectory">
-                    <span class="slider"></span>
-                </label>
-            </div>
-
-            <div class="setting-row privacy-toggle">
-                <div class="setting-text">
-                    <h4>Show when I'm active</h4>
-                    <p>Displays your last-seen status beside your name.</p>
-                </div>
-                <label class="switch">
-                    <input type="checkbox" data-key="activityStatus">
-                    <span class="slider"></span>
-                </label>
-            </div>
-
-        </div>
-
-    </div>
-
-
     <!-- ============ DATA & ANALYTICS ============ -->
 
     <div class="settings-card">
@@ -145,17 +69,6 @@
                 </div>
                 <label class="switch">
                     <input type="checkbox" data-key="analyticsConsent">
-                    <span class="slider"></span>
-                </label>
-            </div>
-
-            <div class="setting-row privacy-toggle">
-                <div class="setting-text">
-                    <h4>Share my dashboard stats with admins</h4>
-                    <p>Admins see your approval counts and response times.</p>
-                </div>
-                <label class="switch">
-                    <input type="checkbox" data-key="shareStatsWithAdmin">
                     <span class="slider"></span>
                 </label>
             </div>
@@ -240,19 +153,6 @@
                 </div>
             </div>
 
-            <div class="setting-row">
-                <div class="setting-text">
-                    <h4>Request a data correction</h4>
-                    <p>Ask an administrator to fix information you can't edit yourself, like your role.</p>
-                </div>
-                <div class="setting-action">
-                    <button type="button" class="btn btn-secondary" id="requestCorrection">
-                        <i class="fa-solid fa-pen-to-square"></i>
-                        Request
-                    </button>
-                </div>
-            </div>
-
             <div class="setting-row danger-row">
                 <div class="setting-text">
                     <h4>Request data deletion</h4>
@@ -288,9 +188,103 @@
 
     </div>
 
+    <!-- ============ DATA PROTECTION AGREEMENT (TAB) ============ -->
+
+    <div class="settings-card agreement-card">
+
+        <button type="button" class="agreement-tab" id="openAgreement"
+                aria-haspopup="dialog" aria-controls="agreementModal">
+            <span class="agreement-tab-icon">
+                <i class="fa-solid fa-file-shield"></i>
+            </span>
+            <span class="agreement-tab-text">
+                <strong>Coordinator Data Protection &amp; Administrative Agreement</strong>
+                <small>Read your responsibilities under the Data Privacy Act of 2012 (RA 10173).</small>
+            </span>
+            <i class="fa-solid fa-chevron-right agreement-tab-arrow"></i>
+        </button>
+
+    </div>
+
 </section>
 
 </main>
+
+</div>
+
+<!-- AGREEMENT MODAL -->
+
+<div class="agreement-overlay" id="agreementModal" role="dialog"
+     aria-modal="true" aria-labelledby="agreementTitle" hidden>
+
+    <div class="agreement-container">
+
+        <div class="agreement-head">
+            <h2 id="agreementTitle">OJT-LOGS: Coordinator Data Protection &amp; Administrative Agreement</h2>
+            <button type="button" class="agreement-close" id="closeAgreement" aria-label="Close">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="agreement-body">
+
+            <p class="agreement-notice">
+                <strong>Notice:</strong> As an authorized OJT Coordinator and System
+                Administrator, your access to the OJT-LOGS platform grants you authority
+                to handle confidential student data. By accessing this system, you agree
+                to adhere to the provisions of the Data Privacy Act of 2012 (RA 10173)
+                and GRC administrative standards.
+            </p>
+
+            <h3>1. Scope of Authorized Access</h3>
+            <ul>
+                <li>Access is granted solely for monitoring student attendance, validating
+                    rendered hours, reviewing supervisor evaluations, managing partner
+                    company profiles, and conducting academic performance audits.</li>
+                <li>Credentials and administrative access must not be shared, transferred,
+                    or delegated to unauthorized individuals.</li>
+            </ul>
+
+            <h3>2. Confidentiality &amp; Data Protection (RA 10173 Compliance)</h3>
+            <ul>
+                <li>All student profile records, daily attendance logs, verification
+                    photographs, and performance analytics are strictly confidential.</li>
+                <li>Administrators must refrain from exporting, copying, or distributing
+                    student data outside official academic channels or downloading records
+                    onto unsecured personal devices.</li>
+            </ul>
+
+            <h3>3. Analytics &amp; Decision Support Responsibility</h3>
+            <ul>
+                <li>Data generated by the <strong>Predictive Analytics (At-Risk Interns)</strong>
+                    and <strong>Diagnostic Analytics (Skill Gap Analysis)</strong> modules
+                    serve strictly as decision-support tools.</li>
+                <li>Administrative interventions (e.g., counseling, student follow-ups, or
+                    company recommendations) must remain unbiased, academically justified,
+                    and guided by institutional policies.</li>
+            </ul>
+
+            <h3>4. Record Auditability and Archiving</h3>
+            <ul>
+                <li>All administrative actions, including manual adjustments to student
+                    logs, evaluation overrides, and batch archiving, are tracked in the
+                    system's audit trail.</li>
+                <li>Official exported reports (e.g., PDF summary logs and clearance sheets)
+                    must be stored and handled in compliance with GRC data retention
+                    policies.</li>
+            </ul>
+
+            <h3>5. System Integrity &amp; Misuse</h3>
+            <ul>
+                <li>Deliberate alteration of verified student records, falsification of
+                    completion status, or misuse of administrative privileges will
+                    constitute a breach of institutional policy and data protection
+                    regulations.</li>
+            </ul>
+
+        </div>
+
+    </div>
 
 </div>
 

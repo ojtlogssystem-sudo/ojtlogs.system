@@ -924,85 +924,74 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
 
+            // One row per skill; Company and Action cells span all of that company's skill rows.
             tableBody.innerHTML =
                 globalCompanyExposureData
-                    .map(item => `
+                    .map(item => {
 
-                        <tr>
+                        const skills =
+                            (item.skills && item.skills.length)
+                                ? item.skills
+                                : [{
+                                    skillKey: item.skillKey,
+                                    primarySkill: item.primarySkill,
+                                    exposure: item.exposure,
+                                    commonTasks: item.commonTasks,
+                                    studentCount: null
+                                }];
 
-                            <td>
-                                <strong>
-                                    ${item.companyName}
-                                </strong>
-                            </td>
+                        return skills.map((sk, i) => `
 
+                            <tr class="${i > 0 ? "company-subrow" : ""}">
 
-                            <td>
-                                <span
-                                    class="skill-tag ${item.skillKey}"
-                                >
-                                    ${item.primarySkill}
-                                </span>
-                            </td>
+                                ${i === 0 ? `
+                                    <td rowspan="${skills.length}">
+                                        <strong>${item.companyName}</strong>
+                                    </td>
+                                ` : ""}
 
-
-                            <td>
-
-                                <div
-                                    class="company-progress"
-                                >
-
-                                    <div
-                                        class="company-progress-bar"
-                                    >
-
-                                        <div
-                                            class="company-progress-fill ${item.skillKey}-fill"
-                                            style="
-                                                width:${item.exposure}%;
-                                            "
-                                        ></div>
-
-                                    </div>
-
-                                    <span>
-                                        ${item.exposure}%
+                                <td>
+                                    <span class="skill-tag ${sk.skillKey}">
+                                        ${sk.primarySkill}
                                     </span>
+                                    ${sk.studentCount ? `
+                                        <div class="skill-students">
+                                            ${sk.studentCount} student${sk.studentCount > 1 ? "s" : ""}
+                                        </div>
+                                    ` : ""}
+                                </td>
 
-                                </div>
+                                <td>
+                                    <div class="company-progress">
+                                        <div class="company-progress-bar">
+                                            <div
+                                                class="company-progress-fill ${sk.skillKey}-fill"
+                                                style="width:${sk.exposure}%;"
+                                            ></div>
+                                        </div>
+                                        <span>${sk.exposure}%</span>
+                                    </div>
+                                </td>
 
-                            </td>
+                                <td>${sk.commonTasks}</td>
 
+                                ${i === 0 ? `
+                                    <td rowspan="${skills.length}">
+                                        <button
+                                            class="company-view-btn"
+                                            onclick="window.viewCompanySkillModal('${item.companyName}')"
+                                        >
+                                            <i class="fa-solid fa-eye"></i>
+                                            View
+                                        </button>
+                                    </td>
+                                ` : ""}
 
-                            <td>
-                                ${item.commonTasks}
-                            </td>
+                            </tr>
 
+                        `).join("");
 
-                            <td>
-
-                                <button
-                                    class="company-view-btn"
-                                    onclick="
-                                        window.viewCompanySkillModal(
-                                            '${item.companyName}'
-                                        )
-                                    "
-                                >
-
-                                    <i
-                                        class="fa-solid fa-eye"
-                                    ></i>
-
-                                    View
-
-                                </button>
-
-                            </td>
-
-                        </tr>
-
-                    `)
+                    })
                     .join("");
 
 
@@ -1928,6 +1917,48 @@ document.addEventListener("DOMContentLoaded", () => {
 
     }
 
+    // Hindi kasama sa Completion Forecast:
+    //  - mga nasa Completed Batch Archive na
+    //  - mga pending / invited / disabled (wala pang access sa system)
+    // Defensive check ito kahit nasala na ng backend.
+    function isExcludedFromForecast(item) {
+
+        if (!item) return true;
+
+        if (
+            item.archived === true ||
+            item.isArchived === true ||
+            item.archivedAt ||
+            item.archivedDate
+        ) {
+            return true;
+        }
+
+        if (item.pending === true || item.isPending === true) {
+            return true;
+        }
+
+        const pendingValues = [
+            "pending", "pending approval", "for approval",
+            "awaiting approval", "unverified", "not approved",
+            "invited", "invite sent", "invite pending",
+            "pending invite", "pending invitation",
+            "invitation sent", "awaiting registration",
+            "unregistered", "not registered", "not activated",
+            "disabled", "deactivated", "suspended", "revoked"
+        ];
+
+        return [
+            "status", "accountStatus", "approvalStatus",
+            "registrationStatus", "inviteStatus",
+            "invitationStatus", "accessStatus"
+        ].some(field => {
+            const value = String(item[field] || "").trim().toLowerCase();
+            return pendingValues.includes(value) || value.includes("archiv");
+        });
+
+    }
+
     function getForecastKey(item) {
 
         if (item.forecast && FORECAST_META[item.forecast]) {
@@ -2233,6 +2264,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const all =
             globalStudentRecords
+                .filter(item => !isExcludedFromForecast(item))
                 .map(item => ({ item, key: getForecastKey(item) }))
                 .filter(row => row.key);
 
@@ -3270,16 +3302,16 @@ window.viewCompanySkillModal =
             `${compData.companyName} - Skill Exposure Breakdown`;
 
 
+        const skillSummary =
+            (compData.skills && compData.skills.length)
+                ? compData.skills
+                    .map(sk => `${sk.primarySkill} (${sk.exposure}%)`)
+                    .join(" + ")
+                : `${compData.primarySkill} (${compData.exposure}%)`;
+
         modalSubtitle.innerHTML =
-            `Primary Skill Focus:
-            <strong>
-                ${compData.primarySkill}
-            </strong>
-            |
-            Skill Exposure Rate:
-            <strong>
-                ${compData.exposure}%
-            </strong>`;
+            `Primary Skills:
+            <strong>${skillSummary}</strong>`;
 
 
         if (

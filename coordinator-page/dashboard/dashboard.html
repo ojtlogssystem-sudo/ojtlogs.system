@@ -259,6 +259,20 @@
                         <div class="table-header-right">
 
 
+                            <!-- Week Navigator: isang linggo (Mon - Sun) lang ang ipinapakita -->
+                            <div class="report-week-nav">
+                                <button type="button" id="reportPrevWeekBtn" title="Previous week">
+                                    <i class="fa-solid fa-chevron-left"></i>
+                                </button>
+                                <span id="reportWeekLabel" class="report-week-label">--</span>
+                                <button type="button" id="reportNextWeekBtn" title="Next week">
+                                    <i class="fa-solid fa-chevron-right"></i>
+                                </button>
+                                <button type="button" id="reportThisWeekBtn" class="report-this-week">
+                                    This Week
+                                </button>
+                            </div>
+
                             <!-- Search (name, student ID, section, company, week) -->
                             <div class="report-search-box">
                                 <i class="fa-solid fa-magnifying-glass"></i>
@@ -362,7 +376,6 @@
 
                             <thead>
                                 <tr>
-                                    <th>Report Date</th>
                                     <th>Student Name</th>
                                     <th>Section</th>
                                     <th>Company</th>
@@ -373,7 +386,7 @@
 
                             <tbody id="weeklyReportsTableBody">
                                 <tr>
-                                    <td colspan="6"style="text-align: center;padding: 25px;color: #888;">
+                                    <td colspan="5" style="text-align: center;padding: 25px;color: #888;">
                                         Loading weekly reports... </td>
                                 </tr>
                             </tbody>

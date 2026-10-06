@@ -1752,39 +1752,33 @@
    TOTAL = 100%
 ======================================== */
 
-/* Report Date */
+/* Student Name */
 .students-table th:nth-child(1),
 .students-table td:nth-child(1) {
-    width: 14%;
-}
-
-/* Student Name */
-.students-table th:nth-child(2),
-.students-table td:nth-child(2) {
-    width: 27%;
+    width: 30%;
 }
 
 /* Section */
-.students-table th:nth-child(3),
-.students-table td:nth-child(3) {
-    width: 9%;
+.students-table th:nth-child(2),
+.students-table td:nth-child(2) {
+    width: 12%;
 }
 
 /* Company */
-.students-table th:nth-child(4),
-.students-table td:nth-child(4) {
-    width: 13%;
+.students-table th:nth-child(3),
+.students-table td:nth-child(3) {
+    width: 17%;
 }
 
 /* Week */
-.students-table th:nth-child(5),
-.students-table td:nth-child(5) {
-    width: 25%;
+.students-table th:nth-child(4),
+.students-table td:nth-child(4) {
+    width: 29%;
 }
 
 /* Action */
-.students-table th:nth-child(6),
-.students-table td:nth-child(6) {
+.students-table th:nth-child(5),
+.students-table td:nth-child(5) {
     width: 12%;
 }
 
@@ -1838,7 +1832,7 @@
    STUDENT NAME
 ======================================== */
 
-.students-table td:nth-child(2) {
+.students-table td:nth-child(1) {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1849,7 +1843,7 @@
    COMPANY
 ======================================== */
 
-.students-table td:nth-child(4) {
+.students-table td:nth-child(3) {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1860,7 +1854,7 @@
    WEEK
 ======================================== */
 
-.students-table td:nth-child(5) {
+.students-table td:nth-child(4) {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2537,4 +2531,57 @@ body {
 .stat-card.static-card:hover::before {
     display: none;
     content: none;
+}
+
+/* ========================================
+   WEEKLY REPORTS - WEEK NAVIGATOR
+   ======================================== */
+
+.report-week-nav {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 40px;
+    padding: 0 6px;
+    background: #fff;
+    border: 1px solid #ececec;
+    border-radius: 8px;
+}
+
+.report-week-nav button {
+    height: 30px;
+    min-width: 30px;
+    padding: 0 8px;
+    background: #f3f4f6;
+    color: #444;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.report-week-nav button:hover:not(:disabled) {
+    background: #e5e7eb;
+}
+
+.report-week-nav button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.report-week-nav .report-this-week {
+    background: #fff;
+    color: #AB0A0A;
+    border-color: #AB0A0A;
+}
+
+.report-week-label {
+    min-width: 150px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    white-space: nowrap;
 }

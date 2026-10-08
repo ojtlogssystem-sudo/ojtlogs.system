@@ -25,6 +25,9 @@
         rel="stylesheet"
     >
 
+    <!-- Google Sans Flex -->
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@300..700&display=swap" rel="stylesheet">
+
     <!-- Font Awesome -->
     <link
         rel="stylesheet"
@@ -74,10 +77,14 @@
                 id="registeredStudentsCard"
             >
 
+                <div class="stat-card-icon" aria-hidden="true">
+                    <i class="fa-solid fa-users"></i>
+                </div>
+
                 <div class="stat-content">
 
                     <p class="title">
-                        Total Registered Interns
+                        TOTAL REGISTERED INTERNS
                     </p>
 
                     <h2 id="totalStudentsCount">
@@ -106,10 +113,14 @@
                 id="activeStudentsCard"
             >
 
+                <div class="stat-card-icon" aria-hidden="true">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+
                 <div class="stat-content">
 
                     <p class="title">
-                        Active Interns
+                        ACTIVE INTERNS
                     </p>
 
                     <h2 id="activeStudentsCount">
@@ -137,11 +148,13 @@
                 id="completedStudentsCard"
             >
 
+                <div class="stat-card-icon" aria-hidden="true">
+                    <i class="fa-solid fa-clipboard-check"></i>
+                </div>
+
                 <div class="stat-content">
 
-                    <p class="title">
-                        Completed
-                    </p>
+                    <p class="title">COMPLETED INTERNS</p>
 
                     <h2 id="completedStudentsCount">
                         0
@@ -169,10 +182,14 @@
                 id="atRiskStudentsCard"
             >
 
+                <div class="stat-card-icon" aria-hidden="true">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+
                 <div class="stat-content">
 
                     <p class="title">
-                        At-Risk Students
+                        AT-RISK INTERNS
                     </p>
 
                     <h2 id="atRiskStudentsCount">
@@ -201,10 +218,14 @@
                 id="graduatedStudentsCard"
             >
 
+                <div class="stat-card-icon" aria-hidden="true">
+                    <i class="fa-solid fa-box-archive"></i>
+                </div>
+
                 <div class="stat-content">
 
                     <p class="title">
-                        Batch Archive
+                        BATCH ARCHIVE
                     </p>
 
                     <h2 id="graduatedStudentsCount">
@@ -259,20 +280,6 @@
                         <div class="table-header-right">
 
 
-                            <!-- Week Navigator: isang linggo (Mon - Sun) lang ang ipinapakita -->
-                            <div class="report-week-nav">
-                                <button type="button" id="reportPrevWeekBtn" title="Previous week">
-                                    <i class="fa-solid fa-chevron-left"></i>
-                                </button>
-                                <span id="reportWeekLabel" class="report-week-label">--</span>
-                                <button type="button" id="reportNextWeekBtn" title="Next week">
-                                    <i class="fa-solid fa-chevron-right"></i>
-                                </button>
-                                <button type="button" id="reportThisWeekBtn" class="report-this-week">
-                                    This Week
-                                </button>
-                            </div>
-
                             <!-- Search (name, student ID, section, company, week) -->
                             <div class="report-search-box">
                                 <i class="fa-solid fa-magnifying-glass"></i>
@@ -282,6 +289,37 @@
                                     placeholder="Search name, ID, company..."
                                     autocomplete="off"
                                 >
+                            </div>
+
+
+                            <!-- Filter + Sort buttons (icon sa kaliwa).
+                                 Ang mga dating dropdown ay nakatago na lang (display:none)
+                                 pero ginagamit pa rin ng JS; dito sila kinokontrol. -->
+                            <div class="report-menu" id="reportFilterMenu">
+                                <button type="button" class="report-menu-btn" id="reportFilterBtn"
+                                        aria-haspopup="true" aria-expanded="false">
+                                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none"
+                                         stroke="currentColor" stroke-width="2"
+                                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <polygon points="22 3 2 3 10 12.5 10 19 14 21 14 12.5 22 3"></polygon>
+                                    </svg>
+                                    <span>Filter</span>
+                                </button>
+                                <div class="report-menu-list" id="reportFilterList" hidden></div>
+                            </div>
+
+                            <div class="report-menu" id="reportSortMenu">
+                                <button type="button" class="report-menu-btn" id="reportSortBtn"
+                                        aria-haspopup="true" aria-expanded="false">
+                                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none"
+                                         stroke="currentColor" stroke-width="2"
+                                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M7 20V4M7 4L3 8M7 4l4 4"></path>
+                                        <path d="M17 4v16M17 20l-4-4M17 20l4-4"></path>
+                                    </svg>
+                                    <span>Sort</span>
+                                </button>
+                                <div class="report-menu-list" id="reportSortList" hidden></div>
                             </div>
 
 
@@ -357,6 +395,21 @@
                                 </option>
 
                             </select>
+
+
+                            <!-- Week Navigator: isang linggo (Mon - Sun) lang ang ipinapakita -->
+                            <div class="report-week-nav">
+                                <button type="button" id="reportPrevWeekBtn" title="Previous week">
+                                    <i class="fa-solid fa-chevron-left"></i>
+                                </button>
+                                <span id="reportWeekLabel" class="report-week-label">--</span>
+                                <button type="button" id="reportNextWeekBtn" title="Next week">
+                                    <i class="fa-solid fa-chevron-right"></i>
+                                </button>
+                                <button type="button" id="reportThisWeekBtn" class="report-this-week">
+                                    This Week
+                                </button>
+                            </div>
 
                         </div>
 
@@ -956,14 +1009,6 @@
                         ></i>
                         Weekly Accomplishment Report
                     </h3>
-
-                    <button
-                        class="close-btn"
-                        id="closeWeeklyReportModalBtn"
-                        type="button"
-                    >
-                        &times;
-                    </button>
 
                 </div>
 

@@ -868,7 +868,7 @@
     border-radius: 9px;
     background: #f7f8fa;
     color: #333;
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Google Sans Flex', 'Google Sans', sans-serif;
     font-size: 10px;
     font-weight: 500;
     box-sizing: border-box;
@@ -1024,7 +1024,7 @@
 }
 
 .stat-content .title {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
     color: #666;
     margin-bottom: 6px;
@@ -2238,14 +2238,12 @@
     color: #e74c3c;
 }
 
-/* Empty-state (zero count) - neutral gray para hindi
-   mukhang error/success, pero may laman pa rin ang card */
 .stat-note.muted .stat-note-header {
     color: #9a9a9a;
 }
 
 .stat-note p {
-    font-size: 11.5px;
+    font-size: 12px;
     color: #888;
     line-height: 1.4;
     margin: 0;
@@ -2584,4 +2582,229 @@ body {
     font-weight: 600;
     color: #333;
     white-space: nowrap;
+}
+
+/* ==========================================
+   FONT: GOOGLE SANS FLEX (dashboard content lang,
+   hindi ginalaw ang header at sidebar)
+========================================== */
+.main > *:not(#header-container),
+.main > *:not(#header-container) * {
+    font-family: 'Google Sans Flex', 'Google Sans', sans-serif;
+}
+
+
+/* ==========================================
+   STAT CARDS: ICON SA TAAS-KANAN + PANTAY NA NOTES
+========================================== */
+
+/* Icon sa kanang taas ng bawat card */
+.stat-card-icon {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 32px;
+    height: 32px;
+    border-radius: 30%;
+    background: #fdeaea;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.stat-card-icon i {
+    font-size: 12px;
+    color: #ab0a0a;
+}
+
+/* Huwag mag-overlap ang title sa icon */
+.stat-content .title {
+    padding-right: 44px;
+}
+
+.stat-content .stat-note {
+    margin-top: 6px;      /* taas */
+    padding-top: 4px;
+}
+
+.cards .stat-card {
+    padding-bottom: 12px; /* ibaba */
+}
+
+
+/* ==========================================
+   FONT AWESOME - ibalik ang font ng mga icon
+   (para hindi ma-override ng Google Sans Flex
+   at hindi maging kahon ang mga icon)
+========================================== */
+.main .fa,
+.main .fas,
+.main .far,
+.main .fa-solid,
+.main .fa-regular {
+    font-family: "Font Awesome 6 Free" !important;
+}
+
+.main .fab,
+.main .fa-brands {
+    font-family: "Font Awesome 6 Brands" !important;
+}
+
+
+/* ==========================================
+   WEEKLY REPORTS - FILTER / SORT BUTTONS
+   (icon sa kaliwa; ang dating dropdowns ay nakatago)
+========================================== */
+#reportSectionFilter,
+#reportDateSort,
+#reportNameSort {
+    display: none !important;
+}
+
+.report-menu {
+    position: relative;
+}
+
+.report-menu-btn {
+    height: 40px;
+    padding: 0 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff;
+    border: 1px solid #ececec;
+    border-radius: 8px;
+    color: #444;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color .2s ease, color .2s ease, background-color .2s ease;
+}
+
+.report-menu-btn svg {
+    flex-shrink: 0;
+}
+
+.report-menu-btn:hover {
+    border-color: #d1d5db;
+    background: #fafafa;
+}
+
+.report-menu-btn[aria-expanded="true"],
+.report-menu-btn.is-active {
+    border-color: #ab0a0a;
+    color: #ab0a0a;
+}
+
+.report-menu-list {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    min-width: 190px;
+    padding: 6px;
+    background: #fff;
+    border: 1px solid #ececec;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    z-index: 60;
+}
+
+.report-menu-list[hidden] {
+    display: none;
+}
+
+.report-menu-group {
+    padding: 8px 10px 4px;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #9ca3af;
+}
+
+.report-menu-group:first-child {
+    padding-top: 4px;
+}
+
+.report-menu-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 10px;
+    background: none;
+    border: none;
+    border-radius: 6px;
+    color: #374151;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.report-menu-item:hover {
+    background: #f5f5f5;
+}
+
+.report-menu-item.is-selected {
+    background: #fdeaea;
+    color: #ab0a0a;
+    font-weight: 600;
+}
+
+.report-menu-item.is-selected::after {
+    content: "\2713";
+    font-size: 12px;
+}
+
+
+/* ==========================================
+   WEEKLY REPORTS - TITLE SA TAAS, TOOLBAR SA IBABA
+========================================== */
+.weekly-reports-card .table-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+}
+
+.weekly-reports-card .table-header-right {
+    width: 100%;
+}
+
+/* Date navigator: nasa dulo (kanan) ng toolbar */
+.weekly-reports-card .report-week-nav {
+    margin-left: auto;
+}
+
+/* ==========================================
+   WEEKLY REPORTS - STICKY TABLE HEADER
+   (nananatili sa taas ang Student Name / Section /
+   Company / Week / Action habang nagsc-scroll)
+========================================== */
+.weekly-reports-card .students-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: #fafafa;
+    /* border-collapse: collapse ay nawawala ang border pag sticky,
+       kaya box-shadow ang ginamit na linya sa ilalim */
+    border-bottom: none;
+    box-shadow: inset 0 -1px 0 #ececec;
+}
+
+.weekly-reports-card .students-table thead th:hover {
+    background: #f1f5f9;
+}
+
+/* ==========================================
+   WEEKLY REPORT MODAL - itim ang icon sa header
+   (kapareho ng kulay ng title text)
+========================================== */
+#weeklyReportModal .modal-header h3 i {
+    color: #222 !important;
+    font-size: 14px;
+}
+
+.students-table td:first-child {
+    font-weight: 500;
 }

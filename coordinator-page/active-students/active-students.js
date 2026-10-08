@@ -121,6 +121,69 @@ function isPendingStudent(data) {
 
 
 /* ========================================
+   HINDI PA NAG-START ANG OJT
+   Kapareho ng rule sa reports.js: kapag 0 hours,
+   walang attendance record, at hindi pa lumalampas
+   ang schedule.startDate, hindi siya pwedeng
+   "At Risk" - Active siya.
+======================================== */
+
+async function loadStartedStudentIds() {
+
+    const ids = new Set();
+
+    try {
+
+        const snap = await getDocs(collection(db, "attendance"));
+
+        snap.forEach(d => {
+            const r = d.data();
+            const owner = r.userId || r.uid;
+            if (owner) ids.add(owner);
+        });
+
+    } catch (err) {
+
+        console.warn("attendance collection not available:", err);
+
+    }
+
+    return ids;
+
+}
+
+function hasNotStartedOjt(docId, data, startedIds) {
+
+    if (startedIds.has(docId)) return false;
+
+    const hours = [
+        data.renderedHours,
+        data.hoursRendered,
+        data.completedHours,
+        data.totalHours
+    ].some(v => Number(v) > 0);
+
+    if (hours) return false;
+
+    const startStr = data.schedule && data.schedule.startDate;
+
+    if (startStr) {
+
+        const [y, m, d] = String(startStr).split("-").map(Number);
+        const start = new Date(y, (m || 1) - 1, d || 1);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        if (!isNaN(start) && start < today) return false;
+
+    }
+
+    return true;
+
+}
+
+
+/* ========================================
    LOAD ACTIVE STUDENTS
 ======================================== */
 
@@ -133,6 +196,8 @@ async function loadActiveStudents() {
 
         const usersSnapshot =
             await getDocs(collection(db, "users"));
+
+        const startedIds = await loadStartedStudentIds();
 
         activeStudents = [];
 
@@ -183,12 +248,18 @@ async function loadActiveStudents() {
             const aiStatus =
                 String(data.internshipStatus || "");
 
+            // Hindi pa nag-start: huwag ituring na At Risk
+            const notStarted =
+                hasNotStartedOjt(docSnap.id, data, startedIds);
+
             if (
                 rawStatus === "completed" ||
-                rawStatus === "at-risk" ||
-                rawStatus === "at risk" ||
+                (!notStarted && (
+                    rawStatus === "at-risk" ||
+                    rawStatus === "at risk" ||
+                    aiStatus === "At Risk"
+                )) ||
                 aiStatus === "Completed" ||
-                aiStatus === "At Risk" ||
                 aiStatus === "Graduated"
             ) {
                 return;

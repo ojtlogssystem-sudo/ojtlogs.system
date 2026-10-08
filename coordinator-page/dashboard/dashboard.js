@@ -374,6 +374,60 @@ function hasBatchEnded(batchName, now = new Date()) {
 
 }
 
+async function loadStartedStudentIds() {
+
+    const ids = new Set();
+
+    try {
+
+        const snap = await getDocs(collection(db, "attendance"));
+
+        snap.forEach(d => {
+            const r = d.data();
+            const owner = r.userId || r.uid;
+            if (owner) ids.add(owner);
+        });
+
+    } catch (err) {
+
+        console.warn("attendance collection not available:", err);
+
+    }
+
+    return ids;
+
+}
+
+function hasNotStartedOjt(docId, data, startedIds) {
+
+    if (startedIds.has(docId)) return false;
+
+    const hours = [
+        data.renderedHours,
+        data.hoursRendered,
+        data.completedHours,
+        data.totalHours
+    ].some(v => Number(v) > 0);
+
+    if (hours) return false;
+
+    const startStr = data.schedule && data.schedule.startDate;
+
+    if (startStr) {
+
+        const [y, m, d] = String(startStr).split("-").map(Number);
+        const start = new Date(y, (m || 1) - 1, d || 1);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        if (!isNaN(start) && start < today) return false;
+
+    }
+
+    return true;
+
+}
+
 
 // ========================================
 // DASHBOARD STATISTICS
@@ -394,6 +448,8 @@ async function loadDashboardStats() {
 
         const snapshot =
             await getDocs(studentQuery);
+
+        const startedIds = await loadStartedStudentIds();
 
 
         let total = 0;
@@ -512,9 +568,12 @@ async function loadDashboardStats() {
             // AT RISK
 
             if (
-                internshipStatus === "At Risk" ||
-                rawStatus === "at-risk" ||
-                rawStatus === "at risk"
+                !hasNotStartedOjt(docSnap.id, data, startedIds) &&
+                (
+                    internshipStatus === "At Risk" ||
+                    rawStatus === "at-risk" ||
+                    rawStatus === "at risk"
+                )
             ) {
                 atRisk++;
                 return;
@@ -641,7 +700,7 @@ async function loadDashboardStats() {
                 tone: "success",
                 icon: "fa-check",
                 title: "Progressing Normally",
-                text: `${active} ongoing and on track. Continue regular monitoring.`
+                text: `${active} interns are currently on track with their internship.`
             },
             {
                 tone: "muted",
@@ -675,7 +734,7 @@ async function loadDashboardStats() {
                 tone: "danger",
                 icon: "fa-circle-exclamation",
                 title: "Needs Attention",
-                text: `${atRisk} ${atRisk === 1 ? "student may" : "students may"} not finish the internship.`
+                text: `${atRisk} ${atRisk === 1 ? "student" : "students"} may not complete the required hours before the deadline.`
             },
             {
                 tone: "success",
@@ -692,7 +751,7 @@ async function loadDashboardStats() {
                 tone: "success",
                 icon: "fa-box-archive",
                 title: batchCount === 1 ? "Batch Archived" : "Batches Archived",
-                text: `${batchCount} ${batchCount === 1 ? "batch has" : "batches have"} been archived.`
+                text: `${batchCount} ${batchCount === 1 ? "batch is" : "batches are"} now archived.`
             },
             {
                 tone: "muted",
@@ -3491,6 +3550,77 @@ document.addEventListener(
         ];
 
 
+        /*
+            Itago ang "Back to Dashboard" button sa loob ng popup pages,
+            dahil may close (X) button na ang popup mismo. Same-origin ang
+            mga iframe kaya mababasa ang laman nila. Hinahanap ang button
+            gamit ang text nito, kaya gumagana sa lahat ng popup pages.
+        */
+
+        function hideBackToDashboardButton(frame) {
+
+            try {
+
+                const doc = frame.contentDocument;
+
+                if (!doc || !doc.body) {
+                    return;
+                }
+
+                const run = () => {
+
+                    doc.querySelectorAll("a, button").forEach((el) => {
+
+                        const text =
+                            (el.textContent || "")
+                                .replace(/\s+/g, " ")
+                                .trim()
+                                .toLowerCase();
+
+                        if (
+                            text.includes("back to dashboard") &&
+                            el.dataset.hiddenBack !== "1"
+                        ) {
+
+                            el.dataset.hiddenBack = "1";
+                            el.style.display = "none";
+
+                            /* Kung siya lang ang laman ng wrapper
+                               niya, itago na rin ang wrapper para
+                               walang matirang blangkong espasyo. */
+
+                            const wrapper = el.parentElement;
+
+                            if (
+                                wrapper &&
+                                wrapper !== doc.body &&
+                                wrapper.children.length === 1
+                            ) {
+                                wrapper.style.display = "none";
+                            }
+
+                        }
+
+                    });
+
+                };
+
+                run();
+
+                /* Kung dynamic na nilalagay ng page ang button */
+
+                new MutationObserver(run).observe(
+                    doc.body,
+                    { childList: true, subtree: true }
+                );
+
+            } catch (err) {
+                /* cross-origin / hindi pa loaded - ignore */
+            }
+
+        }
+
+
         function openPopup(config) {
 
             const modal =
@@ -3552,6 +3682,18 @@ document.addEventListener(
 
             const closeBtn =
                 document.getElementById(config.closeBtn);
+
+            const popupFrame =
+                document.getElementById(config.frame);
+
+            if (popupFrame) {
+
+                popupFrame.addEventListener(
+                    "load",
+                    () => hideBackToDashboardButton(popupFrame)
+                );
+
+            }
 
 
             if (card) {
@@ -3754,3 +3896,159 @@ document.addEventListener(
 
     }
 );
+
+
+
+// ========================================
+// WEEKLY REPORTS - FILTER / SORT MENUS
+//
+// Pinalitan ng "Filter" at "Sort" na buttons ang
+// mga dropdown. Ang mga <select> ay nakatago na lang
+// pero sila pa rin ang ginagamit ng ibang code, kaya
+// dito lang itinatakda ang value nila at pinapatunog
+// ang "change" event.
+// ========================================
+
+(function initReportMenus() {
+
+    function setup() {
+
+        const sectionSelect = document.getElementById("reportSectionFilter");
+        const dateSelect = document.getElementById("reportDateSort");
+        const nameSelect = document.getElementById("reportNameSort");
+
+        const filterBtn = document.getElementById("reportFilterBtn");
+        const sortBtn = document.getElementById("reportSortBtn");
+        const filterList = document.getElementById("reportFilterList");
+        const sortList = document.getElementById("reportSortList");
+
+        if (!sectionSelect || !dateSelect || !nameSelect ||
+            !filterBtn || !sortBtn || !filterList || !sortList) {
+            return;
+        }
+
+        const menus = [
+            { btn: filterBtn, list: filterList },
+            { btn: sortBtn, list: sortList }
+        ];
+
+        function closeAll() {
+            menus.forEach(({ btn, list }) => {
+                list.hidden = true;
+                btn.setAttribute("aria-expanded", "false");
+            });
+        }
+
+        function optionLabel(opt) {
+            const text = opt.textContent.replace(/\s+/g, " ").trim();
+            return opt.value === "default" ? "Default" : text;
+        }
+
+        function addGroup(list, text) {
+            const g = document.createElement("div");
+            g.className = "report-menu-group";
+            g.textContent = text;
+            list.appendChild(g);
+        }
+
+        function addItems(list, select) {
+
+            Array.from(select.options).forEach((opt) => {
+
+                const item = document.createElement("button");
+                item.type = "button";
+                item.className = "report-menu-item";
+                item.dataset.value = opt.value;
+                item.textContent = optionLabel(opt);
+
+                if (select.value === opt.value) {
+                    item.classList.add("is-selected");
+                }
+
+                item.addEventListener("click", (e) => {
+
+                    e.stopPropagation();
+
+                    select.value = opt.value;
+                    select.dispatchEvent(new Event("change", { bubbles: true }));
+
+                    closeAll();
+                    refreshButtons();
+
+                });
+
+                list.appendChild(item);
+
+            });
+
+        }
+
+        function buildFilter() {
+            filterList.innerHTML = "";
+            addGroup(filterList, "Section");
+            addItems(filterList, sectionSelect);
+        }
+
+        function buildSort() {
+            sortList.innerHTML = "";
+            addGroup(sortList, "Date");
+            addItems(sortList, dateSelect);
+            addGroup(sortList, "Order by");
+            addItems(sortList, nameSelect);
+        }
+
+        function refreshButtons() {
+            filterBtn.classList.toggle("is-active", sectionSelect.value !== "all");
+            sortBtn.classList.toggle(
+                "is-active",
+                dateSelect.value !== "desc" || nameSelect.value !== "default"
+            );
+        }
+
+        function toggle(entry, build) {
+
+            const willOpen = entry.list.hidden;
+
+            closeAll();
+
+            if (willOpen) {
+                build();
+                entry.list.hidden = false;
+                entry.btn.setAttribute("aria-expanded", "true");
+            }
+
+        }
+
+        filterBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            toggle(menus[0], buildFilter);
+        });
+
+        sortBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            toggle(menus[1], buildSort);
+        });
+
+        document.addEventListener("click", (e) => {
+            if (!e.target.closest(".report-menu")) {
+                closeAll();
+            }
+        });
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") {
+                closeAll();
+            }
+        });
+
+        refreshButtons();
+
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", setup);
+    } else {
+        setup();
+    }
+
+})();

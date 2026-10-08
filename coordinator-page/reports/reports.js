@@ -294,11 +294,9 @@ async function loadAllData() {
             return;
         }
 
-        // Hindi rin isinasama ang mga COMPLETED na (tapos na ang 600
-        // hours / graduated / nasa Batch Archive).
-        if (isCompletedStudent(data)) {
-            return;
-        }
+        // Kasama na ang mga COMPLETED (tapos na ang 600 hours /
+        // graduated / archived) para lumabas sila bilang "Completed"
+        // sa Student Progress, kasama ang rendered hours nila.
 
         allStudents.push({
             id: docSnap.id,
@@ -472,32 +470,38 @@ function isCompletedStudent(data) {
         data.archivedAt ||
         data.archivedDate ||
         data.graduated === true ||
-        data.isGraduated === true
+        data.isGraduated === true ||
+        data.completed === true ||
+        data.isCompleted === true ||
+        data.completedAt ||
+        data.completedDate
     ) {
         return true;
     }
 
-    const status =
-        String(data.internshipStatus || data.status || "")
-            .trim()
-            .toLowerCase();
+    const statuses = [
+        data.internshipStatus,
+        data.status,
+        data.ojtStatus,
+        data.progressStatus
+    ].map(v => String(v || "").trim().toLowerCase());
 
     if (
-        status === "completed" ||
-        status.includes("graduated") ||
-        status.includes("archiv")
+        statuses.some(st =>
+            st === "completed" ||
+            st === "complete" ||
+            st === "finished" ||
+            st === "done" ||
+            st.includes("graduated") ||
+            st.includes("archiv") ||
+            st.includes("completed")
+        )
     ) {
         return true;
     }
 
-    const hours = Number(
-        data.renderedHours ||
-        data.completedHours ||
-        data.hoursRendered ||
-        0
-    );
-
-    return hours >= REQUIRED_HOURS_PER_STUDENT;
+    // Hours na ipinapakita sa table (naka-save o galing sa attendance)
+    return getEffectiveHours(data) >= REQUIRED_HOURS_PER_STUDENT;
 
 }
 
@@ -719,17 +723,51 @@ function formatPercent(value) {
 }
 
 
+// Mga posibleng field name ng rendered hours sa user document.
+const HOURS_FIELDS = [
+    "renderedHours", "completedHours", "hoursRendered",
+    "totalRenderedHours", "totalHours", "hoursCompleted", "renderedHrs"
+];
+
+function getStoredHours(data) {
+
+    for (const field of HOURS_FIELDS) {
+
+        const n = Number(data[field]);
+
+        if (Number.isFinite(n) && n > 0) return n;
+
+    }
+
+    return 0;
+
+}
+
+// studentId -> total hours mula sa attendance records (fallback)
+let attendanceHoursByStudent = {};
+
+// Naka-save na hours o total mula sa attendance (alin ang mas mataas).
+function getEffectiveHours(student) {
+
+    const stored = getStoredHours(student);
+
+    const fromAttendance =
+        attendanceHoursByStudent[student.id] || 0;
+
+    return Math.max(stored, fromAttendance);
+
+}
+
 function getRenderedHours(student) {
 
-    const raw =
-        student.renderedHours ||
-        student.completedHours ||
-        student.hoursRendered ||
-        0;
+    let hours = getEffectiveHours(student);
 
-    const hours = Number(raw);
+    // Completed na pero kulang/walang naka-save na hours:
+    // ang required hours ang ituturing na rendered.
+    if (isCompletedStudent(student) && hours < REQUIRED_HOURS_PER_STUDENT) {
+        hours = REQUIRED_HOURS_PER_STUDENT;
+    }
 
-    // Iwas NaN / negative na oras
     return Number.isFinite(hours)
         ? Math.max(0, hours)
         : 0;
@@ -781,24 +819,36 @@ function getProgress(student) {
 
 function normalizeStatus(student) {
 
+    // Completed (status / archived / graduated / abot na ang hours)
+    // ang laging nangingibabaw sa On Track / At Risk / Monitoring.
+    if (isCompletedStudent(student)) {
+
+        return String(student.internshipStatus || "")
+            .toLowerCase()
+            .includes("graduated")
+            ? "Graduated"
+            : "Completed";
+
+    }
+
+    // Hindi pa nag-start ang OJT (0 hours at walang kahit anong attendance
+    // record / absent na nabibilang) - hindi pwedeng At Risk o Needs Monitoring.
+    const att = attendanceByStudent[student.id];
+    const hasAttendance =
+        att && (att.present + att.late + att.absent) > 0;
+
+    if (getRenderedHours(student) === 0 && !hasAttendance) {
+        return "On Track";
+    }
+
     const known = [
-
-        "Completed",
-
-        "Graduated",
-
         "At Risk",
-
         "Needs Monitoring",
-
         "On Track"
-
     ];
-
 
     const status =
         student.internshipStatus || "";
-
 
     return known.includes(status)
         ? status
@@ -983,6 +1033,7 @@ function summarizeAttendance(records, schedule, student = null) {
 async function loadAttendanceSummaries() {
 
     attendanceByStudent = {};
+    attendanceHoursByStudent = {};
 
     let rows = [];
 
@@ -1027,6 +1078,12 @@ async function loadAttendanceSummaries() {
 
         attendanceByStudent[student.id] =
             summarizeAttendance(records, student.schedule, student);
+
+        attendanceHoursByStudent[student.id] = records.reduce((sum, r) => {
+            const st = String(r.status || "").toLowerCase();
+            if (st === "rejected" || st.includes("absent")) return sum;
+            return sum + (Number(r.hoursRendered) || 0);
+        }, 0);
 
     });
 

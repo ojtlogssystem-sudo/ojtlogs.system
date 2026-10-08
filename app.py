@@ -38,17 +38,67 @@ if not firebase_admin._apps:
 db = firestore.client()
 
 # ==========================================
-# FIREBASE USAGE SAVER: in-memory cache
+# FIREBASE USAGE SAVER: memory + disk cache
 # ==========================================
-# Para hindi paulit-ulit ang pagbasa ng buong collection sa Firestore
-# kada bukas/click sa Analytics page. Nare-reset kapag nag-restart ang server.
+# Para hindi paulit-ulit ang pagbasa ng buong collection sa Firestore.
+# May dalawang layer:
+#   1. memory cache  - mabilis, pero nawawala kapag nag-restart ang server
+#   2. disk cache    - nasa folder na ".cache", kaya HINDI nawawala kapag
+#                      nag-restart ang server (dating dahilan ng biglang
+#                      pagdami ng reads at writes)
 import time
 import threading
+import pickle
+import hashlib
 
 _cache = {}
 _cache_lock = threading.Lock()
 
-def cached(key, ttl, loader, force=False):
+CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.cache')
+try:
+    os.makedirs(CACHE_DIR, exist_ok=True)
+except Exception:
+    pass
+
+
+def _disk_path(key):
+    return os.path.join(CACHE_DIR, f"{key}.pkl")
+
+
+def _disk_load(key, ttl):
+    try:
+        with open(_disk_path(key), 'rb') as f:
+            stamp, value = pickle.load(f)
+        if time.time() - stamp < ttl:
+            return stamp, value
+    except Exception:
+        pass
+    return None
+
+
+def _disk_save(key, stamp, value):
+    try:
+        tmp = _disk_path(key) + '.tmp'
+        with open(tmp, 'wb') as f:
+            pickle.dump((stamp, value), f)
+        os.replace(tmp, _disk_path(key))
+    except Exception as e:
+        print(f"[cache] disk save skipped for '{key}': {e}")
+
+
+def invalidate(*keys):
+    """Burahin ang cache (memory + disk) para sa mga key na ito."""
+    with _cache_lock:
+        for key in keys:
+            _cache.pop(key, None)
+    for key in keys:
+        try:
+            os.remove(_disk_path(key))
+        except OSError:
+            pass
+
+
+def cached(key, ttl, loader, force=False, persist=True):
     """Ibalik ang cached na value kung bago pa (ttl = segundo); kung hindi, i-load ulit."""
     now = time.time()
     if not force:
@@ -56,18 +106,82 @@ def cached(key, ttl, loader, force=False):
             hit = _cache.get(key)
             if hit and now - hit[0] < ttl:
                 return hit[1]
+        if persist:
+            disk = _disk_load(key, ttl)
+            if disk:
+                with _cache_lock:
+                    _cache[key] = disk
+                return disk[1]
     value = loader()
+    stamp = time.time()
     with _cache_lock:
-        _cache[key] = (time.time(), value)
+        _cache[key] = (stamp, value)
+    if persist:
+        _disk_save(key, stamp, value)
     return value
 
-# TTL settings (segundo) - dagdagan para mas makatipid, bawasan para mas "live"
-ATTENDANCE_CACHE_TTL = 300      # 5 min
-PREDICT_RISK_CACHE_TTL = 120    # 2 min
-SKILL_PROFILE_CACHE_TTL = 3600  # 1 oras
 
-# Huling na-write na analytics payload kada estudyante (para hindi mag-write kung walang nagbago)
-_last_written = {}
+# TTL settings (segundo) - dagdagan para mas makatipid, bawasan para mas "live"
+ATTENDANCE_CACHE_TTL = 900       # 15 min
+USERS_CACHE_TTL = 600            # 10 min
+PREDICT_RISK_CACHE_TTL = 600     # 10 min
+SKILL_PROFILE_CACHE_TTL = 86400  # 24 oras (bihirang magbago ang tasks/skills)
+COMPANIES_CACHE_TTL = 86400      # 24 oras
+
+
+class _UserDoc:
+    """Kapalit ng Firestore DocumentSnapshot para magamit ang cached na users."""
+    exists = True
+
+    def __init__(self, doc_id, data):
+        self.id = doc_id
+        self._data = data
+
+    def to_dict(self):
+        return dict(self._data)
+
+
+def _load_users(force=False):
+    """Lahat ng users - 1 beses lang binabasa kada TTL, ibinabahagi sa lahat ng endpoint."""
+    def loader():
+        return [(d.id, d.to_dict() or {}) for d in db.collection('users').stream()]
+    return [_UserDoc(i, d) for i, d in cached('users', USERS_CACHE_TTL, loader, force)]
+
+
+def _get_user_doc(doc_id):
+    """Isang user galing sa cache (0 reads). Kung wala sa cache, saka lang magbabasa sa Firestore."""
+    for u in _load_users():
+        if u.id == doc_id:
+            return u
+    snap = db.collection('users').document(doc_id).get()
+    return _UserDoc(snap.id, snap.to_dict() or {}) if snap.exists else None
+
+
+def _load_companies(force=False):
+    def loader():
+        return [(d.id, d.to_dict() or {}) for d in db.collection('companies').stream()]
+    return [{"id": i, **d} for i, d in cached('companies', COMPANIES_CACHE_TTL, loader, force)]
+
+
+# Huling na-write na analytics payload kada estudyante (para hindi mag-write kung walang nagbago).
+# Naka-save sa disk, kaya hindi na ulit isusulat ang LAHAT ng estudyante pagka-restart ng server.
+_last_written_lock = threading.Lock()
+try:
+    with open(os.path.join(CACHE_DIR, 'last_written.json'), 'r', encoding='utf-8') as _f:
+        _last_written = json.load(_f)
+except Exception:
+    _last_written = {}
+
+
+def _save_last_written():
+    try:
+        with _last_written_lock:
+            tmp = os.path.join(CACHE_DIR, 'last_written.json.tmp')
+            with open(tmp, 'w', encoding='utf-8') as f:
+                json.dump(_last_written, f)
+            os.replace(tmp, os.path.join(CACHE_DIR, 'last_written.json'))
+    except Exception as e:
+        print(f"[cache] last_written save skipped: {e}")
 
 # ==========================================
 # 1. ENDPOINT FOR AT-RISK PREDICTION
@@ -680,7 +794,7 @@ def predict_student_risk():
     try:
         force = request.args.get('refresh') == '1'
         if force:
-            _cache.pop('attendance', None)  # i-refresh din ang attendance
+            invalidate('attendance', 'users')  # i-refresh din ang attendance at users
         data = cached('predict-risk', PREDICT_RISK_CACHE_TTL, _build_predict_risk, force)
         return jsonify(data)
     except Exception as e:
@@ -689,8 +803,7 @@ def predict_student_risk():
 
 def _build_predict_risk():
     try:
-        users_ref = db.collection('users')
-        docs = users_ref.stream()
+        docs = _load_users()   # cached - hindi na bumabasa ng buong users kada rebuild
 
         attendance_records = _load_attendance_records()
         attendance_index = _build_attendance_index(attendance_records)
@@ -711,6 +824,8 @@ def _build_predict_risk():
         ABSENCE_MONITORING_THRESHOLD = 3
         ABSENCE_RISK_THRESHOLD = 8
         CONSECUTIVE_ABSENCE_RISK_THRESHOLD = 5
+
+        _writes_done = 0
 
         for doc in docs:
             data = doc.to_dict()
@@ -1102,23 +1217,33 @@ def _build_predict_risk():
                 }
 
                 # Mag-write lang kung may nagbago (tipid sa Firestore writes)
-                payload_key = json.dumps(analytics_payload, sort_keys=True, default=str)
+                payload_key = hashlib.md5(
+                    json.dumps(analytics_payload, sort_keys=True, default=str).encode('utf-8')
+                ).hexdigest()
                 if _last_written.get(doc.id) != payload_key:
                     analytics_doc_ref.set(
                         {**analytics_payload, "lastUpdated": firestore.SERVER_TIMESTAMP},
                         merge=True
                     )
                     _last_written[doc.id] = payload_key
+                    _writes_done += 1
 
                 # Nabasa na natin ang users doc, kaya libre ang paghahambing
                 if data.get('internshipStatus') != ai_status:
                     db.collection('users').document(doc.id).set({
                         "internshipStatus": ai_status
                     }, merge=True)
+                    try:
+                        doc._data['internshipStatus'] = ai_status   # sync sa cached copy
+                    except Exception:
+                        pass
 
             except Exception as doc_error:
                 print(f"[predict-risk] Skipped doc {doc.id}: {doc_error}")
                 continue
+
+        if _writes_done:
+            _save_last_written()
 
         status_counts = Counter(
             item["aiStatus"] for item in student_predictions
@@ -1151,9 +1276,9 @@ def _build_predict_risk():
 @app.route('/api/student-attendance/<student_doc_id>', methods=['GET'])
 def get_student_attendance(student_doc_id):
     try:
-        user_doc = db.collection('users').document(student_doc_id).get()
+        user_doc = _get_user_doc(student_doc_id)
 
-        if not user_doc.exists:
+        if user_doc is None:
             return jsonify({
                 "status": "error",
                 "message": "Student not found."
@@ -1472,44 +1597,122 @@ def _extract_task_texts(rec):
     return out
 
 
-def _load_task_records(students):
-    """Collect every Firestore record that could hold student tasks."""
-    records, seen = [], set()
+TASK_SOURCES_FILE = os.path.join(CACHE_DIR, 'task_sources.json')
 
-    def add(doc, src, parent=None):
+
+def _load_known_task_sources():
+    try:
+        with open(TASK_SOURCES_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def _save_known_task_sources(found):
+    try:
+        with open(TASK_SOURCES_FILE, 'w', encoding='utf-8') as f:
+            json.dump(found, f)
+    except Exception as e:
+        print(f"[skill-exposure] cannot save task sources: {e}")
+
+
+def _load_task_records(students):
+    """Collect every Firestore record that could hold student tasks.
+
+    TIPID SA READS:
+    - Unang takbo lang ang buong auto-discovery. Itinatala kung aling sources
+      ang talagang may task text (.cache/task_sources.json); sa susunod, yun
+      na lang ang babasahin.
+    - Hindi na binabasa ulit ang 'attendance' (galing sa cached attendance).
+    - Hindi na dobleng binabasa ang top-level collection na kapareho ng
+      pangalan ng collection group (sakop na ng collection_group).
+    - Para ulitin ang discovery: /api/company-skill-exposure?refresh=1&rediscover=1
+    """
+    records, seen = [], set()
+    productive = {"groups": set(), "top": set(), "sub": set()}
+
+    def add(doc, src, kind, parent=None):
         path = doc.reference.path
         if path in seen:
             return
         seen.add(path)
-        records.append({**doc.to_dict(), "_src": src, "_parent": parent})
+        rec = {**doc.to_dict(), "_src": src, "_parent": parent}
+        records.append(rec)
+        if _extract_task_texts(rec):
+            productive[kind].add(src)
+
+    known = None if TASK_SOURCES else _load_known_task_sources()
 
     if TASK_SOURCES:
-        group_names = TASK_SOURCES
+        group_names = list(TASK_SOURCES)
+        top_names, sub_names, discover = [], [], False
+    elif known:
+        group_names = known.get("groups", [])
+        top_names = known.get("top", [])
+        sub_names = known.get("sub", [])
+        discover = False
     else:
-        group_names = TASK_GROUP_NAMES
+        group_names = list(TASK_GROUP_NAMES)
+        top_names, sub_names, discover = [], [], True
+
+    # 1. TOP-LEVEL COLLECTIONS
+    if discover:
         try:
             for col in db.collections():
-                if col.id in TASK_SKIP_COLLECTIONS:
+                if col.id in TASK_SKIP_COLLECTIONS or col.id in TASK_GROUP_NAMES:
+                    continue
+                if col.id in ATTENDANCE_COLLECTIONS:
+                    # galing sa cache - walang dagdag na reads
+                    for rec in _load_attendance_records():
+                        r = {**rec, "_src": col.id, "_parent": None}
+                        records.append(r)
+                        if _extract_task_texts(r):
+                            productive["top"].add(col.id)
                     continue
                 for doc in col.stream():
-                    add(doc, col.id)
+                    add(doc, col.id, "top")
         except Exception as e:
             print(f"[skill-exposure] top-level scan failed: {e}")
+    else:
+        for name in top_names:
+            try:
+                if name in ATTENDANCE_COLLECTIONS:
+                    for rec in _load_attendance_records():
+                        records.append({**rec, "_src": name, "_parent": None})
+                    continue
+                for doc in db.collection(name).stream():
+                    add(doc, name, "top")
+            except Exception as e:
+                print(f"[skill-exposure] top-level '{name}' skipped: {e}")
 
+    # 2. COLLECTION GROUPS (sakop din ang top-level na kapareho ng pangalan)
     for name in group_names:
         try:
             for doc in db.collection_group(name).stream():
-                add(doc, name)
+                add(doc, name, "groups")
         except Exception as e:
             print(f"[skill-exposure] collection_group '{name}' skipped: {e}")
 
-    for st in ([] if TASK_SOURCES else students):
-        try:
-            for sub in db.collection('users').document(st['id']).collections():
-                for doc in sub.stream():
-                    add(doc, f"users/*/{sub.id}", st['id'])
-        except Exception as e:
-            print(f"[skill-exposure] subcollections of {st['id']} skipped: {e}")
+    # 3. SUBCOLLECTIONS NG BAWAT USER
+    if discover:
+        for st in students:
+            try:
+                for sub in db.collection('users').document(st['id']).collections():
+                    for doc in sub.stream():
+                        add(doc, sub.id, "sub", st['id'])
+            except Exception as e:
+                print(f"[skill-exposure] subcollections of {st['id']} skipped: {e}")
+    else:
+        for name in sub_names:
+            for st in students:
+                try:
+                    for doc in db.collection('users').document(st['id']).collection(name).stream():
+                        add(doc, name, "sub", st['id'])
+                except Exception as e:
+                    print(f"[skill-exposure] users/{st['id']}/{name} skipped: {e}")
+
+    if discover:
+        _save_known_task_sources({k: sorted(v) for k, v in productive.items()})
 
     return records
 
@@ -1535,9 +1738,9 @@ def build_company_skill_profiles(force=False):
 
 def _build_company_skill_profiles_uncached():
     """Compute the skills (1..3) + exposure for every company from the students' logged tasks."""
-    companies = [{"id": d.id, **d.to_dict()} for d in db.collection('companies').stream()]
+    companies = _load_companies()
     students = []
-    for d in db.collection('users').stream():
+    for d in _load_users():
         data = d.to_dict()
         if str(data.get('role', '')).lower() == 'student' or not data.get('role'):
             students.append({"id": d.id, **data})
@@ -1660,6 +1863,13 @@ def debug_skill_sources():
 def analyze_company_skill_exposure():
     try:
         force = request.args.get('refresh') == '1'
+        if force and request.args.get('rediscover') == '1':
+            try:
+                os.remove(TASK_SOURCES_FILE)
+            except OSError:
+                pass
+        if force:
+            invalidate('users', 'companies')
         return jsonify({"status": "success", "data": build_company_skill_profiles(force)})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -1732,4 +1942,6 @@ def serve_static(filename):
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    # use_reloader=False: ang auto-reloader ay nagre-restart ng server kada save ng file
+    # (at nagpapatakbo ng 2 process), kaya nabubura ang cache at umuulit ang reads/writes.
+    app.run(host='0.0.0.0', port=port, debug=True, use_reloader=False)

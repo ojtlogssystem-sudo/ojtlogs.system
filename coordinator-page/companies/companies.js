@@ -39,6 +39,111 @@ if (window.emailjs) {
     emailjs.init("9tYTBTAGQWPgHHTSW"); 
 }
 
+// ==========================================================
+// STUDENT COUNT HELPERS
+// Kapareho ng rules sa dashboard.js (loadDashboardStats) para
+// pare-pareho ang bilang ng student sa buong system.
+// ==========================================================
+const ARCHIVE_COURSE_YEARS = 4;
+const ARCHIVE_AY_END_MONTH = 6;
+const ARCHIVE_AY_END_DAY = 30;
+
+function getBatchLabel(data) {
+    const num = String(data.studentNumber || data.studentId || data.idNumber || "").trim();
+    let startYear = null;
+    const full = num.match(/^((?:19|20)\d{2})/);
+    if (full) {
+        startYear = parseInt(full[1], 10);
+    } else {
+        const short = num.match(/^(\d{2})\D/);
+        if (short) startYear = 2000 + parseInt(short[1], 10);
+    }
+    if (startYear) {
+        const start = startYear + ARCHIVE_COURSE_YEARS - 1;
+        return `AY ${start}-${start + 1}`;
+    }
+    return data.batch || "Unassigned Batch";
+}
+
+function hasBatchEnded(batchName, now = new Date()) {
+    const m = String(batchName || "").match(/(\d{4})\s*[-\u2013\u2014]\s*(\d{4})/);
+    if (!m) return false;
+    const end = new Date(Number(m[2]), ARCHIVE_AY_END_MONTH - 1, ARCHIVE_AY_END_DAY, 23, 59, 59);
+    return now > end;
+}
+
+function normalizeName(value) {
+    return String(value || "").trim().toLowerCase();
+}
+
+// Company ng student: companyName muna, tapos company (ginagamit ng dashboard)
+function getStudentCompany(data) {
+    const pick = (v) => {
+        const c = String(v || "").trim();
+        return (c === "" || c.toLowerCase() === "n/a" || c === "-") ? "" : c;
+    };
+    return pick(data.companyName) || pick(data.company);
+}
+
+function isCompletedStudent(data) {
+    return normalizeName(data.status) === "completed" ||
+           String(data.internshipStatus || "") === "Completed";
+}
+
+// true = registered at current student (kasama sa bilang ng company)
+function isCountableStudent(data) {
+    const role = normalizeName(data.role);
+    if (role !== "student" && role !== "intern") return false;
+
+    // Deleted account: hindi binibilang
+    if (data.accountDisabled === true) return false;
+
+    const internshipStatus = String(data.internshipStatus || "");
+    const isDone = isCompletedStudent(data);
+
+    // Archived / Graduated / tapos na ang batch -> Batch Archive na ito
+    const isArchived =
+        data.archived === true ||
+        (hasBatchEnded(getBatchLabel(data)) &&
+         !(data.allowContinueHours === true && !isDone));
+    if (isArchived || internshipStatus === "Graduated") return false;
+
+    // Pending (hindi pa tapos mag-register) -> hindi binibilang
+    // Kapareho ng students.js: flag O kumpletong profile data
+    const hasProfileData =
+        !!(data.fullName || data.name || data.firstName) &&
+        !!(data.studentNumber || data.studentId || data.course || data.section);
+    const profileDone =
+        data.isProfileComplete === true ||
+        data.profileCompleted === true ||
+        hasProfileData;
+    const isPending =
+        normalizeName(data.status) !== "completed" &&
+        !(String(data.email || data.userEmail || "").trim() &&
+          profileDone &&
+          (data.studentNumber || data.studentId) &&
+          (data.companyName || data.company));
+    if (isPending) return false;
+
+    return true;
+}
+
+// Kunin lahat ng countable na student ng isang company (by name, case-insensitive)
+async function fetchCompanyStudents(companyName) {
+    const [snap1, snap2] = await Promise.all([
+        getDocs(query(collection(db, "users"), where("company", "==", companyName))),
+        getDocs(query(collection(db, "users"), where("companyName", "==", companyName)))
+    ]);
+    const map = new Map();
+    [...snap1.docs, ...snap2.docs].forEach(docSnap => {
+        const data = docSnap.data();
+        if (!isCountableStudent(data)) return;
+        if (normalizeName(getStudentCompany(data)) !== normalizeName(companyName)) return;
+        map.set(docSnap.id, { id: docSnap.id, data });
+    });
+    return map;
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     let activeQrData = {};
     let activeEvaluationData = {};
@@ -72,7 +177,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const allStudents = [];
                 userSnapshot.forEach(docSnap => {
                     const userData = docSnap.data();
-                    if (userData.role && userData.role.toLowerCase() === "student") {
+                    if (isCountableStudent(userData)) {
                         allStudents.push(userData);
                     }
                 });
@@ -82,20 +187,13 @@ document.addEventListener("DOMContentLoaded", () => {
                     const companyId = docSnap.id; 
                     const companyName = data.companyName ? data.companyName.trim().toLowerCase() : "";
 
-                    const companyStudents = allStudents.filter(s => {
-                        const sCompany = s.companyName ? s.companyName.trim().toLowerCase() : "";
-                        return sCompany === companyName;
-                    });
+                    const companyStudents = allStudents.filter(s =>
+                        normalizeName(getStudentCompany(s)) === companyName
+                    );
 
                     const totalStudents = companyStudents.length;
-                    const activeStudents = companyStudents.filter(s => {
-                        const status = s.status ? s.status.trim().toLowerCase() : "";
-                        return status === "active" || status === "ongoing";
-                    }).length;
-                    const completedStudents = companyStudents.filter(s => {
-                        const status = s.status ? s.status.trim().toLowerCase() : "";
-                        return status === "completed" || status === "finished" || status === "done";
-                    }).length;
+                    const completedStudents = companyStudents.filter(isCompletedStudent).length;
+                    const activeStudents = totalStudents - completedStudents;
 
                     // ==========================================
                     // SUPERVISOR DISPLAY
@@ -552,22 +650,15 @@ document.addEventListener("click", (e) => {
         if (evaluationStatusModal) evaluationStatusModal.classList.add("active");
 
         try {
-            // Kunin lahat ng estudyante/intern ng company na ito
-            const internsQuery1 = query(collection(db, "users"), where("company", "==", companyName));
-            const internsQuery2 = query(collection(db, "users"), where("companyName", "==", companyName));
-            const [snap1, snap2] = await Promise.all([getDocs(internsQuery1), getDocs(internsQuery2)]);
-
+            // Kunin lahat ng estudyante/intern ng company na ito (same rules sa card count)
+            const fetched = await fetchCompanyStudents(companyName);
             const studentsMap = new Map();
-            [...snap1.docs, ...snap2.docs].forEach(docSnap => {
-                const data = docSnap.data();
-                const role = (data.role || "").toLowerCase();
-                if (role === "intern" || role === "student") {
-                    studentsMap.set(docSnap.id, {
-                        id: docSnap.id,
-                        fullName: data.fullName || data.name || "Unnamed Student",
-                        studentNumber: data.studentNumber || data.idNumber || ""
-                    });
-                }
+            fetched.forEach(({ id, data }) => {
+                studentsMap.set(id, {
+                    id,
+                    fullName: data.fullName || data.name || "Unnamed Student",
+                    studentNumber: data.studentNumber || data.idNumber || ""
+                });
             });
 
             // Kunin lahat ng na-submit nang evaluation ng company na ito
@@ -751,22 +842,14 @@ document.addEventListener("click", (e) => {
                 const companyDocRef = companySnap.docs[0];
                 const companyId = companyDocRef.id;
 
-                const internsQuery1 = query(collection(db, "users"), where("company", "==", companyName));
-                const internsQuery2 = query(collection(db, "users"), where("companyName", "==", companyName));
-
-                const [snap1, snap2] = await Promise.all([getDocs(internsQuery1), getDocs(internsQuery2)]);
+                const fetchedInterns = await fetchCompanyStudents(companyName);
                 const internsMap = new Map();
-
-                [...snap1.docs, ...snap2.docs].forEach(docSnap => {
-                    const data = docSnap.data();
-                    const role = (data.role || "").toLowerCase();
-                    if (role === "intern" || role === "student") {
-                        internsMap.set(docSnap.id, {
-                            id: docSnap.id,
-                            fullName: data.fullName || data.name || "Pangalan ng Intern",
-                            studentNumber: data.studentNumber || data.idNumber || ""
-                        });
-                    }
+                fetchedInterns.forEach(({ id, data }) => {
+                    internsMap.set(id, {
+                        id,
+                        fullName: data.fullName || data.name || "Pangalan ng Intern",
+                        studentNumber: data.studentNumber || data.idNumber || ""
+                    });
                 });
 
                 let companyInterns = Array.from(internsMap.values());

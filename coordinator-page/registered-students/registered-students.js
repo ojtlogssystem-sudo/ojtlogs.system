@@ -198,11 +198,18 @@ function isPendingStudent(data) {
     }
 
     const email =
-        String(data.email || "").trim();
+        String(data.email || data.userEmail || "").trim();
+
+    // Kapareho ng students.js: flag O kumpletong profile data
+    const hasProfileData =
+        !!(data.fullName || data.name || data.firstName) &&
+        !!(data.studentNumber || data.studentId ||
+           data.course || data.section);
 
     const profileDone =
         data.isProfileComplete === true ||
-        data.profileCompleted === true;
+        data.profileCompleted === true ||
+        hasProfileData;
 
     const hasStudentNumber =
         !!(data.studentNumber || data.studentId);
@@ -253,6 +260,50 @@ function isArchivedStudent(data) {
 
 
 /* ========================================
+   STUDENT DOC / DEDUPE / ACADEMIC YEAR
+   (kapareho ng students.js)
+======================================== */
+
+function isStudentDoc(u) {
+    const role = String(u.role || "").trim().toLowerCase();
+    if (role) return role === "student" || role === "intern";
+    return !!(u.studentNumber || u.studentId);
+}
+
+function getStudentAcademicYear(studentNumber) {
+    const sn = String(studentNumber || "").trim();
+    if (!sn || sn === "-") return "";
+    let startYear = null;
+    const full = sn.match(/^((?:19|20)\d{2})/);
+    if (full) {
+        startYear = parseInt(full[1], 10);
+    } else {
+        const short = sn.match(/^(\d{2})\D/);
+        if (short) startYear = 2000 + parseInt(short[1], 10);
+    }
+    if (!startYear) return "";
+    const gradYear = startYear + 3;
+    return `${gradYear}-${gradYear + 1}`;
+}
+
+function hasAcademicYearEnded(academicYear) {
+    const m = String(academicYear || "").match(/^(\d{4})-(\d{4})$/);
+    if (!m) return false;
+    return new Date() > new Date(Number(m[2]), 5, 30, 23, 59, 59);
+}
+
+function scoreUserDoc(u) {
+    return (
+        ((u.accountDisabled === true || u.archived === true) ? -100 : 0) +
+        ((u.isProfileComplete === true || u.profileCompleted === true) ? 10 : 0) +
+        ((u.studentNumber || u.studentId) ? 3 : 0) +
+        ((u.fullName || u.name || u.firstName) ? 2 : 0) +
+        ((u.course || u.section) ? 1 : 0)
+    );
+}
+
+
+/* ========================================
    LOAD REGISTERED STUDENTS
 ======================================== */
 
@@ -269,48 +320,62 @@ async function loadRegisteredStudents() {
         registeredStudents = [];
 
 
+        // Isang user doc lang bawat email (pinakakumpleto) - walang dobleng bilang
+        const bestByEmail = new Map();
+
         usersSnapshot.forEach((docSnap) => {
+
+            const u = docSnap.data();
+
+            if (!isStudentDoc(u)) return;
+
+            const key = String(u.email || u.userEmail || "")
+                .toLowerCase().trim();
+
+            if (!key) return;
+
+            const current = bestByEmail.get(key);
+
+            if (!current || scoreUserDoc(u) > scoreUserDoc(current.data())) {
+                bestByEmail.set(key, docSnap);
+            }
+
+        });
+
+        Array.from(bestByEmail.values()).forEach((docSnap) => {
 
             const data = docSnap.data();
 
-
             /* ARCHIVED (completed batch) - hindi na kasama
-               sa registered students. Nasa Completed Batch
-               Archive na sila. */
-
+               sa registered students. */
             if (isArchivedStudent(data)) {
                 return;
             }
 
-
             /* DELETED (soft delete) na ng coordinator */
-
             if (data.accountDisabled === true) {
                 return;
             }
 
-
-            /* PENDING pa lang - hindi pa registered.
-               Kapareho ng rule sa students.js:
-               kailangan tapos na ang profile setup,
-               may student number, at may company.
-               (Completed = manual final status, kaya
-               hindi na dumadaan sa check na ito.) */
-
-            if (isPendingStudent(data)) {
-                return;
-            }
-
-
-            /* STUDENTS ONLY */
+            /* TAPOS NA ANG ACADEMIC YEAR - Batch Archive na
+               (maliban sa pinayagang magpatuloy ng hours) */
+            const isDone =
+                String(data.status || "").toLowerCase() === "completed" ||
+                data.internshipStatus === "Completed";
 
             if (
-                data.role &&
-                data.role.toLowerCase() !== "student"
+                hasAcademicYearEnded(getStudentAcademicYear(
+                    data.studentNumber || data.studentId || data.idNumber
+                )) &&
+                !(data.allowContinueHours === true && !isDone)
             ) {
                 return;
             }
 
+            /* PENDING pa lang - hindi pa registered. */
+            if (isPendingStudent(data)) {
+                return;
+            }
 
             const requiredHours =
                 Number(data.requiredHours) ||

@@ -277,11 +277,23 @@ async function autoArchiveEndedAcademicYears(usersSnapshot) {
 }
 
 /* ==========================================
+   STUDENT DOC CHECK
+   Case-insensitive ang role (hal. "Student"/"student"/"intern"), at kung
+   walang role pero may student number, student pa rin. Dati, exact na
+   where("role","==","student") ang query kaya nawawala ang mga student
+   na iba ang pagkakasulat ng role.
+========================================== */
+function isStudentDoc(u) {
+    const role = String(u.role || "").trim().toLowerCase();
+    if (role) return role === "student" || role === "intern";
+    return !!(u.studentNumber || u.studentId);
+}
+
+/* ==========================================
    REAL-TIME LISTENER & DATA MERGING
 ========================================== */
 function listenToStudentData() {
-    const usersRef = collection(db, "users");
-    const usersQuery = query(usersRef, where("role", "==", "student"));
+    const usersQuery = collection(db, "users");
 
     const invitesRef = collection(db, "invitations");
     const invitesQuery = query(invitesRef, orderBy("createdAt", "desc"));
@@ -298,8 +310,9 @@ function listenToStudentData() {
 async function refreshAndRenderStudents() {
     try {
         const usersRef = collection(db, "users");
-        const usersQuery = query(usersRef, where("role", "==", "student"));
-        const usersSnapshot = await getDocs(usersQuery);
+        const allUsersSnapshot = await getDocs(usersRef);
+        const studentDocs = allUsersSnapshot.docs.filter(d => isStudentDoc(d.data()));
+        const usersSnapshot = { forEach: (cb) => studentDocs.forEach(cb) };
 
         // Isang beses lang bawat page load: i-archive ang mga student ng
         // academic year na tapos na. Kapag may na-update, mag-te-trigger
@@ -456,7 +469,7 @@ async function refreshAndRenderStudents() {
                 photo: profilePic,
                 studentId: studentNumber,
                 name: fullName,
-                email: userData.email || existingData.email,
+                email: userData.email || userData.userEmail || existingData.email || "",
                 section: combinedSection,
                 company: company,
                 status: status,
@@ -576,10 +589,10 @@ function applyFiltersAndPagination() {
     const yearVal = document.getElementById("yearFilter")?.value || ALL_ACADEMIC_YEARS;
 
     filteredStudents = allStudents.filter(student => {
-        const matchesSearch = student.name.toLowerCase().includes(searchVal) ||
-                              student.email.toLowerCase().includes(searchVal) ||
-                              student.studentId.toLowerCase().includes(searchVal) ||
-                              student.section.toLowerCase().includes(searchVal);
+        const matchesSearch = String(student.name || "").toLowerCase().includes(searchVal) ||
+                              String(student.email || "").toLowerCase().includes(searchVal) ||
+                              String(student.studentId || "").toLowerCase().includes(searchVal) ||
+                              String(student.section || "").toLowerCase().includes(searchVal);
         
         const matchesStatus = (statusVal === "all status") || (student.status.toLowerCase() === statusVal);
         

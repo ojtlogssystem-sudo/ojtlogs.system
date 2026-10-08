@@ -65,6 +65,9 @@ let todayNoDutyReason = null;
 let studentScheduleDays = null;
 let studentSchedule = null;   // buong users/{uid}.schedule (days, morning, afternoon)
 let studentScheduleFetchedFor = null;
+// Completion info ng student (status / rendered hours / required hours)
+// para malaman kung tapos na ang OJT niya.
+let studentCompletionMeta = { completedFlag: false, renderedHours: 0, requiredHours: 600 };
 
 // Iisang absence-check lang ang sabay na tatakbo, para walang doble-doblehang
 // "Absent" record kapag sunod-sunod ang refreshAttendanceUI().
@@ -77,7 +80,9 @@ let studentAssignedCompany = null;
 let studentCompanyFetchedFor = null;
 
 // Kontrol sa "View All" toggle ng Attendance History list.
-let showAllHistory = false;
+// Attendance History pagination (Previous / Next)
+const HISTORY_PAGE_SIZE = 5;
+let historyPage = 1;
 
 /* ==========================================
    TODAY'S NO-DUTY CHECK (Suspension / Holiday)
@@ -202,6 +207,13 @@ async function getStudentScheduleDays(user) {
             const days = data.schedule?.days;
             studentScheduleDays = Array.isArray(days) ? days : null;
             studentSchedule = (data.schedule && typeof data.schedule === "object") ? data.schedule : null;
+
+            const statusText = String(data.internshipStatus || data.status || "").trim().toLowerCase();
+            studentCompletionMeta = {
+                completedFlag: statusText === "completed" || statusText.includes("graduated"),
+                renderedHours: Number(data.renderedHours || data.completedHours || data.hoursRendered || 0) || 0,
+                requiredHours: Number(data.requiredHours || data.totalRequiredHours || 600) || 600
+            };
         } else {
             studentScheduleDays = null;
             studentSchedule = null;
@@ -291,10 +303,169 @@ function checkAndMarkAbsences(user, todayStr, scheduleDays) {
     return absenceCheckInFlight;
 }
 
+/* ==========================================
+   SAFER AUTO-ABSENT HELPERS
+   Para hindi mag-sulat ng maling "Absent" sa araw na
+   may totoong attendance record naman.
+========================================== */
+
+// Gawing YYYY-MM-DD ang petsa ng record, kahit iba ang format ng
+// pagkaka-save (hal. "Sep 24, 2026" o ISO string) — dati kasi `i.date`
+// lang ang binabasa, kaya kapag hindi YYYY-MM-DD ang format ay hindi
+// ito nakikilala at ma-ma-mark pa ring Absent ang araw na iyon.
+function getRecordDateKey(item) {
+    if (!item) return "";
+
+    const candidates = [item.date, item.formattedDate, item.timeInRaw];
+
+    for (const raw of candidates) {
+        if (!raw) continue;
+
+        if (typeof raw === "string" && /^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+            return raw;
+        }
+
+        const parsed = new Date(raw);
+        if (!isNaN(parsed.getTime())) {
+            return getLocalYYYYMMDD(parsed);
+        }
+    }
+
+    return "";
+}
+
+function hasRealTimeIn(item) {
+    return !!item && !!item.timeIn && item.timeIn !== "--";
+}
+
+function isAutoMarkedAbsent(item) {
+    return (
+        String(item?.status || "").toLowerCase() === "absent" &&
+        /auto-marked/i.test(String(item?.remarks || ""))
+    );
+}
+
+// Itago (hindi buburahin sa Firestore) ang auto-marked "Absent" kung may
+// totoong record na may Time In sa parehong araw.
+function hideShadowedAbsences(list) {
+    const attendedDates = new Set();
+
+    list.forEach(item => {
+        if (hasRealTimeIn(item)) {
+            const key = getRecordDateKey(item);
+            if (key) attendedDates.add(key);
+        }
+    });
+
+    return list.filter(item => {
+        if (!isAutoMarkedAbsent(item)) return true;
+        return !attendedDates.has(getRecordDateKey(item));
+    });
+}
+
+// Kapag COMPLETE na ang student (status "Completed" o abot na sa required
+// hours), hindi na dapat nagbibilang ng Absent pagkatapos ng huling araw
+// na nag-Time In siya. Ibinabalik ang petsang yun (YYYY-MM-DD), o "" kung
+// hindi pa complete (walang cutoff).
+function isStudentCompleted(list) {
+    let totalHours = 0;
+
+    list.forEach(item => {
+        if (!hasRealTimeIn(item)) return;
+        const status = String(item?.status || "").toLowerCase();
+        if (status !== "rejected" && status !== "absent") {
+            totalHours += Number(item?.hoursRendered) || 0;
+        }
+    });
+
+    const meta = studentCompletionMeta;
+    return (
+        meta.completedFlag ||
+        meta.renderedHours >= meta.requiredHours ||
+        totalHours >= meta.requiredHours
+    );
+}
+
+// May bukas pa bang session (naka-Time In pero hindi pa nakaka-Time Out)?
+// Pinapayagan pa ring mag-Time Out ito kahit complete na, para hindi ma-stuck.
+function hasOpenSession(list) {
+    return list.some(item => String(item?.status || "") === "Active");
+}
+
+function getCompletionCutoffDate(list) {
+    let lastTimeIn = "";
+    let totalHours = 0;
+
+    list.forEach(item => {
+        if (!hasRealTimeIn(item)) return;
+        const key = getRecordDateKey(item);
+        if (key && key > lastTimeIn) lastTimeIn = key;
+
+        const status = String(item?.status || "").toLowerCase();
+        if (status !== "rejected" && status !== "absent") {
+            totalHours += Number(item?.hoursRendered) || 0;
+        }
+    });
+
+    if (!lastTimeIn) return "";
+
+    const meta = studentCompletionMeta;
+    const isComplete =
+        meta.completedFlag ||
+        meta.renderedHours >= meta.requiredHours ||
+        totalHours >= meta.requiredHours;
+
+    return isComplete ? lastTimeIn : "";
+}
+
+// Itago (hindi buburahin sa Firestore) ang mga Absent na lampas na sa
+// huling Time In ng student na complete na.
+function hideAbsencesAfterCompletion(list) {
+    const cutoff = getCompletionCutoffDate(list);
+    if (!cutoff) return list;
+
+    return list.filter(item => {
+        const isAbsent = String(item?.status || "").toLowerCase() === "absent";
+        if (!isAbsent || hasRealTimeIn(item)) return true;
+        const key = getRecordDateKey(item);
+        return !key || key <= cutoff;
+    });
+}
+
+// Huling check diretso sa Firestore bago mag-sulat ng Absent.
+// Kapag hindi ma-verify (error), HUWAG mag-sulat — mas mabuting walang
+// Absent kaysa maling Absent.
+async function hasAttendanceRecordOnDate(user, dateStr) {
+    const queries = [];
+
+    if (user?.uid) {
+        queries.push(query(attendanceRef, where("userId", "==", user.uid), where("date", "==", dateStr)));
+    }
+    if (user?.email) {
+        queries.push(query(attendanceRef, where("userEmail", "==", user.email), where("date", "==", dateStr)));
+    }
+
+    for (const q of queries) {
+        try {
+            const snap = await getDocs(q);
+            if (!snap.empty) return true;
+        } catch (err) {
+            console.warn("Could not verify existing attendance for", dateStr, err);
+            return true;
+        }
+    }
+
+    return false;
+}
+
 async function markMissedAbsences(user, todayStr, scheduleDays) {
     if (!user) return;
 
-    const existingDates = new Set(fullAttendanceHistory.map(i => i.date));
+    const existingDates = new Set(fullAttendanceHistory.map(getRecordDateKey).filter(Boolean));
+
+    // Complete na ang student: huwag nang mag-mark ng Absent pagkatapos ng
+    // huling Time In niya.
+    const completionCutoff = getCompletionCutoffDate(fullAttendanceHistory);
 
     // Lookback window: laging naka-cap sa ABSENCE_LOOKBACK_DAYS (14 days)
     // paatras mula ngayon — hindi na hanggang sa earliest record ng
@@ -329,7 +500,9 @@ async function markMissedAbsences(user, todayStr, scheduleDays) {
     while (cursor < todayDateObj) {
         const dateStr = getLocalYYYYMMDD(cursor);
 
-        if (isTodayInStudentSchedule(cursor, scheduleDays) && !noDutySet.has(dateStr) && !existingDates.has(dateStr)) {
+        if (completionCutoff && dateStr > completionCutoff) break;
+
+        if (isTodayInStudentSchedule(cursor, scheduleDays) && !noDutySet.has(dateStr) && !existingDates.has(dateStr) && !(await hasAttendanceRecordOnDate(user, dateStr))) {
             const absentRecord = {
                 userId: userId || "guest_user",
                 userEmail: userEmail || "no_email",
@@ -487,11 +660,11 @@ function showToast(message, type = "success") {
         transition: all 0.3s ease;
     `;
 
-    const iconClass = isSuccess ? "fa-circle-check" : type === "error" ? "fa-circle-xmark" : "fa-circle-info";
+    const iconName = isSuccess ? "check_circle" : type === "error" ? "cancel" : "info";
     
     toast.innerHTML = `
-        <i class="fa-solid ${iconClass}" style="font-size: 20px; color: ${iconColor};"></i>
-        <span style="color: ${textColor}; font-family: 'Poppins', sans-serif; font-size: 15px; font-weight: 500;">
+        <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" style="font-size: 20px; color: ${iconColor};" aria-hidden="true">${iconName}</mat-icon>
+        <span style="color: ${textColor}; font-family: 'Google Sans Flex', sans-serif; font-size: 15px; font-weight: 500;">
             ${message}
         </span>
     `;
@@ -564,23 +737,255 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 /* ==========================================
    FLATPICKR DATE RANGE PICKER
+   WITH ATTENDANCE DATE MARKS
 ========================================== */
-function initFlatpickrFilter() {
-    const datePickerInput = document.getElementById("dateRangePicker");
 
-    if (datePickerInput && typeof flatpickr !== "undefined") {
+function initFlatpickrFilter() {
+    const datePickerInput =
+        document.getElementById("dateRangePicker");
+
+    if (
+        datePickerInput &&
+        typeof flatpickr !== "undefined"
+    ) {
+
         flatpickr(datePickerInput, {
+
             mode: "range",
+
             dateFormat: "M j, Y",
+
+            /*
+             * Kapag gumawa ang Flatpickr
+             * ng bawat date cell, iche-check
+             * kung may attendance ang date na iyon.
+             */
+            onDayCreate: function (
+                selectedDates,
+                dateStr,
+                instance,
+                dayElem
+            ) {
+                markAttendanceDate(dayElem);
+            },
+
+            /*
+             * Kapag binuksan ang calendar,
+             * i-refresh ang marks.
+             */
+            onOpen: function (
+                selectedDates,
+                dateStr,
+                instance
+            ) {
+                markAllAttendanceDates(instance);
+            },
+
+            /*
+             * Kapag lumipat ng buwan.
+             */
+            onMonthChange: function (
+                selectedDates,
+                dateStr,
+                instance
+            ) {
+                markAllAttendanceDates(instance);
+            },
+
+            /*
+             * Kapag lumipat ng taon.
+             */
+            onYearChange: function (
+                selectedDates,
+                dateStr,
+                instance
+            ) {
+                markAllAttendanceDates(instance);
+            },
+
+            /*
+             * Existing date-range filtering.
+             */
             onChange: function (selectedDates) {
+
+                historyPage = 1;
+
                 if (selectedDates.length === 2) {
-                    filterHistoryByDateRange(selectedDates[0], selectedDates[1]);
-                } else if (selectedDates.length === 0) {
-                    renderHistoryItems(getDisplayHistory(fullAttendanceHistory));
+
+                    filterHistoryByDateRange(
+                        selectedDates[0],
+                        selectedDates[1]
+                    );
+
+                } else if (
+                    selectedDates.length === 0
+                ) {
+
+                    renderHistoryItems(
+                        getDisplayHistory(
+                            fullAttendanceHistory
+                        )
+                    );
                 }
             }
         });
     }
+}
+/* ==========================================
+   GET DATES WITH ACTUAL ATTENDANCE
+========================================== */
+
+function getAttendanceDates() {
+
+    const attendanceDates =
+        new Set();
+
+    fullAttendanceHistory.forEach(
+        item => {
+
+            /*
+             * Kunin ang date ng attendance.
+             */
+            const date =
+                item.date ||
+                item.formattedDate;
+
+            if (!date) {
+                return;
+            }
+
+            /*
+             * Huwag markahan ang auto-generated
+             * Absent records bilang attendance.
+             *
+             * Ang gusto natin ay actual
+             * attendance lamang.
+             */
+            const status =
+                String(
+                    item.status || ""
+                ).toLowerCase();
+
+            const hasActualAttendance =
+                status === "present" ||
+                status === "late" ||
+                status === "active" ||
+                status === "completed" ||
+                hasRealTimeIn(item);
+
+            if (!hasActualAttendance) {
+                return;
+            }
+
+            /*
+             * Kung YYYY-MM-DD na ang date,
+             * gamitin directly.
+             */
+            if (
+                typeof date === "string" &&
+                /^\d{4}-\d{2}-\d{2}$/.test(date)
+            ) {
+
+                attendanceDates.add(
+                    date
+                );
+
+                return;
+            }
+
+            /*
+             * Fallback para sa ibang date format.
+             */
+            const parsedDate =
+                new Date(date);
+
+            if (
+                !isNaN(
+                    parsedDate.getTime()
+                )
+            ) {
+
+                attendanceDates.add(
+                    getLocalYYYYMMDD(
+                        parsedDate
+                    )
+                );
+            }
+        }
+    );
+
+    return attendanceDates;
+}
+
+
+/* ==========================================
+   MARK ONE DATE
+========================================== */
+
+function markAttendanceDate(dayElem) {
+
+    if (
+        !dayElem ||
+        !dayElem.dateObj
+    ) {
+        return;
+    }
+
+    const attendanceDates =
+        getAttendanceDates();
+
+    const calendarDate =
+        getLocalYYYYMMDD(
+            dayElem.dateObj
+        );
+
+    if (
+        attendanceDates.has(
+            calendarDate
+        )
+    ) {
+
+        dayElem.classList.add(
+            "has-attendance"
+        );
+
+    } else {
+
+        dayElem.classList.remove(
+            "has-attendance"
+        );
+    }
+}
+
+
+/* ==========================================
+   MARK ALL DATES CURRENTLY
+   DISPLAYED BY FLATPICKR
+========================================== */
+
+function markAllAttendanceDates(
+    instance
+) {
+
+    if (
+        !instance ||
+        !instance.calendarContainer
+    ) {
+        return;
+    }
+
+    const dayElements =
+        instance.calendarContainer.querySelectorAll(
+            ".flatpickr-day"
+        );
+
+    dayElements.forEach(
+        dayElem => {
+            markAttendanceDate(
+                dayElem
+            );
+        }
+    );
 }
 
 function filterHistoryByDateRange(startDate, endDate) {
@@ -608,7 +1013,7 @@ window.viewPhotoModal = function(photoUrl, company, date, timeIn) {
         viewModal.className = 'scanner-modal';
         viewModal.innerHTML = `
             <div class="scanner-dialog" style="max-width: 420px; padding: 20px;">
-                <h3 style="font-size: 16px; font-weight: 600; color: #111827; margin-bottom: 4px;"><i class="fa-solid fa-image" style="color: #3b82f6;"></i> Photo Proof Details</h3>
+                <h3 style="font-size: 16px; font-weight: 600; color: #111827; margin-bottom: 4px;"> Photo Proof Details</h3>
                 <p style="font-size: 11px; color: #6b7280; margin-bottom: 12px;">Verification photo submitted during time-in</p>
                 
                 <div style="width: 100%; height: 260px; border-radius: 12px; overflow: hidden; background: #111827; margin-bottom: 14px; display: flex; align-items: center; justify-content: center;">
@@ -643,16 +1048,60 @@ window.viewPhotoModal = function(photoUrl, company, date, timeIn) {
     viewModal.hidden = false;
 };
 
-// Kapag hindi pa pinindot ang "View All", 3 lang na pinaka-bagong
-// attendance record ang ipapakita sa listahan.
+// Pagination: ibinabalik lang ang records para sa kasalukuyang page
+// (HISTORY_PAGE_SIZE kada page) at ina-update ang Previous/Next footer.
 function getDisplayHistory(historyList) {
-    return showAllHistory ? historyList : historyList.slice(0, 3);
+    const totalPages = Math.max(1, Math.ceil(historyList.length / HISTORY_PAGE_SIZE));
+    historyPage = Math.min(Math.max(1, historyPage), totalPages);
+
+    updateHistoryPagination(historyList.length, totalPages);
+
+    const start = (historyPage - 1) * HISTORY_PAGE_SIZE;
+    return historyList.slice(start, start + HISTORY_PAGE_SIZE);
 }
 
-// Ginagamit pareho ng refreshAttendanceUI at ng "View All" button para
+function updateHistoryPagination(totalItems, totalPages) {
+    const bar = document.getElementById("history-pagination-bar");
+    if (!bar) return;
+
+    // Walang records, o isang page lang = walang pagination
+    if (!totalItems || totalPages <= 1) {
+        bar.hidden = true;
+        return;
+    }
+
+    bar.hidden = false;
+
+    const prevBtn = document.getElementById("history-page-prev");
+    const nextBtn = document.getElementById("history-page-next");
+    if (prevBtn) prevBtn.disabled = historyPage <= 1;
+    if (nextBtn) nextBtn.disabled = historyPage >= totalPages;
+}
+
+function initHistoryPagination() {
+    const scrollToHistory = () => {
+        document.getElementById("attendance-history-card")
+            ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+
+    document.getElementById("history-page-prev")?.addEventListener("click", () => {
+        if (historyPage > 1) {
+            historyPage--;
+            applyHistoryDisplay();
+            scrollToHistory();
+        }
+    });
+
+    document.getElementById("history-page-next")?.addEventListener("click", () => {
+        historyPage++; // getDisplayHistory() clamps it to the last page
+        applyHistoryDisplay();
+        scrollToHistory();
+    });
+}
+
+// Ginagamit ng refreshAttendanceUI at ng Previous/Next buttons para
 // hindi mag-duplicate ng logic: kung may active date-range filter, i-apply
-// yun; kung wala, ipakita ang buong fullAttendanceHistory (naka-cap sa 3
-// maliban na lang kung naka-toggle na ang "View All").
+// yun; kung wala, ipakita ang buong fullAttendanceHistory (paginated).
 function applyHistoryDisplay() {
     const datePickerInput = document.getElementById("dateRangePicker");
     if (datePickerInput && datePickerInput._flatpickr && datePickerInput._flatpickr.selectedDates.length === 2) {
@@ -699,9 +1148,6 @@ function renderHistoryItems(historyList) {
             <div class="attendance-history-item">
                 <div class="att-item-top">
                     <div class="att-item-left">
-                        <div class="att-icon-box ${badgeClass === 'green' ? 'green-bg' : badgeClass === 'orange' ? 'orange-bg' : badgeClass === 'red' ? 'red-bg' : 'blue-bg'}">
-                            <i class="fa-solid ${badgeClass === 'green' ? 'fa-circle-check' : badgeClass === 'orange' ? 'fa-clock' : badgeClass === 'red' ? 'fa-circle-xmark' : (isExcused ? 'fa-circle-info' : 'fa-spinner')}"></i>
-                        </div>
                         <div class="att-date-info">
                             <h4>${item.formattedDate || item.date}</h4>
                             <p>${item.company}</p>
@@ -716,15 +1162,13 @@ function renderHistoryItems(historyList) {
                 
                 <div class="att-item-bottom">
                     <div class="time-log-info">
-                        <span><i class="fa-solid fa-arrow-right-to-bracket text-green"></i> ${item.timeIn}</span>
+                        <span><mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color text-green" aria-hidden="true">login</mat-icon> ${item.timeIn}</span>
                         <span class="dot">•</span>
-                        <span><i class="fa-solid fa-arrow-right-from-bracket text-red"></i> ${item.timeOut}</span>
+                        <span><mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color text-red" aria-hidden="true">logout</mat-icon> ${item.timeOut}</span>
                     </div>
-                    ${photoSrc ? `<button type="button" onclick="viewPhotoModal('${photoSrc}', '${safeCompany}', '${safeDate}', '${safeTimeIn}')" style="font-size: 11px; color: #3b82f6; font-weight: 500; border:none; background:none; cursor:pointer; display:flex; align-items:center; gap:4px;"><i class="fa-solid fa-image"></i> Photo Proof</button>` : ''}
+                    ${photoSrc ? `<button type="button" onclick="viewPhotoModal('${photoSrc}', '${safeCompany}', '${safeDate}', '${safeTimeIn}')" style="font-size: 13px; color: #3b82f6; font-weight: 500; border:none; background:none; cursor:pointer; display:flex; align-items:center; gap:4px;"><mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" style="font-size: 16px;" aria-hidden="true">image</mat-icon> Photo Proof</button>` : ''}
                 </div>
-
-                ${item.tasks ? `<div class="task-summary-preview"><strong>Tasks:</strong> ${item.tasks}</div>` : ''}
-                ${item.remarks && item.remarks !== '--' ? `<div style="margin-top: 4px; font-size: 11px; color: ${isRejected ? '#dc2626' : isLate ? '#ea580c' : '#059669'};"><strong>Remarks:</strong> ${item.remarks}</div>` : ''}
+                ${item.remarks && item.remarks !== '--' ? `<div style="margin-top: 4px; font-size: 12px; color: ${isRejected ? '#dc2626' : isLate ? '#ea580c' : '#059669'};"><strong>Remarks:</strong> ${item.remarks}</div>` : ''}
             </div>
         `;
     }).join('');
@@ -786,8 +1230,6 @@ function initAttendanceSystem(currentUser) {
     const viewPhotoBtnClose = document.getElementById("view-photo-btn-close");
     const viewPhotoModalEl = document.getElementById("view-photo-modal");
 
-    const viewAllBtn = document.getElementById("view-all-btn");
-
     let qrScanner = null;
     let scanMode = null; 
     let photoStream = null;
@@ -818,6 +1260,12 @@ function initAttendanceSystem(currentUser) {
     };
 
     const openQRScanner = async (mode) => {
+        // Complete na ang OJT/batch ng student: bawal na mag Time In / Time Out.
+        if (isStudentCompleted(fullAttendanceHistory) && !hasOpenSession(fullAttendanceHistory)) {
+            showToast("Your OJT is already completed. You can no longer time in or time out.", "error");
+            return;
+        }
+
         if (todayNoDutyReason) {
             showToast(`No duty today — ${todayNoDutyReason}`, "info");
             return;
@@ -976,13 +1424,13 @@ function initAttendanceSystem(currentUser) {
         if (capturePhotoBtn) {
             capturePhotoBtn.hidden = false;
             capturePhotoBtn.disabled = false;
-            capturePhotoBtn.innerHTML = `<i class="fa-solid fa-camera"></i> Capture Photo`;
+            capturePhotoBtn.innerHTML = `<mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">photo_camera</mat-icon> Capture Photo`;
         }
         if (retakePhotoBtn) retakePhotoBtn.hidden = true;
         if (confirmPhotoBtn) {
             confirmPhotoBtn.hidden = true;
             confirmPhotoBtn.disabled = false;
-            confirmPhotoBtn.innerHTML = `<i class="fa-solid fa-check-circle"></i> Complete Time In`;
+            confirmPhotoBtn.innerHTML = `<mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">check_circle</mat-icon> Complete Time In`;
         }
     };
 
@@ -1063,7 +1511,7 @@ function initAttendanceSystem(currentUser) {
         ctx.fillRect(0, overlayY, w, overlayHeight);
 
         ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 20px Poppins, sans-serif"; 
+        ctx.font = "bold 20px 'Google Sans Flex', sans-serif"; 
         ctx.fillText(`${formattedDateStr} ${formattedAMPM} | ${currentLocationStr}`, 16, overlayY + 38);
 
         capturedPhotoBase64 = photoCanvas.toDataURL("image/jpeg", 0.3);
@@ -1186,13 +1634,13 @@ function initAttendanceSystem(currentUser) {
         }
 
         listContainer.innerHTML = pendingTasksList.map((item, index) => `
-            <li style="background: #f3f4f6; padding: 8px 10px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 11px; border: 1px solid #e5e7eb;">
+            <li style="background: #f3f4f6; padding: 8px 10px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; border: 1px solid #e5e7eb;">
                 <div style="text-align: left; padding-right: 8px;">
                     <strong style="color: #111827; display: block; font-weight: 600;">${item.title}</strong>
                     <span style="color: #4b5563;">${item.description}</span>
                 </div>
                 <button type="button" class="remove-task-btn" data-index="${index}" style="color: #dc2626; border: none; background: none; cursor: pointer; padding: 4px;">
-                    <i class="fa-solid fa-trash"></i>
+                    <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">delete</mat-icon>
                 </button>
             </li>
         `).join('');
@@ -1339,7 +1787,7 @@ function initAttendanceSystem(currentUser) {
         await refreshAttendanceUI();
 
         submitTaskBtn.disabled = false;
-        submitTaskBtn.innerHTML = `<i class="fa-solid fa-check-circle"></i> Submit & Complete Time Out`;
+        submitTaskBtn.innerHTML = `<mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">check_circle</mat-icon> Submit & Complete Time Out`;
     });
 
     taskCancel?.addEventListener("click", closeTaskModal);
@@ -1348,13 +1796,7 @@ function initAttendanceSystem(currentUser) {
         if (viewPhotoModalEl) viewPhotoModalEl.hidden = true;
     });
 
-    // "View All" toggles between showing only the 3 most recent
-    // attendance records and the complete history list in place.
-    viewAllBtn?.addEventListener("click", () => {
-        showAllHistory = !showAllHistory;
-        viewAllBtn.textContent = showAllHistory ? "View Less" : "View All";
-        applyHistoryDisplay();
-    });
+    initHistoryPagination();
 
     // --- 4. REFRESH & BIND TODAY'S ATTENDANCE UI ---
     async function refreshAttendanceUI() {
@@ -1373,6 +1815,7 @@ function initAttendanceSystem(currentUser) {
         if (todayDate) todayDate.textContent = formatLocalDateDisplay(now);
 
         let historyMap = new Map();
+        let historyFetchOk = true; // false kung pumalya ang pagkuha ng history
         const user = auth.currentUser || currentUser;
         const currentUid = user ? user.uid : null;
         const currentEmail = user ? user.email : localStorage.getItem("user_email");
@@ -1382,7 +1825,7 @@ function initAttendanceSystem(currentUser) {
                 const qUser = query(attendanceRef, where("userId", "==", currentUid));
                 const snapUser = await getDocs(qUser);
                 snapUser.forEach(docSnap => historyMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() }));
-            } catch (e) { console.warn("Fetch userId err:", e); }
+            } catch (e) { historyFetchOk = false; console.warn("Fetch userId err:", e); }
         }
 
         if (currentEmail) {
@@ -1390,7 +1833,7 @@ function initAttendanceSystem(currentUser) {
                 const qEmail = query(attendanceRef, where("userEmail", "==", currentEmail));
                 const snapEmail = await getDocs(qEmail);
                 snapEmail.forEach(docSnap => historyMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() }));
-            } catch (e) { console.warn("Fetch userEmail err:", e); }
+            } catch (e) { historyFetchOk = false; console.warn("Fetch userEmail err:", e); }
         }
 
         fullAttendanceHistory = Array.from(historyMap.values());
@@ -1401,6 +1844,8 @@ function initAttendanceSystem(currentUser) {
         const isScheduledToday = isTodayInStudentSchedule(now, scheduleDays);
 
         const sortHistory = () => {
+            fullAttendanceHistory = hideShadowedAbsences(fullAttendanceHistory);
+            fullAttendanceHistory = hideAbsencesAfterCompletion(fullAttendanceHistory);
             fullAttendanceHistory.sort((a, b) => {
                 const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime();
                 const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt || 0).getTime();
@@ -1417,9 +1862,29 @@ function initAttendanceSystem(currentUser) {
 
         // Awtomatikong i-mark na "Absent" ang mga nakaraang duty day
         // na walang Time In record (hindi kasama ang araw na ito).
-        if (currentUid || currentEmail) {
+        if ((currentUid || currentEmail) && historyFetchOk) {
             await checkAndMarkAbsences(user, todayStr, scheduleDays);
             sortHistory();
+        }
+
+        /* ==========================================
+        REFRESH ATTENDANCE MARKS
+        AFTER FIRESTORE DATA LOADS
+        ========================================== */
+
+        const datePickerInput =
+            document.getElementById(
+                "dateRangePicker"
+            );
+
+        if (
+            datePickerInput &&
+            datePickerInput._flatpickr
+        ) {
+
+            markAllAttendanceDates(
+                datePickerInput._flatpickr
+            );
         }
 
         const activeDocId = localStorage.getItem("current_attendance_doc_id");
@@ -1447,7 +1912,28 @@ function initAttendanceSystem(currentUser) {
         } else {
             const latestToday = fullAttendanceHistory.find(i => i.date === todayStr);
 
-            if (latestToday && (latestToday.status === "Present" || latestToday.status === "Completed" || latestToday.status === "Late")) {
+            if (isStudentCompleted(fullAttendanceHistory)) {
+                // Complete na ang OJT: Status "Completed", naka-disable ang Time In at Time Out.
+                const showToday = latestToday && hasRealTimeIn(latestToday);
+                if (todayCompany) todayCompany.textContent = showToday ? (latestToday.company || "--") : "--";
+                if (todayLocation) todayLocation.textContent = showToday ? (latestToday.location || "--") : "--";
+                if (todayTimeIn) todayTimeIn.textContent = showToday ? (latestToday.timeIn || "--") : "--";
+                if (todayTimeOut) todayTimeOut.textContent = showToday ? (latestToday.timeOut || "--") : "--";
+
+                if (todayStatusBadge) {
+                    todayStatusBadge.textContent = "Completed";
+                    todayStatusBadge.className = "status-badge completed";
+                }
+
+                if (timeInScanBtn) { timeInScanBtn.disabled = true; timeInScanBtn.className = "scan-btn disabled-btn"; }
+                if (timeOutScanBtn) { timeOutScanBtn.disabled = true; timeOutScanBtn.className = "scan-btn disabled-btn"; }
+                if (timeOutIconBox) timeOutIconBox.className = "qr-icon-circle gray-bg";
+
+                const completedNote = "OJT completed — you can no longer time in or time out.";
+                if (timeInNoteText) timeInNoteText.textContent = completedNote;
+                if (timeOutNoteText) timeOutNoteText.textContent = completedNote;
+
+            } else if (latestToday && (latestToday.status === "Present" || latestToday.status === "Completed" || latestToday.status === "Late")) {
                 if (todayCompany) todayCompany.textContent = latestToday.company || "--";
                 if (todayLocation) todayLocation.textContent = latestToday.location || "--";
                 if (todayTimeIn) todayTimeIn.textContent = latestToday.timeIn || "--";

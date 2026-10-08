@@ -377,22 +377,64 @@ export function subscribeAttendance(onData, onError) {
 // =====================================================
 
 export function buildTodayRows(scheduledUsers, attendanceDocs, now = new Date()) {
+    return buildRowsForDate(scheduledUsers, attendanceDocs, now, now);
+}
 
-    const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
-    const todayName = now
+// =====================================================
+// BUILD ROWS FOR ANY DATE (schedule-based)
+//
+// Parehong logic ng buildTodayRows, pero para sa
+// kahit anong petsa. Sa nakaraang araw, ang walang
+// time-in ay "Absent" na agad (tapos na ang araw).
+// Sa hinaharap na petsa, walang ibabalik.
+// =====================================================
+
+function formatDateText(date) {
+    return date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric"
+    });
+}
+
+function toDateKey(date) {
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${date.getFullYear()}-${m}-${d}`;
+}
+
+export function buildRowsForDate(scheduledUsers, attendanceDocs, targetDate, now = new Date()) {
+
+    const startOfTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+
+    if (targetDate >= startOfTomorrow) {
+        return [];
+    }
+
+    const isToday = isSameDay(targetDate, now);
+
+    // Lumipas na araw = tapos na ang lahat ng schedule
+    const nowMinutes = isToday
+        ? now.getHours() * 60 + now.getMinutes()
+        : 24 * 60;
+
+    const todayName = targetDate
         .toLocaleDateString("en-US", { weekday: "long" })
         .toLowerCase();
 
+    const dateText = formatDateText(targetDate);
+    const dateKey = toDateKey(targetDate);
 
-    // Attendance records ngayong araw lang
+
+    // Attendance records ng petsang ito lang
     const recordMap = {};
 
     attendanceDocs.forEach((docItem) => {
 
         const date = getRecordDate(docItem.data);
 
-        if (!date || !isSameDay(date, now)) {
+        if (!date || !isSameDay(date, targetDate)) {
             return;
         }
 
@@ -428,6 +470,9 @@ export function buildTodayRows(scheduledUsers, attendanceDocs, now = new Date())
             return {
                 id: record ? record.id : user.id,
                 userId: user.id,
+                date: targetDate,
+                dateKey,
+                dateText,
                 studentName: user.name,
                 studentEmail: user.email || "No Email",
                 course: user.course,
@@ -452,4 +497,33 @@ export function buildTodayRows(scheduledUsers, attendanceDocs, now = new Date())
 
         })
         .sort((a, b) => a.studentName.localeCompare(b.studentName));
+}
+
+
+// =====================================================
+// BUILD ROWS FOR A DATE RANGE (newest day first)
+//
+// Max na 366 araw para hindi bumigat ang page.
+// =====================================================
+
+export const MAX_RANGE_DAYS = 366;
+
+export function buildRowsForRange(scheduledUsers, attendanceDocs, fromDate, toDate, now = new Date()) {
+
+    const rows = [];
+
+    const cursor = new Date(toDate.getFullYear(), toDate.getMonth(), toDate.getDate());
+    const start = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
+
+    let guard = 0;
+
+    while (cursor >= start && guard < MAX_RANGE_DAYS) {
+
+        rows.push(...buildRowsForDate(scheduledUsers, attendanceDocs, new Date(cursor), now));
+
+        cursor.setDate(cursor.getDate() - 1);
+        guard++;
+    }
+
+    return rows;
 }

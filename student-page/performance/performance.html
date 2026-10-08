@@ -14,10 +14,14 @@
     <link rel="stylesheet" href="../templated/header.css">
     <link rel="stylesheet" href="../templated/sidebar.css">
 
-    <!-- Poppins -->
+    <!-- Material Symbols (icons) + Google Sans Flex (text) -->
     <link
-        href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
         rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block"
+    >
+    <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@100..900&display=swap"
     >
 
     <!-- Font Awesome -->
@@ -50,6 +54,24 @@
         <!-- HEADER -->
         <header id="header-container"></header>
 
+        <section class="welcome-section" id="evaluation-card-section" hidden>
+            <div class="welcome-card">
+           
+
+                <div class="welcome-body">
+                    <h3>Your evaluation is complete! 🎉</h3>
+                    <p id="evaluation-card-text"></p>
+                    <span class="welcome-pill">
+                        <i class="fa-regular fa-calendar-check"></i>
+                        <span id="evaluation-card-pill"></span>
+                    </span>
+                </div>
+
+                <button type="button" class="welcome-close" id="evaluation-card-close" aria-label="Close">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        </section>
 
         <!-- CONTENT -->
         <section class="performance-content">
@@ -119,9 +141,6 @@
                     <!-- EVALUATION STATUS -->
                     <div class="evaluation-status-box">
 
-                        <div class="status-icon">
-                            <i class="fa-regular fa-clipboard"></i>
-                        </div>
 
                         <div class="status-content">
 
@@ -182,10 +201,6 @@
 
                             <div class="item-name">
 
-                                <div class="item-icon blue-icon">
-                                    <i class="fa-solid fa-book-open"></i>
-                                </div>
-
                                 <div>
                                     <h4>
                                         Integration of Basic Theory in Practice
@@ -225,10 +240,6 @@
                         <div class="performance-item-header">
 
                             <div class="item-name">
-
-                                <div class="item-icon purple-icon">
-                                    <i class="fa-solid fa-user-tie"></i>
-                                </div>
 
                                 <div>
                                     <h4>
@@ -270,10 +281,6 @@
 
                             <div class="item-name">
 
-                                <div class="item-icon orange-icon">
-                                    <i class="fa-solid fa-list-check"></i>
-                                </div>
-
                                 <div>
                                     <h4>
                                         Quality and Quantity of Work
@@ -313,10 +320,6 @@
                         <div class="performance-item-header">
 
                             <div class="item-name">
-
-                                <div class="item-icon green-icon">
-                                    <i class="fa-solid fa-lightbulb"></i>
-                                </div>
 
                                 <div>
                                     <h4>
@@ -390,98 +393,58 @@
                     <!-- SUPERVISOR -->
                     <div class="detail-box">
 
-                        <div class="detail-icon">
-                            <i class="fa-solid fa-user-tie"></i>
-                        </div>
-
                         <div>
-
                             <span>
                                 Evaluated By
                             </span>
-
                             <strong id="supervisor-name">
                                 --
                             </strong>
-
                         </div>
-
                     </div>
 
 
 
                     <!-- COMPANY -->
                     <div class="detail-box">
-
-                        <div class="detail-icon">
-                            <i class="fa-solid fa-building"></i>
-                        </div>
-
                         <div>
-
                             <span>
                                 Company
                             </span>
-
                             <strong id="evaluation-company">
                                 --
                             </strong>
-
                         </div>
-
                     </div>
-
-
 
                     <!-- DATE -->
                     <div class="detail-box">
-
-                        <div class="detail-icon">
-                            <i class="fa-regular fa-calendar"></i>
-                        </div>
-
                         <div>
-
                             <span>
                                 Evaluation Date
                             </span>
-
                             <strong id="evaluation-date-detail">
                                 --
                             </strong>
-
                         </div>
-
                     </div>
 
 
 
                     <!-- RATING -->
                     <div class="detail-box">
-
-                        <div class="detail-icon">
-                            <i class="fa-solid fa-star"></i>
-                        </div>
-
                         <div>
-
                             <span>
                                 Rating
                             </span>
-
                             <strong id="evaluation-rating">
                                 -- / 5
                             </strong>
-
                         </div>
-
                     </div>
-
                 </div>
 
-
                 <!-- VIEW EVALUATION BUTTON -->
-
                 <div class="evaluation-action">
 
                     <button
@@ -491,7 +454,7 @@
                         disabled
                     >
 
-                        <i class="fa-regular fa-eye"></i>
+                        <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color ng-star-inserted" aria-hidden="true">visibility</mat-icon>
 
                         View Evaluation
 
@@ -542,7 +505,7 @@
                     <div class="feedback-empty">
 
                         <div class="feedback-icon">
-                            <i class="fa-regular fa-comment-dots"></i>
+                            <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color ng-star-inserted" aria-hidden="true">sms</mat-icon>
                         </div>
 
                         <h4>
@@ -593,7 +556,7 @@
             class="close-print"
         >
 
-            <i class="fa-solid fa-xmark"></i>
+            <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color ng-star-inserted" aria-hidden="true">close</mat-icon>
 
         </button>
 
@@ -625,7 +588,7 @@
             class="btn-primary"
         >
 
-            <i class="fa-solid fa-print"></i>
+            <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color ng-star-inserted" aria-hidden="true">print</mat-icon>
 
             Print Evaluation
 

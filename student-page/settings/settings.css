@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@300..700&display=swap');
 
 :root{
     --primary:#AB0A0A;
@@ -135,7 +136,7 @@ body{
 }
 
 .item-info h4 {
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
     color: var(--text);
     margin-bottom: 2px;
@@ -152,6 +153,15 @@ body{
     font-size: 14px;
     color: #a0a0a0;
     margin-left: 12px;
+}
+
+.settings-item .item-icon,
+.settings-item .arrow-icon.mat-icon {
+    font-size: 16px;
+    line-height: 16px;
+    margin-bottom: 2px;
+    height: 16px;
+    width: 16px;
 }
 
 .select-wrapper {
@@ -214,4 +224,63 @@ body{
 
 @keyframes settings-loading-spin {
     to { transform: rotate(360deg); }
+}
+
+/* ICONS (Material Symbols, plain outline - walang bilog) */
+.mat-icon {
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal;
+    font-style: normal;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: 'liga';
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    user-select: none;
+}
+
+.mat-icon.lm-icon-xl { font-size: 18px; }
+
+.item-icon {
+    color: #000;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+.arrow-icon.mat-icon {
+    font-size: 18px;
+    color: #a0a0a0;
+    margin-left: 12px;
+}
+
+/* ICON ALIGNMENT - nakasakto sa baba ng title, hindi naka-center */
+.settings-item {
+    align-items: flex-end;
+}
+
+.settings-item .item-info h4 {
+    margin-bottom: 0;
+    line-height: 22px;
+}
+
+.settings-item .item-icon,
+.settings-item .arrow-icon.mat-icon {
+    line-height: 22px;
+    height: 22px;
+    display: flex;
+    align-items: flex-end;
+}
+
+/* FONT - sa content (settings-container) lang, hindi apektado ang header/sidebar */
+.settings-container,
+.settings-container * {
+    font-family: 'Google Sans Flex', 'Google Sans', sans-serif;
+}
+
+/* Siguraduhing Material Symbols pa rin ang icons */
+.settings-container .mat-icon {
+    font-family: 'Material Symbols Outlined';
 }

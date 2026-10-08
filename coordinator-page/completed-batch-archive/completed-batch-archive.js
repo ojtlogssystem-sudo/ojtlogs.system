@@ -272,12 +272,34 @@ async function autoArchiveEndedBatches(list) {
 ======================================== */
 const savingPermission = new Set();
 
-// Sa mga Incomplete lang na student ng batch na tapos na ang AY
-const canGivePermission = (s) => s.status !== "Completed" && hasBatchEnded(s.batch);
+// Pinakabagong (current) academic year sa listahan, hal. AY 2026-2027.
+// Ito lang ang pwedeng bigyan ng "Allow to Continue".
+function currentBatch() {
+    let best = null;
+    let bestKey = -1;
+    students.forEach((s) => {
+        const k = batchKey(s.batch);
+        if (k > bestKey) { bestKey = k; best = s.batch; }
+    });
+    return best;
+}
+
+// Allow to Continue: Incomplete + hindi pa archived + current year lang.
+// BAWAL sa Archived Batches (nakaraang taon).
+// Exception: kung napayagan na (allowContinueHours), makikita pa rin
+// ang Allowed/Revoke para mabawi ng coordinator.
+const canGivePermission = (s) =>
+    s.status !== "Completed" &&
+    !s.archived &&
+    (s.batch === currentBatch() || s.allowContinueHours);
 
 async function setContinuePermission(id, allow) {
     const s = students.find((x) => x.id === id);
     if (!s || savingPermission.has(id)) return;
+    if (allow && (s.archived || s.batch !== currentBatch())) {
+        toast("Allow to Continue is only available for the current academic year, not archived batches.");
+        return;
+    }
     savingPermission.add(id);
     render();
 
@@ -603,6 +625,10 @@ function render() {
             ? ` · ${doneCount} Completed · ${incCount} Incomplete`
             : ` · ${doneCount} Completed`;
 
+        // Permission column: sa "Ready to Archive" lang, wala sa Archived Batches
+        const showPerm = activeTab === "ready";
+        const cols = showPerm ? COLS : COLS.filter(([key]) => key !== "permission");
+
         const body = pageRows.map((s, i) => {
             const done = s.status === "Completed";
             return `
@@ -614,7 +640,7 @@ function render() {
                 <td>${hl(s.company, bq || filters.search)}</td>
                 <td><span class="hours-pill ${done ? "" : "incomplete"}">${formatHours(s.hours)} hrs</span></td>
                 <td><span class="status-pill ${done ? "" : "incomplete"}"><i class="fa-solid ${done ? "fa-circle-check" : "fa-circle-xmark"}"></i> ${s.status}</span></td>
-                <td>${permissionCell(s)}</td>
+                ${showPerm ? `<td>${permissionCell(s)}</td>` : ""}
             </tr>`;
         }).join("");
 
@@ -641,11 +667,14 @@ function render() {
             <div class="table-wrap">
                 <table>
                     <colgroup>
-                        <col style="width:56px"><col style="width:18%"><col style="width:14%">
-                        <col style="width:11%"><col style="width:13%"><col style="width:9%"><col style="width:12%"><col>
+                        ${showPerm
+                            ? `<col style="width:56px"><col style="width:18%"><col style="width:14%">
+                        <col style="width:11%"><col style="width:13%"><col style="width:9%"><col style="width:12%"><col>`
+                            : `<col style="width:56px"><col style="width:22%"><col style="width:16%">
+                        <col style="width:12%"><col style="width:16%"><col style="width:12%"><col>`}
                     </colgroup>
-                    <thead><tr><th class="num-col">#</th>${COLS.map(headerCell).join("")}</tr></thead>
-                    <tbody>${body || `<tr><td colspan="8" class="no-match">No student found for "${esc(bq)}"</td></tr>`}</tbody>
+                    <thead><tr><th class="num-col">#</th>${cols.map(headerCell).join("")}</tr></thead>
+                    <tbody>${body || `<tr><td colspan="${cols.length + 1}" class="no-match">No student found for "${esc(bq)}"</td></tr>`}</tbody>
                 </table>
             </div>
             ${footerHtml(key, shown.length, page, pages, size, sizeMode)}

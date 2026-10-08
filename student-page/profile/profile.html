@@ -73,10 +73,13 @@
                     
                     <div class="form-group">
                         <div class="input-box">
-                            <input type="text" id="studentNumber" name="student-number" autocomplete="off" required placeholder=" ">
+                            <input type="text" id="studentNumber" name="student-number" autocomplete="off" required placeholder=" "
+                                   inputmode="numeric" maxlength="13" pattern="\d{4}-\d{2}-\d{5}"
+                                   title="Format: 2023-07-00975">
                             <label for="studentNumber">Student Number</label>
                             <i class="fa-regular fa-id-card"></i>
                         </div>
+                        <small class="field-hint">Format: YYYY-MM-00000 (e.g. 2023-07-00975)</small>
                     </div>
 
                     <div class="form-group">
@@ -212,6 +215,16 @@
                             <button type="button" class="day-btn" data-day="Friday">Fri</button>
                             <button type="button" class="day-btn" data-day="Saturday">Sat</button>
                             <button type="button" class="day-btn" data-day="Sunday">Sun</button>
+                        </div>
+
+                        <div class="schedule-label start-date-label">
+                            <i class="fa-regular fa-calendar-check"></i>
+                            <span>Duty Start Date</span>
+                        </div>
+
+                        <div class="time-group start-date-group">
+                            <input type="date" id="dutyStartDate">
+                            <small class="field-hint">Select the date you will start your internship duty.</small>
                         </div>
 
                     </div>

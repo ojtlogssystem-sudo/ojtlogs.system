@@ -346,44 +346,149 @@ body {
 }
 
 /* ========================================
-   WEEK SELECTOR (screen only)
+   TOOLBAR  (Back / Print / Week selector - screen only)
    ======================================== */
 
+.report-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px 16px;
+    margin-bottom: 24px;
+    padding: 12px 14px;
+    background: #ffffff;
+    border: 1px solid #ececec;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tb-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    height: 38px;
+    padding: 0 16px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease;
+}
+
+.tb-primary {
+    background: #AB0A0A;
+    color: #ffffff;
+    box-shadow: 0 3px 10px rgba(171, 10, 10, 0.25);
+}
+
+.tb-primary:hover {
+    background: #8E0909;
+}
+
+.tb-ghost {
+    background: #ffffff;
+    color: #374151;
+    border-color: #d1d5db;
+}
+
+.tb-ghost:hover {
+    background: #f9fafb;
+    border-color: #9ca3af;
+}
+
+/* Week selector */
 .week-nav {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
+    gap: 8px;
 }
 
-.week-nav button {
-    padding: 6px 12px;
-    background: #f3f4f6;
-    color: #111827;
-    border: 1px solid #d1d5db;
-    border-radius: 4px;
-    cursor: pointer;
+.week-switch {
+    display: flex;
+    align-items: center;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.week-arrow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    height: 36px;
+    padding: 0 12px;
+    background: transparent;
+    border: none;
+    color: #374151;
+    font-family: Arial, sans-serif;
     font-size: 13px;
-    font-weight: bold;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .2s ease, color .2s ease;
 }
 
-.week-nav button:hover:not(:disabled) {
-    background: #e5e7eb;
-}
-
-.week-nav .week-this {
-    background: #fff;
+.week-arrow:hover:not(:disabled) {
+    background: #fdf2f2;
     color: #AB0A0A;
-    border-color: #AB0A0A;
+}
+
+.week-arrow:disabled {
+    cursor: not-allowed;
+    color: #9ca3af;
 }
 
 .week-label {
-    min-width: 190px;
+    min-width: 180px;
+    padding: 0 12px;
     text-align: center;
-    font-size: 14px;
-    font-weight: bold;
+    font-size: 13px;
+    font-weight: 700;
     color: #111827;
+    white-space: nowrap;
+    border-left: 1px solid #e5e7eb;
+    border-right: 1px solid #e5e7eb;
+    line-height: 36px;
+    background: #ffffff;
+}
+
+.week-this {
+    height: 38px;
+    padding: 0 14px;
+    background: #ffffff;
+    color: #AB0A0A;
+    border: 1px solid #AB0A0A;
+    border-radius: 10px;
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background .2s ease;
+}
+
+.week-this:hover {
+    background: #fdf2f2;
+}
+
+.tb-btn:focus-visible,
+.week-arrow:focus-visible,
+.week-this:focus-visible {
+    outline: 2px solid #AB0A0A;
+    outline-offset: 2px;
 }
 
 /* ========================================
@@ -459,20 +564,44 @@ html {
         white-space: normal;
     }
 
-    /* Buttons/week-nav wrap and shrink so they don't overflow either */
-    .no-print button {
-        padding: 8px 10px !important;
-        font-size: 13px;
+    /* Toolbar: Back / Print sa unang row, week selector sa ikalawa */
+    .report-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        padding: 10px;
+    }
+
+    .toolbar-actions {
+        width: 100%;
+    }
+
+    .toolbar-actions .tb-btn {
+        flex: 1;
     }
 
     .week-nav {
-        gap: 6px;
+        width: 100%;
+    }
+
+    .week-switch {
+        flex: 1;
+        min-width: 0;
     }
 
     .week-label {
+        flex: 1;
         min-width: 0;
-        flex: 1 1 100%;
-        order: -1;
+        padding: 0 6px;
+        font-size: 12.5px;
+    }
+
+    .week-arrow {
+        padding: 0 10px;
+    }
+
+    .week-arrow-text {
+        display: none;
     }
 
     /* The -70px shift was tuned for desktop width; on mobile it pushes

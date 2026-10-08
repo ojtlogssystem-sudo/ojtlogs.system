@@ -76,6 +76,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     await loadHeader("Settings", { autoLoadProfile: true });
 
+    initBackButton();
     initPasswordVisibilityToggles();
     initPasswordForm();
 
@@ -89,6 +90,22 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     });
 });
+
+// Back button: goes to the previous page; if there's no history (e.g. page was
+// opened directly in a new tab), falls back to the student dashboard.
+// Adjust the fallback path if your dashboard lives somewhere else.
+function initBackButton() {
+    const btn = document.getElementById("back-btn");
+    if (!btn) return;
+
+    btn.addEventListener("click", () => {
+        if (window.history.length > 1) {
+            window.history.back();
+        } else {
+            window.location.href = "../student_dashboard/student_dashboard.html";
+        }
+    });
+}
 
 // Reads users/{uid}.privacySettings and .notificationSettings and checks/
 // unchecks each switch accordingly, falling back to the defaults above for
@@ -171,7 +188,7 @@ function initPasswordVisibilityToggles() {
 
             input.type = isHidden ? "text" : "password";
             if (icon) {
-                icon.className = isHidden ? "fa-regular fa-eye-slash" : "fa-regular fa-eye";
+                icon.textContent = isHidden ? "visibility_off" : "visibility";
             }
             btn.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
         });

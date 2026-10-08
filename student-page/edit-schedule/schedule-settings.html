@@ -19,6 +19,10 @@
     <link rel="stylesheet" href="schedule-settings.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+    <!-- Google Sans Flex + Material Icons: para lang sa content ng page na ito.
+         Naiwan ang Poppins at Font Awesome kasi ginagamit pa ng header/sidebar. -->
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@300..700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
     <!-- FAILSAFE: inline overrides mismo dito sa html (hindi na umaasa sa
          schedule-settings.css sa case na hindi ito ma-load/na-cache).
@@ -53,10 +57,6 @@
             border-color: #AB0A0A !important;
             text-decoration: none !important;
         }
-
-        /* (3) Success popup pagkatapos ma-save ang schedule — parehong
-               dahilan kung bakit inilagay dito: para hindi na-aapekto ng
-               schedule-settings.css na hindi ma-load/na-cache. */
         .success-modal-overlay {
             display: none !important;
             position: fixed !important;
@@ -133,6 +133,119 @@
             from { opacity: 0; transform: translateY(30px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
+        /* (4) Google Sans Flex + Material Icons — content at popup lang,
+               hindi apektado ang header/sidebar. */
+        .settings-container,
+        .settings-container *,
+        .success-modal-overlay,
+        .success-modal-overlay * {
+            font-family: 'Google Sans Flex', sans-serif !important;
+        }
+
+        .settings-container .material-icons,
+        .success-modal-overlay .material-icons {
+            font-family: 'Material Icons' !important;
+            font-style: normal !important;
+            font-weight: normal !important;
+            line-height: 1 !important;
+            letter-spacing: normal !important;
+            text-transform: none !important;
+            white-space: nowrap !important;
+            -webkit-font-feature-settings: 'liga';
+            font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .back-link .material-icons {
+            font-size: 16px !important;
+        }
+
+        /* (5) Black icons para sa Work Modality at modality options */
+        .schedule-section > .schedule-label:first-child .material-icons,
+        .modality-icon .material-icons {
+            color: #000000 !important;
+        }
+
+        /* (6) Walang background ang modality card (kahit selected) at icon */
+        .modality-card,
+        .modality-option input:checked + .modality-card,
+        .modality-icon {
+            background: transparent !important;
+        }
+
+        /* (7) Modality: card na may check indicator (option 3) */
+        .modality-options {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 12px !important;
+        }
+
+        .modality-option {
+            display: block !important;
+            margin: 0 !important;
+        }
+
+        .modality-card {
+            position: relative !important;
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            gap: 14px !important;
+            padding: 16px 52px 16px 18px !important;
+            text-align: left !important;
+            background: #ffffff !important;
+            border: 1.5px solid #e5e7eb !important;
+            border-radius: 14px !important;
+            cursor: pointer;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+        }
+
+        .modality-option:hover .modality-card {
+            border-color: #cbd5e1 !important;
+        }
+
+        .modality-option input:checked + .modality-card {
+            border-color: #AB0A0A !important;
+            box-shadow: 0 0 0 3px rgba(171, 10, 10, 0.08) !important;
+        }
+
+        .modality-icon {
+            width: auto !important;
+            height: auto !important;
+            margin: 0 !important;
+            background: transparent !important;
+        }
+
+        .modality-icon .material-icons {
+            font-size: 28px !important;
+        }
+
+        .modality-info {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 2px !important;
+        }
+
+        /* Indicator sa kanan: bilog na walang laman -> check_circle kapag selected */
+        .modality-card::after {
+            content: "radio_button_unchecked";
+            position: absolute;
+            top: 50%;
+            right: 16px;
+            transform: translateY(-50%);
+            font-family: 'Material Icons';
+            font-size: 24px;
+            line-height: 1;
+            color: #cbd5e1;
+            transition: color 0.2s ease;
+        }
+
+        .modality-option input:checked + .modality-card::after {
+            content: "check_circle";
+            color: #AB0A0A;
+        }
     </style>
 </head>
 
@@ -148,7 +261,7 @@
                 <!-- Page Header -->
                 <div class="settings-page-header">
                     <a href="../settings/settings.html" class="back-link">
-                        <i class="fa-solid fa-arrow-left"></i> Back to Settings
+                        <i class="material-icons">arrow_back</i> Back
                     </a>
                     <h2>Schedule</h2>
                     <p>Update your internship days, work modality, and work hours</p>
@@ -168,7 +281,7 @@
                     <div class="schedule-section">
 
                         <div class="schedule-label">
-                            <i class="fa-solid fa-house-laptop"></i>
+                            <i class="material-icons">home_work</i>
                             <span>Work Modality</span>
                         </div>
 
@@ -185,7 +298,7 @@
 
                                 <span class="modality-card">
                                     <span class="modality-icon">
-                                        <i class="fa-solid fa-building"></i>
+                                        <i class="material-icons">apartment</i>
                                     </span>
 
                                     <span class="modality-info">
@@ -206,7 +319,7 @@
 
                                 <span class="modality-card">
                                     <span class="modality-icon">
-                                        <i class="fa-solid fa-house"></i>
+                                        <i class="material-icons">home</i>
                                     </span>
 
                                     <span class="modality-info">
@@ -219,7 +332,7 @@
                         </div>
 
                         <div class="schedule-label">
-                            <i class="fa-regular fa-calendar"></i>
+                            <i class="material-icons">calendar_today</i>
                             <span>Internship Days</span>
                         </div>
 
@@ -237,7 +350,7 @@
 
                     <div class="afternoon-toggle-card">
                         <div class="session-title">
-                            <i class="fa-regular fa-sun"></i>
+                            <i class="material-icons">light_mode</i>
                             <div>
                                 <h3>Morning Session</h3>
                                 <p id="morningStatus">Enabled</p>
@@ -252,7 +365,7 @@
 
                     <div class="schedule-session" id="morningSchedule">
                         <div class="session-title">
-                            <i class="fa-regular fa-sun"></i>
+                            <i class="material-icons">light_mode</i>
                             <div>
                                 <h3>Morning</h3>
                                 <p>Set your morning working hours</p>
@@ -260,19 +373,19 @@
                         </div>
 
                         <div class="time-group">
-                            <label><i class="fa-regular fa-clock"></i> TIME IN</label>
+                            <label><i class="material-icons">schedule</i> TIME IN</label>
                             <input type="time" id="morningTimeIn" value="08:00">
                         </div>
 
                         <div class="time-group">
-                            <label><i class="fa-regular fa-clock"></i> TIME OUT</label>
+                            <label><i class="material-icons">schedule</i> TIME OUT</label>
                             <input type="time" id="morningTimeOut" value="12:00">
                         </div>
                     </div>
 
                     <div class="afternoon-toggle-card">
                         <div class="session-title">
-                            <i class="fa-regular fa-sun"></i>
+                            <i class="material-icons">wb_sunny</i>
                             <div>
                                 <h3>Afternoon Session</h3>
                                 <p id="afternoonStatus">Enabled</p>
@@ -287,7 +400,7 @@
 
                     <div class="schedule-session" id="afternoonSchedule">
                         <div class="session-title">
-                            <i class="fa-solid fa-sun"></i>
+                            <i class="material-icons">wb_sunny</i>
                             <div>
                                 <h3>Afternoon</h3>
                                 <p>Set your afternoon working hours</p>
@@ -295,12 +408,12 @@
                         </div>
 
                         <div class="time-group">
-                            <label><i class="fa-regular fa-clock"></i> TIME IN</label>
+                            <label><i class="material-icons">schedule</i> TIME IN</label>
                             <input type="time" id="afternoonTimeIn" value="13:00">
                         </div>
 
                         <div class="time-group">
-                            <label><i class="fa-regular fa-clock"></i> TIME OUT</label>
+                            <label><i class="material-icons">schedule</i> TIME OUT</label>
                             <input type="time" id="afternoonTimeOut" value="17:00">
                         </div>
                     </div>
@@ -319,7 +432,7 @@
     <div class="success-modal-overlay" id="successModalOverlay">
         <div class="success-modal">
             <div class="success-modal-icon">
-                <i class="fa-solid fa-check"></i>
+                <i class="material-icons">check</i>
             </div>
             <h3>Schedule Updated</h3>
             <p>Your internship schedule has been saved successfully.</p>

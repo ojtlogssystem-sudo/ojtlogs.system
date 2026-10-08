@@ -2,6 +2,8 @@ import {
     loadScheduledUsers,
     subscribeAttendance,
     buildTodayRows,
+    buildRowsForRange,
+    MAX_RANGE_DAYS,
     escapeHtml
 } from "./attendance_shared.js";
 
@@ -25,15 +27,30 @@ document.addEventListener("DOMContentLoaded", () => {
     const currentDateEl = document.getElementById("currentDate");
     const currentTimeEl = document.getElementById("currentTime");
 
+    const fromDateInput = document.getElementById("fromDate");
+    const toDateInput = document.getElementById("toDate");
+    const applyRangeBtn = document.getElementById("applyRangeBtn");
+    const tableTitle = document.getElementById("tableTitle");
+
     let scheduledUsers = [];      // lahat ng student na may valid na schedule
     let attendanceDocs = [];      // raw attendance docs (realtime)
-    let allRecords = [];          // rows para sa ngayong araw
+    let todayRecords = [];        // rows para sa ngayong araw (summary cards)
+    let allRecords = [];          // rows na ipapakita sa table (today o napiling range)
     let filteredRecords = [];
+
+    let rangeFrom = null;         // History range (default: huling 7 araw)
+    let rangeTo = null;
 
     let dataReady = false;
     let currentPage = 1;
     let rowsPerPage = 6;
     let lastRebuiltMinute = -1;
+
+
+    // "BSIT 403" -> "403" (tinatanggal ang course prefix sa section)
+    function shortSection(section) {
+        return String(section || "").replace(/^[A-Za-z]+[\s-]+(?=\d)/, "");
+    }
 
 
     // =================================================
@@ -120,7 +137,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
         lastRebuiltMinute = now.getHours() * 60 + now.getMinutes();
 
-        allRecords = buildTodayRows(scheduledUsers, attendanceDocs, now);
+        todayRecords = buildTodayRows(scheduledUsers, attendanceDocs, now);
+
+        allRecords = (rangeFrom && rangeTo)
+            ? buildRowsForRange(scheduledUsers, attendanceDocs, rangeFrom, rangeTo, now)
+            : todayRecords;
+
+        renderStudentList();
 
         applyFilters(true);
         updateSummaryCards();
@@ -178,13 +201,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (filteredRecords.length === 0) {
 
-            const dayName = new Date().toLocaleDateString("en-US", { weekday: "long" });
-
             attendanceTable.innerHTML = `
                 <tr>
-                    <td colspan="10" style="text-align:center; color:#777; padding:30px;">
+                    <td colspan="11" style="text-align:center; color:#777; padding:30px;">
                         ${allRecords.length === 0
-                            ? `No students are scheduled today (${dayName}).`
+                            ? "No attendance history found for the selected dates."
                             : "No attendance records found."}
                     </td>
                 </tr>`;
@@ -209,6 +230,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 return `
                     <tr>
+                        <td class="date-cell">${escapeHtml(item.dateText)}</td>
+
                         <td>
                             <strong>${escapeHtml(item.studentName)}</strong>
                             <br>
@@ -221,7 +244,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         </td>
 
                         <td>${escapeHtml(item.course)}</td>
-                        <td>${escapeHtml(item.section)}</td>
+                        <td>${escapeHtml(shortSection(item.section))}</td>
                         <td>${escapeHtml(item.company)}</td>
                         <td>${escapeHtml(item.timeIn)}</td>
                         <td>${escapeHtml(item.timeOut)}</td>
@@ -305,10 +328,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function updateSummaryCards() {
 
-        const total = allRecords.length;
+        // Laging ngayong araw lang ang summary cards (kahit may napiling range)
+        const total = todayRecords.length;
 
         const count = (status) =>
-            allRecords.filter((r) => r.status === status).length;
+            todayRecords.filter((r) => r.status === status).length;
 
         const present = count("Present");
         const late = count("Late");
@@ -344,6 +368,95 @@ document.addEventListener("DOMContentLoaded", () => {
     if (searchInput) searchInput.addEventListener("input", () => applyFilters());
     if (sectionFilter) sectionFilter.addEventListener("change", () => applyFilters());
     if (statusFilter) statusFilter.addEventListener("change", () => applyFilters());
+
+    // =================================================
+    // DATE RANGE (From / To / Apply)
+    // =================================================
+
+    function toInputValue(date) {
+        const m = String(date.getMonth() + 1).padStart(2, "0");
+        const d = String(date.getDate()).padStart(2, "0");
+        return `${date.getFullYear()}-${m}-${d}`;
+    }
+
+    function parseInputValue(value) {
+        if (!value) return null;
+        const [y, m, d] = value.split("-").map(Number);
+        return new Date(y, m - 1, d);
+    }
+
+    function formatShort(date) {
+        return date.toLocaleDateString("en-US", {
+            month: "short", day: "numeric", year: "numeric"
+        });
+    }
+
+    function initRangeInputs() {
+
+        if (!fromDateInput || !toDateInput) return;
+
+        const todayValue = toInputValue(new Date());
+
+        // Hindi puwedeng pumili ng petsa sa hinaharap
+        fromDateInput.max = todayValue;
+        toDateInput.max = todayValue;
+
+        // Default: huling 7 araw (kasama ngayon), hindi lalampas sa MAX_RANGE_DAYS
+        const span = Math.min(7, MAX_RANGE_DAYS || 7);
+        const from = new Date();
+        from.setDate(from.getDate() - (span - 1));
+
+        fromDateInput.value = toInputValue(from);
+        toDateInput.value = todayValue;
+
+        rangeFrom = parseInputValue(fromDateInput.value);
+        rangeTo = parseInputValue(toDateInput.value);
+    }
+
+    function applyRange() {
+
+        const from = parseInputValue(fromDateInput.value);
+        const to = parseInputValue(toDateInput.value);
+
+        toDateInput.setCustomValidity("");
+
+        if (!from || !to) {
+            toDateInput.setCustomValidity("Please choose both From and To dates.");
+            toDateInput.reportValidity();
+            return;
+        }
+
+        if (from > to) {
+            toDateInput.setCustomValidity("The From date must not be later than the To date.");
+            toDateInput.reportValidity();
+            return;
+        }
+
+        const days = Math.round((to - from) / 86400000) + 1;
+
+        if (days > MAX_RANGE_DAYS) {
+            toDateInput.setCustomValidity(`Please choose a range of ${MAX_RANGE_DAYS} days or less.`);
+            toDateInput.reportValidity();
+            return;
+        }
+
+        rangeFrom = from;
+        rangeTo = to;
+
+        if (dataReady) {
+            rebuild();
+            applyFilters();     // balik sa page 1
+        }
+    }
+
+    if (applyRangeBtn) applyRangeBtn.addEventListener("click", applyRange);
+
+    [fromDateInput, toDateInput].forEach((input) => {
+        if (input) input.addEventListener("input", () => toDateInput.setCustomValidity(""));
+    });
+
+    initRangeInputs();
+
 
     if (rowsPerPageSelect) {
         rowsPerPageSelect.addEventListener("change", () => {
@@ -446,30 +559,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const listModalClose = document.getElementById("closeAttendanceListModalBtn");
 
     const cardPopups = [
-        {
-            card: "scheduledCard",
-            title: "Scheduled Today",
-            icon: "fa-solid fa-users",
-            src: "attendance_scheduled.html"
-        },
-        {
-            card: "presentCard",
-            title: "Present Today",
-            icon: "fa-solid fa-user-check",
-            src: "attendance_present.html"
-        },
-        {
-            card: "lateCard",
-            title: "Late Today",
-            icon: "fa-solid fa-clock",
-            src: "attendance_late.html"
-        },
-        {
-            card: "absentCard",
-            title: "Absent Today",
-            icon: "fa-solid fa-user-xmark",
-            src: "attendance_absent.html"
-        }
     ];
 
     function openListPopup(config) {
@@ -521,6 +610,30 @@ document.addEventListener("DOMContentLoaded", () => {
 
     });
 
+    // Itago ang "Back" button sa loob ng iframe pages (Late / Absent)
+    if (listFrame) {
+        listFrame.addEventListener("load", () => {
+            try {
+                const doc = listFrame.contentDocument;
+
+                if (!doc || !doc.body) {
+                    return;
+                }
+
+                doc.querySelectorAll("button, a").forEach((el) => {
+                    const label = (el.textContent || "").trim().toLowerCase();
+                    const hint = `${el.id} ${el.className}`.toLowerCase();
+
+                    if (label === "back" || hint.includes("back")) {
+                        el.style.display = "none";
+                    }
+                });
+            } catch (error) {
+                // cross-origin / blank page - walang gagawin
+            }
+        });
+    }
+
     if (listModalClose) {
         listModalClose.addEventListener("click", closeListPopup);
     }
@@ -543,6 +656,262 @@ document.addEventListener("DOMContentLoaded", () => {
     window.addEventListener("message", (event) => {
         if (event.data && event.data.type === "closeAttendanceListModal") {
             closeListPopup();
+        }
+    });
+
+
+    // =================================================
+    // STUDENT LIST POPUP (Scheduled Today / Present Today)
+    // Galing sa todayRecords - walang hiwalay na page.
+    // =================================================
+
+    const studentListModal = document.getElementById("studentListModal");
+    const studentListTable = document.getElementById("studentListTable");
+    const studentListSearch = document.getElementById("studentListSearch");
+
+    const listConfigs = {
+        scheduled: {
+            title: "Scheduled Today",
+            icon: "fa-solid fa-users",
+            filter: () => true,
+            empty: "No students are scheduled to duty today."
+        },
+        present: {
+            title: "Present Today",
+            icon: "fa-solid fa-user-check",
+            filter: (r) => r.status === "Present",
+            empty: "No students are present today."
+        },
+        late: {
+            title: "Late Today",
+            icon: "fa-solid fa-clock",
+            filter: (r) => r.status === "Late",
+            empty: "No late students today."
+        },
+        absent: {
+            title: "Absent Today",
+            icon: "fa-solid fa-user-xmark",
+            filter: (r) => r.status === "Absent",
+            empty: "No absent students today."
+        }
+    };
+
+    let activeList = null;
+
+    function getListRows() {
+
+        if (!activeList) {
+            return [];
+        }
+
+        const keyword = studentListSearch
+            ? studentListSearch.value.toLowerCase().trim()
+            : "";
+
+        return todayRecords
+            .filter(listConfigs[activeList].filter)
+            .filter((r) =>
+                r.studentName.toLowerCase().includes(keyword) ||
+                r.studentEmail.toLowerCase().includes(keyword) ||
+                r.company.toLowerCase().includes(keyword)
+            );
+    }
+
+    function renderStudentList() {
+
+        if (!activeList || !studentListTable) {
+            return;
+        }
+
+        const config = listConfigs[activeList];
+        const rows = getListRows();
+        const now = new Date();
+
+        const setText = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        };
+
+        setText("studentListHeaderTitle", config.title);
+        setText("studentListTitle", config.title);
+
+        setText(
+            "studentListSubtitle",
+            `${now.toLocaleDateString("en-US", {
+                weekday: "long", year: "numeric", month: "long", day: "numeric"
+            })} \u2022 as of ${now.toLocaleTimeString("en-US", {
+                hour: "2-digit", minute: "2-digit"
+            })}`
+        );
+
+        setText(
+            "studentListCount",
+            `${rows.length} ${rows.length === 1 ? "student" : "students"}`
+        );
+
+        if (rows.length === 0) {
+
+            studentListTable.innerHTML = `
+                <tr>
+                    <td colspan="10" style="text-align:center; color:#777; padding:30px;">
+                        ${studentListSearch && studentListSearch.value.trim()
+                            ? "No students match your search."
+                            : config.empty}
+                    </td>
+                </tr>`;
+
+            return;
+        }
+
+        studentListTable.innerHTML = rows.map((item, index) => `
+            <tr>
+                <td>${index + 1}</td>
+                <td>
+                    <strong>${escapeHtml(item.studentName)}</strong>
+                    <br>
+                    <small style="color:#777;">${escapeHtml(item.studentEmail)}</small>
+                </td>
+                <td>${escapeHtml(item.course)}</td>
+                <td>${escapeHtml(shortSection(item.section))}</td>
+                <td>${escapeHtml(item.company)}</td>
+                <td>${escapeHtml(item.scheduleText)}</td>
+                <td>${escapeHtml(item.timeIn)}</td>
+                <td>${escapeHtml(item.timeOut)}</td>
+                <td>${escapeHtml(item.totalHours)}</td>
+                <td><span class="status ${item.status.toLowerCase()}">${item.status}</span></td>
+            </tr>`).join("");
+    }
+
+    function openStudentList(type) {
+
+        if (!studentListModal) {
+            return;
+        }
+
+        activeList = type;
+
+        const icon = document.getElementById("studentListIcon");
+        if (icon) icon.className = listConfigs[type].icon;
+
+        if (studentListSearch) studentListSearch.value = "";
+
+        renderStudentList();
+
+        studentListModal.classList.add("show");
+
+        document.body.style.overflow = "hidden";
+    }
+
+    function closeStudentList() {
+
+        if (!studentListModal) {
+            return;
+        }
+
+        studentListModal.classList.remove("show");
+
+        activeList = null;
+
+        document.body.style.overflow = "";
+    }
+
+    function printStudentList() {
+
+        const rows = getListRows();
+
+        if (!activeList || rows.length === 0) {
+            return;
+        }
+
+        const win = window.open("", "_blank");
+
+        if (!win) {
+            return;
+        }
+
+        const body = rows.map((item, index) => `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${escapeHtml(item.studentName)}<br><small>${escapeHtml(item.studentEmail)}</small></td>
+                <td>${escapeHtml(item.course)}</td>
+                <td>${escapeHtml(shortSection(item.section))}</td>
+                <td>${escapeHtml(item.company)}</td>
+                <td>${escapeHtml(item.scheduleText)}</td>
+                <td>${escapeHtml(item.timeIn)}</td>
+                <td>${escapeHtml(item.timeOut)}</td>
+                <td>${escapeHtml(item.totalHours)}</td>
+                <td>${item.status}</td>
+            </tr>`).join("");
+
+        win.document.write(`
+            <html><head><title>${listConfigs[activeList].title}</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 24px; }
+                table { width: 100%; border-collapse: collapse; font-size: 12px; }
+                th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
+                th { background: #f3f3f3; }
+                small { color: #666; }
+            </style></head><body>
+            <h2>${listConfigs[activeList].title}</h2>
+            <p>${new Date().toLocaleString("en-US")}</p>
+            <table>
+                <thead><tr><th>#</th><th>Student Name</th><th>Course</th><th>Section</th>
+                <th>Company</th><th>Schedule</th><th>Time In</th><th>Time Out</th>
+                <th>Total Hours</th><th>Status</th></tr></thead>
+                <tbody>${body}</tbody>
+            </table></body></html>`);
+
+        win.document.close();
+        win.focus();
+        win.print();
+    }
+
+    const bindCard = (id, type) => {
+
+        const card = document.getElementById(id);
+
+        if (!card) {
+            return;
+        }
+
+        card.addEventListener("click", () => openStudentList(type));
+
+        card.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                openStudentList(type);
+            }
+        });
+    };
+
+    bindCard("scheduledCard", "scheduled");
+    bindCard("presentCard", "present");
+    bindCard("lateCard", "late");
+    bindCard("absentCard", "absent");
+
+    const bindClick = (id, handler) => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener("click", handler);
+    };
+
+    bindClick("closeStudentListBtn", closeStudentList);
+    bindClick("studentListPrintBtn", printStudentList);
+
+    if (studentListSearch) {
+        studentListSearch.addEventListener("input", renderStudentList);
+    }
+
+    if (studentListModal) {
+        studentListModal.addEventListener("click", (event) => {
+            if (event.target === studentListModal) {
+                closeStudentList();
+            }
+        });
+    }
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && studentListModal && studentListModal.classList.contains("show")) {
+            closeStudentList();
         }
     });
 
@@ -579,7 +948,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     attendanceTable.innerHTML = `
                         <tr>
-                            <td colspan="10" style="text-align:center; color:#e74c3c; padding:30px;">
+                            <td colspan="11" style="text-align:center; color:#e74c3c; padding:30px;">
                                 Unable to load attendance records.
                             </td>
                         </tr>`;
@@ -594,7 +963,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (attendanceTable) {
                 attendanceTable.innerHTML = `
                     <tr>
-                        <td colspan="10" style="text-align:center; color:#e74c3c; padding:30px;">
+                        <td colspan="11" style="text-align:center; color:#e74c3c; padding:30px;">
                             Unable to load attendance records.
                         </td>
                     </tr>`;

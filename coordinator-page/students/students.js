@@ -60,6 +60,8 @@ const db = getFirestore(app);
 let allStudents = [];
 let filteredStudents = [];
 let currentPage = 1;
+let lastRenderedPage = null;      // para i-reset ang scroll ng table kapag lumipat ng page / nagpalit ng rows per page
+let lastRenderedRowsKey = null;
 // "auto" (default) = auto-fit kung ilang rows ang kasya sa visible height
 // ng table bago mag-increment ng page. Kapag pinili ng user ang isang
 // specific na number sa "Rows per page" dropdown, doon na gagamitin
@@ -329,9 +331,39 @@ async function refreshAndRenderStudents() {
             });
         });
 
+        // Kung may higit sa isang user doc na iisa ang email (hal. luma na na-reset/
+        // na-disable + bagong account), ang pinakakumpleto ang gagamitin. Dati,
+        // ang huling na-iterate ang nananalo kaya pwedeng mapalitan o mabura ng
+        // luma/walang laman na doc ang tamang account.
+        const scoreUserDoc = (u) =>
+            ((u.accountDisabled === true || u.archived === true) ? -100 : 0) +
+            ((u.isProfileComplete === true || u.profileCompleted === true) ? 10 : 0) +
+            ((u.studentNumber || u.studentId) ? 3 : 0) +
+            ((u.fullName || u.name || u.firstName) ? 2 : 0) +
+            ((u.course || u.section) ? 1 : 0);
+
+        const bestByEmail = new Map();
         usersSnapshot.forEach((docSnap) => {
+            const u = docSnap.data();
+            const key = (u.email || u.userEmail || "").toLowerCase().trim();
+            if (!key) return;
+            const current = bestByEmail.get(key);
+            if (!current || scoreUserDoc(u) > scoreUserDoc(current.data())) {
+                bestByEmail.set(key, docSnap);
+            }
+        });
+
+        // Debug: invitation na walang katugmang user doc (tingnan sa console)
+        studentMap.forEach((_, key) => {
+            if (!bestByEmail.has(key)) {
+                console.warn("[students] Walang user doc (role=student) na may email na:", key,
+                    "- baka iba ang email field o role ng account.");
+            }
+        });
+
+        Array.from(bestByEmail.values()).forEach((docSnap) => {
             const userData = docSnap.data();
-            const emailKey = (userData.email || "").toLowerCase().trim();
+            const emailKey = (userData.email || userData.userEmail || "").toLowerCase().trim();
             if (!emailKey) return;
 
             // Na-"delete" na ng coordinator ang account na ito (soft delete) -
@@ -351,7 +383,34 @@ async function refreshAndRenderStudents() {
 
             const existingData = studentMap.get(emailKey) || {};
 
-            const isProfileDone = userData.isProfileComplete === true || userData.profileCompleted === true;
+            if (!(userData.isProfileComplete === true || userData.profileCompleted === true)) {
+                console.log("[students] user doc", docSnap.id, emailKey, {
+                    role: userData.role,
+                    name: userData.fullName || userData.name || userData.firstName || null,
+                    studentNumber: userData.studentNumber || userData.studentId || null,
+                    course: userData.course || null,
+                    section: userData.section || null,
+                    company: userData.companyName || userData.company || null,
+                    isProfileComplete: userData.isProfileComplete,
+                    profileCompleted: userData.profileCompleted
+                });
+            }
+
+            // Tapos na ang profile setup kung naka-set ang flag, O kung kumpleto
+            // na talaga ang laman ng profile (pangalan + student number + course/section).
+            // Hindi umaasa sa flag lang, kasi may mga account na nakapag-setup na
+            // pero hindi naisulat ang flag. Kapag na-delete/na-reset ang account,
+            // buburahin ang mga field na ito (tingnan ang getProfileResetFields),
+            // kaya babalik pa rin siya sa Pending.
+            const hasProfileData =
+                !!(userData.fullName || userData.name || userData.firstName) &&
+                !!(userData.studentNumber || userData.studentId ||
+                   userData.course || userData.section);
+
+            const isProfileDone =
+                userData.isProfileComplete === true ||
+                userData.profileCompleted === true ||
+                hasProfileData;
 
             const rawStudentNumber = userData.studentNumber || userData.studentId || existingData.studentId;
 
@@ -403,10 +462,7 @@ async function refreshAndRenderStudents() {
                 status: status,
                 profileDone: isProfileDone,
                 gender: normalizeGender(userData.gender || userData.sex || existingData.gender),
-                schedule: userData.schedule || null,
-                allowContinueHours: userData.allowContinueHours === true,
-                continueHoursGrantedAt: userData.continueHoursGrantedAt || null,
-                continueHoursGrantedBy: userData.continueHoursGrantedBy || null
+                schedule: userData.schedule || null
             });
         });
 
@@ -645,6 +701,15 @@ function renderTablePage() {
     const endIndex = Math.min(startIndex + effectiveRows, totalRecords);
     const paginatedItems = filteredStudents.slice(startIndex, endIndex);
 
+    // Bumalik sa taas ng table kapag lumipat ng page o nagpalit ng rows per page
+    // (hindi ire-reset kapag ibang dahilan lang ang re-render, hal. after archive)
+    const tableScroller = document.querySelector(".table-container");
+    if (tableScroller && (lastRenderedPage !== currentPage || lastRenderedRowsKey !== rowsPerPage)) {
+        tableScroller.scrollTop = 0;
+    }
+    lastRenderedPage = currentPage;
+    lastRenderedRowsKey = rowsPerPage;
+
     paginatedItems.forEach((student, index) => {
         const row = document.createElement("tr");
         // Tuloy-tuloy ang numbering kahit lumipat ng page (page 2 = 9, 10, 11...)
@@ -652,6 +717,8 @@ function renderTablePage() {
         const statusClass = student.status.toLowerCase();
         const profileDone = !!student.profileDone;
         const initials = getInitials(student.name);
+        // Pending = wala pang information ang student, kaya naka-disable ang View
+        const isPending = (student.status || "").toLowerCase() === "pending";
 
         let photoMarkup = "";
         if (!profileDone) {
@@ -685,7 +752,7 @@ function renderTablePage() {
             <td>${student.company}</td>
             <td><span class="status ${statusClass}">${student.status}</span></td>
             <td class="actions">
-                <button class="action-btn view-btn"><i class="fa-solid fa-eye"></i></button>
+                <button class="action-btn view-btn"${isPending ? ' disabled title="No information yet - student has not completed their profile"' : ''}><i class="fa-solid fa-eye"></i></button>
                 <button class="action-btn archive-btn"><i class="fa-solid fa-trash"></i></button>
             </td>
         `;
@@ -693,7 +760,10 @@ function renderTablePage() {
         tableBody.appendChild(row);
     });
 
-    const emptySlots = effectiveRows - paginatedItems.length;
+    // Empty slot rows ay pang-"auto-fit" lang (para punuin ang visible space).
+    // Sa fixed rows per page (5/6/8/15) hindi na nagdadagdag ng blangkong rows
+    // para hindi humaba / mag-scroll nang walang laman sa huling page.
+    const emptySlots = rowsPerPage === "auto" ? effectiveRows - paginatedItems.length : 0;
     for (let i = 0; i < emptySlots; i++) {
         const emptyRow = document.createElement("tr");
         emptyRow.className = "empty-slot-row";
@@ -833,7 +903,7 @@ function attachActionEvents() {
 
     tableBody.onclick = (e) => {
         const btn = e.target.closest("button.action-btn");
-        if (!btn) return;
+        if (!btn || btn.disabled) return;
 
         const row = btn.closest("tr");
         if (!row) return;
@@ -873,8 +943,16 @@ function attachActionEvents() {
             // Gender (nasa kanan ng profile header)
             setViewStudentGender(currentStudent ? currentStudent.gender : "");
 
-            // Hours permission card (Allow / Revoke)
-            renderContinueHoursPermission(currentStudent);
+            const startDateEl = document.getElementById("viewStudentStartDate");
+            if (startDateEl) {
+                const sd = currentStudent?.schedule?.startDate;
+                if (sd) {
+                    const [y, m, d] = sd.split("-").map(Number);
+                    startDateEl.textContent = new Date(y, m - 1, d).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+                } else {
+                    startDateEl.textContent = "Not set";
+                }
+            }
 
             if (scheduleEl) {
                 if (currentStudent && currentStudent.schedule) {
@@ -1117,6 +1195,8 @@ function initEditModal() {
             const afternoonOut = document.getElementById("editAfternoonOut")?.value || "";
             const afternoonEnabled = document.getElementById("editAfternoonEnabled")?.checked ?? true;
 
+            const ojtStartDate = document.getElementById("editOjtStartDate")?.value || "";
+
             const selectedDays = [];
             document.querySelectorAll('input[name="editDays"]:checked').forEach(cb => {
                 selectedDays.push(cb.value);
@@ -1129,6 +1209,7 @@ function initEditModal() {
                     usersSnapshot.forEach(async (documentSnap) => {
                         const userDocRef = doc(db, "users", documentSnap.id);
                         await updateDoc(userDocRef, {
+                            "schedule.startDate": ojtStartDate,
                             "schedule.days": selectedDays,
                             "schedule.morning": {
                                 timeIn: morningIn,
@@ -1304,88 +1385,6 @@ function initInviteModal() {
     }
 }
 
-/* ==========================================
-   HOURS PERMISSION (coordinator allows student to continue hours)
-========================================== */
-function renderContinueHoursPermission(student) {
-    const card = document.getElementById("hoursPermissionCard");
-    const text = document.getElementById("hoursPermissionText");
-    const meta = document.getElementById("hoursPermissionMeta");
-    const btn = document.getElementById("hoursPermissionBtn");
-    if (!card || !text || !btn) return;
-
-    const granted = !!(student && student.allowContinueHours);
-    card.classList.toggle("granted", granted);
-    btn.disabled = !student || !student.docId;
-
-    if (granted) {
-        text.textContent = "Allowed to continue hours";
-        let metaText = "";
-        if (student.continueHoursGrantedAt) {
-            const d = new Date(student.continueHoursGrantedAt);
-            if (!isNaN(d)) {
-                metaText = "Approved on " + d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-            }
-        }
-        if (meta) meta.textContent = metaText;
-        btn.className = "btn-permission revoke";
-        btn.innerHTML = '<i class="fa-solid fa-lock"></i> <span>Revoke</span>';
-    } else {
-        text.textContent = "Not allowed to continue hours";
-        if (meta) meta.textContent = "";
-        btn.className = "btn-permission allow";
-        btn.innerHTML = '<i class="fa-solid fa-unlock"></i> <span>Allow to Continue</span>';
-    }
-}
-
-window.toggleContinueHoursPermission = async function() {
-    const btn = document.getElementById("hoursPermissionBtn");
-    const studentEmail = document.getElementById("viewStudentEmail")?.textContent.trim().toLowerCase() || "";
-    const student = allStudents.find(s => s.email && s.email.toLowerCase().trim() === studentEmail);
-
-    if (!student || !student.docId) {
-        showToast("Hindi mahanap ang student record.", "error");
-        return;
-    }
-
-    const newValue = !student.allowContinueHours;
-    if (btn) btn.disabled = true;
-
-    try {
-        const grantedBy = (auth.currentUser && auth.currentUser.email) || null;
-        const nowIso = new Date().toISOString();
-
-        await updateDoc(doc(db, "users", student.docId), newValue
-            ? {
-                allowContinueHours: true,
-                continueHoursGrantedAt: nowIso,
-                continueHoursGrantedBy: grantedBy
-            }
-            : {
-                allowContinueHours: false,
-                continueHoursGrantedAt: null,
-                continueHoursGrantedBy: null
-            });
-
-        // I-sync ang local state para tama agad ang UI
-        student.allowContinueHours = newValue;
-        student.continueHoursGrantedAt = newValue ? nowIso : null;
-        student.continueHoursGrantedBy = newValue ? grantedBy : null;
-
-        renderContinueHoursPermission(student);
-        showToast(
-            newValue
-                ? "Permission granted. The student can now continue their hours."
-                : "Permission revoked.",
-            "success"
-        );
-    } catch (error) {
-        console.error("Error updating hours permission:", error);
-        showToast("Hindi na-save ang permission. Subukan ulit.", "error");
-        if (btn) btn.disabled = false;
-    }
-};
-
 window.openEditModalFromProfile = function() {
     const viewModal = document.getElementById("viewStudentModal");
     if (viewModal) viewModal.classList.remove("active");
@@ -1396,6 +1395,7 @@ window.openEditModalFromProfile = function() {
     const currentStudent = allStudents.find(s => s.email && s.email.toLowerCase().trim() === studentEmail.toLowerCase().trim());
     if (currentStudent && currentStudent.schedule) {
         const sched = currentStudent.schedule;
+        if (document.getElementById("editOjtStartDate")) document.getElementById("editOjtStartDate").value = sched.startDate || "";
 
         // Ilagay ang Morning Times
         if (sched.morning) {
@@ -1446,6 +1446,7 @@ window.openEditModalFromProfile = function() {
             cb.checked = daysArray.some(d => d.toLowerCase() === cb.value.toLowerCase());
         });
     } else {
+        if (document.getElementById("editOjtStartDate")) document.getElementById("editOjtStartDate").value = "";
         if (document.getElementById("editMorningIn")) document.getElementById("editMorningIn").value = "";
         if (document.getElementById("editMorningOut")) document.getElementById("editMorningOut").value = "";
         if (document.getElementById("editAfternoonIn")) document.getElementById("editAfternoonIn").value = "";

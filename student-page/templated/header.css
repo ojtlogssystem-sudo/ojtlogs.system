@@ -1,14 +1,37 @@
 header {
-    height: 70px;
+    height: 60px;
     background: #fff;
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 0 16px;
     border-bottom: 1px solid #ececec;
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 0;
+    right: 0;
     z-index: 100;
+}
+
+/* Header stays visible while scrolling on every page.
+   It is "fixed" (instead of sticky) so it keeps working no matter which
+   parent has overflow/scroll rules. The selector is deliberately more
+   specific than the page stylesheets' own `header { position: sticky }`
+   so they can't override it. */
+header#header-container,
+.main > header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 100;
+}
+
+/* Reserve the 70px the fixed header no longer takes up in the layout,
+   so page content doesn't slide underneath it. */
+.main {
+    padding-top: 60px;
 }
 
 .header-left {
@@ -20,8 +43,8 @@ header {
 }
 
 #page-title {
-    font-size: 18px;
-    font-weight: 700;
+    font-size: 17px;
+    font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -144,7 +167,9 @@ header {
 /* Below this width, keep just the icon so the pill never crowds out the
    bell/avatar; tap it to still open the full panel. */
 @media (max-width: 480px) {
-    .ai-suggestion span {
+    /* ">" = tanging ang text sa mismong pill ang itatago. Dati, pati ang
+       mga <span> sa loob ng panel (hal. "Hours completed") ay nawawala. */
+    .ai-suggestion > span {
         display: none;
     }
     .ai-suggestion {
@@ -164,14 +189,21 @@ header {
     .ai-suggestion-panel {
         position: fixed !important;
         top: 66px !important;
+        left: 8px !important;
         right: 8px !important;
-        left: auto !important;
-        width: 270px !important;
+        width: auto !important;
         max-width: none !important;
     }
 
     .notification-panel {
         max-height: 260px !important;
+    }
+
+    /* Full-width na ang panel sa mobile, kaya ilapit ang label at value
+       (hindi na magkabilang dulo) para madaling basahin. */
+    .ai-suggestion-row {
+        justify-content: flex-start;
+        gap: 12px;
     }
 
     .notification-panel-header {
@@ -201,7 +233,7 @@ header {
     }
 
     .notif-title {
-        font-size: 12px;
+        font-size: 11px;
         word-break: normal;
         overflow-wrap: break-word;
     }
@@ -242,7 +274,7 @@ header {
 #mobile-menu {
     display: flex; 
     color: var(--text, #222);
-    font-size: 20px;
+    font-size: 17px;
     background: transparent;
     border: none;
     outline: none;
@@ -334,6 +366,37 @@ header {
     overflow-y: auto;
 }
 
+.notification-panel-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 18px;
+    border-top: 1px solid #eee;
+    background: #f9fafb;
+    flex-shrink: 0;
+    font-size: 12.5px;
+    color: #6b7280;
+}
+
+.notification-view-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #8f0b0b;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.notification-view-all:hover {
+    text-decoration: underline;
+}
+
+.notification-view-all i {
+    font-size: 11px;
+}
+
 .notif-item {
     display: flex;
     flex-direction: column;
@@ -362,7 +425,7 @@ header {
 }
 
 .notif-title {
-    font-size: 13.5px;
+    font-size: 12px;
     font-weight: 700;
     line-height: 1.35;
     color: #9ca3af;
@@ -396,19 +459,17 @@ header {
 }
 
 .notif-item.unseen .notif-note {
-    color: #374151;
+    color: #52525b;
 }
 
-/* AI At-Risk alert - same red used for "At Risk" elsewhere in the app
-   (#AB0A0A, matches the avatar/notification-badge red), so it stands out
-   from the plain coordinator "No Duty" notices. */
+/* AI At-Risk alert */
 .notif-item.notif-risk {
-    background: #fde8e8;
-    border-left: 3px solid #ab0a0a;
+    background: #fff;
+    border-left: none;
 }
 
 .notif-item.notif-risk .notif-title {
-    color: #ab0a0a;
+    color: #ab0a0a; 
 }
 
 .notif-item.notif-risk .notif-title i {
@@ -416,19 +477,18 @@ header {
 }
 
 .notif-item.notif-risk.unseen {
-    background: #fbd5d5;
+    background: #f6f6f7; 
 }
-
 /* AI Needs Monitoring alert - amber, one notch below the "At Risk" red so
    it reads as a heads-up rather than an urgent alarm. Matches the amber
    used for "Needs Monitoring" status badges elsewhere in the app. */
 .notif-item.notif-monitor {
-    background: #fef3c7;
-    border-left: 3px solid #d97706;
+    background: #fff;
+    border-left: none;
 }
 
 .notif-item.notif-monitor .notif-title {
-    color: #b45309;
+    color: #ca8a04;
 }
 
 .notif-item.notif-monitor .notif-title i {
@@ -436,7 +496,7 @@ header {
 }
 
 .notif-item.notif-monitor.unseen {
-    background: #fde8b6;
+    background: #f6f6f7;
 }
 
 .notif-empty {
@@ -516,8 +576,8 @@ header {
 }
 
 .avatar {
-    width: 40px;
-    height: 40px;
+    width: 35px;
+    height: 35px;
     border-radius: 50%;
     background: #AB0A0A;
     color: #fff;

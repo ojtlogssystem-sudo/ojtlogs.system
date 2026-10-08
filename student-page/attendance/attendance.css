@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
-
 /* DASHBOARD ROOT VARIABLES */
 :root{
     --primary:#AB0A0A;
@@ -14,7 +12,7 @@
     margin:0;
     padding:0;
     box-sizing:border-box;
-    font-family:'Poppins',sans-serif;
+    font-family:'Google Sans Flex', sans-serif;
 }
 
 body{
@@ -52,178 +50,6 @@ button{
     min-width:0;
 }
 
-/* HEADER */
-header{
-    height: 70px;
-    background:#fff;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    padding: 0 16px;
-    border-bottom:1px solid #ececec;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-}
-
-.header-left {
-    display: flex;
-    align-items: center;
-    gap: 12px; 
-}
-
-#mobile-menu {
-    display: flex; 
-    color: var(--text);
-    font-size: 20px;
-}
-
-header h2{
-    font-size:18px;
-    color:#222;
-    font-weight:700;
-}
-
-.top-right{
-    display:flex;
-    align-items:center;
-    gap:16px;
-}
-
-.notification{
-    position:relative;
-    font-size:20px;
-    color:#222;
-    cursor: pointer;
-}
-
-.notification-badge{
-    position:absolute;
-    top:-2px;
-    right:-6px;
-    width:15px;
-    height:15px;
-    border-radius:50%;
-    background:#d60000;
-    color:#fff;
-    font-size:9px;
-    font-weight:600;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-}
-
-/* HEADER PROFILE & DROPDOWN STYLING */
-.header-profile-container {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    cursor: pointer;
-    position: relative;
-}
-
-.avatar{
-    width:38px;
-    height:38px;
-    border-radius:50%;
-    background:var(--primary, #AB0A0A);
-    color:#fff;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    font-weight:700;
-    font-size:14px;
-    text-transform: uppercase;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-    overflow: hidden;
-}
-
-.avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 50%;
-}
-
-.dropdown-icon {
-    font-size: 11px;
-    color: #4b5563;
-    transition: transform 0.2s ease;
-}
-
-.dropdown-menu {
-    position: absolute;
-    top: 48px;
-    right: 0;
-    width: 210px;
-    background: #ffffff;
-    border-radius: 10px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-    border: 1px solid #f3f4f6;
-    padding: 12px 0;
-    display: none; 
-    z-index: 1000;
-    animation: fadeIn 0.2s ease;
-}
-
-.dropdown-menu.show {
-    display: block;
-}
-
-.user-info-header {
-    padding: 4px 16px 8px 16px;
-    text-align: left;
-}
-
-.user-fullname {
-    font-weight: 600;
-    font-size: 13px;
-    color: #111827;
-    margin: 0;
-}
-
-.user-role {
-    font-size: 11px;
-    color: #6b7280;
-}
-
-.dropdown-divider {
-    border: 0;
-    border-top: 1px solid #f3f4f6;
-    margin: 8px 0;
-}
-
-.dropdown-menu ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.dropdown-menu ul li a {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 16px;
-    font-size: 12px;
-    color: #374151;
-    text-decoration: none;
-    transition: background 0.2s;
-}
-
-.dropdown-menu ul li a:hover {
-    background-color: #f9fafb;
-    color: #111827;
-}
-
-.dropdown-menu ul li a.text-danger {
-    color: #dc2626;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-8px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
 /* DASHBOARD CONTENT CONTAINER */
 .dashboard-content{
     display:flex;
@@ -254,7 +80,7 @@ header h2{
 }
 
 .title-left h3{
-    font-size:14px;
+    font-size:15px;
     font-weight:600;
     color:#222;
 }
@@ -304,6 +130,7 @@ header h2{
 .gray-bg { background: #f3f4f6; color: #9ca3af; }
 
 .card-header-info h3 {
+    margin-bottom: 4px;
     font-size: 15px;
     font-weight: 600;
     color: #222;
@@ -311,6 +138,7 @@ header h2{
 
 .card-header-info p {
     font-size: 12px;
+    line-height: 1.4;
     color: #666;
 }
 
@@ -345,11 +173,11 @@ header h2{
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 11px;
+    font-size: 12px;
     color: #666;
 }
 
-.qr-note i { color: #22c55e; }
+.qr-note .mat-icon { color: #22c55e; font-size: 16px; }
 
 /* Today Summary Grid */
 .today-summary-grid {
@@ -359,7 +187,7 @@ header h2{
 }
 
 .summary-item span {
-    font-size: 11px;
+    font-size: 12px;
     color: #777;
 }
 
@@ -376,7 +204,7 @@ header h2{
     display: inline-block;
     padding: 3px 8px;
     border-radius: 12px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
 }
 
@@ -389,32 +217,15 @@ header h2{
 .card-header-title {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 2px;
     margin-bottom: 16px;
 }
 
 .card-header-title h3 {
     margin: 0;
-    font-size: 14px !important;
+    font-size: 15px !important;
     font-weight: 600 !important;
     color: #222;
-}
-
-.card-header-title .view-all {
-    margin-left: auto; 
-    text-decoration: none;
-    color: #3b82f6;
-    font-size: 12px;
-    font-weight: 500;
-    background: none;
-    border: none;
-    padding: 0;
-    font-family: inherit;
-    cursor: pointer;
-}
-
-.card-header-title .view-all:hover {
-    color: #1d4ed8;
 }
 
 /* FLATPICKR FILTER HEADER BAR */
@@ -429,27 +240,25 @@ header h2{
     margin-bottom: 16px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
 }
-
 .date-picker-wrapper {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     background: #f9fafb;
     border: 1px solid #d1d5db;
     border-radius: 8px;
-    padding: 6px 12px;
-    width: 230px;
-    transition: all 0.2s ease;
+    padding: 6px 10px;
+    width: 180px;
+    flex-shrink: 0;
 }
-
 .date-picker-wrapper:focus-within {
     border-color: #3b82f6;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-.date-picker-wrapper i {
+.date-picker-wrapper .mat-icon {
     color: #6b7280;
-    font-size: 13px;
+    font-size: 18px;
 }
 
 .date-picker-wrapper input {
@@ -457,15 +266,16 @@ header h2{
     outline: none;
     background: transparent;
     font-size: 12px;
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Google Sans Flex', sans-serif;
     color: #1f2937;
     width: 100%;
+    min-width: 0;
     cursor: pointer;
 }
 
 .recent-logs-label {
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 500;
     color: #1f2937;
 }
 
@@ -488,7 +298,7 @@ header h2{
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
 }
 
 .att-item-left {
@@ -509,34 +319,35 @@ header h2{
 }
 
 .att-icon-box.orange-bg {
-    background: #fff7eb;
+    background: #fff8ed; border: 1px solid #ffe3c2;
     color: #f97316;
 }
 
 .att-icon-box.green-bg {
-    background: #eefbf2;
+    background: #f0fbf4; 
+    border: 1px solid #d1f2d9;
     color: #22c55e;
 }
 
 .att-icon-box.red-bg {
-    background: #fef2f2;
+    background: #fdf2f2; border: 1px solid #f8d7d7;
     color: #dc2626;
 }
 
 .att-icon-box.blue-bg {
-    background: #eff6ff;
+    background: #f0f6ff; border: 1px solid #d0e2ff;
     color: #3b82f6;
 }
 
 .att-date-info h4 {
-    font-size: 14px;
-    font-weight: 700;
+    font-size: 13px;
+    font-weight: 650;
     color: #111827;
-    margin-bottom: 2px;
+    margin-bottom: 4px;
 }
 
 .att-date-info p {
-    font-size: 12px;
+    font-size: 13px;
     color: #6b7280;
 }
 
@@ -546,30 +357,30 @@ header h2{
 }
 
 .badge-status {
-    padding: 4px 10px;
-    border-radius: 8px;
-    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-size: 12px;
     font-weight: 600;
     display: inline-block;
 }
 
 .badge-status.green { 
-    background: #eefbf2; 
+    background: #f0fbf4; border: 1px solid #d1f2d9;
     color: #22c55e; 
 }
 
 .badge-status.orange { 
-    background: #fff7eb; 
+    background: #fff8ed; border: 1px solid #ffe3c2;
     color: #f97316; 
 }
 
 .badge-status.red {
-    background: #fef2f2;
+    background: #fdf2f2; border: 1px solid #f8d7d7;
     color: #dc2626;
 }
 
 .badge-status.blue {
-    background: #eff6ff;
+    background: #f0f6ff; border: 1px solid #d0e2ff; 
     color: #3b82f6;
 }
 
@@ -590,8 +401,14 @@ header h2{
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 11px;
+    font-size: 12px;
     color: #6b7280;
+}
+
+.time-log-info span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
 
 .time-log-info .dot {
@@ -603,7 +420,7 @@ header h2{
     align-items: center;
     gap: 4px;
     color: #3b82f6;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 500;
     cursor: pointer;
     transition: color 0.2s ease;
@@ -640,14 +457,15 @@ header h2{
 }
 
 .scanner-dialog h3 {
-    margin-bottom: 6px;
+    margin-bottom: 5px;
     color: #111827;
     font-size: 18px;
+    font-weight: 600;
 }
 
 .scanner-dialog > p {
     color: #6b7280;
-    font-size: 13px;
+    font-size: 12px;
 }
 
 .scanner-close {
@@ -811,7 +629,7 @@ header h2{
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    font-size: 11px;
+    font-size: 12px;
     text-align: left;
 }
 
@@ -968,7 +786,7 @@ header h2{
 /* Task Preview Text sa History */
 .task-summary-preview {
     margin-top: 8px;
-    font-size: 11px;
+    font-size: 12px;
     color: #4b5563;
     background: #f9fafb;
     padding: 8px 10px;
@@ -1016,15 +834,15 @@ header h2{
     gap: 10px;
 }
 
-.detail-row i {
-    font-size: 16px;
+.detail-row .mat-icon {
+    font-size: 20px;
     color: #3b82f6;
     width: 20px;
     text-align: center;
 }
 
 .detail-label {
-    font-size: 10px;
+    font-size: 11px;
     color: #6b7280;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -1032,7 +850,7 @@ header h2{
 }
 
 .detail-row h5 {
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     color: #111827;
     margin: 0;
@@ -1073,9 +891,8 @@ header h2{
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    gap: 48px;
+    gap: 10px;
     flex-wrap: wrap;
-
     background: #fff;
     border: 1px solid #ececec;
     border-radius: 14px;
@@ -1106,26 +923,26 @@ header h2{
 
 .datetime-item small {
     display: block;
-    font-size: 11px;
+    font-size: 12px;
     color: #999;
-    margin-bottom: 2px;
+    margin-bottom: 0;
+    line-height: 1.2;
 }
 
 .datetime-item strong {
+    display: block;
     font-size: 16px;
     font-weight: 600;
     color: #222;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
+    line-height: 2;
 }
 
-/* MOBILE VIEW — stack the two items, shrink padding/icon/text so the
-   bar stays compact and readable on a phone screen instead of
-   wrapping awkwardly or overflowing sideways. */
 @media (max-width: 600px) {
     .datetime-bar {
         flex-direction: row;
-        flex-wrap: nowrap;          /* laging magkatabi ang Date at Time */
+        flex-wrap: nowrap;          
         align-items: center;
         justify-content: space-between;
         gap: 12px;
@@ -1157,11 +974,11 @@ header h2{
     }
 
     .datetime-item small {
-        font-size: 9px;
+        font-size: 11px;
     }
 
     .datetime-item strong {
-        font-size: 11.5px;
+        font-size: 13px;
         white-space: nowrap;
     }
 }
@@ -1207,9 +1024,170 @@ header h2{
     font-size: 13px;
     font-weight: 500;
     color: #374151;
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Google Sans Flex', sans-serif;
+}
+
+/* ==========================================
+   ATTENDANCE MARKS ON FLATPICKR CALENDAR
+========================================== */
+
+.flatpickr-calendar .flatpickr-day.has-attendance {
+    position: relative;
+}
+
+.flatpickr-calendar .flatpickr-day.has-attendance::after {
+    content: "";
+    position: absolute;
+    bottom: 3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #AB0A0A;
+}
+
+/* Kapag selected ang date, magiging white ang dot
+   para visible pa rin sa selected date */
+.flatpickr-calendar .flatpickr-day.selected.has-attendance::after,
+.flatpickr-calendar .flatpickr-day.startRange.has-attendance::after,
+.flatpickr-calendar .flatpickr-day.endRange.has-attendance::after {
+    background: #ffffff;
 }
 
 @keyframes attendance-loading-spin {
     to { transform: rotate(360deg); }
+}
+
+/* ==========================================
+   MATERIAL SYMBOLS ICONS
+   (mat-icon + lumi-symbols) — same as dashboard
+========================================== */
+
+.mat-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 1em;
+    height: 1em;
+    line-height: 1;
+    user-select: none;
+}
+
+.lumi-symbols,
+.mat-ligature-font {
+    font-family: 'Material Symbols Outlined';
+    font-weight: 400;
+    font-style: normal;
+    letter-spacing: normal;
+    text-transform: none;
+    white-space: nowrap;
+    direction: ltr;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: 'liga';
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+.lm-icon-xl {
+    font-size: 24px;
+}
+
+.mat-icon-no-color {
+    color: inherit;
+}
+
+/* sizes per place */
+.scan-btn .mat-icon { font-size: 22px; }
+.photo-overlay-stamp .mat-icon { font-size: 16px; }
+.camera-side-btn .mat-icon { font-size: 22px; }
+.camera-shutter-btn .mat-icon { font-size: 26px; }
+.camera-shutter-btn.confirm-btn .mat-icon { font-size: 22px; }
+.att-icon-box .mat-icon { font-size: 22px; }
+.time-log-info .mat-icon { font-size: 16px; }
+.btn-photo-proof .mat-icon { font-size: 16px; }
+
+#add-task-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+#add-task-btn .mat-icon { font-size: 18px; }
+.remove-task-btn .mat-icon { font-size: 18px; }
+
+/* Flatpickr popup uses the same font as the rest of the page */
+.flatpickr-calendar,
+.flatpickr-calendar * {
+    font-family: 'Google Sans Flex', sans-serif;
+}
+
+/* ==========================================
+   ATTENDANCE HISTORY PAGINATION (Previous / Next)
+========================================== */
+
+/* leaves room under the fixed header when scrolling to the top of the list */
+#attendance-history-card {
+    scroll-margin-top: 72px;
+}
+
+.pagination-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+
+    /* stretch edge-to-edge inside .attendance-card (which has 16px padding) */
+    margin: 16px -16px -16px;
+    padding: 14px 16px;
+
+    background: #f9fafb;
+    border-top: 1px solid #ececec;
+    border-radius: 0 0 12px 12px;
+}
+
+.pagination-bar[hidden] {
+    display: none;
+}
+
+.pagination-buttons {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.page-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+
+    height: 34px;
+    padding: 0 12px;
+
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+
+    color: #475569;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.page-btn .mat-icon {
+    font-size: 18px;
+}
+
+.page-btn:hover:not(:disabled) {
+    background: #fceaea;
+    border-color: #e8baba;
+    color: #ab0a0a;
+}
+
+.page-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }

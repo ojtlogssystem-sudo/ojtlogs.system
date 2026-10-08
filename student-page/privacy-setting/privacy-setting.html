@@ -8,8 +8,12 @@
     <link rel="stylesheet" href="privacy-setting.css">
     <link rel="stylesheet" href="../templated/header.css">
     <link rel="stylesheet" href="../templated/sidebar.css">
+    <!-- Poppins + Font Awesome are still needed by the shared header/sidebar -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+    <!-- Used only by the settings content -->
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@300..700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </head>
 <body>
 
@@ -23,6 +27,10 @@
         <section class="settings-page">
 
             <div class="settings-intro">
+                <button type="button" class="back-btn" id="back-btn" aria-label="Go back">
+                    <span class="material-icons">arrow_back</span>
+                    <span>Back</span>
+                </button>
                 <h2>Privacy Settings</h2>
                 <p>Manage what other people can see about you, how you're notified, and your account password.</p>
             </div>
@@ -37,9 +45,9 @@
                 </div>
 
                 <div class="setting-row" data-setting="showPhoto">
-                    <div class="setting-icon blue-icon"><i class="fa-regular fa-user"></i></div>
+                    <div class="setting-icon blue-icon"><span class="material-icons">person</span></div>
                     <div class="setting-text">
-                        <h4>Show My Profile Photo</h4>
+                        <h4>Show Profile Photo</h4>
                         <p>Let other students and coordinators see your profile picture.</p>
                     </div>
                     <div class="setting-control">
@@ -52,9 +60,9 @@
                 </div>
 
                 <div class="setting-row" data-setting="showContactInfo">
-                    <div class="setting-icon purple-icon"><i class="fa-regular fa-address-card"></i></div>
+                    <div class="setting-icon purple-icon"><span class="material-icons">contact_page</span></div>
                     <div class="setting-text">
-                        <h4>Show My Contact Info</h4>
+                        <h4>Show Contact Info</h4>
                         <p>Let other students see your email and phone number on your profile.</p>
                     </div>
                     <div class="setting-control">
@@ -67,9 +75,9 @@
                 </div>
 
                 <div class="setting-row" data-setting="showProgress">
-                    <div class="setting-icon green-icon"><i class="fa-regular fa-chart-bar"></i></div>
+                    <div class="setting-icon green-icon"><span class="material-icons">bar_chart</span></div>
                     <div class="setting-text">
-                        <h4>Show My Internship Progress</h4>
+                        <h4>Show Internship Progress</h4>
                         <p>Let other students see your hours completed and internship status.</p>
                     </div>
                     <div class="setting-control">
@@ -92,7 +100,7 @@
                 </div>
 
                 <div class="setting-row" data-setting="emailNotifications">
-                    <div class="setting-icon orange-icon"><i class="fa-regular fa-envelope"></i></div>
+                    <div class="setting-icon orange-icon"><span class="material-icons">mail</span></div>
                     <div class="setting-text">
                         <h4>Email Notifications</h4>
                         <p>Receive updates and reminders in your email.</p>
@@ -107,7 +115,7 @@
                 </div>
 
                 <div class="setting-row" data-setting="pushNotifications">
-                    <div class="setting-icon blue-icon"><i class="fa-solid fa-bell"></i></div>
+                    <div class="setting-icon blue-icon"><span class="material-icons">notifications</span></div>
                     <div class="setting-text">
                         <h4>Push Notifications</h4>
                         <p>Receive in-app notifications on this device.</p>
@@ -122,7 +130,7 @@
                 </div>
 
                 <div class="setting-row" data-setting="attendanceReminders">
-                    <div class="setting-icon green-icon"><i class="fa-regular fa-clock"></i></div>
+                    <div class="setting-icon green-icon"><span class="material-icons">schedule</span></div>
                     <div class="setting-text">
                         <h4>Attendance Reminders</h4>
                         <p>Get reminded to time in or time out.</p>
@@ -137,7 +145,7 @@
                 </div>
 
                 <div class="setting-row" data-setting="announcementNotifications">
-                    <div class="setting-icon purple-icon"><i class="fa-regular fa-bullhorn"></i></div>
+                    <div class="setting-icon purple-icon"><span class="material-icons">campaign</span></div>
                     <div class="setting-text">
                         <h4>Announcements &amp; Events</h4>
                         <p>Get notified about coordinator announcements and events.</p>
@@ -152,7 +160,7 @@
                 </div>
 
                 <div class="setting-row" data-setting="deadlineReminders">
-                    <div class="setting-icon red-icon"><i class="fa-solid fa-bullseye"></i></div>
+                    <div class="setting-icon red-icon"><span class="material-icons">flag</span></div>
                     <div class="setting-text">
                         <h4>Deadline Reminders</h4>
                         <p>Get reminded as your OJT completion deadline approaches.</p>

@@ -145,6 +145,146 @@ function formatDate(d) {
 
 
 /* ========================================
+   ATTENDANCE-BASED HOURS + COMPLETION DATE
+
+   Kapag walang hours / completion date sa
+   "users" doc (hal. manual na na-mark na
+   Completed ng coordinator), kukunin ito
+   sa "attendance" collection:
+     - Rendered hours = kabuuan ng hoursRendered
+       ng mga valid na record (hindi Rejected /
+       Absent / Excused)
+     - Completion date = petsa kung kailan naabot
+       ang required hours; kung hindi naabot sa
+       records, ang huling araw ng time-in
+======================================== */
+
+function parseHoursValue(value) {
+
+    if (value === undefined || value === null || value === "") {
+        return 0;
+    }
+
+    if (typeof value === "number") {
+        return Number.isFinite(value) && value > 0 ? value : 0;
+    }
+
+    const text = String(value).trim();
+
+    // "4h 30m" / "8h" / "45m"
+    const hm = text.match(/^(?:(\d+(?:\.\d+)?)\s*h)?\s*(?:(\d+(?:\.\d+)?)\s*m)?$/i);
+
+    if (hm && (hm[1] || hm[2])) {
+        return (Number(hm[1]) || 0) + (Number(hm[2]) || 0) / 60;
+    }
+
+    const n = parseFloat(text);
+
+    return Number.isFinite(n) && n > 0 ? n : 0;
+
+}
+
+function getAttendanceRecordHours(rec) {
+
+    const fromRendered = parseHoursValue(rec.hoursRendered);
+
+    return fromRendered > 0
+        ? fromRendered
+        : parseHoursValue(rec.todayHours);
+
+}
+
+function getAttendanceRecordDate(rec) {
+
+    const candidates = [
+        rec.formattedDate,
+        rec.date,
+        rec.timestamp,
+        rec.createdAt
+    ];
+
+    for (const value of candidates) {
+
+        if (!value) {
+            continue;
+        }
+
+        if (typeof value.toDate === "function") {
+            return value.toDate();
+        }
+
+        // "YYYY-MM-DD" -> local date (iwas off-by-one sa timezone)
+        const iso = String(value).trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+
+        if (iso) {
+            return new Date(+iso[1], +iso[2] - 1, +iso[3]);
+        }
+
+        const parsed = new Date(value);
+
+        if (!isNaN(parsed)) {
+            return parsed;
+        }
+
+    }
+
+    return null;
+
+}
+
+function summarizeAttendanceHours(records, requiredHours) {
+
+    const valid = records
+        .filter((rec) => {
+
+            const status = String(rec.status || "").toLowerCase();
+
+            return !(
+                status.includes("reject") ||
+                status.includes("absent") ||
+                status.includes("excus")
+            );
+
+        })
+        .map((rec) => ({
+            hours: getAttendanceRecordHours(rec),
+            date: getAttendanceRecordDate(rec),
+            hasTimeIn: !!(rec.timeIn && rec.timeIn !== "--")
+        }))
+        .sort((a, b) =>
+            (a.date ? a.date.getTime() : Infinity) -
+            (b.date ? b.date.getTime() : Infinity)
+        );
+
+    let totalHours = 0;
+    let reachedDate = null;
+    let lastDate = null;
+
+    valid.forEach((item) => {
+
+        totalHours += item.hours;
+
+        if (
+            !reachedDate &&
+            item.date &&
+            requiredHours > 0 &&
+            totalHours >= requiredHours
+        ) {
+            reachedDate = item.date;
+        }
+
+        if (item.date && (item.hours > 0 || item.hasTimeIn)) {
+            lastDate = item.date;
+        }
+
+    });
+
+    return { totalHours, reachedDate, lastDate };
+
+}
+
+
+/* ========================================
    LOAD COMPLETED STUDENTS
 ======================================== */
 
@@ -159,6 +299,59 @@ async function loadCompletedStudents() {
             await getDocs(collection(db, "users"));
 
         completedStudents = [];
+
+
+        /* ATTENDANCE (para sa hours + completion date) */
+
+        const attendanceByOwner = {};
+
+        try {
+
+            const attendanceSnapshot =
+                await getDocs(collection(db, "attendance"));
+
+            attendanceSnapshot.forEach((attDoc) => {
+
+                const rec = attDoc.data();
+
+                const owners = new Set();
+
+                [rec.userId, rec.uid].forEach((v) => {
+                    if (v) owners.add(String(v));
+                });
+
+                if (rec.userEmail) {
+                    owners.add(String(rec.userEmail).toLowerCase());
+                }
+
+                owners.forEach((owner) => {
+                    (attendanceByOwner[owner] =
+                        attendanceByOwner[owner] || []).push(rec);
+                });
+
+            });
+
+        } catch (attendanceError) {
+
+            console.warn(
+                "Attendance collection not available:",
+                attendanceError
+            );
+
+        }
+
+        const collectAttendance = (uid, email) => {
+
+            const found = new Set([
+                ...(attendanceByOwner[String(uid)] || []),
+                ...(email
+                    ? (attendanceByOwner[String(email).toLowerCase()] || [])
+                    : [])
+            ]);
+
+            return [...found];
+
+        };
 
 
         usersSnapshot.forEach((docSnap) => {
@@ -196,8 +389,19 @@ async function loadCompletedStudents() {
                 Number(data.requiredHoursTotal) ||
                 600;
 
-            const renderedHours =
+            const userHours =
                 getRenderedHours(data);
+
+            const attendanceSummary =
+                summarizeAttendanceHours(
+                    collectAttendance(docSnap.id, data.email),
+                    requiredHours
+                );
+
+            const renderedHours =
+                userHours > 0
+                    ? userHours
+                    : attendanceSummary.totalHours;
 
 
             /*
@@ -224,13 +428,44 @@ async function loadCompletedStudents() {
             }
 
 
-            const completedOn =
+            let completionSource = "";
+
+            let completedOn =
                 toDate(
                     data.completedAt ||
                     data.completionDate ||
                     data.completedDate ||
                     data.dateCompleted
                 );
+
+            if (completedOn) {
+
+                completionSource = "Saved completion date";
+
+            } else if (attendanceSummary.reachedDate) {
+
+                completedOn = attendanceSummary.reachedDate;
+                completionSource = "Date the required hours were reached";
+
+            } else if (attendanceSummary.lastDate) {
+
+                completedOn = attendanceSummary.lastDate;
+                completionSource = "Last attendance (time-in)";
+
+            }
+
+            // Diagnostic: Completed pero walang makitang hours kahit saan
+            if (renderedHours === 0) {
+
+                console.warn(
+                    `[completed-students] ${data.fullName || data.name || docSnap.id}`,
+                    "walang hours sa users doc o attendance. Mga posibleng field:",
+                    Object.keys(data).filter((k) =>
+                        /hour|complet|date|status/i.test(k)
+                    )
+                );
+
+            }
 
             completedStudents.push({
 
@@ -270,6 +505,9 @@ async function loadCompletedStudents() {
 
                 completionTime:
                     completedOn ? completedOn.getTime() : 0,
+
+                completionSource:
+                    completionSource,
 
                 status:
                     "Completed"
@@ -363,7 +601,7 @@ function renderCompletedStudents(students) {
                         ${formatHours(student.renderedHours)} hrs
                     </td>
 
-                    <td>
+                    <td title="${escapeHtml(student.completionSource || "")}">
                         ${escapeHtml(
                             student.completionDate || "—"
                         )}

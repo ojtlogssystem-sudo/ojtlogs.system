@@ -306,6 +306,25 @@ body {
     flex-shrink: 0;
 }
 
+.date-picker .fa-calendar {
+    cursor: pointer;
+}
+
+.date-clear {
+    display: none;
+    border: none;
+    background: transparent;
+    color: #888;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+}
+
+.date-clear:hover {
+    color: #ab0a0a;
+}
+
 .filter-select {
     padding: 0 12px;
     color: #444;
@@ -615,6 +634,11 @@ body {
     background: #fff;
     border-radius: 6px;
     cursor: pointer;
+}
+
+.page-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
 }
 
 .page-btn.active {

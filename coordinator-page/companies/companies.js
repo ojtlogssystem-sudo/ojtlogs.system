@@ -517,7 +517,6 @@ document.addEventListener("click", (e) => {
     const closeEvaluationStatusModal = document.getElementById("closeEvaluationStatusModal");
     const evaluationStatusList = document.getElementById("evaluationStatusList");
     const evaluationStatusCompanyLabel = document.getElementById("evaluationStatusCompanyLabel");
-    const viewBlankFormBtn = document.getElementById("viewBlankFormBtn");
 
     const evaluationAnswersModal = document.getElementById("evaluationAnswersModal");
     const closeEvaluationAnswersModal = document.getElementById("closeEvaluationAnswersModal");
@@ -548,12 +547,6 @@ document.addEventListener("click", (e) => {
 
         if (evaluationStatusList) {
             evaluationStatusList.innerHTML = `<p class="eval-empty-note"><i class="fa-solid fa-spinner fa-spin"></i> Loading students...</p>`;
-        }
-
-        if (viewBlankFormBtn) {
-            viewBlankFormBtn.onclick = () => {
-                window.open(`/guest-access/guest-evaluation.html?preview=1`, "_blank");
-            };
         }
 
         if (evaluationStatusModal) evaluationStatusModal.classList.add("active");

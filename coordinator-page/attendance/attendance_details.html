@@ -154,22 +154,15 @@
                                     <i class="fa-regular fa-calendar"></i>
                                 </div>
 
-                                <select class="filter-select">
-                                    <option>All Status</option>
-                                    <option>Present</option>
-                                    <option>Late</option>
-                                    <option>Absent</option>
-                                    <option>Rejected</option>
+                                <select class="filter-select" id="statusFilter">
+                                    <option value="all">All Status</option>
+                                    <option value="present">Present</option>
+                                    <option value="late">Late</option>
+                                    <option value="absent">Absent</option>
+                                    <option value="excused">Excused</option>
+                                    <option value="adjusted">Adjusted</option>
+                                    <option value="rejected">Rejected</option>
                                 </select>
-
-                                <div class="search-input">
-                                    <i class="fa-solid fa-magnifying-glass"></i>
-                                    <input type="text" placeholder="Search by date...">
-                                </div>
-
-                                <button class="filter-btn">
-                                    <i class="fa-solid fa-filter"></i> Filter
-                                </button>
                             </div>
                         </div>
 
@@ -198,16 +191,13 @@
                         <!-- PAGINATION -->
                         <div class="table-footer">
                             <span class="records-info">Showing 0 of 0 records</span>
-                            <div class="pagination">
-                                <button class="page-btn"><i class="fa-solid fa-chevron-left"></i></button>
-                                <button class="page-btn active">1</button>
-                                <button class="page-btn"><i class="fa-solid fa-chevron-right"></i></button>
-                            </div>
+                            <div class="pagination" id="pagination"></div>
                             <div class="rows-per-page">
                                 <span>Rows per page:</span>
-                                <select>
-                                    <option>10</option>
-                                    <option>20</option>
+                                <select id="rowsPerPage">
+                                    <option value="10">10</option>
+                                    <option value="20">20</option>
+                                    <option value="50">50</option>
                                 </select>
                             </div>
                         </div>

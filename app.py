@@ -38,6 +38,38 @@ if not firebase_admin._apps:
 db = firestore.client()
 
 # ==========================================
+# FIREBASE USAGE SAVER: in-memory cache
+# ==========================================
+# Para hindi paulit-ulit ang pagbasa ng buong collection sa Firestore
+# kada bukas/click sa Analytics page. Nare-reset kapag nag-restart ang server.
+import time
+import threading
+
+_cache = {}
+_cache_lock = threading.Lock()
+
+def cached(key, ttl, loader, force=False):
+    """Ibalik ang cached na value kung bago pa (ttl = segundo); kung hindi, i-load ulit."""
+    now = time.time()
+    if not force:
+        with _cache_lock:
+            hit = _cache.get(key)
+            if hit and now - hit[0] < ttl:
+                return hit[1]
+    value = loader()
+    with _cache_lock:
+        _cache[key] = (time.time(), value)
+    return value
+
+# TTL settings (segundo) - dagdagan para mas makatipid, bawasan para mas "live"
+ATTENDANCE_CACHE_TTL = 300      # 5 min
+PREDICT_RISK_CACHE_TTL = 120    # 2 min
+SKILL_PROFILE_CACHE_TTL = 3600  # 1 oras
+
+# Huling na-write na analytics payload kada estudyante (para hindi mag-write kung walang nagbago)
+_last_written = {}
+
+# ==========================================
 # 1. ENDPOINT FOR AT-RISK PREDICTION
 # ==========================================
 # ATTENDANCE SETTINGS
@@ -58,7 +90,7 @@ ATTENDANCE_STATUS_FIELDS = (
 ATTENDANCE_OWNER_FIELDS = (
     'studentUid', 'studentUID', 'studentId', 'studentID',
     'studentNumber', 'uid', 'userId', 'userUid', 'student_id',
-    'email', 'studentEmail'
+    'email', 'studentEmail', 'userEmail'
 )
 
 def _norm(value):
@@ -112,7 +144,10 @@ def _is_absent_record(rec):
 
     return False
 
-def _load_attendance_records():
+def _load_attendance_records(force=False):
+    return cached('attendance', ATTENDANCE_CACHE_TTL, _load_attendance_records_uncached, force)
+
+def _load_attendance_records_uncached():
     records = []
     for collection_name in ATTENDANCE_COLLECTIONS:
         try:
@@ -208,6 +243,267 @@ def _summarize_attendance(matched_records, start_date=None, today=None):
         "absent_count": len(absent_dates) + undated_absences,
         "consecutive": consecutive,
         "record_count": len(matched_records),
+    }
+
+# ==========================================
+# SCHEDULE-BASED ATTENDANCE
+# Iisang source of truth para sa bilang ng absent (Analytics, attendance
+# graph modal). Sinusunod ang Attendance Records (attendance_shared.js) at
+# ang Reports (reports.js):
+#   - Absent  = araw na naka-schedule pero walang time-in, o may record na
+#               status = absent. Hindi binibilang ang Rejected / Excused.
+#   - Isang status kada ARAW (Present/Late ang nananalo kung may absent
+#     record din sa parehong araw).
+#   - Simula ng bilang = schedule.startDate ng estudyante (kapareho ng Reports).
+#   - Completed na: hanggang huling araw lang ng time-in ang bilang.
+# ==========================================
+GRACE_MINUTES = 15            # dapat kapareho ng GRACE_MINUTES sa attendance_shared.js
+SCHEDULE_MAX_RANGE_DAYS = 366 # dapat kapareho ng MAX_RANGE_DAYS sa attendance_shared.js
+WEEKDAY_ABBR = ('mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun')
+FALLBACK_DAY_END_MINUTES = 17 * 60   # kung walang valid na session times (kapareho ng reports.js)
+ATTENDANCE_RECORD_DATE_FIELDS = ('formattedDate', 'date', 'timestamp', 'createdAt')
+
+def _time_to_minutes(value):
+    """'08:00' / '8:05 AM' / '08:05:12 PM' -> minutes since midnight."""
+    if value is None:
+        return None
+    m = re.match(r'^(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])?$', str(value).strip())
+    if not m:
+        return None
+    hours, minutes = int(m.group(1)), int(m.group(2))
+    meridiem = m.group(3).upper() if m.group(3) else None
+    if meridiem == 'PM' and hours < 12:
+        hours += 12
+    if meridiem == 'AM' and hours == 12:
+        hours = 0
+    if hours > 23 or minutes > 59:
+        return None
+    return hours * 60 + minutes
+
+def _get_schedule_sessions(schedule):
+    if not isinstance(schedule, dict):
+        return []
+    raw = []
+    if schedule.get('morning') and schedule.get('morningEnabled') is not False:
+        raw.append(schedule['morning'])
+    if schedule.get('afternoon') and schedule.get('afternoonEnabled') is not False:
+        raw.append(schedule['afternoon'])
+    sessions = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        start = _time_to_minutes(item.get('timeIn'))
+        end = _time_to_minutes(item.get('timeOut'))
+        if start is not None and end is not None and start < end:
+            sessions.append({"start": start, "end": end})
+    sessions.sort(key=lambda x: x["start"])
+    return sessions
+
+def _to_ph_day(value):
+    """Kahit anong date value (Firestore Timestamp, ISO string, epoch...) -> 'YYYY-MM-DD' (PH time)."""
+    if value is None or value == '':
+        return None
+    if isinstance(value, datetime):
+        if value.tzinfo is not None:
+            value = value.astimezone(PH_TZ)
+        return value.strftime('%Y-%m-%d')
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        try:
+            ts = float(value)
+            if ts > 1e11:       # milliseconds
+                ts /= 1000.0
+            return datetime.fromtimestamp(ts, PH_TZ).strftime('%Y-%m-%d')
+        except (ValueError, OverflowError, OSError):
+            return None
+    text = str(value).strip()
+    if 'T' in text:
+        try:
+            return _to_ph_day(datetime.fromisoformat(text.replace('Z', '+00:00')))
+        except ValueError:
+            pass
+    return _to_date_str(text)
+
+def _attendance_day(rec):
+    for field in ATTENDANCE_RECORD_DATE_FIELDS:
+        day = _to_ph_day(rec.get(field))
+        if day:
+            return day
+    return None
+
+def _build_attendance_index(attendance_records):
+    """{(userId / uid / lowercase email, 'YYYY-MM-DD'): [records]}"""
+    index = {}
+    for rec in attendance_records:
+        day = _attendance_day(rec)
+        if not day:
+            continue
+        owners = set()
+        for field in ('userId', 'uid'):
+            if rec.get(field):
+                owners.add(str(rec[field]))
+        if rec.get('userEmail'):
+            owners.add(str(rec['userEmail']).lower())
+        for owner in owners:
+            index.setdefault((owner, day), []).append(rec)
+    return index
+
+def _stored_status(rec):
+    return str((rec or {}).get('status') or '').lower()
+
+def _pick_day_record(recs):
+    """Isang record kada araw: ang may time-in (Present/Late) ang nananalo
+    kahit may absent record din sa parehong araw."""
+    if not recs:
+        return None
+    for r in recs:
+        st = _stored_status(r)
+        if (_time_to_minutes(r.get('timeIn')) is not None
+                and 'reject' not in st and 'absent' not in st):
+            return r
+    for r in recs:
+        if 'excus' in _stored_status(r):
+            return r
+    return recs[0]
+
+def _is_completed_student(data):
+    status = str(data.get('internshipStatus') or data.get('aiStatus') or '').lower()
+    if status == 'completed':
+        return True
+    try:
+        completed = float(data.get('completedHours'))
+        target = float(data.get('targetHours') or 0) or 600
+        return completed >= target
+    except (TypeError, ValueError):
+        return False
+
+def _derive_day_status(sessions, rec, now_minutes, day_end):
+    stored = _stored_status(rec)
+    if rec and 'reject' in stored:
+        return 'Rejected'
+    if rec and 'excus' in stored:
+        return 'Excused'
+    if rec and 'absent' in stored:
+        return 'Absent'
+
+    time_in = _time_to_minutes(rec.get('timeIn')) if rec else None
+    if time_in is not None:
+        if sessions:
+            session = next((x for x in sessions if time_in < x["end"]), sessions[-1])
+            return 'Late' if time_in > session["start"] + GRACE_MINUTES else 'Present'
+        return 'Late' if 'late' in stored else 'Present'
+
+    if rec and not sessions:
+        # walang session times: sundin ang naka-save na status ng record
+        if 'late' in stored:
+            return 'Late'
+        if any(w in stored for w in ('present', 'on-time', 'adjusted')):
+            return 'Present'
+        return 'Unknown'
+
+    return 'Absent' if now_minutes >= day_end else 'Pending'
+
+def _student_start_date(data):
+    raw = data.get('ojtStartDate') or data.get('startDate')
+    try:
+        return datetime.strptime(str(raw)[:10], "%Y-%m-%d") if raw else datetime(2026, 9, 14)
+    except (ValueError, TypeError):
+        return datetime(2026, 9, 14)
+
+def _schedule_start_day(data):
+    """schedule.startDate ng estudyante bilang date (o None)."""
+    schedule = data.get('schedule')
+    raw = schedule.get('startDate') if isinstance(schedule, dict) else None
+    day = _to_ph_day(raw) if raw else None
+    if not day:
+        return None
+    try:
+        return datetime.strptime(day, '%Y-%m-%d').date()
+    except ValueError:
+        return None
+
+def _attendance_start_day(data, default_dt):
+    """Simula ng bilang ng absent: schedule.startDate (tulad ng Reports),
+    kung wala ay ang default (ojtStartDate / startDate / batch start)."""
+    return _schedule_start_day(data) or default_dt.date()
+
+def _scheduled_day_statuses_ex(user_data, user_doc_id, attendance_index, start_day, now=None):
+    """
+    Ibinabalik ang ({date: status}, reason). status = Present / Late / Absent /
+    Pending / Rejected / Excused / Unknown para sa bawat araw na naka-schedule
+    ang estudyante mula start_day hanggang ngayon.
+    Ibinabalik ang (None, reason) kung walang magagamit na schedule - sa ganoon
+    ang lumang record-based na bilang ang gagamitin.
+    """
+    schedule = user_data.get('schedule')
+    if not isinstance(schedule, dict) or not schedule:
+        return None, 'walang schedule sa users doc'
+
+    days = schedule.get('days')
+    duty_weekdays = (
+        {str(d).strip()[:3].lower() for d in days if d is not None}
+        if isinstance(days, list) else set()
+    ) & set(WEEKDAY_ABBR)
+    if not duty_weekdays:
+        return None, 'walang valid na schedule.days'
+
+    sessions = _get_schedule_sessions(schedule)
+    day_end = sessions[-1]["end"] if sessions else FALLBACK_DAY_END_MINUTES
+
+    cutoff_mode = (
+        _is_completed_student(user_data) and
+        user_data.get('continueDutyAfterCompletion') is not True
+    )
+
+    email = str(user_data.get('email') or '').lower()
+    now = now or datetime.now(PH_TZ)
+    today = now.date()
+    now_minutes = now.hour * 60 + now.minute
+
+    cursor = max(start_day, today - timedelta(days=SCHEDULE_MAX_RANGE_DAYS - 1))
+    statuses = {}
+    last_time_in = None
+    while cursor <= today:
+        key = cursor.strftime('%Y-%m-%d')
+        if WEEKDAY_ABBR[cursor.weekday()] in duty_weekdays and key not in NON_DUTY_DATES:
+            recs = list(attendance_index.get((str(user_doc_id), key), []))
+            if email:
+                recs += attendance_index.get((email, key), [])
+            rec = _pick_day_record(recs)
+            status = _derive_day_status(
+                sessions, rec, now_minutes if cursor == today else 24 * 60, day_end
+            )
+            statuses[key] = status
+            if rec and status in ('Present', 'Late') and _time_to_minutes(rec.get('timeIn')) is not None:
+                last_time_in = key
+        cursor += timedelta(days=1)
+
+    # Completed na: huwag nang bilangin ang absent pagkatapos ng huling time-in
+    if cutoff_mode and last_time_in:
+        statuses = {k: v for k, v in statuses.items() if k <= last_time_in}
+
+    reason = 'ok' if sessions else 'ok (walang valid na session times - gumamit ng 5:00 PM bilang uwian)'
+    return statuses, reason
+
+def _scheduled_day_statuses(user_data, user_doc_id, attendance_index, start_day, now=None):
+    return _scheduled_day_statuses_ex(user_data, user_doc_id, attendance_index, start_day, now)[0]
+
+def _absent_present_from_statuses(statuses):
+    absent = {d for d, st in statuses.items() if st == 'Absent'}
+    present = {d for d, st in statuses.items() if st in ('Present', 'Late')}
+    return absent, present
+
+def _summarize_statuses(statuses):
+    absent, present = _absent_present_from_statuses(statuses)
+    consecutive = 0
+    for day in sorted(absent | present, reverse=True):
+        if day in absent:
+            consecutive += 1
+        else:
+            break
+    return {
+        "absent_count": len(absent),
+        "consecutive": consecutive,
+        "record_count": len(absent) + len(present),
     }
 
 STUDENT_ID_FIELDS = (
@@ -382,10 +678,22 @@ def debug_student_access():
 @app.route('/api/predict-risk', methods=['GET'])
 def predict_student_risk():
     try:
+        force = request.args.get('refresh') == '1'
+        if force:
+            _cache.pop('attendance', None)  # i-refresh din ang attendance
+        data = cached('predict-risk', PREDICT_RISK_CACHE_TTL, _build_predict_risk, force)
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+def _build_predict_risk():
+    try:
         users_ref = db.collection('users')
         docs = users_ref.stream()
 
         attendance_records = _load_attendance_records()
+        attendance_index = _build_attendance_index(attendance_records)
 
         student_predictions = []
         target_hours = 600
@@ -471,15 +779,25 @@ def predict_student_risk():
 
                 student_id_value = _get_student_id_raw(data) or doc.id[:7]
 
-                student_records = _get_student_records(
-                    attendance_records, doc.id, student_id_value,
-                    name, data.get('email')
+                # Schedule-based (kapareho ng Attendance Records page): ang araw na
+                # naka-schedule pero walang time-in ay bilang Absent.
+                day_statuses = _scheduled_day_statuses(
+                    data, doc.id, attendance_index,
+                    _attendance_start_day(data, start_date)
                 )
-                attendance_summary = _summarize_attendance(
-                    student_records,
-                    start_date=start_date,
-                    today=today_date
-                )
+                if day_statuses is not None:
+                    attendance_summary = _summarize_statuses(day_statuses)
+                else:
+                    # Walang schedule / Completed na -> lumang record-based na bilang
+                    student_records = _get_student_records(
+                        attendance_records, doc.id, student_id_value,
+                        name, data.get('email')
+                    )
+                    attendance_summary = _summarize_attendance(
+                        student_records,
+                        start_date=start_date,
+                        today=today_date
+                    )
                 absent_count = attendance_summary["absent_count"]
                 consecutive_absences = attendance_summary["consecutive"]
                 attendance_record_count = attendance_summary["record_count"]
@@ -557,9 +875,30 @@ def predict_student_risk():
                     absent_count >= ABSENCE_MONITORING_THRESHOLD
                 )
 
+                # Hindi pa nagsisimula sa duty: walang hours, walang attendance
+                # record, at walang absent (hal. hindi pa dumarating ang start ng
+                # schedule). Hindi pa dapat hatulan ang hours pace; kapag may
+                # naka-schedule na araw na lumipas nang walang time-in, papasok na
+                # ang absent at saka na siya masusukat.
+                not_started = (
+                    completed_hours <= 0 and
+                    attendance_record_count == 0 and
+                    absent_count == 0 and
+                    duty_days_left > 0
+                )
+
                 if completed_hours >= target_hours:
                     ai_status = "Completed"
                     risk_reason = "Internship requirements fully satisfied."
+
+                elif not_started:
+                    ai_status = "On Track"
+                    risk_reason = (
+                        f"Duty has not started yet - no attendance records and "
+                        f"no absences so far. Hours progress will be evaluated "
+                        f"once the student starts duty. "
+                        f"End of duty: {coordinator_deadline}."
+                    )
 
                 elif is_attendance_risk:
                     ai_status = "At Risk"
@@ -585,7 +924,7 @@ def predict_student_risk():
                     if is_hours_at_risk:
                         hours_still_needed = max(target_hours - completed_hours, 0)
                         risk_reason += (
-                            f" Scikit-Learn ML: Still short of {int(hours_still_needed)} hrs "
+                            f" Still short of {int(hours_still_needed)} hrs "
                             f"({int(completed_hours)}/{target_hours} hrs) before the deadline "
                             f"({coordinator_deadline}) - hours progress should also be monitored."
                         )
@@ -676,7 +1015,7 @@ def predict_student_risk():
 
                 if hours_remaining <= 0:
                     forecast_key = "completed"
-                elif is_new_student:
+                elif is_new_student or not_started:
                     forecast_key = "too_early"
                 elif finishes_on_time:
                     forecast_key = "on_time"
@@ -737,7 +1076,7 @@ def predict_student_risk():
                 student_predictions.append(record_data)
 
                 analytics_doc_ref = db.collection('analytics').document(doc.id)
-                analytics_doc_ref.set({
+                analytics_payload = {
                     "studentUid": doc.id,
                     "studentName": name,
                     "studentNumber": record_data["studentId"],
@@ -759,14 +1098,23 @@ def predict_student_risk():
                     "graduated": graduated,
                     "archived": _is_archived(data),
                     "aiStatus": ai_status,
-                    "riskReason": risk_reason,
-                    "lastUpdated": firestore.SERVER_TIMESTAMP
-                }, merge=True)
+                    "riskReason": risk_reason
+                }
 
-                user_doc_ref = db.collection('users').document(doc.id)
-                user_doc_ref.set({
-                    "internshipStatus": ai_status
-                }, merge=True)
+                # Mag-write lang kung may nagbago (tipid sa Firestore writes)
+                payload_key = json.dumps(analytics_payload, sort_keys=True, default=str)
+                if _last_written.get(doc.id) != payload_key:
+                    analytics_doc_ref.set(
+                        {**analytics_payload, "lastUpdated": firestore.SERVER_TIMESTAMP},
+                        merge=True
+                    )
+                    _last_written[doc.id] = payload_key
+
+                # Nabasa na natin ang users doc, kaya libre ang paghahambing
+                if data.get('internshipStatus') != ai_status:
+                    db.collection('users').document(doc.id).set({
+                        "internshipStatus": ai_status
+                    }, merge=True)
 
             except Exception as doc_error:
                 print(f"[predict-risk] Skipped doc {doc.id}: {doc_error}")
@@ -784,14 +1132,14 @@ def predict_student_risk():
             "completed": status_counts.get("Completed", 0),
         }
 
-        return jsonify({
+        return {
             "status": "success",
             "data": student_predictions,
             "statusCounts": summary
-        })
+        }
 
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+    except Exception:
+        raise
 
 
 # ==========================================
@@ -826,21 +1174,34 @@ def get_student_attendance(student_doc_id):
         # sa isang araw, mananalo iyon kahit may
         # "absent" record din sa parehong araw
         # (kaparehong logic ng _summarize_attendance).
-        absent_dates = set()
-        present_dates = set()
-        undated_absences = 0
+        day_statuses = _scheduled_day_statuses(
+            data, student_doc_id,
+            _build_attendance_index(attendance_records),
+            _attendance_start_day(data, _student_start_date(data))
+        )
 
-        for rec in matched_records:
-            rec_date = _record_date(rec)
-            if _is_absent_record(rec):
-                if rec_date:
-                    absent_dates.add(rec_date)
-                else:
-                    undated_absences += 1
-            elif rec_date:
-                present_dates.add(rec_date)
+        if day_statuses is not None:
+            # Schedule-based: kapareho ng Attendance Records at ng Analytics table
+            absent_dates, present_dates = _absent_present_from_statuses(day_statuses)
+            undated_absences = 0
+            record_count = len(absent_dates) + len(present_dates)
+        else:
+            absent_dates = set()
+            present_dates = set()
+            undated_absences = 0
 
-        absent_dates -= present_dates
+            for rec in matched_records:
+                rec_date = _record_date(rec)
+                if _is_absent_record(rec):
+                    if rec_date:
+                        absent_dates.add(rec_date)
+                    else:
+                        undated_absences += 1
+                elif rec_date:
+                    present_dates.add(rec_date)
+
+            absent_dates -= present_dates
+            record_count = len(matched_records)
 
         timeline = sorted(absent_dates | present_dates)
 
@@ -876,10 +1237,77 @@ def get_student_attendance(student_doc_id):
                 "totalAbsent": len(absent_dates) + undated_absences,
                 "undatedAbsences": undated_absences,
                 "consecutiveAbsences": consecutive,
-                "recordCount": len(matched_records),
+                "recordCount": record_count,
             }
         })
 
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# ==========================================
+# 1C. DIAGNOSTIC: bakit ganito ang bilang ng absent ng bawat estudyante
+#     Buksan: /api/debug-absences            (lahat)
+#             /api/debug-absences?name=looc  (isang estudyante)
+#             /api/debug-absences?refresh=1  (i-reload ang attendance)
+# ==========================================
+@app.route('/api/debug-absences', methods=['GET'])
+def debug_absences():
+    try:
+        if request.args.get('refresh') == '1':
+            _cache.pop('attendance', None)
+        name_filter = _norm(request.args.get('name'))
+
+        records = _load_attendance_records()
+        index = _build_attendance_index(records)
+
+        rows = []
+        for doc in db.collection('users').stream():
+            data = doc.to_dict() or {}
+            role = str(data.get('role', '')).lower()
+            if role != 'student' and data.get('role'):
+                continue
+            name = data.get('name') or data.get('fullName') or 'Student User'
+            if name_filter and name_filter not in (_norm(name) or ''):
+                continue
+
+            sched_start = _schedule_start_day(data)
+            start_day = _attendance_start_day(data, _student_start_date(data))
+            statuses, reason = _scheduled_day_statuses_ex(data, doc.id, index, start_day)
+
+            row = {
+                "id": doc.id,
+                "name": name,
+                "pending(hindi binibilang sa analytics)": _is_pending_student(data),
+                "startDay": str(start_day),
+                "startSource": "schedule.startDate" if sched_start else "ojtStartDate/startDate/batch default",
+                "reason": reason,
+            }
+            if statuses is None:
+                row["method"] = "record-based (walang schedule)"
+                matched = _get_student_records(
+                    records, doc.id, _get_student_id_raw(data) or doc.id[:7],
+                    name, data.get('email')
+                )
+                row.update(_summarize_attendance(matched))
+            else:
+                absent, present = _absent_present_from_statuses(statuses)
+                counts = Counter(statuses.values())
+                row.update({
+                    "method": "schedule-based",
+                    "absent": len(absent),
+                    "present": counts.get('Present', 0),
+                    "late": counts.get('Late', 0),
+                    "pending": counts.get('Pending', 0),
+                    "rejected": counts.get('Rejected', 0),
+                    "excused": counts.get('Excused', 0),
+                    "consecutiveAbsences": _summarize_statuses(statuses)["consecutive"],
+                    "absentDates": sorted(absent),
+                })
+            rows.append(row)
+
+        rows.sort(key=lambda r: str(r["name"]).lower())
+        return jsonify({"status": "success", "count": len(rows), "students": rows})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
@@ -1001,6 +1429,13 @@ MAX_SKILLS_PER_COMPANY = 3   # at most 3 skills per company row
 # + subcollections ng bawat user + collection groups na may task-like na pangalan.
 TASK_SKIP_COLLECTIONS = {'companies', 'users', 'analytics'}
 TASK_GROUP_NAMES = ('tasks', 'taskLogs', 'logs', 'dailyLogs', 'dtr', 'journals', 'accomplishments')
+
+# TIPID SA READS: kung alam mo na kung saang collection nakalagay ang tasks,
+# ilagay dito ang pangalan (hal. ('tasks',) o ('dailyLogs',)). Ang collection_group
+# scan ay sasakop sa top-level AT subcollection na may ganoong pangalan, kaya
+# hindi na i-scan ang LAHAT ng collections at subcollections ng bawat estudyante.
+# Kapag walang laman (()), gagana ang dating auto-discovery (mabigat sa reads).
+TASK_SOURCES = ()
 TASK_TEXT_FIELDS = {f.lower() for f in (
     'taskDescription', 'taskName', 'taskTitle', 'task', 'tasks', 'taskDone', 'tasksDone',
     'task_description', 'tasksPerformed', 'taskPerformed', 'description', 'activity', 'activities',
@@ -1048,23 +1483,27 @@ def _load_task_records(students):
         seen.add(path)
         records.append({**doc.to_dict(), "_src": src, "_parent": parent})
 
-    try:
-        for col in db.collections():
-            if col.id in TASK_SKIP_COLLECTIONS:
-                continue
-            for doc in col.stream():
-                add(doc, col.id)
-    except Exception as e:
-        print(f"[skill-exposure] top-level scan failed: {e}")
+    if TASK_SOURCES:
+        group_names = TASK_SOURCES
+    else:
+        group_names = TASK_GROUP_NAMES
+        try:
+            for col in db.collections():
+                if col.id in TASK_SKIP_COLLECTIONS:
+                    continue
+                for doc in col.stream():
+                    add(doc, col.id)
+        except Exception as e:
+            print(f"[skill-exposure] top-level scan failed: {e}")
 
-    for name in TASK_GROUP_NAMES:
+    for name in group_names:
         try:
             for doc in db.collection_group(name).stream():
                 add(doc, name)
         except Exception as e:
             print(f"[skill-exposure] collection_group '{name}' skipped: {e}")
 
-    for st in students:
+    for st in ([] if TASK_SOURCES else students):
         try:
             for sub in db.collection('users').document(st['id']).collections():
                 for doc in sub.stream():
@@ -1090,7 +1529,11 @@ def _record_belongs_to(rec, keys):
     return bool(keys & owners)
 
 
-def build_company_skill_profiles():
+def build_company_skill_profiles(force=False):
+    return cached('skill-profiles', SKILL_PROFILE_CACHE_TTL, _build_company_skill_profiles_uncached, force)
+
+
+def _build_company_skill_profiles_uncached():
     """Compute the skills (1..3) + exposure for every company from the students' logged tasks."""
     companies = [{"id": d.id, **d.to_dict()} for d in db.collection('companies').stream()]
     students = []
@@ -1216,7 +1659,8 @@ def debug_skill_sources():
 @app.route('/api/company-skill-exposure', methods=['GET', 'POST', 'OPTIONS'])
 def analyze_company_skill_exposure():
     try:
-        return jsonify({"status": "success", "data": build_company_skill_profiles()})
+        force = request.args.get('refresh') == '1'
+        return jsonify({"status": "success", "data": build_company_skill_profiles(force)})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 

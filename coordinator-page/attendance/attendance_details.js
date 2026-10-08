@@ -6,6 +6,7 @@ import {
     doc, 
     getDoc, 
     updateDoc,
+    setDoc,
     serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { 
@@ -51,6 +52,7 @@ function calculateHoursFromTime(timeIn, timeOut) {
         const inMinutes = parseToMinutes(timeIn);
         const outMinutes = parseToMinutes(timeOut);
 
+        if (isNaN(inMinutes) || isNaN(outMinutes)) return 0;
         if (outMinutes <= inMinutes) return 0;
         return (outMinutes - inMinutes) / 60;
     } catch (e) {
@@ -80,6 +82,153 @@ function getRecordMinutes(r) {
         minutes = Math.round((parseFloat(r.hoursRendered) || 0) * 60);
     }
     return minutes;
+}
+
+// Kinukuha ang timestamp (ms) ng isang attendance record para magamit sa sorting.
+// Sinusuportahan ang ISO "YYYY-MM-DD", "Sep 12, 2026", at Firestore Timestamp.
+function getRecordDateValue(r) {
+    if (!r) return 0;
+    const candidates = [r.date, r.formattedDate, r.createdAt, r.timestamp];
+    for (const val of candidates) {
+        if (!val) continue;
+        if (typeof val.toDate === "function") return val.toDate().getTime();
+        if (typeof val === "number") return val;
+        const str = String(val).trim();
+        const iso = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+        if (iso) return new Date(+iso[1], +iso[2] - 1, +iso[3]).getTime();
+        const parsed = Date.parse(str);
+        if (!isNaN(parsed)) return parsed;
+    }
+    return 0;
+}
+
+// Newest date muna. Palitan ang (b - a) ng (a - b) para oldest muna.
+function sortRecordsByDate(records) {
+    return [...records].sort((a, b) => getRecordDateValue(b) - getRecordDateValue(a));
+}
+
+// ABSENT-HELPERS-START
+const DAY_INDEX = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function toDateKey(d) {
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${d.getFullYear()}-${m}-${day}`;
+}
+
+function parseDateKey(str) {
+    const m = String(str || "").match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
+}
+
+function getRecordDateKey(r) {
+    const v = getRecordDateValue(r);
+    return v ? toDateKey(new Date(v)) : null;
+}
+
+function getDayLabel(r) {
+    const v = getRecordDateValue(r);
+    return v ? DAY_NAMES[new Date(v).getDay()] : "-";
+}
+
+function timeToMinutes(t) {
+    const m = String(t || "").match(/^(\d{1,2}):(\d{2})/);
+    return m ? (+m[1] * 60 + +m[2]) : null;
+}
+
+// Gumagawa ng "Absent" na rows para sa bawat schedule day mula sa OJT start date
+// hanggang ngayon na walang attendance record. Hindi isinasama ang future dates.
+// Ang ngayong araw ay absent lang kapag lampas na sa oras ng uwi ng schedule.
+function buildAbsentRecords(schedule, records, now = new Date()) {
+    if (!schedule || !schedule.startDate || !Array.isArray(schedule.days)) return [];
+    const start = parseDateKey(schedule.startDate);
+    if (!start) return [];
+
+    const scheduledDays = new Set(
+        schedule.days
+            .map(d => DAY_INDEX[String(d).slice(0, 3).toLowerCase()])
+            .filter(i => i !== undefined)
+    );
+    if (scheduledDays.size === 0) return [];
+
+    // Oras ng uwi: pinakahuling timeOut ng mga naka-enable na session
+    const ends = [];
+    const morning = schedule.morning || {};
+    const afternoon = schedule.afternoon || {};
+    if (schedule.morningEnabled !== false && morning.morningEnabled !== false) ends.push(timeToMinutes(morning.timeOut));
+    if (schedule.afternoonEnabled !== false && afternoon.afternoonEnabled !== false) ends.push(timeToMinutes(afternoon.timeOut));
+    const validEnds = ends.filter(e => e !== null);
+    const dayEndMinutes = validEnds.length ? Math.max(...validEnds) : 17 * 60;
+
+    const existing = new Set(records.map(getRecordDateKey).filter(Boolean));
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+    const result = [];
+    for (let d = new Date(start); d <= today; d.setDate(d.getDate() + 1)) {
+        if (!scheduledDays.has(d.getDay())) continue;
+        const isToday = d.getTime() === today.getTime();
+        if (isToday && nowMinutes <= dayEndMinutes) continue;
+        const key = toDateKey(d);
+        if (existing.has(key)) continue;
+
+        result.push({
+            id: `virtual-${key}`,
+            isVirtual: true,
+            date: key,
+            formattedDate: d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+            day: DAY_NAMES[d.getDay()],
+            timeIn: "--:--",
+            timeOut: "--:--",
+            status: "Absent",
+            remarks: "Unexcused Absence"
+        });
+    }
+    return result;
+}
+// ABSENT-HELPERS-END
+
+// Kapag complete na ang student, hindi na binibilang ang Absent pagkatapos
+// ng huling araw na nag-Time In siya.
+function dropAbsentsAfterCompletion(records, userData) {
+    const hasTimeIn = r => !!r && !!r.timeIn && r.timeIn !== "--";
+
+    let lastTimeIn = "";
+    let totalHours = 0;
+
+    records.forEach(r => {
+        if (!hasTimeIn(r)) return;
+        const key = getRecordDateKey(r);
+        if (key && key > lastTimeIn) lastTimeIn = key;
+
+        const status = String(r.status || "").toLowerCase();
+        if (status !== "rejected" && status !== "absent") {
+            totalHours += Number(r.hoursRendered) || 0;
+        }
+    });
+
+    if (!lastTimeIn) return records;
+
+    const u = userData || {};
+    const statusText = String(u.internshipStatus || u.status || "").trim().toLowerCase();
+    const required = Number(u.requiredHours || u.totalRequiredHours || 600) || 600;
+    const rendered = Number(u.renderedHours || u.completedHours || u.hoursRendered || 0) || 0;
+
+    const isComplete =
+        statusText === "completed" ||
+        statusText.includes("graduated") ||
+        rendered >= required ||
+        totalHours >= required;
+
+    if (!isComplete) return records;
+
+    return records.filter(r => {
+        const isAbsent = String(r.status || "").toLowerCase() === "absent";
+        if (!isAbsent || hasTimeIn(r)) return true;
+        const key = getRecordDateKey(r);
+        return !key || key <= lastTimeIn;
+    });
 }
 
 function getInitials(name) {
@@ -119,6 +268,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let currentAttendanceData = null;
     let allStudentAttendance = [];
+    let currentStudent = { uid: null, email: "", name: "" };
 
     async function fetchAttendanceDetails() {
         try {
@@ -239,7 +389,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 console.warn("Error fetching attendance list:", e);
             }
 
-            renderTableHistory(allStudentAttendance);
+            currentStudent = { uid: targetUserId, email: studentEmail, name: studentName };
+
+            // Idagdag ang mga araw na dapat pumasok pero walang record (Absent)
+            const absentRecords = buildAbsentRecords(matchedUser?.schedule, allStudentAttendance);
+            allStudentAttendance = [...allStudentAttendance, ...absentRecords];
+
+            // Complete na ang student (status Completed o abot na sa required hours):
+            // tanggalin ang mga Absent na lampas sa huling araw ng Time In niya.
+            allStudentAttendance = dropAbsentsAfterCompletion(allStudentAttendance, matchedUser);
+
+            updateTableView();
             calculateOverview(allStudentAttendance);
 
         } catch (error) {
@@ -254,7 +414,8 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!tableBody) return;
 
         if (!records || records.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="8" style="text-align: center;">No attendance history found.</td></tr>`;
+            const emptyMsg = hasActiveFilters() ? "No records match the selected filters." : "No attendance history found.";
+            tableBody.innerHTML = `<tr><td colspan="8" style="text-align: center;">${emptyMsg}</td></tr>`;
             return;
         }
 
@@ -280,7 +441,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             row.innerHTML = `
                 <td>${item.formattedDate || item.date || 'N/A'}</td>
-                <td>${item.day || '-'}</td>
+                <td>${item.day || getDayLabel(item)}</td>
                 <td class="${lowerStatus === 'rejected' ? 'text-rejected' : 'text-green'}">${item.timeIn || '--'}</td>
                 <td class="${lowerStatus === 'rejected' ? 'text-rejected' : 'text-green'}">${item.timeOut || '--'}</td>
                 <td>${lowerStatus === 'rejected' ? '0h 0m' : (item.todayHours || (item.hoursRendered ? item.hoursRendered + ' hrs' : '0h 0m'))}</td>
@@ -311,13 +472,10 @@ document.addEventListener("DOMContentLoaded", () => {
                     </div>
                 </td>
             `;
+            // Walang dapat i-reject sa araw na hindi pumasok
+            if (item.isVirtual) row.querySelector(".reject-btn")?.remove();
             tableBody.appendChild(row);
         });
-
-        const recordsInfo = document.querySelector(".records-info");
-        if (recordsInfo) {
-            recordsInfo.textContent = `Showing 1 to ${records.length} of ${records.length} records`;
-        }
     }
 
     function calculateOverview(records) {
@@ -352,6 +510,163 @@ document.addEventListener("DOMContentLoaded", () => {
             if (statBoxes[2].querySelector("h4")) statBoxes[2].querySelector("h4").innerHTML = `${lateCount} <span>(${latePct}%)</span>`;
             if (statBoxes[3].querySelector("h4")) statBoxes[3].querySelector("h4").innerHTML = `${absentCount} <span>(${absentPct}%)</span>`;
         }
+    }
+
+    // ==========================================
+    // FILTERS + PAGINATION
+    // ==========================================
+    const statusFilterEl = document.getElementById("statusFilter");
+    const rowsPerPageEl = document.getElementById("rowsPerPage");
+    const paginationEl = document.getElementById("pagination");
+    const dateRangeInput = document.getElementById("dateRangePicker");
+
+    let statusFilter = "all";
+    let dateRange = null; // { from: "YYYY-MM-DD", to: "YYYY-MM-DD" }
+    let currentPage = 1;
+    let rowsPerPage = parseInt(rowsPerPageEl && rowsPerPageEl.value, 10) || 10;
+
+    function hasActiveFilters() {
+        return statusFilter !== "all" || !!dateRange;
+    }
+
+    function matchesStatus(item) {
+        if (statusFilter === "all") return true;
+        const s = String(item.status || "Present").toLowerCase();
+        if (statusFilter === "present") return s.includes("present") || s.includes("on-time");
+        if (statusFilter === "late") return s.includes("late");
+        return s === statusFilter;
+    }
+
+    function matchesDateRange(item) {
+        if (!dateRange) return true;
+        const key = getRecordDateKey(item);
+        return !!key && key >= dateRange.from && key <= dateRange.to;
+    }
+
+    function renderPagination(totalPages) {
+        if (!paginationEl) return;
+        paginationEl.innerHTML = "";
+
+        const addBtn = (html, page, opts = {}) => {
+            const b = document.createElement("button");
+            b.type = "button";
+            b.className = "page-btn" + (opts.active ? " active" : "");
+            b.innerHTML = html;
+            b.disabled = !!opts.disabled;
+            if (!opts.disabled) {
+                b.addEventListener("click", () => {
+                    currentPage = page;
+                    updateTableView();
+                });
+            }
+            paginationEl.appendChild(b);
+        };
+
+        let end = Math.min(totalPages, Math.max(1, currentPage - 2) + 4);
+        let start = Math.max(1, end - 4);
+
+        addBtn('<i class="fa-solid fa-chevron-left"></i>', currentPage - 1, { disabled: currentPage <= 1 });
+        for (let p = start; p <= end; p++) {
+            addBtn(String(p), p, { active: p === currentPage });
+        }
+        addBtn('<i class="fa-solid fa-chevron-right"></i>', currentPage + 1, { disabled: currentPage >= totalPages });
+    }
+
+    // Sort -> filter -> hatiin sa pages -> i-render
+    function updateTableView() {
+        const filtered = sortRecordsByDate(allStudentAttendance)
+            .filter(item => matchesStatus(item) && matchesDateRange(item));
+
+        const total = filtered.length;
+        const totalPages = Math.max(1, Math.ceil(total / rowsPerPage));
+        currentPage = Math.min(Math.max(1, currentPage), totalPages);
+
+        const startIdx = (currentPage - 1) * rowsPerPage;
+        const pageItems = filtered.slice(startIdx, startIdx + rowsPerPage);
+
+        renderTableHistory(pageItems);
+
+        const recordsInfo = document.querySelector(".records-info");
+        if (recordsInfo) {
+            recordsInfo.textContent = total === 0
+                ? "Showing 0 of 0 records"
+                : `Showing ${startIdx + 1} to ${startIdx + pageItems.length} of ${total} records`;
+        }
+
+        renderPagination(totalPages);
+    }
+
+    if (statusFilterEl) {
+        statusFilterEl.addEventListener("change", () => {
+            statusFilter = statusFilterEl.value;
+            currentPage = 1;
+            updateTableView();
+        });
+    }
+
+    if (rowsPerPageEl) {
+        rowsPerPageEl.addEventListener("change", () => {
+            rowsPerPage = parseInt(rowsPerPageEl.value, 10) || 10;
+            currentPage = 1;
+            updateTableView();
+        });
+    }
+
+    if (dateRangeInput && typeof window.flatpickr === "function") {
+        const clearBtn = document.createElement("button");
+        clearBtn.type = "button";
+        clearBtn.className = "date-clear";
+        clearBtn.title = "Clear dates";
+        clearBtn.innerHTML = "&times;";
+        dateRangeInput.insertAdjacentElement("afterend", clearBtn);
+
+        const picker = window.flatpickr(dateRangeInput, {
+            mode: "range",
+            dateFormat: "M j, Y",
+            onChange: (dates) => {
+                if (dates.length === 0) {
+                    dateRange = null;
+                    clearBtn.style.display = "none";
+                } else {
+                    // Isang petsa lang ang napili = isang araw lang muna ang ipapakita
+                    dateRange = {
+                        from: toDateKey(dates[0]),
+                        to: toDateKey(dates[dates.length - 1])
+                    };
+                    clearBtn.style.display = "block";
+                }
+                currentPage = 1;
+                updateTableView();
+            }
+        });
+
+        clearBtn.addEventListener("click", () => picker.clear());
+
+        const calIcon = dateRangeInput.parentElement.querySelector(".fa-calendar");
+        if (calIcon) calIcon.addEventListener("click", () => picker.open());
+    }
+
+    // Kapag Edit/Excuse sa "virtual" absent row, gagawa muna ng totoong
+    // attendance document sa Firestore para may ma-update.
+    async function ensureAttendanceDoc(item) {
+        if (!item) throw new Error("Attendance record not found.");
+        if (!item.isVirtual) return item.id;
+        if (!currentStudent.uid) throw new Error("Student ID not found.");
+        const newId = `${currentStudent.uid}_${item.date}`;
+        await setDoc(doc(db, "attendance", newId), {
+            userId: currentStudent.uid,
+            userEmail: currentStudent.email,
+            userName: currentStudent.name,
+            date: item.date,
+            formattedDate: item.formattedDate,
+            day: item.day,
+            timeIn: "--:--",
+            timeOut: "--:--",
+            status: "Absent",
+            remarks: "Unexcused Absence",
+            createdAt: serverTimestamp()
+        }, { merge: true });
+        return newId;
     }
 
     // Modal Events at Actions
@@ -434,8 +749,8 @@ document.addEventListener("DOMContentLoaded", () => {
         saveAttendanceBtn.addEventListener("click", async function () {
             if (!activeDocIdToModify) return;
             try {
-                const attDocRef = doc(db, "attendance", activeDocIdToModify);
                 const editedItem = allStudentAttendance.find(i => i.id === activeDocIdToModify);
+                const attDocRef = doc(db, "attendance", await ensureAttendanceDoc(editedItem));
                 const editUpdates = {
                     timeIn: editTimeIn ? editTimeIn.value : "",
                     timeOut: editTimeOut ? editTimeOut.value : "",
@@ -508,7 +823,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     ? excuseReason.value.trim()
                     : "Excused by Coordinator.";
 
-                const attDocRef = doc(db, "attendance", activeDocIdToModify);
+                const excusedItem = allStudentAttendance.find(i => i.id === activeDocIdToModify);
+                const attDocRef = doc(db, "attendance", await ensureAttendanceDoc(excusedItem));
                 await updateDoc(attDocRef, {
                     status: "Excused",
                     remarks: reasonText

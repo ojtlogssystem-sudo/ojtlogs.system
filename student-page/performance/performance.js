@@ -304,22 +304,9 @@ async function loadEvaluation(
 ========================================== */
 
 function displayEvaluation(evaluation, studentData) {
-
+    showEvaluationCompleteCard(evaluation);
     const ratings =
         evaluation.ratings || {};
-
-
-    /*
-     * ==========================================
-     * GET CATEGORY SCORES
-     * ==========================================
-     *
-     * The evaluation form stores each question
-     * using its data-question key.
-     *
-     * We identify categories based on the
-     * question key prefix.
-     */
 
     const theoryScore =
         calculateCategory(
@@ -555,20 +542,17 @@ function displayEvaluation(evaluation, studentData) {
 
         viewButton.disabled = false;
 
-        viewButton.addEventListener(
-            "click",
-            () => {
+        // onclick (hindi addEventListener + once:true) para paulit-ulit
+        // makapag-view ang student, at hindi mag-stack ang listeners
+        // kapag natawag ulit ang displayEvaluation.
+        viewButton.onclick = () => {
 
-                openEvaluationDetails(
-                    evaluation,
-                    studentData
-                );
+            openEvaluationDetails(
+                evaluation,
+                studentData
+            );
 
-            },
-            {
-                once: true
-            }
-        );
+        };
 
     }
 
@@ -1494,4 +1478,32 @@ function escapeHtml(value) {
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
 
+}
+
+// Evaluation-complete card: isang beses lang bawat evaluation kada login.
+// Nabubura ang flag sa localStorage kapag nag-logout, kaya lalabas ulit
+// sa susunod na login pero hindi sa bawat refresh.
+function showEvaluationCompleteCard(evaluation) {
+    const section = $("evaluation-card-section");
+    if (!section) return;
+
+    const uid = auth.currentUser ? auth.currentUser.uid : "";
+    const flagKey = `evaluation_card_${uid}_${getTimestamp(evaluation.submittedAt)}`;
+    if (localStorage.getItem(flagKey)) return;
+
+    const supervisor = evaluation.evaluatorName && evaluation.evaluatorName !== "--"
+        ? evaluation.evaluatorName
+        : "Your supervisor";
+
+    $("evaluation-card-text").textContent =
+        `${supervisor} has finished evaluating your internship performance. You can now view your results below.`;
+    $("evaluation-card-pill").textContent =
+        `Submitted: ${formatDate(evaluation.submittedAt)}`;
+
+    section.hidden = false;
+    localStorage.setItem(flagKey, "1");
+
+    $("evaluation-card-close")?.addEventListener("click", () => {
+        section.hidden = true;
+    });
 }

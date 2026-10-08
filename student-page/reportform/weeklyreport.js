@@ -9,11 +9,8 @@ import {
     query,
     where,
     onSnapshot,
-    getDocs,
     doc,
-    getDoc,
-    addDoc,
-    serverTimestamp
+    getDoc
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -33,12 +30,10 @@ const db = getFirestore(app);
 
 // Global state variables
 let currentUserId = null;
-let canSubmit = false;          // false para sa coordinator / kapag tinitingnan ang report ng ibang estudyante
 let allLogs = [];               // LAHAT ng attendance ng estudyante (galing sa Firestore)
 let currentLogs = [];           // attendance ng NAPILING LINGGO lang (ito ang lumalabas sa form at sine-submit)
 let calculatedTotalHours = 0;   // total ng napiling linggo, sa decimal hours
 let selectedWeekStart = null;   // Monday ng napiling linggo (Date, local midnight)
-let renderToken = 0;            // pang-iwas sa "race" kapag mabilis magpalit ng linggo
 
 document.addEventListener("DOMContentLoaded", () => {
     // 1. Kuhanin ang studentId (at optional na week) mula sa URL parameters
@@ -51,7 +46,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const initialDate = parseDateStr(weekParam) || new Date();
     selectedWeekStart = getWeekStart(initialDate);
 
-    const submitBtn = document.getElementById("btn-submit-report");
     const backBtn = document.getElementById("btn-back-report"); // Dynamic Back Button
 
     setupWeekNavigation();
@@ -92,13 +86,7 @@ document.addEventListener("DOMContentLoaded", () => {
         currentUserId = activeStudentUid;
         await loadStudentReportInformation(activeStudentUid);
 
-        // 4. ITAGO ANG SUBMIT REPORT BUTTON SA COORDINATOR
-        canSubmit = !(isCoordinator || targetStudentId);
-        if (submitBtn) {
-            submitBtn.style.display = canSubmit ? "flex" : "none";
-        }
-
-        // 5. SETUP DYNAMIC BACK BUTTON NAVIGATION
+        // 4. SETUP DYNAMIC BACK BUTTON NAVIGATION
         if (backBtn) {
             backBtn.addEventListener("click", (e) => {
                 e.preventDefault();
@@ -124,11 +112,6 @@ document.addEventListener("DOMContentLoaded", () => {
         // Load Report Data mula sa Firestore
         loadAccomplishmentReport(activeStudentUid);
     });
-
-    // Event Listener sa Submit Button
-    if (submitBtn) {
-        submitBtn.addEventListener("click", submitWeeklyReport);
-    }
 });
 
 // ========================================
@@ -310,13 +293,15 @@ function renderSelectedWeek() {
     const weekLogs = allLogs
         .map((log) => ({ log, dateStr: getLogDateStr(log) }))
         .filter((x) => x.dateStr && x.dateStr >= startStr && x.dateStr <= endStr)
+        // Hindi isinasama sa report ang araw na Absent (0 hrs, walang accomplishment)
+        .filter((x) => String(x.log.status || "").trim().toLowerCase() !== "absent")
         .sort((a, b) => {
             if (a.dateStr !== b.dateStr) return a.dateStr < b.dateStr ? -1 : 1;
             return toMillis(a.log.createdAt) - toMillis(b.log.createdAt);
         })
         .map((x) => x.log);
 
-    currentLogs = weekLogs; // i-save sa global array para sa submission
+    currentLogs = weekLogs; // i-save sa global array ng napiling linggo
 
     if (weekLogs.length === 0) {
         tableBody.innerHTML = `
@@ -327,7 +312,6 @@ function renderSelectedWeek() {
             </tr>
         `;
         updateTotalMinutes(0);
-        refreshSubmitState();
         return;
     }
 
@@ -358,173 +342,76 @@ function renderSelectedWeek() {
 
     tableBody.innerHTML = html;
     updateTotalMinutes(totalMinutes);
-    refreshSubmitState();
 }
 
 // ========================================
-// SUBMIT STATE (isang report lang kada linggo)
+// TASK PARSING  (kinopya sa tasks.js para pareho ang lumalabas
+// sa Task History at sa Weekly Report)
 // ========================================
-function resetSubmitButton() {
-    const submitBtn = document.getElementById("btn-submit-report");
-    const statusEl = document.getElementById("submit-status");
-    if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.innerText = "Submit Report";
-        submitBtn.style.background = "#16a34a";
-        submitBtn.style.opacity = "1";
-        submitBtn.style.cursor = "pointer";
+const TASK_TITLE_KEYS = ["title", "name", "taskTitle", "task_title", "task", "category", "label"];
+const TASK_DESC_KEYS = ["description", "desc", "details", "detail", "taskDescription", "task_description", "summary", "notes", "note", "content", "text"];
+
+function pickText(obj, keys) {
+    for (const key of keys) {
+        const val = obj?.[key];
+        if (typeof val === "string" && val.trim()) return val.trim();
     }
-    if (statusEl) statusEl.innerText = "";
+    return "";
 }
 
-async function findExistingSubmission(weekStartStr) {
-    if (!currentUserId) return false;
-    try {
-        const snap = await getDocs(query(
-            collection(db, "weekly_reports"),
-            where("userId", "==", currentUserId),
-            where("weekStart", "==", weekStartStr)
-        ));
-        return !snap.empty;
-    } catch (err) {
-        // Kung hindi mabasa (rules), huwag harangin ang pag-submit
-        console.warn("Could not check existing weekly report:", err);
-        return false;
-    }
+// "Title: Description" -> { title, description }
+function parseTaskString(str) {
+    const trimmed = String(str ?? "").trim();
+    if (!trimmed) return null;
+
+    const idx = trimmed.indexOf(":");
+    if (idx === -1) return { title: "General Task", description: trimmed };
+
+    return {
+        title: trimmed.slice(0, idx).trim() || "General Task",
+        description: trimmed.slice(idx + 1).trim()
+    };
 }
 
-async function refreshSubmitState() {
-    const submitBtn = document.getElementById("btn-submit-report");
-    if (!submitBtn || !canSubmit) return;
+function normalizeTaskItem(item) {
+    if (typeof item === "string") return parseTaskString(item);
 
-    const token = ++renderToken;
-    resetSubmitButton();
-
-    const { startStr } = getSelectedWeekBounds();
-    const already = await findExistingSubmission(startStr);
-
-    // Nagpalit na ng linggo habang naghihintay - huwag i-apply
-    if (token !== renderToken) return;
-
-    if (already) {
-        const statusEl = document.getElementById("submit-status");
-        submitBtn.disabled = true;
-        submitBtn.innerText = "Already Submitted";
-        submitBtn.style.background = "#15803d";
-        submitBtn.style.opacity = "0.7";
-        submitBtn.style.cursor = "not-allowed";
-        if (statusEl) {
-            statusEl.style.color = "#16a34a";
-            statusEl.innerText = "This week's report was already submitted.";
-        }
+    if (item && typeof item === "object") {
+        const title = pickText(item, TASK_TITLE_KEYS);
+        const description = pickText(item, TASK_DESC_KEYS);
+        if (!title && !description) return null;
+        return { title: title || "General Task", description };
     }
+
+    return null;
 }
 
-// Function para mai-submit ang Accomplishment Report sa Coordinator Dashboard
-async function submitWeeklyReport() {
-    const submitBtn = document.getElementById("btn-submit-report");
-    const statusEl = document.getElementById("submit-status");
+// `tasks` ay pwedeng string ("A: x | B: y") o array.
+function parseTasksField(tasks) {
+    if (Array.isArray(tasks)) return tasks.map(normalizeTaskItem).filter(Boolean);
+    if (typeof tasks === "string") return tasks.split("|").map(parseTaskString).filter(Boolean);
+    return [];
+}
 
-    if (!currentUserId) {
-        alert("Unable to detect logged-in user. Please re-login.");
-        return;
-    }
+// Lahat ng tasks ng isang attendance doc: [{ title, description }]
+function getTaskEntries(docData) {
+    const fromList = Array.isArray(docData.taskList)
+        ? docData.taskList.map(normalizeTaskItem).filter(Boolean)
+        : [];
+    const fromString = parseTasksField(docData.tasks);
 
-    if (!currentLogs || currentLogs.length === 0) {
-        alert("No attendance logs for this week to submit.");
-        return;
-    }
+    if (!fromList.length) return fromString;
 
-    // I-lock ang linggo at datos sa mismong sandali ng pag-click
-    const { startStr, endStr } = getSelectedWeekBounds();
-    const logsToSubmit = currentLogs.slice();
-    const totalHoursToSubmit = calculatedTotalHours;
+    // Kung walang description ang taskList, subukang kunin sa `tasks` na text.
+    return fromList.map((entry, i) => {
+        if (entry.description) return entry;
 
-    try {
-        submitBtn.disabled = true;
-        submitBtn.innerText = "Submitting...";
-        statusEl.style.color = "#6b7280";
-        statusEl.innerText = "Processing submission...";
+        const match =
+            fromString.find(s => s.title.toLowerCase() === entry.title.toLowerCase()) ||
+            (fromString.length === fromList.length ? fromString[i] : null);
 
-        // Huwag mag-submit ulit para sa parehong linggo
-        if (await findExistingSubmission(startStr)) {
-            alert("You already submitted a report for this week.");
-            await refreshSubmitState();
-            return;
-        }
-
-        // 1. Kuhanin ang profile details ng kasalukuyang user
-        let userData = {
-            fullName: "Student",
-            section: "BSIT 401",
-            company: "-",
-            supervisor: "-"
-        };
-
-        const userDocRef = doc(db, "users", currentUserId);
-        const userDocSnap = await getDoc(userDocRef);
-
-        if (userDocSnap.exists()) {
-            const u = userDocSnap.data();
-            userData = {
-                fullName: u.fullName || u.name || "Student",
-                section: u.section || "BSIT 401",
-                company: u.companyName || u.company || "-",
-                supervisor: u.supervisorName || u.supervisor || "-"
-            };
-        }
-
-        // 2. Week Range: unang at huling araw na may attendance sa linggong ito
-        const firstLog = logsToSubmit[0];
-        const lastLog = logsToSubmit[logsToSubmit.length - 1];
-        const firstDate = firstLog.formattedDate || firstLog.date || "N/A";
-        const lastDate = lastLog.formattedDate || lastLog.date || "N/A";
-        const weekRangeText = `${firstDate} - ${lastDate}`;
-
-        // 3. I-save sa `weekly_reports` collection
-        const reportsRef = collection(db, "weekly_reports");
-        await addDoc(reportsRef, {
-            userId: currentUserId,
-            studentName: userData.fullName,
-            section: userData.section,
-            company: userData.company,
-            supervisor: userData.supervisor,
-            totalHours: totalHoursToSubmit,
-            weekRange: weekRangeText,
-            weekStart: startStr,
-            weekEnd: endStr,
-            logsCount: logsToSubmit.length,
-            status: "Submitted",
-            submittedAt: serverTimestamp()
-        });
-
-        await addDoc(collection(db, "logs"), {
-            type: "weekly_report",
-            action: "Weekly Report Added",
-            title: "Weekly Report Added",
-            description: `${userData.fullName} added a weekly report.`,
-            studentName: userData.fullName,
-            company: userData.company,
-            weekRange: weekRangeText,
-            timestamp: serverTimestamp()
-        });
-
-        submitBtn.style.background = "#15803d";
-        submitBtn.innerText = "Submitted!";
-        submitBtn.disabled = true; // isang beses lang kada linggo
-        statusEl.style.color = "#16a34a";
-        statusEl.innerText = "Report submitted successfully to coordinator!";
-
-        alert("Weekly report successfully submitted to coordinator!");
-
-    } catch (err) {
-        console.error("Submission Error:", err);
-        submitBtn.disabled = false;
-        submitBtn.innerText = "Submit Report";
-        statusEl.style.color = "#ef4444";
-        statusEl.innerText = "Failed to submit report.";
-        alert("Failed to submit report: " + err.message);
-    }
+        return match && match.description ? { ...entry, description: match.description } : entry;
+    });
 }
 
 function getAccomplishmentHTML(logData) {
@@ -542,24 +429,18 @@ function getAccomplishmentHTML(logData) {
         return `<em>Excused${reason}</em>`;
     }
 
-    if (Array.isArray(logData.taskList) && logData.taskList.length > 0) {
-        let listItems = logData.taskList.map(item => {
-            const title = item.title ? `<strong>${escapeHtml(item.title)}:</strong> ` : "";
+    // Kunin ang title + description ng bawat task (parehong logic ng Task History)
+    const entries = getTaskEntries(logData);
+    if (entries.length > 0) {
+        const listItems = entries.map(item => {
+            const title = escapeHtml(item.title || "");
             const desc = item.description ? escapeHtml(item.description) : "";
-            return `<li>${title}${desc}</li>`;
+            if (title && desc) return `<li><strong>${title}:</strong> ${desc}</li>`;
+            if (title) return `<li><strong>${title}</strong></li>`;
+            return `<li>${desc}</li>`;
         }).join("");
 
         return `<ul style="margin: 0; padding-left: 18px;">${listItems}</ul>`;
-    }
-
-    if (logData.tasks && typeof logData.tasks === "string") {
-        if (logData.tasks.includes("|")) {
-            const items = logData.tasks.split("|").map(t => t.trim()).filter(Boolean);
-            return `<ul style="margin: 0; padding-left: 18px;">` + 
-                items.map(item => `<li>${escapeHtml(item)}</li>`).join("") + 
-                `</ul>`;
-        }
-        return `<ul style="margin: 0; padding-left: 18px;"><li>${escapeHtml(logData.tasks)}</li></ul>`;
     }
 
     return "<em>No accomplishment logged.</em>";

@@ -1,6 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
-
-
 /* ==========================================
    ROOT
 ========================================== */
@@ -32,7 +29,7 @@
 
     box-sizing: border-box;
 
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Google Sans Flex', sans-serif;
 
 }
 
@@ -72,7 +69,82 @@ a {
 
 }
 
+.welcome-section {
+    padding: 16px 16px 0;
+}
 
+.welcome-card {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px 40px 16px 16px;
+    border-radius: 16px;
+    border: 1px solid #f2b8bd;
+    background: linear-gradient(135deg, #ffe0e3 0%, #fff6f6 55%, #ffe6e8 100%);
+    animation: welcomeIn .35s ease both;
+}
+
+@keyframes welcomeIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: none; }
+}
+
+.welcome-icon {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px #f2b8bd;
+    color: var(--primary);
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.welcome-body h3 {
+    font-size: 17px;
+    font-weight: 700;
+    color: #1a1a2e;
+    line-height: 1.3;
+}
+
+.welcome-body p {
+    margin: 4px 0 10px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #555;
+}
+
+.welcome-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--primary);
+    font-size: 12.5px;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(171, 10, 10, .08);
+}
+
+.welcome-close {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    background: none;
+    border: none;
+    color: #9ca3af;
+    font-size: 15px;
+    cursor: pointer;
+    padding: 4px;
+}
+
+.welcome-close:hover { color: #6b7280; }
 
 /* ==========================================
    MAIN LAYOUT
@@ -170,25 +242,19 @@ a {
 .vertical-line.red {
 
     display: inline-block;
-
-    width: 3px;
-
-    height: 17px;
-
-    background-color: var(--primary);
-
-    border-radius: 5px;
-
-    margin-right: 8px;
-
-    flex-shrink: 0;
+    width: 3.9px;             
+    height: 17px;          
+    background-color: #AB0A0A;
+    border-radius: 5px;     
+    margin-right: 8px;  
+    margin-top: 2px;
 
 }
 
 
 .title-left h3 {
 
-    font-size: 14px;
+    font-size: 16px;
 
     font-weight: 600;
 
@@ -201,7 +267,7 @@ a {
 
 .section-description {
 
-    font-size: 10px;
+    font-size: 11.5px;
 
     color: #777;
 
@@ -295,7 +361,7 @@ a {
 
 .score-inner strong {
 
-    font-size: 20px;
+    font-size: 22px;
 
     font-weight: 700;
 
@@ -308,7 +374,7 @@ a {
 
 .score-inner span {
 
-    font-size: 9px;
+    font-size: 12px;
 
     color: #777;
 
@@ -326,7 +392,7 @@ a {
 
 .score-info h4 {
 
-    font-size: 13px;
+    font-size: 15px;
 
     font-weight: 600;
 
@@ -339,7 +405,7 @@ a {
 
 .score-info p {
 
-    font-size: 10px;
+    font-size: 11.5px;
 
     color: #777;
 
@@ -392,7 +458,7 @@ a {
 
     justify-content: center;
 
-    font-size: 16px;
+    font-size: 18px;
 
     flex-shrink: 0;
 
@@ -410,7 +476,7 @@ a {
 
 .status-content span {
 
-    font-size: 9px;
+    font-size: 12px;
 
     color: #777;
 
@@ -419,7 +485,7 @@ a {
 
 .status-content strong {
 
-    font-size: 11px;
+    font-size: 14px;
 
     color: #555;
 
@@ -430,7 +496,7 @@ a {
 
 .status-content small {
 
-    font-size: 8px;
+    font-size: 11px;
 
     color: #999;
 
@@ -510,50 +576,14 @@ a {
 
     flex-shrink: 0;
 
-    font-size: 15px;
-
-}
-
-
-.blue-icon {
-
-    background: rgba(59,130,246,.12);
-
-    color: #3b82f6;
-
-}
-
-
-.purple-icon {
-
-    background: rgba(147,51,234,.12);
-
-    color: #9333ea;
-
-}
-
-
-.orange-icon {
-
-    background: rgba(249,115,22,.12);
-
-    color: #f97316;
-
-}
-
-
-.green-icon {
-
-    background: rgba(34,197,94,.12);
-
-    color: #22c55e;
+    font-size: 17px;
 
 }
 
 
 .item-name h4 {
 
-    font-size: 11px;
+    font-size: 14px;
 
     font-weight: 600;
 
@@ -566,7 +596,7 @@ a {
 
 .item-name p {
 
-    font-size: 8px;
+    font-size: 12px;
 
     color: #888;
 
@@ -579,7 +609,7 @@ a {
 
 .performance-item-header > strong {
 
-    font-size: 11px;
+    font-size: 14px;
 
     color: #333;
 
@@ -618,7 +648,7 @@ a {
 
     border-radius: 20px;
 
-    background: #3b82f6;
+    background: var(--primary, #AB0A0A);
 
     transition: width .3s ease;
 
@@ -627,21 +657,21 @@ a {
 
 .purple-fill {
 
-    background: #9333ea;
+    background: var(--primary, #AB0A0A);
 
 }
 
 
 .orange-fill {
 
-    background: #f97316;
+    background: var(--primary, #AB0A0A);
 
 }
 
 
 .green-fill {
 
-    background: #22c55e;
+    background: var(--primary, #AB0A0A);
 
 }
 
@@ -691,7 +721,7 @@ a {
     justify-content: center;
     background: #fff1f1;
     color: var(--primary);
-    font-size: 13px;
+    font-size: 15px;
     flex-shrink: 0;
 
 }
@@ -708,7 +738,7 @@ a {
 
     display: block;
 
-    font-size: 8px;
+    font-size: 12px;
 
     color: #888;
 
@@ -721,7 +751,7 @@ a {
 
     display: block;
 
-    font-size: 10px;
+    font-size: 13px;
 
     font-weight: 600;
 
@@ -766,13 +796,13 @@ a {
 
     padding: 0 15px;
 
-    border-radius: 12px;
+    border-radius: 10px;
 
     background: var(--primary);
 
     color: #ffffff;
 
-    font-size: 10px;
+    font-size: 13px;
 
     font-weight: 600;
 
@@ -809,7 +839,7 @@ a {
 
 #evaluation-action-note {
 
-    font-size: 8px;
+    font-size: 11px;
 
     color: #999;
 
@@ -831,6 +861,40 @@ a {
 
     min-height: 115px;
 
+}
+
+
+.feedback-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.feedback-item {
+    position: relative;
+    padding: 12px 14px;
+    background: #f9fafb;
+    border: 1px solid #f0f0f0;
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+.feedback-item strong {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .3px;
+    text-transform: uppercase;
+    color: var(--primary, #AB0A0A);
+}
+
+.feedback-item p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #444444;
+    overflow-wrap: anywhere;
 }
 
 
@@ -875,7 +939,7 @@ a {
 
     justify-content: center;
 
-    font-size: 16px;
+    font-size: 18px;
 
     margin-bottom: 7px;
 
@@ -884,7 +948,7 @@ a {
 
 .feedback-empty h4 {
 
-    font-size: 11px;
+    font-size: 14px;
 
     font-weight: 600;
 
@@ -895,7 +959,7 @@ a {
 
 .feedback-empty p {
 
-    font-size: 8px;
+    font-size: 11px;
 
     color: #999;
 
@@ -964,7 +1028,7 @@ a {
 
     padding: 12px 18px;
 
-    font: 600 13px 'Poppins', sans-serif;
+    font: 600 15px 'Google Sans Flex', sans-serif;
 
     cursor: pointer;
 
@@ -1054,7 +1118,7 @@ a {
 
 .print-modal-header h2 {
 
-    font-size: 16px;
+    font-size: 18px;
 
     font-weight: 600;
 
@@ -1069,7 +1133,7 @@ a {
 
     color: #64748b;
 
-    font-size: 11px;
+    font-size: 14px;
 
 }
 
@@ -1605,21 +1669,21 @@ a {
 
     .score-inner strong {
 
-        font-size: 18px;
+        font-size: 20px;
 
     }
 
 
     .item-name h4 {
 
-        font-size: 10px;
+        font-size: 13px;
 
     }
 
 
     .item-name p {
 
-        font-size: 7px;
+        font-size: 12px;
 
     }
 
@@ -1666,12 +1730,61 @@ a {
 
 .page-loading-overlay p {
     margin: 0;
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 500;
     color: #374151;
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Google Sans Flex', sans-serif;
 }
 
 @keyframes performance-loading-spin {
     to { transform: rotate(360deg); }
+}
+
+/* ==========================================
+   MATERIAL SYMBOLS ICONS
+   (mat-icon + lumi-symbols + google sans flex)
+========================================== */
+
+.mat-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 1em;
+    height: 1em;
+    line-height: 1;
+    user-select: none;
+}
+
+.lumi-symbols,
+.mat-ligature-font {
+    font-family: 'Material Symbols Outlined';
+    font-weight: 400;
+    font-style: normal;
+    letter-spacing: normal;
+    text-transform: none;
+    white-space: nowrap;
+    direction: ltr;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: 'liga';
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+.lm-icon-xl {
+    font-size: 24px;
+}
+
+.mat-icon-no-color {
+    color: inherit;
+}
+
+/* sizes per place */
+.view-evaluation-btn .mat-icon,
+.btn-primary .mat-icon {
+    font-size: 18px;
+}
+
+.feedback-icon .mat-icon,
+.close-print .mat-icon {
+    font-size: 20px;
 }

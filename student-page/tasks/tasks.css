@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
-
 :root{
     --primary:#AB0A0A;
     --primary-hover:#8E0909;
@@ -14,7 +12,7 @@
     margin:0;
     padding:0;
     box-sizing:border-box;
-    font-family:'Poppins',sans-serif;
+    font-family:'Google Sans Flex', sans-serif;
 }
 
 body{
@@ -45,13 +43,15 @@ body{
 }
 
 /* TASK HISTORY CARD */
+/* leaves room under the fixed header when scrolling to the top of the list */
 .history-card {
+    scroll-margin-top: 72px;
     background: #ffffff;
-    border-radius: 18px;
-    padding: 30px;  
-    width: calc(100% - 30px) !important;
-    margin: 30px auto 18px !important; 
-    box-shadow: 0 4px 15px rgba(0,0,0,.05);
+    border-radius: 12px;
+    padding: 16px;
+    width: calc(100% - 32px);
+    margin: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.05);
 }
 
 .card-header-title {
@@ -63,9 +63,9 @@ body{
 
 .card-header-title h3 {
     margin: 0;
-    font-size: 18px;
-    font-weight: 700;
-    color: #1f2937;
+    font-size: 15px;
+    font-weight: 600;
+    color: #222;
 }
 
 .vertical-line.red {
@@ -76,68 +76,112 @@ body{
     border-radius: 5px;
 }
 
-/* Filter Controls Header */
+/* ==========================================
+   TASK HISTORY FILTER ROW
+========================================== */
+
 .filter-controls {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-bottom: 16px;
     width: 100%;
+    margin-bottom: 16px;
+    min-width: 0;
 }
 
-.date-picker-btn {
-    position: relative;
-    flex: 1;
+/* SELECT DATE RANGE */
+.date-picker-wrapper {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 8px 12px;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    background: #ffffff;
-    font-size: 13px;
-    color: #374151;
-    cursor: pointer;
-}
+    gap: 6px;
 
-/* Transparent Overlay for Native Date Picker Click */
-#filter-date-input {
-    position: absolute;
-    top: 0;
-    left: 0;
     width: 100%;
-    height: 100%;
-    opacity: 0;
-    cursor: pointer;
-    z-index: 10;
+    height: 30px;
+
+    padding: 6px 10px;
+
+    background: #f9fafb;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+
+    flex-shrink: 1;
+    min-width: 0;
+
+    box-sizing: border-box;
 }
 
-.date-picker-btn span {
-    font-weight: 500;
-    font-size: 12px;
-}
-
-.date-picker-btn i {
+.date-picker-wrapper .mat-icon {
     color: #6b7280;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.date-picker-wrapper input {
+    border: none;
+    outline: none;
+    background: transparent;
+
+    width: 100%;
+    min-width: 0;
+
+    padding: 0;
+
+    font-family: 'Google Sans Flex', sans-serif;
+    font-size: 11px;
+    color: #1f2937;
+
+    cursor: pointer;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+
+/* WEEKLY REPORTS */
+/* sits at the right side of the "Task History" title row */
+.card-header-title > a {
+    display: block;
+    flex-shrink: 0;
+    margin-left: auto;
 }
 
 .filter-btn {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 8px 12px;
+    justify-content: center;
+    gap: 7px;
+
+    width: 140px;
+    height: 28px;
+
+    padding: 0 12px;
+
     border: 1px solid #f20a0a;
-    border-radius: 10px;
+    border-radius: 8px;
+
     background: #ffffff;
     color: #6c1111;
+
+    font-family: 'Google Sans Flex', sans-serif;
     font-size: 12px;
     font-weight: 500;
+
+    white-space: nowrap;
     cursor: pointer;
-    transition: background 0.2s;
+
+    box-sizing: border-box;
 }
 
-.filter-btn:hover {
-    background: #fbf9f9;
+.filter-btn .mat-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+
+.flatpickr-calendar {
+    left: 50% !important;
+    transform: translateX(-50%) !important;
 }
 
 /* INNER TASK HISTORY ITEMS */
@@ -173,22 +217,9 @@ body{
     gap: 12px;
 }
 
-.task-icon-box {
-    width: 42px;
-    height: 42px;
-    background: #f3f4f6;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #4b5563;
-    font-size: 18px;
-    flex-shrink: 0;
-}
-
 .task-date-info h4 {
-    font-size: 15px;
-    font-weight: 700;
+    font-size: 13px;
+    font-weight: 650;
     color: #111827;
     margin-bottom: 2px;
 }
@@ -204,18 +235,28 @@ body{
     flex-shrink: 0;
 }
 
+/* What was actually done that day — full width, under the date/tag row */
+.task-description {
+    margin: 10px 0 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #374151;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
 .category-tag {
-    padding: 4px 10px;
-    border-radius: 8px;
+    padding: 3.5px 10px;
+    border-radius: 10px;
     font-size: 11px;
     font-weight: 600;
     display: inline-block;
 }
 
-.category-tag.blue { background: #e0f2fe; color: #0284c7; }
-.category-tag.purple { background: #f3e8ff; color: #9333ea; }
-.category-tag.orange { background: #ffedd5; color: #ea580c; }
-.category-tag.green { background: #dcfce7; color: #16a34a; }
+.category-tag.blue { background: #f0f6ff; border: 1px solid #d0e2ff; color: #0284c7; }
+.category-tag.purple { background: #f3e8ff; border: 1px solid #f4c2ff ; color: #9333ea; }
+.category-tag.orange { background: #fff8ed; border: 1px solid #ffe3c2; color: #ea580c; }
+.category-tag.green { background: #f0fbf4; border: 1px solid #d1f2d9; color: #16a34a; }
 
 .task-item-divider {
     height: 1px;
@@ -238,8 +279,8 @@ body{
     letter-spacing: 0.3px;
 }
 
-.time-added-info i {
-    font-size: 12px;
+.time-added-info .mat-icon {
+    font-size: 16px;
 }
 
 .time-added-info strong {
@@ -252,17 +293,12 @@ body{
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-.date-picker-wrapper i {
-    color: #6b7280;
-    font-size: 13px;
-}
-
 .date-picker-wrapper input {
     border: none;
     outline: none;
     background: transparent;
     font-size: 12px;
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Google Sans Flex', sans-serif;
     color: #1f2937;
     width: 100%;
     cursor: pointer;
@@ -302,9 +338,156 @@ body{
     font-size: 13px;
     font-weight: 500;
     color: #374151;
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Google Sans Flex', sans-serif;
 }
 
 @keyframes tasks-loading-spin {
     to { transform: rotate(360deg); }
+}
+
+/* ==========================================
+   TASK MARKS ON FLATPICKR CALENDAR
+   (same dot as the Attendance page)
+========================================== */
+
+.flatpickr-calendar .flatpickr-day.has-task {
+    position: relative;
+}
+
+.flatpickr-calendar .flatpickr-day.has-task::after {
+    content: "";
+    position: absolute;
+    bottom: 3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #AB0A0A;
+}
+
+/* Selected / range dates: white dot so it stays visible */
+.flatpickr-calendar .flatpickr-day.selected.has-task::after,
+.flatpickr-calendar .flatpickr-day.startRange.has-task::after,
+.flatpickr-calendar .flatpickr-day.endRange.has-task::after {
+    background: #ffffff;
+}
+
+/* ==========================================
+   MATERIAL SYMBOLS ICONS
+   (mat-icon + lumi-symbols) — same as dashboard / attendance
+========================================== */
+
+.mat-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 1em;
+    height: 1em;
+    line-height: 1;
+    user-select: none;
+}
+
+.lumi-symbols,
+.mat-ligature-font {
+    font-family: 'Material Symbols Outlined';
+    font-weight: 400;
+    font-style: normal;
+    letter-spacing: normal;
+    text-transform: none;
+    white-space: nowrap;
+    direction: ltr;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: 'liga';
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+.lm-icon-xl {
+    font-size: 24px;
+}
+
+.mat-icon-no-color {
+    color: inherit;
+}
+
+/* spinner used by the "Loading logged-in user tasks..." placeholder */
+.mat-icon.spin {
+    font-size: 18px;
+    animation: tasks-icon-spin 1s linear infinite;
+}
+
+@keyframes tasks-icon-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Flatpickr popup uses the same font as the rest of the page */
+.flatpickr-calendar,
+.flatpickr-calendar * {
+    font-family: 'Google Sans Flex', sans-serif;
+}
+
+/* ==========================================
+   PAGINATION FOOTER
+========================================== */
+
+.pagination-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+
+    /* stretch edge-to-edge inside .history-card (which has 16px padding) */
+    margin: 16px -16px -16px;
+    padding: 14px 16px;
+
+    background: #f9fafb;
+    border-top: 1px solid #ececec;
+    border-radius: 0 0 12px 12px;
+}
+
+.pagination-bar[hidden] {
+    display: none;
+}
+
+.pagination-buttons {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.page-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+
+    height: 34px;
+    padding: 0 12px;
+
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+
+    color: #475569;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.page-btn .mat-icon {
+    font-size: 18px;
+}
+
+.page-btn:hover:not(:disabled) {
+    background: #fceaea;
+    border-color: #e8baba;
+    color: #ab0a0a;
+}
+
+.page-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }

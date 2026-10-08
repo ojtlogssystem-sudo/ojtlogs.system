@@ -6,7 +6,9 @@ import {
 import { 
     getFirestore, 
     doc, 
-    getDoc, 
+    getDoc,
+    getDocs, 
+    limit,
     updateDoc,
     collection, 
     query, 
@@ -58,9 +60,10 @@ function formatCompletionDate(value) {
 // Ito yung actual deadline na sine-set ng coordinator (Settings > OJT
 // Deadline), hindi yung AI-projected estimate na nasa header pill.
 function updateCompletionDateUI(deadlineDate) {
-    const detailItems = document.querySelectorAll(".detail-item strong");
-    if (detailItems.length >= 3) {
-        detailItems[2].textContent = formatCompletionDate(deadlineDate);
+    const deadlineEl = document.getElementById("ojt-deadline-date");
+
+    if (deadlineEl) {
+        deadlineEl.textContent = formatCompletionDate(deadlineDate);
     }
 }
 
@@ -73,6 +76,19 @@ function hoursToHM(hoursFloat) {
     const h = Math.floor(totalMinutes / 60);
     const m = totalMinutes % 60;
     return `${h}h ${m}m`;
+}
+
+// Same value as hoursToHM() but spelled out, e.g. "8 hours 1 minute".
+// Used for the big "Hours Completed" card where there is enough room.
+function hoursToFullText(hoursFloat) {
+    const totalMinutes = Math.round((hoursFloat || 0) * 60);
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+
+    const parts = [];
+    if (h > 0) parts.push(`${h} ${h === 1 ? "hour" : "hours"}`);
+    if (m > 0) parts.push(`${m} ${m === 1 ? "minute" : "minutes"}`);
+    return parts.length ? parts.join(" ") : "0 hours";
 }
 
 /* ==========================================
@@ -169,28 +185,15 @@ async function loadStudentData(user) {
             }
         }
 
-        let displayStatus = student.internshipStatus || "Active - On Track";
-
-        try {
-            const analyticsRef = doc(db, "analytics", user.uid);
-            const analyticsSnap = await getDoc(analyticsRef);
-
-            if (analyticsSnap.exists()) {
-                const analyticsData = analyticsSnap.data();
-                if (analyticsData.aiStatus) {
-                    displayStatus = analyticsData.aiStatus;
-                }
-            }
-        } catch (err) {
-            console.warn("Could not fetch AI analytics status:", err);
-        }
-
         if (!fullName) fullName = "Student Intern";
 
         // Avatar initials, dropdown name, and localStorage caching are now
         // handled by the shared header module (updateHeaderProfile via
         // autoLoadProfile) so the dashboard header stays connected/in sync
         // with the rest of the app instead of duplicating that logic here.
+
+        // Schedule ng student (users/{uid}.schedule) para sa planned hours sa calendar.
+        calendarController?.setSchedule(student.schedule);
 
         studentRequiredHours = student.requiredHours || 600;
         const compHours = student.completedHours || 0;
@@ -203,48 +206,7 @@ async function loadStudentData(user) {
         // per-student override) — same field na binabasa ng Flask AI para
         // sa at-risk projection. Ito na ngayon yung nasa "Completion Date".
         updateCompletionDateUI(student.deadlineDate || FALLBACK_DEADLINE);
-
-        const statusElem = document.querySelector(".status-text");
-        const statusHeader = document.querySelector(".summary-card.purple h2");
-
-        // Same icon set as the coordinator's AI At-Risk cards (analytics.html):
-        // fa-triangle-exclamation = At Risk, fa-eye = Needs Monitoring,
-        // fa-circle-check = On Track / Completed. Dati "fa-shield-halved"
-        // lang palagi ito - ngayon nagpapalit na base sa aiStatus.
-        const statusIconBox = document.querySelector(".summary-card.purple .card-icon");
-        const statusIcon = statusIconBox ? statusIconBox.querySelector("i") : null;
-
-        function setStatusIcon(iconClass, colorClass) {
-            if (statusIconBox) {
-                statusIconBox.classList.remove("green-icon", "blue-icon", "orange-icon", "purple-icon", "red-icon", "pink-icon");
-                statusIconBox.classList.add(colorClass);
-            }
-            if (statusIcon) statusIcon.className = iconClass;
-        }
-
-        if (statusElem) statusElem.textContent = displayStatus;
-
-        if (statusHeader) {
-            if (displayStatus.toLowerCase().includes("risk")) {
-                statusHeader.textContent = "At Risk";
-                statusHeader.style.color = "#ab0a0a";
-                if (statusElem) statusElem.style.color = "#ab0a0a";
-                setStatusIcon("fa-solid fa-triangle-exclamation", "red-icon");
-            } else if (displayStatus.toLowerCase().includes("monitoring")) {
-                statusHeader.textContent = "Needs Monitoring";
-                statusHeader.style.color = "#f59e0b";
-                if (statusElem) statusElem.style.color = "#f59e0b";
-                setStatusIcon("fa-solid fa-eye", "orange-icon");
-            } else if (displayStatus.toLowerCase().includes("completed")) {
-                statusHeader.textContent = "Completed";
-                statusHeader.style.color = "#22c55e";
-                setStatusIcon("fa-solid fa-circle-check", "green-icon");
-            } else {
-                statusHeader.textContent = "On Track";
-                statusHeader.style.color = "#3b82f6";
-                setStatusIcon("fa-solid fa-circle-check", "green-icon");
-            }
-        }
+        showWelcomeCard(user, student);
     } catch (error) {
         console.error("Error fetching student profile:", error);
     }
@@ -395,7 +357,12 @@ function listenToStudentAttendance(userId) {
 
         // AI-style projection of the OJT completion date, based on the
         // student's own average hours-per-duty-day so far.
-        const estimate = estimateCompletionDate(completedHoursExact, studentRequiredHours, dailyHoursMap);
+        const estimate = estimateCompletionDate(
+            completedHoursExact,
+            studentRequiredHours,
+            dailyHoursMap
+        );
+
         updateHeaderCompletionEstimate(estimate);
 
         try {
@@ -413,6 +380,26 @@ function listenToStudentAttendance(userId) {
 
     return firstSnapshotReady;
 }
+
+// Fills the "Estimated Completion" summary card (date + duty days left)
+// from the result of estimateCompletionDate().
+// function updateEstimatedCompletionCard(estimate) {
+//     const dateEl = document.getElementById("estimated-completion-date");
+//     const subEl = document.getElementById("estimated-completion-sub");
+//     if (!dateEl || !subEl) return;
+
+//     if (estimate.isDone) {
+//         dateEl.textContent = "Completed";
+//         subEl.textContent = "All required hours rendered";
+//     } else if (!estimate.estimatedDate) {
+//         dateEl.textContent = "--";
+//         subEl.textContent = "Not enough data yet";
+//     } else {
+//         const days = estimate.dutyDaysRemaining;
+//         dateEl.textContent = estimate.estimatedDate;
+//         subEl.textContent = `${days} duty ${days === 1 ? "day" : "days"} remaining`;
+//     }
+// }
 
 /* ==========================================
    AI COMPLETION-DATE ESTIMATE
@@ -469,6 +456,7 @@ function estimateCompletionDate(completedHours, requiredHours, dailyHoursMap) {
         remaining: remainingHours,
         avgHoursPerDay: avgHoursPerDutyDay,
         dutyDaysLogged: workedDates.length,
+        dutyDaysRemaining: dutyDaysNeeded,
         isDone: false,
         estimatedDate
     };
@@ -494,7 +482,7 @@ function updateHoursUI(completed, required, remaining, percentage) {
     const remainingDisplay = Math.round(remaining * 10) / 10;
 
     const completedHeader = document.querySelector(".summary-card.green h2");
-    if (completedHeader) completedHeader.textContent = completedLabel;
+    if (completedHeader) completedHeader.textContent = hoursToFullText(completed);
 
     const progressFill = document.querySelector(".green-fill");
     if (progressFill) progressFill.style.width = `${percentage}%`;
@@ -552,12 +540,12 @@ function updateTodayAttendanceUI(timeIn, timeOut, totalToday, status = "") {
 
     if (status.toLowerCase() === "excused") {
         if (timeinBox) timeinBox.className = "attendance-box blue-box";
-        if (timeinIcon) timeinIcon.className = "fa-solid fa-circle-info";
+        if (timeinIcon) timeinIcon.textContent = "info";
         if (timeinTitle) timeinTitle.textContent = "Excused";
         if (timeinDesc) timeinDesc.textContent = "You have an approved excuse today.";
 
         if (timeoutBox) timeoutBox.className = "attendance-box blue-box";
-        if (timeoutIcon) timeoutIcon.className = "fa-solid fa-circle-info";
+        if (timeoutIcon) timeoutIcon.textContent = "info";
         if (timeoutTitle) timeoutTitle.textContent = "Excused";
         if (timeoutDesc) timeoutDesc.textContent = "No time out required.";
         return;
@@ -568,32 +556,32 @@ function updateTodayAttendanceUI(timeIn, timeOut, totalToday, status = "") {
 
     if (hasTimedOut) {
         if (timeinBox) timeinBox.className = "attendance-box green-box";
-        if (timeinIcon) timeinIcon.className = "fa-solid fa-circle-check";
+        if (timeinIcon) timeinIcon.textContent = "check_circle";
         if (timeinTitle) timeinTitle.textContent = "Timed In";
         if (timeinDesc) timeinDesc.textContent = "You timed in today.";
 
         if (timeoutBox) timeoutBox.className = "attendance-box green-box";
-        if (timeoutIcon) timeoutIcon.className = "fa-solid fa-circle-check";
+        if (timeoutIcon) timeoutIcon.textContent = "check_circle";
         if (timeoutTitle) timeoutTitle.textContent = "Timed Out";
         if (timeoutDesc) timeoutDesc.textContent = "You timed out today.";
     } else if (hasTimedIn) {
         if (timeinBox) timeinBox.className = "attendance-box green-box";
-        if (timeinIcon) timeinIcon.className = "fa-solid fa-circle-check";
+        if (timeinIcon) timeinIcon.textContent = "check_circle";
         if (timeinTitle) timeinTitle.textContent = "Timed In";
         if (timeinDesc) timeinDesc.textContent = "You timed in today.";
 
         if (timeoutBox) timeoutBox.className = "attendance-box orange-box";
-        if (timeoutIcon) timeoutIcon.className = "fa-regular fa-clock";
+        if (timeoutIcon) timeoutIcon.textContent = "schedule";
         if (timeoutTitle) timeoutTitle.textContent = "Pending Time Out";
         if (timeoutDesc) timeoutDesc.textContent = "Don't forget to time out.";
     } else {
         if (timeinBox) timeinBox.className = "attendance-box orange-box";
-        if (timeinIcon) timeinIcon.className = "fa-regular fa-clock";
+        if (timeinIcon) timeinIcon.textContent = "schedule";
         if (timeinTitle) timeinTitle.textContent = "Time In";
         if (timeinDesc) timeinDesc.textContent = "You haven't timed in yet.";
 
         if (timeoutBox) timeoutBox.className = "attendance-box orange-box";
-        if (timeoutIcon) timeoutIcon.className = "fa-regular fa-clock";
+        if (timeoutIcon) timeoutIcon.textContent = "schedule";
         if (timeoutTitle) timeoutTitle.textContent = "Time Out";
         if (timeoutDesc) timeoutDesc.textContent = "Waiting for time in.";
     }
@@ -706,24 +694,7 @@ function renderActivityList(listEl, activities) {
         const item = document.createElement("div");
         item.className = "activity-item";
 
-        let iconClass = "fa-solid fa-right-to-bracket";
-        let colorClass = "green";
-
-        if (act.type === "timeout") {
-            iconClass = "fa-solid fa-right-from-bracket";
-            colorClass = "blue";
-        } else if (act.type === "task") {
-            iconClass = "fa-solid fa-list-check";
-            colorClass = "blue";
-        } else if (act.type === "photo") {
-            iconClass = "fa-solid fa-camera";
-            colorClass = "orange";
-        }
-
         item.innerHTML = `
-            <div class="activity-icon ${colorClass}">
-                <i class="${iconClass}"></i>
-            </div>
             <div class="activity-info">
                 <h4>${act.title}</h4>
                 <p>${act.subtitle}</p>
@@ -850,6 +821,46 @@ function initCalendar() {
         return Number.isInteger(h) ? `${h}h` : `${h.toFixed(1)}h`;
     }
 
+    // users/{uid}.schedule (same shape na ginagamit ng attendance.js):
+    // { days: ["Monday", ...], morning: {timeIn, timeOut}, afternoon: {...},
+    //   morningEnabled, afternoonEnabled }
+    let schedule = null;
+    const DEFAULT_SCHEDULED_HOURS = 8;
+    const DEFAULT_DUTY_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+    function scheduleTimeToMinutes(value) {
+        const m = String(value || "").match(/^(\d{1,2}):(\d{2})/);
+        return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+    }
+
+    // Oras ng isang duty day ayon sa schedule (Morning + Afternoon session,
+    // kaya wala nang lunch break). Kung walang session na naka-set: 8 hours.
+    function getScheduledDayHours() {
+        let minutes = 0;
+        [["morning", "morningEnabled"], ["afternoon", "afternoonEnabled"]].forEach(([key, flag]) => {
+            const sess = schedule?.[key];
+            if (!sess || schedule[flag] === false || sess[flag] === false) return;
+            const start = scheduleTimeToMinutes(sess.timeIn);
+            const end = scheduleTimeToMinutes(sess.timeOut);
+            if (start !== null && end !== null && end > start) minutes += end - start;
+        });
+        return minutes > 0 ? minutes / 60 : DEFAULT_SCHEDULED_HOURS;
+    }
+
+    // Planned (hindi pa na-log) na oras para sa isang petsa, o 0 kung hindi
+    // ito scheduled duty day. Today/future lang; hindi kasama ang may log na,
+    // absent, holiday, at coordinator no-duty.
+    function getPlannedHours(dateStr, date) {
+        if (dateStr < todayStr) return 0;
+        if (dailyHours[dateStr] > 0 || isAbsentDay(dateStr)) return 0;
+        if (holidays[dateStr] || calendarExceptions[dateStr]) return 0;
+
+        const days = Array.isArray(schedule?.days) && schedule.days.length ? schedule.days : DEFAULT_DUTY_DAYS;
+        const dayName = date.toLocaleDateString("en-US", { weekday: "long" });
+        return days.includes(dayName) ? getScheduledDayHours() : 0;
+    }
+
     const defaultPHHolidays = {
         "2026-01-01": "New Year's Day",
         "2026-04-02": "Maundy Thursday",
@@ -974,7 +985,15 @@ function initCalendar() {
                 if (dailyHours[dateStr] > 0) dayButton.classList.add("has-duty");
                 if (isAbsentDay(dateStr)) dayButton.classList.add("absent-day");
 
+                const plannedHours = getPlannedHours(dateStr, date);
+                if (plannedHours > 0) dayButton.classList.add("planned-duty");
+
                 let htmlContent = `<span>${day}</span>`;
+                if (dailyHours[dateStr] > 0) {
+                    htmlContent += `<span class="calendar-month-hours">${formatHoursLabel(dailyHours[dateStr])}</span>`;
+                } else if (plannedHours > 0) {
+                    htmlContent += `<span class="calendar-month-hours planned">${formatHoursLabel(plannedHours)}</span>`;
+                }
                 let indicators = `<div style="display: flex; gap: 2px; margin-top: 2px;">`;
                 if (holidays[dateStr]) indicators += `<span style="width: 4px; height: 4px; background: #ef4444; border-radius: 50%;"></span>`;
                 if (coordinatorEvents[dateStr]) indicators += `<span style="width: 4px; height: 4px; background: #0284c7; border-radius: 50%;"></span>`;
@@ -993,11 +1012,12 @@ function initCalendar() {
                     let eventList = coordinatorEvents[dateStr] || [];
                     let exceptionList = calendarExceptions[dateStr] || [];
                     let hoursLogged = dailyHours[dateStr] || 0;
+let plannedLabelHours = getPlannedHours(dateStr, date);
 
                     let eventNames = eventList.join(", ");
                     let exceptionNames = exceptionList.join(", ");
 
-                    if (!holidayName && !eventNames && !exceptionNames && !hoursLogged) {
+                    if (!holidayName && !eventNames && !exceptionNames && !hoursLogged && !plannedLabelHours) {
                         holidayName = "No entry details available.";
                     }
 
@@ -1007,6 +1027,7 @@ function initCalendar() {
                     
                     let textToShow = [];
                     if (hoursLogged > 0) textToShow.push(`Hours Logged: ${formatHoursLabel(hoursLogged)}`);
+if (plannedLabelHours > 0) textToShow.push(`Scheduled: ${formatHoursLabel(plannedLabelHours)}`);
                     if (holidayName) textToShow.push(`Holiday: ${holidayName}`);
                     if (eventNames) textToShow.push(`Event: ${eventNames}`);
                     if (exceptionNames) textToShow.push(`Note: ${exceptionNames}`);
@@ -1030,13 +1051,13 @@ function initCalendar() {
             }
 
             if (calendarBtn) {
-                calendarBtn.innerHTML = `<i class="fa-regular fa-calendar"></i><span>Horizontal</span>`;
+                calendarBtn.innerHTML = `<mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color ng-star-inserted" aria-hidden="true">calendar_month</mat-icon><span>Horizontal</span>`;
             }
             return;
         }
 
         if (calendarBtn) {
-            calendarBtn.innerHTML = `<i class="fa-regular fa-calendar-plus"></i><span>Calendar</span>`;
+            calendarBtn.innerHTML = `<mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color ng-star-inserted" aria-hidden="true">calendar_add_on</mat-icon><span>Calendar</span>`;
         }
 
         monthTitle.textContent = formatMonth(viewStartDate);
@@ -1061,12 +1082,15 @@ function initCalendar() {
             if (isAbsentDay(dateStr)) dayButton.classList.add("absent-day");
 
             let htmlContent = `
-                <span class="day-number">${date.getDate()}</span>
                 <span class="day-name">${date.toLocaleDateString("en-US", { weekday: "short" })}</span>
+                <span class="day-number">${date.getDate()}</span>
             `;
 
+            const plannedHours = getPlannedHours(dateStr, date);
             if (dailyHours[dateStr] > 0) {
                 htmlContent += `<span class="calendar-day-hours">${formatHoursLabel(dailyHours[dateStr])}</span>`;
+            } else if (plannedHours > 0) {
+                htmlContent += `<span class="calendar-day-hours planned">${formatHoursLabel(plannedHours)}</span>`;
             }
 
             let indicators = `<div style="display: flex; gap: 2px; margin-top: 2px;">`;
@@ -1086,11 +1110,12 @@ function initCalendar() {
                 let eventList = coordinatorEvents[dateStr] || [];
                 let exceptionList = calendarExceptions[dateStr] || [];
                 let hoursLogged = dailyHours[dateStr] || 0;
+let plannedLabelHours = getPlannedHours(dateStr, date);
 
                 let eventNames = eventList.join(", ");
                 let exceptionNames = exceptionList.join(", ");
 
-                if (!holidayName && !eventNames && !exceptionNames && !hoursLogged) {
+                if (!holidayName && !eventNames && !exceptionNames && !hoursLogged && !plannedLabelHours) {
                     holidayName = "No entry details available.";
                 }
 
@@ -1100,6 +1125,7 @@ function initCalendar() {
                 
                 let textToShow = [];
                 if (hoursLogged > 0) textToShow.push(`Hours Logged: ${formatHoursLabel(hoursLogged)}`);
+if (plannedLabelHours > 0) textToShow.push(`Scheduled: ${formatHoursLabel(plannedLabelHours)}`);
                 if (holidayName) textToShow.push(`Holiday: ${holidayName}`);
                 if (eventNames) textToShow.push(`Event: ${eventNames}`);
                 if (exceptionNames) textToShow.push(`Note: ${exceptionNames}`);
@@ -1161,9 +1187,6 @@ function initCalendar() {
 
     renderCalendar();
 
-    // Lets callers outside this closure (e.g. the attendance listener, once
-    // Firestore data comes in) push per-day hours into the calendar and
-    // trigger a re-render.
     return {
         setDailyHours(map) {
             dailyHours = map || {};
@@ -1172,6 +1195,68 @@ function initCalendar() {
         setAbsentDates(map) {
             absentDates = map || {};
             renderCalendar();
+        },
+        setSchedule(value) {
+            schedule = (value && typeof value === "object") ? value : null;
+            renderCalendar();
         }
     };
+}
+
+async function showWelcomeCard(user, student) {
+    const section = document.getElementById("welcome-section");
+    if (!section) return;
+
+    const flagKey = `welcome_shown_${user.uid}`;
+    if (localStorage.getItem(flagKey)) return;
+
+    // Bago lang kung hindi pa nakikita ang welcome AT wala pang hours AT walang attendance.
+    let isNew = student.welcomeSeen !== true && !(Number(student.completedHours) > 0);
+    if (isNew) {
+        try {
+            const snap = await getDocs(query(
+                collection(db, "attendance"),
+                where("userId", "==", user.uid),
+                limit(1)
+            ));
+            if (!snap.empty) isNew = false;
+        } catch (err) {
+            console.warn("Could not verify attendance for welcome card:", err);
+            isNew = false;
+        }
+    }
+
+    const firstName = (student.firstName || user.displayName || "").trim().split(" ")[0] || "Intern";
+
+    const hour = new Date().getHours();
+    const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+
+    const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+
+    if (isNew) {
+        set("welcome-title", `Welcome to OJT Logs, ${firstName}!`);
+        set("welcome-text", "We're glad to have you on your internship journey. Scan the QR code to time in and time out every day so your hours are tracked.");
+        set("welcome-pill-text", `Required: ${studentRequiredHours} hours`);
+        document.getElementById("welcome-icon").className = "fa-solid fa-hands-clapping";
+        document.getElementById("welcome-pill-icon").className = "fa-solid fa-bullseye";
+    } else {
+        set("welcome-title", `Welcome back, ${firstName}!`);
+        set("welcome-text", `${greeting}! Here's your internship update for today. Check your progress below.`);
+        set("welcome-pill-text", new Date().toLocaleDateString("en-US", {
+            weekday: "long", month: "short", day: "numeric", year: "numeric"
+        }));
+    }
+
+    section.hidden = false;
+    localStorage.setItem(flagKey, "1");
+
+    document.getElementById("welcome-close")?.addEventListener("click", () => {
+        section.hidden = true;
+    });
+
+    // Markahan na nakita na ang welcome, para hindi na ito ituring na bago.
+    if (student.welcomeSeen !== true) {
+        updateDoc(doc(db, "users", user.uid), { welcomeSeen: true })
+            .catch(err => console.warn("Could not save welcomeSeen:", err));
+    }
 }

@@ -13,9 +13,9 @@ const db = getFirestore();
 // CONFIGURATION: Student UID Details
 // ==========================================
 const TARGET_STUDENT = {
-    userId: "883IuiuwL4aRmB2vranpPU062HH2", // Pwede mo nang palitan ng kahit anong UID nang walang error
-    company: "Globe",
-    location: "Globe"
+    userId: "4Q9y3LgQVCdqdBQB9EsuBEM0Bci1", // Pwede mo nang palitan ng kahit anong UID nang walang error
+    company: "Motortrade",
+    location: "Motortrade"
 };
 
 const TOTAL_REQUIRED_HOURS = 600;

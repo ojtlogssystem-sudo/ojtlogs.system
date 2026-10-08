@@ -60,6 +60,10 @@ const ESTIMATED_HOURS_PER_DAY = 8;
 let allStudents = [];
 let allWeeklyReports = [];
 let attendanceIsEstimated = false;
+
+// studentId -> { present, late, absent, lateDates[], absentDates[] }
+// Galing sa totoong "attendance" collection (kapareho ng attendance_details).
+let attendanceByStudent = {};
 let reportDataLoaded = false;
 
 let currentTab = "progress";
@@ -396,6 +400,13 @@ async function loadAllData() {
         allWeeklyReports = [];
 
     }
+
+
+    // ------------------------------------
+    // ATTENDANCE RECORDS (late / absent)
+    // ------------------------------------
+
+    await loadAttendanceSummaries();
 
 
     reportDataLoaded = true;
@@ -797,10 +808,267 @@ function normalizeStatus(student) {
 
 
 // ========================================
+// ATTENDANCE RECORDS -> LATE / ABSENT SUMMARY
+// Kapareho ng logic sa attendance_details.js:
+//   - Present  = present / on-time / adjusted
+//   - Late     = status na may "late"
+//   - Absent   = status na "absent" PLUS ang mga araw sa schedule
+//                (mula startDate hanggang ngayon) na walang record
+//   - Excused / Rejected = hindi binibilang na late o absent
+// ========================================
+
+const DAY_INDEX = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+
+function toDateKey(d) {
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${d.getFullYear()}-${m}-${day}`;
+}
+
+function parseDateKey(str) {
+    const m = String(str || "").match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
+}
+
+function getRecordDateValue(r) {
+    if (!r) return 0;
+    const candidates = [r.date, r.formattedDate, r.createdAt, r.timestamp];
+    for (const val of candidates) {
+        if (!val) continue;
+        if (typeof val.toDate === "function") return val.toDate().getTime();
+        if (typeof val === "number") return val;
+        const str = String(val).trim();
+        const iso = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+        if (iso) return new Date(+iso[1], +iso[2] - 1, +iso[3]).getTime();
+        const parsed = Date.parse(str);
+        if (!isNaN(parsed)) return parsed;
+    }
+    return 0;
+}
+
+function getRecordDateKey(r) {
+    const v = getRecordDateValue(r);
+    return v ? toDateKey(new Date(v)) : null;
+}
+
+function timeToMinutes(t) {
+    const m = String(t || "").match(/^(\d{1,2}):(\d{2})/);
+    return m ? (+m[1] * 60 + +m[2]) : null;
+}
+
+// Mga araw na dapat pumasok pero walang attendance record = Absent.
+// Hindi isinasama ang future dates; ang ngayong araw ay absent lang
+// kapag lampas na sa oras ng uwi ng schedule.
+function buildAbsentDateKeys(schedule, records, now = new Date()) {
+
+    if (!schedule || !schedule.startDate || !Array.isArray(schedule.days)) return [];
+
+    const start = parseDateKey(schedule.startDate);
+    if (!start) return [];
+
+    const scheduledDays = new Set(
+        schedule.days
+            .map(d => DAY_INDEX[String(d).slice(0, 3).toLowerCase()])
+            .filter(i => i !== undefined)
+    );
+    if (scheduledDays.size === 0) return [];
+
+    const ends = [];
+    const morning = schedule.morning || {};
+    const afternoon = schedule.afternoon || {};
+    if (schedule.morningEnabled !== false && morning.morningEnabled !== false) ends.push(timeToMinutes(morning.timeOut));
+    if (schedule.afternoonEnabled !== false && afternoon.afternoonEnabled !== false) ends.push(timeToMinutes(afternoon.timeOut));
+    const validEnds = ends.filter(e => e !== null);
+    const dayEndMinutes = validEnds.length ? Math.max(...validEnds) : 17 * 60;
+
+    const existing = new Set(records.map(getRecordDateKey).filter(Boolean));
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+    const result = [];
+
+    for (let d = new Date(start); d <= today; d.setDate(d.getDate() + 1)) {
+        if (!scheduledDays.has(d.getDay())) continue;
+        const isToday = d.getTime() === today.getTime();
+        if (isToday && nowMinutes <= dayEndMinutes) continue;
+        const key = toDateKey(d);
+        if (existing.has(key)) continue;
+        result.push(key);
+    }
+
+    return result;
+}
+
+// Ibinabalik ang huling petsa ng Time In (YYYY-MM-DD) kung COMPLETE na ang
+// student, o "" kung hindi pa.
+function getCompletionCutoffKey(records, student) {
+
+    let lastTimeIn = "";
+    let totalHours = 0;
+
+    records.forEach(r => {
+
+        if (!r || !r.timeIn || r.timeIn === "--") return;
+
+        const key = getRecordDateKey(r);
+        if (key && key > lastTimeIn) lastTimeIn = key;
+
+        const status = String(r.status || "").toLowerCase();
+        if (status !== "rejected" && status !== "absent") {
+            totalHours += Number(r.hoursRendered) || 0;
+        }
+
+    });
+
+    if (!lastTimeIn) return "";
+
+    const u = student || {};
+    const statusText = String(u.internshipStatus || u.status || "").trim().toLowerCase();
+    const required = Number(u.requiredHours || u.totalRequiredHours || REQUIRED_HOURS_PER_STUDENT) || REQUIRED_HOURS_PER_STUDENT;
+    const rendered = Number(u.renderedHours || u.completedHours || u.hoursRendered || 0) || 0;
+
+    const isComplete =
+        statusText === "completed" ||
+        statusText.includes("graduated") ||
+        rendered >= required ||
+        totalHours >= required;
+
+    return isComplete ? lastTimeIn : "";
+
+}
+
+function summarizeAttendance(records, schedule, student = null) {
+
+    const summary = { present: 0, late: 0, absent: 0, lateDates: [], absentDates: [] };
+
+    records.forEach(r => {
+
+        const status = String(r.status || "").toLowerCase();
+        const key = getRecordDateKey(r);
+
+        if (status.includes("present") || status.includes("on-time") || status === "adjusted") {
+            summary.present++;
+        } else if (status.includes("late")) {
+            summary.late++;
+            if (key) summary.lateDates.push(key);
+        } else if (status.includes("absent")) {
+            summary.absent++;
+            if (key) summary.absentDates.push(key);
+        }
+
+    });
+
+    buildAbsentDateKeys(schedule, records).forEach(key => {
+        summary.absent++;
+        summary.absentDates.push(key);
+    });
+
+    summary.lateDates.sort();
+    summary.absentDates.sort();
+
+    // Complete na ang student (status Completed o abot na sa required hours):
+    // huwag nang bilangin ang Absent pagkatapos ng huling araw ng Time In niya.
+    const cutoff = getCompletionCutoffKey(records, student);
+
+    if (cutoff) {
+        const kept = summary.absentDates.filter(k => k <= cutoff);
+        summary.absent -= (summary.absentDates.length - kept.length);
+        summary.absentDates = kept;
+    }
+
+    return summary;
+
+}
+
+async function loadAttendanceSummaries() {
+
+    attendanceByStudent = {};
+
+    let rows = [];
+
+    try {
+
+        const snap = await getDocs(collection(db, "attendance"));
+
+        snap.forEach(docSnap => rows.push({ id: docSnap.id, ...docSnap.data() }));
+
+    } catch (err) {
+
+        console.warn("attendance collection not available:", err);
+
+        return;
+
+    }
+
+    const byUser = {};
+    const byEmail = {};
+
+    rows.forEach(r => {
+
+        const owner = r.userId || r.uid;
+
+        if (owner) {
+            (byUser[owner] = byUser[owner] || []).push(r);
+        } else if (r.userEmail) {
+            const email = String(r.userEmail).toLowerCase();
+            (byEmail[email] = byEmail[email] || []).push(r);
+        }
+
+    });
+
+    allStudents.forEach(student => {
+
+        const email = String(student.email || "").toLowerCase();
+
+        const records = [
+            ...(byUser[student.id] || []),
+            ...(email ? (byEmail[email] || []) : [])
+        ];
+
+        attendanceByStudent[student.id] =
+            summarizeAttendance(records, student.schedule, student);
+
+    });
+
+}
+
+function formatShortDate(key) {
+
+    const d = parseDateKey(key);
+
+    if (!d) return key;
+
+    const sameYear = d.getFullYear() === new Date().getFullYear();
+
+    return d.toLocaleDateString("en-US", sameYear
+        ? { month: "short", day: "numeric" }
+        : { month: "short", day: "numeric", year: "numeric" });
+
+}
+
+
+// ========================================
 // ATTENDANCE
 // ========================================
 
 function getAttendance(student) {
+
+    // Totoong attendance records muna (galing sa attendance collection)
+    const summary = attendanceByStudent[student.id];
+
+    if (
+        summary &&
+        (summary.present + summary.late + summary.absent) > 0
+    ) {
+
+        return {
+            present: summary.present,
+            late: summary.late,
+            absent: summary.absent,
+            isEstimate: false
+        };
+
+    }
 
     if (
         student.attendance &&

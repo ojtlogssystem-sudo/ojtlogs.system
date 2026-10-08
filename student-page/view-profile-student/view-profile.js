@@ -246,6 +246,19 @@ function toDateKey(value) {
     return "";
 }
 
+// "YYYY-MM-DD" (o Timestamp/Date) -> "October 12, 2026"
+// Hinihiwalay muna ang taon/buwan/araw para hindi madulas ng isang araw dahil sa timezone.
+function formatLongDate(value) {
+    const key = toDateKey(value);
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
+    if (!match) return "";
+
+    const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    if (Number.isNaN(date.getTime())) return "";
+
+    return date.toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" });
+}
+
 /*
     Bilang mula mismo sa attendance records ng student (attendance where userId == uid),
     gaya ng student dashboard at coordinator Attendance page.
@@ -453,6 +466,7 @@ function render(user, data) {
     const schedule = normalizeSchedule(data.schedule);
     renderSchedule(schedule);
     renderModality(data.schedule?.modality);
+    setText("fStartDate", formatLongDate(data.schedule?.startDate));
 
     loadAttendance(user, schedule).then((counts) => {
         setText("statPresent", String(counts.present));

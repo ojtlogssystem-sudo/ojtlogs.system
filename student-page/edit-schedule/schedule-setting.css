@@ -1,15 +1,3 @@
-/* schedule-settings.css
-   Mga override/dagdag lang na kailangan para umayos yung profile.css
-   (Step 2 / Internship Schedule) na styles sa loob ng settings.css
-   na .settings-card look. Wag nang ulitin dito yung mismong schedule
-   classes (modality, days-grid, switch, atbp.) — nasa profile.css na yun.
-*/
-
-/* profile.css (na kasama dito para magamit yung schedule styles) ay may
-   .main { max-width: 430px; margin: auto; } dahil standalone/mobile-only
-   na page siya dati. Dahil dashboard page ito ngayon (may sidebar/header),
-   i-reset natin ito para sumunod sa flex:1 na layout ng sidebar.css at
-   umabot ang header sa buong lapad ng screen sa computer/desktop view. */
 .main {
     max-width: none;
     margin: 0;
@@ -21,7 +9,7 @@
     gap: 6px;
     font-size: 11px;
     font-weight: 600;
-    color: var(--primary);
+    color: #000000;
     text-decoration: none;
     margin-bottom: 8px;
     padding: 8px 14px;
@@ -37,10 +25,6 @@
     border-color: var(--primary);
     text-decoration: none;
 }
-
-/* Ang .settings-card dito ay gumaganap na parang .profile-card
-   (parehong padding/border-radius/shadow naman sila), kaya i-normalize
-   lang natin yung spacing ng card-title galing profile.css. */
 .settings-card .card-title {
     margin-bottom: 20px;
 }
@@ -148,4 +132,115 @@
             transform: translateY(0);
         }
     }
+}
+
+/* ================= FONT & ICONS =================
+   Google Sans Flex + Material Icons para sa content at popup lang.
+   Hindi ginagalaw ang header/sidebar (Poppins + Font Awesome pa rin). */
+.settings-container,
+.settings-container *,
+.success-modal-overlay,
+.success-modal-overlay * {
+    font-family: 'Google Sans Flex', sans-serif !important;
+}
+
+.settings-container .material-icons,
+.success-modal-overlay .material-icons {
+    font-family: 'Material Icons' !important;
+    font-style: normal !important;
+    font-weight: normal !important;
+    line-height: 1 !important;
+    letter-spacing: normal !important;
+    text-transform: none !important;
+    white-space: nowrap !important;
+}
+
+.back-link .material-icons {
+    font-size: 16px !important;
+}
+
+/* Black icons para sa Work Modality at modality options */
+.schedule-section > .schedule-label:first-child .material-icons,
+.modality-icon .material-icons {
+    color: #000000 !important;
+}
+
+/* Walang background ang modality card (kahit selected) at icon */
+.modality-card,
+.modality-option input:checked + .modality-card,
+.modality-icon {
+    background: transparent !important;
+}
+
+/* ================= MODALITY: CARD NA MAY CHECK INDICATOR (option 3) ================= */
+.modality-options {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+}
+
+.modality-option {
+    display: block !important;
+    margin: 0 !important;
+}
+
+.modality-card {
+    position: relative !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 14px !important;
+    padding: 16px 52px 16px 18px !important;
+    text-align: left !important;
+    background: #ffffff !important;
+    border: 1.5px solid #e5e7eb !important;
+    border-radius: 14px !important;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.modality-option:hover .modality-card {
+    border-color: #cbd5e1 !important;
+}
+
+.modality-option input:checked + .modality-card {
+    border-color: #AB0A0A !important;
+    box-shadow: 0 0 0 3px rgba(171, 10, 10, 0.08) !important;
+}
+
+.modality-icon {
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+    background: transparent !important;
+}
+
+.modality-icon .material-icons {
+    font-size: 28px !important;
+}
+
+.modality-info {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 2px !important;
+}
+
+/* Indicator sa kanan: bilog na walang laman -> check_circle kapag selected */
+.modality-card::after {
+    content: "radio_button_unchecked";
+    position: absolute;
+    top: 50%;
+    right: 16px;
+    transform: translateY(-50%);
+    font-family: 'Material Icons';
+    font-size: 24px;
+    line-height: 1;
+    color: #cbd5e1;
+    transition: color 0.2s ease;
+}
+
+.modality-option input:checked + .modality-card::after {
+    content: "check_circle";
+    color: #AB0A0A;
 }

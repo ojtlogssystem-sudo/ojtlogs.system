@@ -422,6 +422,32 @@ const stepIcon = document.getElementById('stepIcon');
 
 
 // ==========================================
+// STUDENT NUMBER FORMAT  (YYYY-MM-00000, e.g. 2023-07-00975)
+// Numbers lang ang tinatanggap; kusang nilalagyan ng "-" habang nagta-type.
+// ==========================================
+
+const STUDENT_NUMBER_REGEX = /^\d{4}-\d{2}-\d{5}$/;
+
+function formatStudentNumber(raw) {
+    const digits = String(raw).replace(/\D/g, '').slice(0, 11);
+
+    let formatted = digits.slice(0, 4);
+    if (digits.length > 4) formatted += '-' + digits.slice(4, 6);
+    if (digits.length > 6) formatted += '-' + digits.slice(6, 11);
+
+    return formatted;
+}
+
+const studentNumberInput = document.getElementById('studentNumber');
+
+if (studentNumberInput) {
+    studentNumberInput.addEventListener('input', () => {
+        studentNumberInput.value = formatStudentNumber(studentNumberInput.value);
+    });
+}
+
+
+// ==========================================
 // STEP 1 → STEP 2
 // ==========================================
 
@@ -436,6 +462,11 @@ if (nextBtn) {
 
         if (!fullName || !studentNumber || !gender || !companyName || !section) {
             showAlert("Pakisagutan muna ang lahat ng kailangan sa Step 1.", 'alertMessageStep1');
+            return;
+        }
+
+        if (!STUDENT_NUMBER_REGEX.test(studentNumber)) {
+            showAlert("Mali ang format ng Student Number. Gamitin ang format na 2023-07-00975.", 'alertMessageStep1');
             return;
         }
 
@@ -472,6 +503,13 @@ if (scheduleNextBtn) {
 
         if (selectedDays.length === 0) {
             showAlert("Please select at least one internship day.", 'alertMessageStep2');
+            return;
+        }
+
+        const dutyStartDate = document.getElementById('dutyStartDate').value;
+
+        if (!dutyStartDate) {
+            showAlert("Please select your duty start date.", 'alertMessageStep2');
             return;
         }
 
@@ -755,6 +793,9 @@ async function saveProfileData(password) {
 
         // INTERNSHIP DAYS
         days: selectedDays,
+
+        // DUTY START DATE (format: YYYY-MM-DD)
+        startDate: document.getElementById('dutyStartDate').value,
 
         // MORNING
         morningEnabled: morningEnabled,

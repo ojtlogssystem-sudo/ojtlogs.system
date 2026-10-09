@@ -109,26 +109,6 @@
                     </div>
                 </div>
 
-                <!-- ==========================================
-                     AI STATUS CHARTS
-                     (Graduated by Batch Chart at Pie Chart)
-                =========================================== -->
-                <div class="ai-risk-charts-grid single-chart">
-
-                    <div class="chart-card">
-                        <h4 class="chart-card-title">Student Status Distribution</h4>
-                        <p class="chart-card-desc">
-                            Share of all registered students by AI status: At Risk (behind on hours
-                            or too many absences), Needs Monitoring, and On Track (including completed).
-                        </p>
-                        <div class="chart-canvas-wrapper">
-                            <canvas id="riskStatusPieChart"></canvas>
-                            <p class="chart-empty" id="riskStatusPieEmpty">Loading student data...</p>
-                        </div>
-                    </div>
-
-                </div>
-
                 <div class="risk-list">
                     <div class="subsection-title risk-subsection-title">
                         <h4 id="studentStatusListTitle">Students Requiring Attention</h4>
@@ -202,27 +182,61 @@
                             <input type="text" id="forecastSearch" placeholder="Search student...">
                         </div>
 
-                        <select id="forecastFilter">
-                            <option value="all">All Forecasts</option>
-                            <option value="on_time">On Time</option>
-                            <option value="catch_up">Can Catch Up</option>
-                            <option value="speed_up">Needs to Speed Up</option>
-                            <option value="miss">Will Miss Deadline</option>
-                            <option value="too_early">Too Early</option>
-                            <option value="completed">Completed</option>
-                        </select>
+                        <!-- FILTER -->
+                        <div class="toolbar-popover-wrap" id="forecastFilterWrap">
+                            <button type="button" class="toolbar-btn" id="forecastFilterBtn" aria-haspopup="true" aria-expanded="false">
+                                <i class="fa-solid fa-filter"></i> Filter
+                            </button>
 
-                        <select id="forecastSectionFilter">
-                            <option value="all">All Sections</option>
-                        </select>
+                            <div class="toolbar-popover" id="forecastFilterPanel" hidden>
+                                <label class="toolbar-popover-label" for="forecastFilter">Forecast</label>
+                                <select id="forecastFilter">
+                                    <option value="all">All Forecasts</option>
+                                    <option value="on_time">On Time</option>
+                                    <option value="catch_up">Can Catch Up</option>
+                                    <option value="speed_up">Needs to Speed Up</option>
+                                    <option value="miss">Will Miss Deadline</option>
+                                    <option value="too_early">Too Early</option>
+                                    <option value="completed">Completed</option>
+                                </select>
 
-                        <select id="forecastCompanyFilter">
-                            <option value="all">All Companies</option>
-                        </select>
+                                <label class="toolbar-popover-label" for="forecastSectionFilter">Section</label>
+                                <select id="forecastSectionFilter">
+                                    <option value="all">All Sections</option>
+                                </select>
 
-                        <button type="button" class="risk-reset-btn" id="forecastResetFilters">
-                            <i class="fa-solid fa-rotate-left"></i> Reset
-                        </button>
+                                <label class="toolbar-popover-label" for="forecastCompanyFilter">Company</label>
+                                <select id="forecastCompanyFilter">
+                                    <option value="all">All Companies</option>
+                                </select>
+
+                                <button type="button" class="risk-reset-btn toolbar-popover-reset" id="forecastResetFilters">
+                                    <i class="fa-solid fa-rotate-left"></i> Reset
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- SORT -->
+                        <div class="toolbar-popover-wrap" id="forecastSortWrap">
+                            <button type="button" class="toolbar-btn" id="forecastSortBtn" aria-haspopup="true" aria-expanded="false">
+                                <i class="fa-solid fa-arrow-down-up-across-line"></i> Sort
+                            </button>
+
+                            <div class="toolbar-popover" id="forecastSortPanel" hidden>
+                                <span class="toolbar-popover-label">Sort by</span>
+                                <button type="button" class="sort-option" data-sort-key="forecast">Forecast Status</button>
+                                <button type="button" class="sort-option" data-sort-key="name">Student Name</button>
+                                <button type="button" class="sort-option" data-sort-key="progress">Progress</button>
+                                <button type="button" class="sort-option" data-sort-key="remaining">Hours Remaining</button>
+                                <button type="button" class="sort-option" data-sort-key="estimated">Estimated Completion</button>
+                                <button type="button" class="sort-option" data-sort-key="deadline">Deadline</button>
+
+                                <div class="sort-dir">
+                                    <button type="button" class="sort-dir-btn" data-sort-dir="asc"><i class="fa-solid fa-arrow-up"></i> Ascending</button>
+                                    <button type="button" class="sort-dir-btn" data-sort-dir="desc"><i class="fa-solid fa-arrow-down"></i> Descending</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

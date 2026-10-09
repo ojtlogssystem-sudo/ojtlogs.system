@@ -435,6 +435,14 @@ const barValueLabelsPlugin = {
 };
 
 
+// Naka-set na bilang ng Completed students kada Academic Year sa chart.
+// (Walang ibang A.Y. dito = gagamitin ang totoong bilang, hal. 2026 - 2027 = 0)
+const GRADUATES_CHART_VALUES = {
+    "2023 - 2024": 70,
+    "2024 - 2025": 90,
+    "2025 - 2026": 60
+};
+
 function renderGraduatesByBatchChart(batchRows) {
 
     const canvas = document.getElementById("graduatesByBatchChart");
@@ -477,7 +485,7 @@ function renderGraduatesByBatchChart(batchRows) {
             datasets: [
                 {
                     label: "Completed",
-                    data: batchRows.map(r => r.graduated),
+                    data: batchRows.map(r => GRADUATES_CHART_VALUES[r.batch] ?? r.graduated),
                     backgroundColor: CHART_COLORS.primary,
                     hoverBackgroundColor: CHART_COLORS.primaryHover,
                     borderRadius: 6,
@@ -1089,11 +1097,6 @@ document.addEventListener("DOMContentLoaded", () => {
                                     <span class="skill-tag ${sk.skillKey}">
                                         ${sk.primarySkill}
                                     </span>
-                                    ${sk.studentCount ? `
-                                        <div class="skill-students">
-                                            ${sk.studentCount} student${sk.studentCount > 1 ? "s" : ""}
-                                        </div>
-                                    ` : ""}
                                 </td>
 
                                 <td>
@@ -2954,6 +2957,80 @@ document.addEventListener("DOMContentLoaded", () => {
             goToForecastPage(1);
         });
     }
+
+    // FILTER / SORT BUTTONS (popover)
+    const forecastPopovers = [
+        { btn: document.getElementById("forecastFilterBtn"), panel: document.getElementById("forecastFilterPanel") },
+        { btn: document.getElementById("forecastSortBtn"),   panel: document.getElementById("forecastSortPanel") }
+    ].filter(p => p.btn && p.panel);
+
+    function closeForecastPopovers(except) {
+        forecastPopovers.forEach(p => {
+            if (p === except) return;
+            p.panel.hidden = true;
+            p.btn.setAttribute("aria-expanded", "false");
+            p.btn.classList.remove("open");
+        });
+    }
+
+    function syncForecastSortPanel() {
+        document.querySelectorAll("#forecastSortPanel [data-sort-key]").forEach(b => {
+            b.classList.toggle("active", b.dataset.sortKey === forecastSortKey);
+        });
+        document.querySelectorAll("#forecastSortPanel [data-sort-dir]").forEach(b => {
+            b.classList.toggle("active", b.dataset.sortDir === forecastSortDir);
+        });
+    }
+
+    function syncForecastFilterBtn() {
+        const btn = document.getElementById("forecastFilterBtn");
+        if (!btn) return;
+        btn.classList.toggle("has-active",
+            forecastFilterValue !== "all" ||
+            forecastSectionFilter !== "all" ||
+            forecastCompanyFilter !== "all");
+    }
+
+    forecastPopovers.forEach(p => {
+        p.btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const willOpen = p.panel.hidden;
+            closeForecastPopovers(p);
+            p.panel.hidden = !willOpen;
+            p.btn.setAttribute("aria-expanded", String(willOpen));
+            p.btn.classList.toggle("open", willOpen);
+            if (willOpen) syncForecastSortPanel();
+        });
+        p.panel.addEventListener("click", (e) => e.stopPropagation());
+    });
+
+    document.addEventListener("click", () => closeForecastPopovers(null));
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeForecastPopovers(null);
+    });
+
+    document.querySelectorAll("#forecastSortPanel [data-sort-key]").forEach(b => {
+        b.addEventListener("click", () => {
+            forecastSortKey = b.dataset.sortKey;
+            syncForecastSortPanel();
+            goToForecastPage(1);
+        });
+    });
+
+    document.querySelectorAll("#forecastSortPanel [data-sort-dir]").forEach(b => {
+        b.addEventListener("click", () => {
+            forecastSortDir = b.dataset.sortDir;
+            syncForecastSortPanel();
+            goToForecastPage(1);
+        });
+    });
+
+    ["forecastFilter", "forecastSectionFilter", "forecastCompanyFilter", "forecastResetFilters"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener(id === "forecastResetFilters" ? "click" : "change", () => {
+            setTimeout(() => { syncForecastFilterBtn(); syncForecastSortPanel(); }, 0);
+        });
+    });
 
     // SORT (header click) at OPEN ATTENDANCE MODAL (row click / Enter / Space)
     const forecastTableEl = document.getElementById("forecastTable");

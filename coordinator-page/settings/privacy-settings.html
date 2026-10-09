@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Privacy Settings | OJT-LOGS</title>
+
+    <!-- Shared Layout -->
+    <link rel="stylesheet" href="../sidebar/sidebar-web.css">
+    <!-- Shared Header -->
+    <link rel="stylesheet" href="../header/header.css">
+    <!-- Page CSS -->
+    <link rel="stylesheet" href="privacy-settings.css">
+
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+
+</head>
+
+<body>
+
+<div class="dashboard">
+
+<!-- ===================== SIDEBAR ===================== -->
+
+<div id="sidebar-container"></div>
+
+<!-- ===================== MAIN CONTENT ===================== -->
+
+<main class="main">
+
+<!-- HEADER (shared: ../header/header.js + header.html)
+     Walang data-school-year dito - sa Reports page lang ang School Year. -->
+<header
+    id="header-container"
+    data-page-title="Privacy Settings"
+    data-page-subtitle="Control what others see and how your information is used."
+></header>
+
+<section class="settings-page">
+
+    <!-- ============ DATA & ANALYTICS ============ -->
+
+    <div class="settings-card">
+
+        <div class="card-header">
+            <div>
+                <h3>
+                    <i class="fa-solid fa-chart-line"></i>
+                    Data and analytics
+                </h3>
+                <p>How OJT-LOGS uses your activity inside the system.</p>
+            </div>
+        </div>
+
+        <div class="setting-list">
+
+            <div class="setting-row privacy-toggle">
+                <div class="setting-text">
+                    <h4>Use my activity to improve risk predictions</h4>
+                    <p>Anonymized usage data helps tune the at-risk student model.</p>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" data-key="analyticsConsent">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-row privacy-toggle">
+                <div class="setting-text">
+                    <h4>Keep a sign-in history</h4>
+                    <p>Records the date and device of each sign-in so you can spot unusual access.</p>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" data-key="loginHistory">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ============ SIGN-IN ACTIVITY ============ -->
+
+    <div class="settings-card">
+
+        <div class="card-header">
+            <div>
+                <h3>
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    Sign-in activity
+                </h3>
+                <p>Check this if you think someone else used your account.</p>
+            </div>
+        </div>
+
+        <div class="setting-list">
+
+            <div class="setting-row">
+                <div class="setting-text">
+                    <h4>This session</h4>
+                    <p>
+                        Last sign-in <strong id="lastSignIn">—</strong>
+                    </p>
+                    <p class="uid-line" id="deviceInfo">Device: —</p>
+                </div>
+                <div class="setting-action">
+                    <button type="button" class="btn btn-secondary" id="signOutBtn">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                        Sign out
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ============ YOUR DATA ============ -->
+
+    <div class="settings-card">
+
+        <div class="card-header">
+            <div>
+                <h3>
+                    <i class="fa-solid fa-folder-open"></i>
+                    Your data
+                </h3>
+                <p>Get a copy of your information or ask for it to be corrected or removed.</p>
+            </div>
+        </div>
+
+        <div class="setting-list">
+
+            <div class="setting-row">
+                <div class="setting-text">
+                    <h4>Download my data</h4>
+                    <p>A JSON copy of your account, profile, and privacy preferences.</p>
+                </div>
+                <div class="setting-action">
+                    <button type="button" class="btn btn-secondary" id="downloadData">
+                        <i class="fa-solid fa-download"></i>
+                        Download
+                    </button>
+                </div>
+            </div>
+
+            <div class="setting-row danger-row">
+                <div class="setting-text">
+                    <h4>Request data deletion</h4>
+                    <p>
+                        An administrator reviews the request. Records tied to student
+                        OJT compliance are kept as required by the school.
+                    </p>
+                </div>
+                <div class="setting-action">
+                    <button type="button" class="btn btn-danger" id="requestDeletion">
+                        <i class="fa-solid fa-trash-can"></i>
+                        Request deletion
+                    </button>
+                </div>
+            </div>
+
+            <div class="setting-row">
+                <div class="setting-text">
+                    <h4>Privacy notice</h4>
+                    <p>
+                        <span id="consentStatus">Not yet acknowledged</span>
+                    </p>
+                </div>
+                <div class="setting-action">
+                    <button type="button" class="btn btn-primary" id="acknowledgePolicy">
+                        <i class="fa-solid fa-circle-check"></i>
+                        I acknowledge
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ============ DATA PROTECTION AGREEMENT (TAB) ============ -->
+
+    <div class="settings-card agreement-card">
+
+        <button type="button" class="agreement-tab" id="openAgreement"
+                aria-haspopup="dialog" aria-controls="agreementModal">
+            <span class="agreement-tab-icon">
+                <i class="fa-solid fa-file-shield"></i>
+            </span>
+            <span class="agreement-tab-text">
+                <strong>Coordinator Data Protection &amp; Administrative Agreement</strong>
+                <small>Read your responsibilities under the Data Privacy Act of 2012 (RA 10173).</small>
+            </span>
+            <i class="fa-solid fa-chevron-right agreement-tab-arrow"></i>
+        </button>
+
+    </div>
+
+</section>
+
+</main>
+
+</div>
+
+<!-- AGREEMENT MODAL -->
+
+<div class="agreement-overlay" id="agreementModal" role="dialog"
+     aria-modal="true" aria-labelledby="agreementTitle" hidden>
+
+    <div class="agreement-container">
+
+        <div class="agreement-head">
+            <h2 id="agreementTitle">OJT-LOGS: Coordinator Data Protection &amp; Administrative Agreement</h2>
+            <button type="button" class="agreement-close" id="closeAgreement" aria-label="Close">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="agreement-body">
+
+            <p class="agreement-notice">
+                <strong>Notice:</strong> As an authorized OJT Coordinator and System
+                Administrator, your access to the OJT-LOGS platform grants you authority
+                to handle confidential student data. By accessing this system, you agree
+                to adhere to the provisions of the Data Privacy Act of 2012 (RA 10173)
+                and GRC administrative standards.
+            </p>
+
+            <h3>1. Scope of Authorized Access</h3>
+            <ul>
+                <li>Access is granted solely for monitoring student attendance, validating
+                    rendered hours, reviewing supervisor evaluations, managing partner
+                    company profiles, and conducting academic performance audits.</li>
+                <li>Credentials and administrative access must not be shared, transferred,
+                    or delegated to unauthorized individuals.</li>
+            </ul>
+
+            <h3>2. Confidentiality &amp; Data Protection (RA 10173 Compliance)</h3>
+            <ul>
+                <li>All student profile records, daily attendance logs, verification
+                    photographs, and performance analytics are strictly confidential.</li>
+                <li>Administrators must refrain from exporting, copying, or distributing
+                    student data outside official academic channels or downloading records
+                    onto unsecured personal devices.</li>
+            </ul>
+
+            <h3>3. Analytics &amp; Decision Support Responsibility</h3>
+            <ul>
+                <li>Data generated by the <strong>Predictive Analytics (At-Risk Interns)</strong>
+                    and <strong>Diagnostic Analytics (Skill Gap Analysis)</strong> modules
+                    serve strictly as decision-support tools.</li>
+                <li>Administrative interventions (e.g., counseling, student follow-ups, or
+                    company recommendations) must remain unbiased, academically justified,
+                    and guided by institutional policies.</li>
+            </ul>
+
+            <h3>4. Record Auditability and Archiving</h3>
+            <ul>
+                <li>All administrative actions, including manual adjustments to student
+                    logs, evaluation overrides, and batch archiving, are tracked in the
+                    system's audit trail.</li>
+                <li>Official exported reports (e.g., PDF summary logs and clearance sheets)
+                    must be stored and handled in compliance with GRC data retention
+                    policies.</li>
+            </ul>
+
+            <h3>5. System Integrity &amp; Misuse</h3>
+            <ul>
+                <li>Deliberate alteration of verified student records, falsification of
+                    completion status, or misuse of administrative privileges will
+                    constitute a breach of institutional policy and data protection
+                    regulations.</li>
+            </ul>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- TOAST -->
+
+<div class="toast" id="toast">
+    <i class="fa-solid fa-circle-check" id="toastIcon"></i>
+    <span id="toastMessage">Changes saved.</span>
+</div>
+
+<script src="../sidebar/sidebar-web.js"></script>
+<script type="module" src="../header/header.js"></script>
+<script type="module" src="privacy-settings.js"></script>
+
+</body>
+</html>

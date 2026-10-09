@@ -8,6 +8,9 @@
 
     <link rel="stylesheet" href="../sidebar/sidebar-web.css">
     <link rel="stylesheet" href="companies.css">
+
+    <!-- Shared Coordinator Header CSS -->
+    <link rel="stylesheet" href="../header/header.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
@@ -23,29 +26,17 @@
     <!-- MAIN -->
     <main class="main">
 
-        <!-- Header -->
-        <header>
-            <div>
-                <h2>Companies</h2>
-                <p>Manage OJT partner companies and student placements.</p>
-            </div>
-
-            <div class="top-right">
-                <div class="notification">
-                    <i class="fa-regular fa-bell"></i>
-                    <span class="badge">3</span>
-                </div>
-
-                <div class="profile">
-                    <div class="avatar" id="userAvatar">CO</div>
-                    <div class="profile-info">
-                        <h4 id="userName">Coordinator</h4>
-                        <p id="userRole">OJT Coordinator</p>
-                    </div>
-                    <i class="fa-solid fa-chevron-down"></i>
-                </div>
-            </div>
-        </header>
+        <!-- =================================================
+             HEADER
+             (Loaded from ../header/header.html by
+             ../header/header.js - iisang file na lang ang
+             ie-edit kapag may babaguhin sa header.)
+        ================================================== -->
+        <header
+            id="header-container"
+            data-page-title="Companies"
+            data-page-subtitle="Manage OJT partner companies and student placements."
+        ></header>
 
         <!-- Companies Content -->
         <div class="companies-content">
@@ -79,33 +70,35 @@
                         placeholder="Search Company...">
                 </div>
 
-                <div class="custom-dropdown">
-                    <i class="fa-solid fa-filter icon-left"></i>
+                <!-- FILTER BUTTON + POPOVER -->
+                <div class="toolbar-menu" id="filterMenu">
+                    <button type="button" class="toolbar-btn" id="filterBtn" aria-haspopup="true" aria-expanded="false">
+                        <svg class="toolbar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                        <span>Filter</span>
+                        <span class="toolbar-badge" id="filterBadge" hidden>1</span>
+                    </button>
 
-                    <select id="companyFilter">
-                        <option value="" disabled selected hidden>Filter</option>
-                        <option value="All">All Companies</option>
-                        <option value="Active">Active</option>
-                        <option value="Full">Full</option>
-                        <option value="Inactive">Inactive</option>
-                    </select>
-
-                    <i class="fa-solid fa-chevron-down icon-right"></i>
+                    <div class="toolbar-popover" id="filterPopover">
+                        <button type="button" class="menu-option active" data-filter="All">All Companies</button>
+                        <button type="button" class="menu-option" data-filter="Active">Active</button>
+                        <button type="button" class="menu-option" data-filter="Inactive">Inactive</button>
+                    </div>
                 </div>
 
+                <!-- SORT BUTTON + POPOVER -->
+                <div class="toolbar-menu" id="sortMenu">
+                    <button type="button" class="toolbar-btn" id="sortBtn" aria-haspopup="true" aria-expanded="false">
+                        <svg class="toolbar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg>
+                        <span>Sort</span>
+                    </button>
 
-                <div class="custom-dropdown">
-                    <i class="fa-solid fa-arrow-down-short-wide icon-left"></i>
-
-                    <select id="companySort">
-                        <option value="" disabled selected hidden>Sort by</option>
-                        <option value="name-asc">Name (A-Z)</option>
-                        <option value="name-desc">Name (Z-A)</option>
-                        <option value="students-high">Most Students</option>
-                        <option value="students-low">Least Students</option>
-                    </select>
-
-                    <i class="fa-solid fa-chevron-down icon-right"></i>
+                    <div class="toolbar-popover" id="sortPopover">
+                        <button type="button" class="menu-option active" data-sort="default">Default</button>
+                        <button type="button" class="menu-option" data-sort="name-asc">Name (A-Z)</button>
+                        <button type="button" class="menu-option" data-sort="name-desc">Name (Z-A)</button>
+                        <button type="button" class="menu-option" data-sort="students-high">Most Students</button>
+                        <button type="button" class="menu-option" data-sort="students-low">Least Students</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -196,11 +189,6 @@
                     <input type="text" id="newCompanyLocation" placeholder="e.g. Caloocan City" required>
                 </div>
 
-                <div class="input-group">
-                    <label for="newCompanyIndustry">Industry / Tag</label>
-                    <input type="text" id="newCompanyIndustry" placeholder="e.g. Telecommunication" required>
-                </div>
-
                 <button type="submit" id="saveCompanyBtn" class="add-btn full-width" style="margin-top: 15px;">
                     <i class="fa-solid fa-floppy-disk"></i> Save Company & Generate QR Code
                 </button>
@@ -244,11 +232,6 @@
                 <div class="input-group">
                     <label for="editCompanyLocation">Location / City</label>
                     <input type="text" id="editCompanyLocation" required>
-                </div>
-
-                <div class="input-group">
-                    <label for="editCompanyIndustry">Industry / Tag</label>
-                    <input type="text" id="editCompanyIndustry" required>
                 </div>
 
                 <button type="submit" id="updateCompanyBtn" class="add-btn full-width" style="margin-top: 15px;">
@@ -316,6 +299,40 @@
     </div>
 </div>
 
+<!-- MODAL 4B: EVALUATION STATUS PER STUDENT (PREVIEW) -->
+<div id="evaluationStatusModal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 520px;">
+        <div class="modal-header">
+            <h3>Evaluation Status</h3>
+            <span class="close-modal" id="closeEvaluationStatusModal">&times;</span>
+        </div>
+        <div class="modal-body" style="text-align: left;">
+
+            <p class="sub-text" id="evaluationStatusCompanyLabel">Company Name</p>
+
+            <div id="evaluationStatusList" class="eval-status-list">
+                <p style="text-align:center; color:#94a3b8; padding: 20px 0; font-size: 13px;">
+                    Loading students...
+                </p>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- MODAL 4C: VIEW SUBMITTED EVALUATION ANSWERS -->
+<div id="evaluationAnswersModal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 560px;">
+        <div class="modal-header">
+            <h3 id="evaluationAnswersTitle">Evaluation Answers</h3>
+            <span class="close-modal" id="closeEvaluationAnswersModal">&times;</span>
+        </div>
+        <div class="modal-body" style="text-align: left;">
+            <div id="evaluationAnswersContent"></div>
+        </div>
+    </div>
+</div>
+
 <!-- MODAL 5: CUSTOM DELETE CONFIRMATION -->
 <div id="deleteConfirmModal" class="modal-overlay">
     <div class="modal-box" style="max-width: 400px; text-align: center;">
@@ -340,6 +357,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 
 <script src="../sidebar/sidebar-web.js"></script>
+<script type="module" src="../header/header.js"></script>
 <script type="module" src="companies.js"></script>
 
 </body>

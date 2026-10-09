@@ -9,6 +9,9 @@
     <link rel="stylesheet" href="../sidebar/sidebar-web.css">
     <link rel="stylesheet" href="students.css">
 
+    <!-- Shared Coordinator Header CSS -->
+    <link rel="stylesheet" href="../header/header.css">
+
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
     
@@ -25,28 +28,17 @@
 
             <!-- MAIN -->
             <main class="main">
-                <header>
-                    <div>
-                        <h2>Students</h2>
-                        <p>Manage all student interns.</p>
-                    </div>
-
-                    <div class="top-right">
-                        <div class="notification">
-                            <i class="fa-regular fa-bell"></i>
-                            <span class="badge">3</span>
-                        </div>
-
-                        <div class="profile">
-                            <div class="avatar" id="userAvatar">MS</div>
-                            <div class="profile-info">
-                                <h4 id="userName">Coordinator</h4>
-                                <p id="userRole">OJT Coordinator</p>
-                            </div>
-                            <i class="fa-solid fa-chevron-down"></i>
-                        </div>
-                    </div>
-                </header>
+                <!-- =================================================
+                     HEADER
+                     (Loaded from ../header/header.html by
+                     ../header/header.js - iisang file na lang ang
+                     ie-edit kapag may babaguhin sa header.)
+                ================================================== -->
+                <header
+                    id="header-container"
+                    data-page-title="Students"
+                    data-page-subtitle="Manage all student interns."
+                ></header>
 
                 <!-- STUDENTS CONTENT -->
                 <div class="students-content">
@@ -57,10 +49,17 @@
                             <p>View, search, and manage all enrolled student intern profiles and assignments.</p>
                         </div>
 
-                        <button class="add-btn" id="addStudentBtn">
-                            <i class="fa-solid fa-user-plus"></i>
-                            Invite Student
-                        </button>
+                        <div class="header-actions">
+                            <button class="export-btn" id="exportCsvBtn">
+                                <i class="fa-solid fa-file-csv"></i>
+                                Export CSV
+                            </button>
+
+                            <button class="add-btn" id="addStudentBtn">
+                                <i class="fa-solid fa-user-plus"></i>
+                                Invite Student
+                            </button>
+                        </div>
                     </div>
 
                     <!-- STUDENT TABLE CARD -->
@@ -73,19 +72,59 @@
                                     <input type="text" id="searchStudent" placeholder="Search student...">
                                 </div>
 
-                                <select id="sortSelect">
-                                    <option value="Sort By">Sort By</option>
-                                    <option value="Name (A-Z)">Name (A-Z)</option>
-                                    <option value="Name (Z-A)">Name (Z-A)</option>
-                                    <option value="Student ID">Student ID</option>
-                                </select>
+                                <!-- FILTER BUTTON + POPOVER -->
+                                <div class="toolbar-menu" id="filterMenu">
+                                    <button type="button" class="toolbar-btn" id="filterBtn" aria-haspopup="true" aria-expanded="false">
+                                        <svg class="toolbar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                                        <span>Filter</span>
+                                        <span class="toolbar-badge" id="filterBadge" hidden>0</span>
+                                    </button>
 
-                                <select id="statusFilter">
-                                    <option value="All Status">All Status</option>
-                                    <option value="Active">Active</option>
-                                    <option value="Pending">Pending</option>
-                                    <option value="Completed">Completed</option>
-                                </select>
+                                    <div class="toolbar-popover" id="filterPopover">
+                                        <div class="popover-field">
+                                            <label for="yearFilter">Academic Year</label>
+                                            <select id="yearFilter">
+                                                <option value="All Academic Years">All Academic Years</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="popover-field">
+                                            <label for="statusFilter">Status</label>
+                                            <select id="statusFilter">
+                                                <option value="All Status">All Status</option>
+                                                <option value="Active">Active</option>
+                                                <option value="Pending">Pending</option>
+                                                <option value="Completed">Completed</option>
+                                            </select>
+                                        </div>
+
+                                        <button type="button" class="popover-reset" id="resetFilterBtn">Reset filters</button>
+                                    </div>
+                                </div>
+
+                                <!-- SORT BUTTON + POPOVER -->
+                                <div class="toolbar-menu" id="sortMenu">
+                                    <button type="button" class="toolbar-btn" id="sortBtn" aria-haspopup="true" aria-expanded="false">
+                                        <svg class="toolbar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg>
+                                        <span>Sort</span>
+                                    </button>
+
+                                    <div class="toolbar-popover sort-popover" id="sortPopover">
+                                        <button type="button" class="sort-option active" data-sort="Sort By">Default</button>
+                                        <button type="button" class="sort-option" data-sort="Name (A-Z)">Name (A-Z)</button>
+                                        <button type="button" class="sort-option" data-sort="Name (Z-A)">Name (Z-A)</button>
+                                        <button type="button" class="sort-option" data-sort="Student ID">Student ID</button>
+                                    </div>
+
+                                    <!-- Hidden na lang ang select para gumana pa rin ang existing sorting logic -->
+                                    <select id="sortSelect" hidden>
+                                        <option value="Sort By">Sort By</option>
+                                        <option value="Name (A-Z)">Name (A-Z)</option>
+                                        <option value="Name (Z-A)">Name (Z-A)</option>
+                                        <option value="Student ID">Student ID</option>
+                                    </select>
+                                </div>
+
                             </div>
                         </div>
 
@@ -93,19 +132,21 @@
                             <table class="students-table">
                                 <thead>
                                     <tr>
-                                        <th>Photo <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
-                                        <th>Student ID <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
-                                        <th>Name <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
-                                        <th>Course <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
-                                        <th>Section <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
-                                        <th>Company <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
-                                        <th>Status <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
-                                        <th>Actions <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
+                                        <th class="col-no">No.</th>
+                                        <th>Photo</th>
+                                        <th>Student ID</th>
+                                        <th>Name</th>
+                                        <th>Course</th>
+                                        <th>Section</th>
+                                        <th>Company</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
                                 </thead>
                                 
                                 <tbody id="studentTable">
                                     <tr>
-                                        <td colspan="7" style="text-align: center; padding: 25px; color: #888;">
+                                        <td colspan="9" style="text-align: center; padding: 25px; color: #888;">
                                             Loading student data...
                                         </td>
                                     </tr>
@@ -128,8 +169,10 @@
                             <div class="rows-per-page">
                                 <label for="rowsPerPageSelect">Rows per page:</label>
                                 <select id="rowsPerPageSelect">
+                                    <option value="auto" selected>Auto</option>
                                     <option value="5">5</option>
-                                    <option value="8" selected>8</option>
+                                    <option value="6">6</option>
+                                    <option value="8">8</option>
                                     <option value="15">15</option>
                                 </select>
                             </div>
@@ -138,7 +181,8 @@
                 </div>
             </main>
         </div>
-            <!-- INVITE STUDENT MODAL -->
+
+        <!-- INVITE STUDENT MODAL -->
         <div class="modal" id="inviteModal">
             <div class="modal-content">
                 <div class="modal-header">
@@ -177,72 +221,117 @@
 
         <!-- EDIT STUDENT MODAL -->
         <div class="modal" id="editModal">
-            <div class="modal-content">
+            <div class="modal-content profile-modal-content">
                 <div class="modal-header">
-                    <h3>
-                        <i class="fa-solid fa-user-pen"></i>
-                        Edit Student Details
-                    </h3>
-                    <span class="close-modal" id="closeEditModal">&times;</span>
+                    <div class="modal-title-wrapper">
+                        <div class="modal-icon-badge">
+                            <i class="fa-solid fa-calendar"></i>
+                        </div>
+                        <div>
+                            <h3>Edit OJT Schedule</h3>
+                            <p>Update intern weekly schedule.</p>
+                        </div>
+                    </div>
+                    <button type="button" class="close-modal-btn" id="closeEditModalBtn">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
                 </div>
 
-                <form id="editStudentForm">
+                <form id="editStudentForm" class="profile-form">
                     <input type="hidden" id="editStudentEmail">
+                    
+                    <div class="modal-body-scroll">
+                        <!-- Schedule Section -->
+                        <div class="form-section-title">OJT Schedule & Shift</div>
 
-                    <p class="modal-description">
-                        Update the information for this student intern:
-                    </p>
-
-                    <div class="form-group">
-                        <label>Student ID</label>
-                        <div class="input-with-icon">
-                            <i class="fa-solid fa-id-card"></i>
-                            <input type="text" id="editStudentId" placeholder="e.g. 2024001">
+                        <div class="form-group" style="margin-bottom: 14px;">
+                            <label for="editOjtStartDate"><i class="fa-solid fa-calendar-check"></i> OJT Start Date</label>
+                            <input type="date" id="editOjtStartDate" class="modal-time-input-full">
                         </div>
-                    </div>
 
-                    <div class="form-group">
-                        <label>Full Name</label>
-                        <div class="input-with-icon">
-                            <i class="fa-regular fa-user"></i>
-                            <input type="text" id="editStudentName" required placeholder="Full Name">
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Course</label>
-                            <div class="input-with-icon">
-                                <i class="fa-solid fa-graduation-cap"></i>
-                                <input type="text" id="editStudentCourse" placeholder="BSIT">
+                        <div class="form-group" style="margin-bottom: 14px;">
+                            <label>Days of the Week</label>
+                            <div class="days-checkbox-group">
+                                <label class="day-chip-checkbox"><input type="checkbox" name="editDays" value="Mon"> <span>Mon</span></label>
+                                <label class="day-chip-checkbox"><input type="checkbox" name="editDays" value="Tue"> <span>Tue</span></label>
+                                <label class="day-chip-checkbox"><input type="checkbox" name="editDays" value="Wed"> <span>Wed</span></label>
+                                <label class="day-chip-checkbox"><input type="checkbox" name="editDays" value="Thu"> <span>Thu</span></label>
+                                <label class="day-chip-checkbox"><input type="checkbox" name="editDays" value="Fri"> <span>Fri</span></label>
+                                <label class="day-chip-checkbox"><input type="checkbox" name="editDays" value="Sat"> <span>Sat</span></label>
+                                <label class="day-chip-checkbox"><input type="checkbox" name="editDays" value="Sun"> <span>Sun</span></label>
                             </div>
                         </div>
-                        <div class="form-group">
-                            <label>Section</label>
-                            <div class="input-with-icon">
-                                <i class="fa-solid fa-users"></i>
-                                <input type="text" id="editStudentSection" placeholder="3A">
+
+                        <!-- Morning Session Toggle -->
+                        <div class="schedule-toggle-card">
+                            <div class="schedule-card-header" style="margin-bottom: 0;">
+                                <div class="schedule-card-icon morning-icon"><i class="fa-solid fa-cloud-sun"></i></div>
+                                <div>
+                                    <h4>Morning Session</h4>
+                                    <p id="morningToggleStatusText" class="toggle-status-text enabled">Enabled</p>
+                                </div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="editMorningEnabled" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <!-- Morning Schedule Card -->
+                        <div class="schedule-time-card" id="morningTimeCard">
+                            <div class="schedule-card-header">
+                                <div class="schedule-card-icon morning-icon"><i class="fa-solid fa-cloud-sun"></i></div>
+                                <div>
+                                    <h4>Morning</h4>
+                                    <p>Set your morning working hours</p>
+                                </div>
+                            </div>
+                            <div class="form-grid schedule-time-grid">
+                                <div class="form-group">
+                                    <label><i class="fa-regular fa-clock"></i> Time In</label>
+                                    <input type="time" id="editMorningIn" class="modal-time-input-full">
+                                </div>
+                                <div class="form-group">
+                                    <label><i class="fa-regular fa-clock"></i> Time Out</label>
+                                    <input type="time" id="editMorningOut" class="modal-time-input-full">
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="form-group">
-                        <label>Company</label>
-                        <div class="input-with-icon">
-                            <i class="fa-solid fa-building"></i>
-                            <input type="text" id="editStudentCompany" placeholder="Company Name">
+                        <!-- Afternoon Session Toggle -->
+                        <div class="schedule-toggle-card">
+                            <div class="schedule-card-header" style="margin-bottom: 0;">
+                                <div class="schedule-card-icon afternoon-icon"><i class="fa-solid fa-sun"></i></div>
+                                <div>
+                                    <h4>Afternoon Session</h4>
+                                    <p id="afternoonToggleStatusText" class="toggle-status-text enabled">Enabled</p>
+                                </div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="editAfternoonEnabled" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
                         </div>
-                    </div>
 
-                    <div class="form-group">
-                        <label>Status</label>
-                        <div class="input-with-icon">
-                            <i class="fa-solid fa-list-check"></i>
-                            <select id="editStudentStatus" class="modal-select">
-                                <option value="Pending">Pending</option>
-                                <option value="Active">Active</option>
-                                <option value="Completed">Completed</option>
-                            </select>
+                        <!-- Afternoon Schedule Card -->
+                        <div class="schedule-time-card" id="afternoonTimeCard">
+                            <div class="schedule-card-header">
+                                <div class="schedule-card-icon morning-icon"><i class="fa-solid fa-cloud-sun"></i></div>
+                                <div>
+                                    <h4>Afternoon</h4>
+                                    <p>Set your afternoon working hours</p>
+                                </div>
+                            </div>
+                            <div class="form-grid schedule-time-grid">
+                                <div class="form-group">
+                                    <label><i class="fa-regular fa-clock"></i> Time In</label>
+                                    <input type="time" id="editAfternoonIn" class="modal-time-input-full">
+                                </div>
+                                <div class="form-group">
+                                    <label><i class="fa-regular fa-clock"></i> Time Out</label>
+                                    <input type="time" id="editAfternoonOut" class="modal-time-input-full">
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -265,19 +354,23 @@
                     <span class="close-modal" id="closeViewModal">&times;</span>
                 </div>
 
-                <!-- DIVIDER LINE SA ILALIM NG TITLE -->
                 <hr class="modal-divider">
 
                 <div class="modal-body">
                     <div class="profile-header-card">
-                        <div class="profile-avatar-box" id="viewStudentAvatar">
-                            <!-- Dynamic Initials / Photo -->
-                        </div>
+                        <div class="profile-avatar-box" id="viewStudentAvatar"></div>
                         <div class="profile-header-info">
                             <h4 id="viewStudentName">Student Name</h4>
-                        
-                                <span class="status-pill pending" id="viewStudentStatus">Pending</span>
-            
+                            <span class="status-pill pending" id="viewStudentStatus">Pending</span>
+                        </div>
+
+                        <!-- GENDER (nasa kanan, sa dulo ng profile header) -->
+                        <div class="profile-gender">
+                            <span class="profile-gender-label">Gender</span>
+                            <span class="profile-gender-value" id="viewStudentGenderBox">
+                                <i class="fa-solid fa-venus-mars" id="viewStudentGenderIcon"></i>
+                                <span id="viewStudentGender">Not specified</span>
+                            </span>
                         </div>
                     </div>
 
@@ -301,7 +394,7 @@
                         <div class="detail-card">
                             <div class="icon-box"><i class="fa-solid fa-graduation-cap"></i></div>
                             <div class="detail-info">
-                                <label>COURSE & SECTION</label>
+                                <label>SECTION</label>
                                 <span id="viewStudentCourseDetail">-</span>
                             </div>
                         </div>
@@ -313,24 +406,63 @@
                                 <span id="viewStudentCompany">Pending Assignment</span>
                             </div>
                         </div>
+
+                        <!-- OJT START DATE CARD -->
+                        <div class="detail-card detail-card-full">
+                            <div class="icon-box"><i class="fa-solid fa-calendar-check"></i></div>
+                            <div class="detail-info">
+                                <label>OJT START DATE</label>
+                                <span id="viewStudentStartDate">Not set</span>
+                            </div>
+                        </div>
+
+                        <!-- SCHEDULE CARD -->
+                        <div class="detail-card detail-card-full">
+                            <div class="icon-box"><i class="fa-solid fa-calendar-days"></i></div>
+                            <div class="detail-info">
+                                <label>OJT SCHEDULE</label>
+                                <span id="viewStudentSchedule">No schedule set</span>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="profile-actions">
-                        <button type="button" class="btn-view-details" onclick="window.location.href='/coordinator-page/attendance/attendance_details.html'">
+                        <button type="button" class="btn-view-details" onclick="viewFullAccountDetails()">
                             <i class="fa-solid fa-user-gear"></i> View Account Details
                         </button>
 
                         <button type="button" class="btn-edit-modal" onclick="openEditModalFromProfile()">
-                            <i class="fa-solid fa-pen-to-square"></i> Edit Profile
+                            <i class="fa-solid fa-pen-to-square"></i> Edit Intern Schedule 
                         </button>       
                     </div>     
                 </div>
             </div>
         </div>
+
+        <!-- DELETE / ARCHIVE CONFIRMATION MODAL -->
+        <div class="modal" id="deleteConfirmModal">
+            <div class="modal-content" style="max-width: 380px; text-align: center; padding: 25px;">
+                <div style="font-size: 45px; color: #ff5a5f; margin-bottom: 15px;">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <h3 style="font-size: 18px; font-weight: 700; color: #1a1a1a; margin-bottom: 10px;">Are you sure?</h3>
+                <p class="modal-description" style="margin-bottom: 20px;">
+                    This will erase this student's profile data (name, company, schedule, etc.) and revoke their access to the system. This action cannot be undone.
+                </p>
+                <div class="modal-actions" style="justify-content: center; gap: 10px;">
+                    <button type="button" class="btn-cancel" id="cancelDeleteBtn" style="flex: 1;">Cancel</button>
+                    <button type="button" class="btn-submit" id="confirmDeleteBtn" style="flex: 1; background: #ff5a5f; box-shadow: 0 2px 6px rgba(255,90,95,0.3);">Yes, Delete</button>
+                </div>
+            </div>
+        </div>
+
     </div>
-        
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div class="toast-container" id="toastContainer"></div>
 
 <script src="../sidebar/sidebar-web.js"></script>
+<script type="module" src="../header/header.js"></script>
 <script type="module" src="students.js"></script>
 
 </body>

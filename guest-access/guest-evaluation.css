@@ -15,7 +15,6 @@
 body {
     margin: 0;
     min-height: 100vh;
-
     background:
         linear-gradient(
             135deg,
@@ -41,15 +40,11 @@ body {
 
 .guest-card {
     background: #fff;
-
     border: 1px solid #e2e8f0;
-
     box-shadow:
         0 16px 40px
         rgba(15, 23, 42, .09);
-
     border-radius: 18px;
-
     padding: 32px;
 }
 
@@ -61,15 +56,10 @@ body {
 .brand {
     display: flex;
     align-items: center;
-
     gap: 9px;
-
     color: #980b0b;
-
     font-weight: 700;
-
     letter-spacing: .4px;
-
     margin-bottom: 28px;
 }
 
@@ -84,42 +74,32 @@ body {
 
 .eyebrow {
     color: #ab0a0a;
-
     letter-spacing: 1.1px;
-
     font-size: 11px;
-
     font-weight: 700;
-
     margin: 0 0 6px;
 }
 
 h1 {
     font-size: 28px;
-
     margin: 0 0 8px;
 }
 
 h2 {
     font-size: 18px;
-
     margin: 0;
 }
 
 h3 {
     margin: 0;
-
     font-size: 14px;
 }
 
 .intro,
 .form-description {
     color: #64748b;
-
     font-size: 13px;
-
     line-height: 1.7;
-
     margin-bottom: 24px;
 }
 
@@ -130,42 +110,28 @@ h3 {
 
 .info-box {
     display: grid;
-
     grid-template-columns:
         repeat(2, minmax(0, 1fr));
-
     gap: 15px;
-
     background: #fff7f7;
-
     border: 1px solid #fee2e2;
-
     border-radius: 10px;
-
     padding: 15px;
-
     margin-bottom: 20px;
 }
 
 .info-box span {
     display: block;
-
     color: #94a3b8;
-
     font-size: 10px;
-
     font-weight: 600;
-
     text-transform: uppercase;
-
     letter-spacing: .5px;
-
     margin-bottom: 4px;
 }
 
 .info-box strong {
     font-size: 13px;
-
     color: #334155;
 }
 
@@ -180,13 +146,9 @@ h3 {
 
 label {
     display: block;
-
     color: #334155;
-
     font-size: 12px;
-
     font-weight: 600;
-
     margin-bottom: 7px;
 }
 
@@ -195,19 +157,12 @@ textarea,
 input[type="text"],
 input[type="date"] {
     width: 100%;
-
     border: 1px solid #cbd5e1;
-
     border-radius: 8px;
-
     padding: 11px 12px;
-
     color: #334155;
-
     font: inherit;
-
     font-size: 13px;
-
     background: #fff;
 }
 
@@ -215,9 +170,7 @@ select:focus,
 textarea:focus,
 input:focus {
     outline: none;
-
     border-color: #ab0a0a;
-
     box-shadow:
         0 0 0 3px
         #fee2e2;
@@ -230,21 +183,15 @@ input:focus {
 
 .history-panel {
     border: 1px solid #e2e8f0;
-
     border-radius: 11px;
-
     background: #f8fafc;
-
     margin: 22px 0;
-
     padding: 18px;
 }
 
 .panel-heading {
     display: flex;
-
     justify-content: space-between;
-
     align-items: flex-start;
 }
 
@@ -254,41 +201,29 @@ input:focus {
 
 .panel-heading p {
     margin: 3px 0 0;
-
     font-size: 11px;
-
     color: #64748b;
 }
 
 .task-history {
     margin-top: 12px;
-
     max-height: 260px;
-
     overflow: auto;
 }
 
 .task {
     background: #fff;
-
     border-left: 3px solid #ab0a0a;
-
     padding: 11px 13px;
-
     border-radius: 5px;
-
     margin-top: 8px;
-
     font-size: 12px;
 }
 
 .task time {
     color: #64748b;
-
     display: block;
-
     font-size: 10px;
-
     margin-bottom: 3px;
 }
 
@@ -299,33 +234,25 @@ input:focus {
 
 .evaluation-form {
     margin-top: 30px;
-
     border-top: 1px solid #e2e8f0;
-
     padding-top: 28px;
 }
 
 .form-section-title {
     margin: 35px 0 18px;
-
     padding-bottom: 10px;
-
     border-bottom: 2px solid #ab0a0a;
 }
 
 .form-section-title span {
     color: #ab0a0a;
-
     font-size: 10px;
-
     font-weight: 700;
-
     letter-spacing: 1px;
 }
 
 .form-section-title h2 {
     margin-top: 4px;
-
     color: #1e293b;
 }
 
@@ -336,55 +263,37 @@ input:focus {
 
 .evaluation-category {
     border: 1px solid #cbd5e1;
-
     border-radius: 8px;
-
     overflow: hidden;
-
     margin-bottom: 24px;
 }
 
 .category-header {
     display: grid;
-
     grid-template-columns: 1fr 150px;
-
     align-items: stretch;
-
     background: #f8fafc;
-
     border-bottom: 1px solid #cbd5e1;
 }
 
 .category-header h3 {
     padding: 12px;
-
-    font-family:
-        "Times New Roman",
-        serif;
-
+    font-family: "Times New Roman", serif;
     font-size: 15px;
 }
 
 .rating-head {
     display: grid;
-
-    grid-template-columns:
-        repeat(5, 1fr);
-
+    grid-template-columns: repeat(5, 1fr);
     border-left: 1px solid #cbd5e1;
 }
 
 .rating-head span {
     display: flex;
-
     align-items: center;
     justify-content: center;
-
     font-weight: 700;
-
     font-size: 12px;
-
     border-left: 1px solid #cbd5e1;
 }
 
@@ -395,11 +304,8 @@ input:focus {
 
 .question {
     display: grid;
-
     grid-template-columns: 1fr 150px;
-
     min-height: 70px;
-
     border-bottom: 1px solid #cbd5e1;
 }
 
@@ -409,42 +315,29 @@ input:focus {
 
 .question > p {
     margin: 0;
-
     padding: 12px;
-
-    font-family:
-        "Times New Roman",
-        serif;
-
+    font-family: "Times New Roman", serif;
     font-size: 14px;
-
     line-height: 1.4;
 }
 
 .rating-options {
     display: grid;
-
-    grid-template-columns:
-        repeat(5, 1fr);
-
+    grid-template-columns: repeat(5, 1fr);
     border-left: 1px solid #cbd5e1;
 }
 
 .rating-cell {
     display: flex;
-
     align-items: center;
     justify-content: center;
-
     border-left: 1px solid #cbd5e1;
 }
 
 .rating-cell input {
     width: 17px;
     height: 17px;
-
     accent-color: #ab0a0a;
-
     cursor: pointer;
 }
 
@@ -458,16 +351,12 @@ input:focus {
 }
 
 .text-question label {
-    font-family:
-        "Times New Roman",
-        serif;
-
+    font-family: "Times New Roman", serif;
     font-size: 15px;
 }
 
 .text-question textarea {
     min-height: 130px;
-
     resize: vertical;
 }
 
@@ -478,39 +367,24 @@ input:focus {
 
 .hire-question {
     margin: 25px 0;
-
     padding: 18px;
-
     background: #f8fafc;
-
     border: 1px solid #e2e8f0;
-
     border-radius: 8px;
 }
 
 .hire-question p {
-    font-family:
-        "Times New Roman",
-        serif;
-
+    font-family: "Times New Roman", serif;
     font-size: 15px;
-
     line-height: 1.5;
 }
 
 .radio-label {
     display: inline-flex;
-
     align-items: center;
-
     gap: 7px;
-
     margin-right: 30px;
-
-    font-family:
-        "Times New Roman",
-        serif;
-
+    font-family: "Times New Roman", serif;
     font-size: 14px;
 }
 
@@ -525,50 +399,33 @@ input:focus {
 
 .details-section {
     margin-top: 30px;
-
     border: 1px solid #cbd5e1;
-
     border-radius: 9px;
-
     padding: 20px;
 }
 
 .details-section h3 {
     margin-bottom: 18px;
-
     color: #ab0a0a;
-
     font-size: 15px;
 }
 
 .details-grid {
     display: grid;
-
-    grid-template-columns:
-        repeat(2, minmax(0, 1fr));
-
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 18px;
 }
 
 .signature-note {
     display: flex;
-
     align-items: center;
-
     gap: 8px;
-
     margin-top: 18px;
-
     padding: 12px;
-
     background: #fff7f7;
-
     border: 1px solid #fee2e2;
-
     border-radius: 7px;
-
     color: #64748b;
-
     font-size: 11px;
 }
 
@@ -584,29 +441,21 @@ input:focus {
 .form-actions,
 .success-actions {
     display: flex;
-
     justify-content: flex-end;
-
     gap: 10px;
-
     margin-top: 28px;
 }
 
 button {
     border: 0;
-
     border-radius: 8px;
-
     padding: 12px 18px;
-
     font: 600 13px Poppins, sans-serif;
-
     cursor: pointer;
 }
 
 .btn-primary {
     background: #ab0a0a;
-
     color: #fff;
 }
 
@@ -616,9 +465,7 @@ button {
 
 .btn-secondary {
     background: #fff;
-
     color: #ab0a0a;
-
     border: 1px solid #ab0a0a;
 }
 
@@ -628,7 +475,6 @@ button {
 
 button:disabled {
     opacity: .6;
-
     cursor: not-allowed;
 }
 
@@ -639,34 +485,265 @@ button:disabled {
 
 .state {
     text-align: center;
-
     color: #64748b;
-
     padding: 55px 15px;
 }
 
 .state > i {
     font-size: 35px;
-
     color: #ab0a0a;
 }
 
 .state h1 {
     color: #1e293b;
-
     margin-top: 14px;
 }
 
 .state p {
     font-size: 13px;
-
     line-height: 1.7;
 }
 
 .success-icon {
     color: #16a34a !important;
 }
+/* ==========================================
+   IMPROVED SUCCESS STATE
+========================================== */
 
+#successState {
+    min-height: 420px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+
+    padding: 55px 30px 45px;
+
+    position: relative;
+}
+
+
+/* TOP ACCENT */
+
+#successState::before {
+    content: "";
+    position: absolute;
+
+    top: 0;
+    left: 50%;
+
+    transform: translateX(-50%);
+
+    width: 70px;
+    height: 4px;
+
+    background: #ab0a0a;
+
+    border-radius: 0 0 6px 6px;
+}
+
+
+/* SUCCESS ICON */
+
+#successState .success-icon {
+    width: 76px;
+    height: 76px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: #ecfdf3;
+
+    border: 8px solid #f0fdf4;
+
+    border-radius: 50%;
+
+    color: #16a34a !important;
+
+    font-size: 34px;
+
+    margin-bottom: 22px;
+
+    box-shadow:
+        0 8px 24px rgba(22, 163, 74, .12);
+}
+
+
+/* SMALL SUCCESS LABEL */
+
+#successState::after {
+    content: "SUCCESSFULLY COMPLETED";
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    position: absolute;
+
+    top: 25px;
+
+    left: 50%;
+    transform: translateX(-50%);
+
+    padding: 5px 12px;
+
+    border-radius: 20px;
+
+    background: #f0fdf4;
+
+    color: #15803d;
+
+    border: 1px solid #bbf7d0;
+
+    font-size: 9px;
+    font-weight: 700;
+
+    letter-spacing: .8px;
+}
+
+
+/* HEADING */
+
+#successState h1 {
+    margin: 0;
+
+    color: #172033;
+
+    font-size: 27px;
+
+    font-weight: 700;
+
+    letter-spacing: -.3px;
+}
+
+
+/* DESCRIPTION */
+
+#successState p {
+    margin: 9px 0 0;
+
+    max-width: 430px;
+
+    color: #64748b;
+
+    font-size: 13px;
+
+    line-height: 1.7;
+}
+
+
+/* ACTION BUTTONS */
+
+#successState .success-actions {
+    display: flex;
+
+    justify-content: center;
+    align-items: center;
+
+    gap: 12px;
+
+    margin-top: 30px;
+
+    width: 100%;
+}
+
+
+/* BUTTON BASE */
+
+#successState .success-actions button {
+    min-width: 170px;
+
+    height: 46px;
+
+    display: inline-flex;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 8px;
+
+    border-radius: 9px;
+
+    padding: 0 18px;
+
+    font-size: 12px;
+
+    transition:
+        transform .2s ease,
+        box-shadow .2s ease,
+        background .2s ease;
+}
+
+
+/* VIEW BUTTON */
+
+#successState .success-actions .btn-secondary {
+    background: #fff;
+
+    color: #ab0a0a;
+
+    border: 1px solid #e2baba;
+
+    box-shadow:
+        0 3px 10px rgba(15, 23, 42, .04);
+}
+
+
+#successState .success-actions .btn-secondary:hover {
+    background: #fff7f7;
+
+    border-color: #ab0a0a;
+
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 6px 16px rgba(171, 10, 10, .10);
+}
+
+
+/* PRINT BUTTON */
+
+#successState .success-actions .btn-primary {
+    background: #ab0a0a;
+
+    color: #fff;
+
+    border: 1px solid #ab0a0a;
+
+    box-shadow:
+        0 5px 15px rgba(171, 10, 10, .18);
+}
+
+
+#successState .success-actions .btn-primary:hover {
+    background: #8e0909;
+
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 8px 20px rgba(171, 10, 10, .25);
+}
+
+
+/* ICONS */
+
+#successState .success-actions button i {
+    font-size: 13px;
+}
+
+
+/* SUBTLE FOOTER TEXT */
+
+#successState .success-actions::after {
+    content: "You may now review the evaluation or proceed to printing.";
+
+    position: absolute;
+
+    margin-top: 105px 
+}
 
 /* ==========================================
    PRINT MODAL
@@ -674,32 +751,20 @@ button:disabled {
 
 .print-modal {
     position: fixed;
-
     inset: 0;
-
     z-index: 9999;
-
-    background:
-        rgba(15, 23, 42, .75);
-
+    background: rgba(15, 23, 42, .75);
     display: flex;
-
     flex-direction: column;
 }
 
 .print-modal-header {
     flex-shrink: 0;
-
     background: #fff;
-
     padding: 15px 22px;
-
     display: flex;
-
     justify-content: space-between;
-
     align-items: center;
-
     border-bottom: 1px solid #e2e8f0;
 }
 
@@ -709,134 +774,620 @@ button:disabled {
 
 .print-modal-header p {
     margin: 3px 0 0;
-
     color: #64748b;
-
     font-size: 11px;
 }
 
 .close-print {
     background: transparent;
-
     color: #64748b;
-
     font-size: 18px;
-
     padding: 7px 10px;
 }
 
 
 /* ==========================================
-   PRINT DOCUMENT PREVIEW
+   PRINT DOCUMENT
 ========================================== */
 
 .print-document {
     flex: 1;
-
-    overflow: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
 
     padding: 30px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    gap: 25px;
+
+    background: #e5e7eb;
 }
 
+
+/* ==========================================
+   SHORT BOND PAPER
+========================================== */
+
 .print-page {
-    width: 210mm;
 
-    min-height: 297mm;
+    width: 8.5in;
+    height: 11in;
 
-    margin: 0 auto 25px;
+    min-height: 11in;
+    max-height: 11in;
 
-    background: #fff;
+    box-sizing: border-box;
 
-    padding: 18mm 15mm;
+    background: #ffffff;
+
+    padding: 0.5in;
+
+    margin: 0 auto;
+
+    position: relative;
+
+    overflow: hidden;
 
     box-shadow:
-        0 4px 20px
-        rgba(0,0,0,.18);
+        0 4px 20px rgba(0, 0, 0, .18);
 
     font-family:
         "Times New Roman",
         serif;
 
     color: #111;
+
+    flex-shrink: 0;
+
+    page-break-after: always;
+    break-after: page;
 }
+
+
+/* ==========================================
+   LAST PAGE
+========================================== */
+
+.print-page:last-child {
+
+    page-break-after: auto;
+    break-after: auto;
+
+}
+
+
+/* ==========================================
+   HEADER
+========================================== */
+
+.print-header {
+
+    text-align: center;
+
+    margin-bottom: 12px;
+
+}
+
+
+.print-header .tagline {
+
+    font-size: 11px;
+
+    font-weight: bold;
+
+    margin-bottom: 3px;
+
+}
+
+
+.print-header .address {
+
+    font-size: 9px;
+
+    line-height: 1.25;
+
+}
+
+
+/* ==========================================
+   TITLE
+========================================== */
+
+.print-title {
+
+    background: #9d1c1c;
+
+    color: white;
+
+    font-size: 16px;
+
+    font-weight: bold;
+
+    padding: 6px 8px;
+
+    margin: 10px 0;
+
+    text-align: left;
+
+}
+
+
+/* ==========================================
+   PART TITLE
+========================================== */
+
+.print-part-title {
+
+    font-size: 12px;
+
+    font-weight: bold;
+
+    margin-top: 10px;
+
+    margin-bottom: 6px;
+
+}
+
+
+/* ==========================================
+   INTRO
+========================================== */
+
+.print-intro {
+
+    font-size: 9px;
+
+    line-height: 1.35;
+
+    margin: 5px 0 8px;
+
+}
+
+
+/* ==========================================
+   TABLE
+========================================== */
+
+.print-table {
+
+    width: 100%;
+
+    border-collapse: collapse;
+
+    table-layout: fixed;
+
+    margin-bottom: 12px;
+
+    font-size: 9px;
+
+}
+
+
+/* QUESTION COLUMN */
+
+.print-table th:first-child,
+.print-table td:first-child {
+
+    width: auto;
+
+    text-align: left;
+
+}
+
+
+/* RATING COLUMNS */
+
+.print-table th:not(:first-child),
+.print-table td:not(:first-child) {
+
+    width: 25px;
+
+    min-width: 25px;
+
+    max-width: 25px;
+
+    text-align: center;
+
+}
+
+
+/* TABLE BORDERS */
+
+.print-table th,
+.print-table td {
+
+    border: 1px solid #222;
+
+    padding: 4px;
+
+    vertical-align: middle;
+
+}
+
+
+/* TABLE HEADER */
+
+.print-table th {
+
+    font-weight: bold;
+
+    background: #fff;
+
+}
+
+
+/* QUESTION TEXT */
+
+.print-table .question-text {
+
+    line-height: 1.25;
+
+}
+
+
+/* SELECTED RATING */
+
+.print-table td.rating.selected {
+
+    font-size: 14px;
+
+    font-weight: bold;
+
+}
+
+
+/* ==========================================
+   ANSWERS
+========================================== */
+
+.print-question {
+
+    font-size: 10px;
+
+    font-weight: bold;
+
+    line-height: 1.3;
+
+    margin-top: 9px;
+
+    margin-bottom: 5px;
+
+}
+
+
+.print-answer {
+
+    min-height: 22px;
+
+    border-bottom: 1px solid #333;
+
+    font-size: 9px;
+
+    line-height: 1.3;
+
+    padding: 3px 2px;
+
+}
+
+
+/* ==========================================
+   DETAILS
+========================================== */
+
+.print-details {
+
+    width: 100%;
+
+    border: 1px solid #222;
+
+    margin-top: 12px;
+
+}
+
+
+.print-detail-row {
+
+    min-height: 38px;
+
+    border-bottom: 1px solid #222;
+
+    padding: 8px;
+
+    font-size: 10px;
+
+}
+
+
+.print-detail-row:last-child {
+
+    border-bottom: none;
+
+}
+
+
+.print-detail-label {
+
+    display: inline-block;
+
+    min-width: 170px;
+
+    font-weight: normal;
+
+}
+
+
+.print-signature {
+
+    min-height: 90px;
+
+}
+
+
+/* ==========================================
+   FOOTER
+========================================== */
+
+.print-footer {
+
+    position: absolute;
+
+    bottom: 0.25in;
+
+    left: 0.5in;
+
+    right: 0.5in;
+
+    border-top: 1px solid #333;
+
+    padding-top: 4px;
+
+    font-size: 8px;
+
+    text-align: left;
+
+}
+
+
+/* ==========================================
+   PRINT MODAL
+========================================== */
+
+.print-modal {
+
+    position: fixed;
+
+    inset: 0;
+
+    z-index: 9999;
+
+    background: rgba(15, 23, 42, .75);
+
+    display: flex;
+
+    flex-direction: column;
+
+}
+
+
+.print-modal.hidden {
+
+    display: none !important;
+
+}
+
+
+/* ==========================================
+   ACTUAL PRINT
+========================================== */
+
+@media print {
+
+    html,
+    body {
+
+        margin: 0 !important;
+        padding: 0 !important;
+
+        background: white !important;
+
+    }
+
+
+    body * {
+
+        visibility: hidden !important;
+
+    }
+
+
+    #printModal,
+    #printModal * {
+
+        visibility: visible !important;
+
+    }
+
+
+    #printModal {
+
+        position: static !important;
+
+        display: block !important;
+
+        background: white !important;
+
+    }
+
+
+    .print-document {
+
+        display: block !important;
+
+        padding: 0 !important;
+
+        margin: 0 !important;
+
+        background: white !important;
+
+        overflow: visible !important;
+
+    }
+
+
+    .print-page {
+
+        width: 8.5in !important;
+
+        height: 11in !important;
+
+        min-height: 11in !important;
+
+        max-height: 11in !important;
+
+        margin: 0 !important;
+
+        padding: 0.5in !important;
+
+        box-shadow: none !important;
+
+        overflow: hidden !important;
+
+        page-break-after: always !important;
+
+        break-after: page !important;
+
+    }
+
+
+    .print-page:last-child {
+
+        page-break-after: auto !important;
+
+        break-after: auto !important;
+
+    }
+
+
+    @page {
+
+        size: 8.5in 11in;
+
+        margin: 0;
+
+    }
+
+}
+
+
+
+/* ==========================================
+   PRINT HEADER
+========================================== */
 
 .print-header {
     text-align: center;
-
-    margin-bottom: 20px;
+    margin-bottom: 12px;
 }
 
 .print-header img {
     max-width: 100px;
-
     margin-bottom: 5px;
 }
 
 .print-header .tagline {
     font-weight: 700;
-
     font-size: 13px;
 }
 
 .print-header .address {
     font-size: 11px;
-
     line-height: 1.35;
 }
 
+
+/* ==========================================
+   PRINT TITLE
+========================================== */
+
 .print-title {
-    margin: 20px 0;
+    margin: 10px 0;
 
     padding: 5px 8px;
 
     background: #8f2929;
-
     color: #fff;
 
     font-size: 20px;
-
     font-weight: 400;
 }
 
+
+/* ==========================================
+   PART TITLES
+========================================== */
+
 .print-part-title {
     font-size: 14px;
-
     font-weight: 700;
 
-    margin: 14px 0 10px;
+    margin: 10px 0 7px;
 }
+
+
+/* ==========================================
+   INTRO
+========================================== */
 
 .print-intro {
-    font-size: 12px;
+    font-size: 11px;
+    line-height: 1.4;
 
-    line-height: 1.45;
-
-    margin-bottom: 12px;
+    margin: 5px 0 9px;
 }
 
 
-/* PRINT TABLE */
+/* ==========================================
+   PRINT TABLE
+========================================== */
 
 .print-table {
     width: 100%;
 
     border-collapse: collapse;
 
-    margin-bottom: 18px;
+    margin: 0 0 10px;
 
-    font-size: 11px;
+    font-size: 10.5px;
+
+    /*
+     * Keep the table together whenever
+     * there is enough room.
+     */
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+.print-table thead {
+    display: table-header-group;
+}
+
+.print-table tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
 }
 
 .print-table th,
 .print-table td {
     border: 1px solid #222;
 
-    padding: 6px;
+    padding: 4px 5px;
 }
 
 .print-table th {
     font-weight: 700;
-
     text-align: center;
 }
 
@@ -854,7 +1405,6 @@ button:disabled {
 
 .print-table td.rating.selected {
     font-weight: 700;
-
     background: #e9e9e9;
 }
 
@@ -865,24 +1415,25 @@ button:disabled {
 }
 
 .print-table td.question-text {
-    line-height: 1.35;
+    line-height: 1.3;
 }
 
 .print-table .category-row td {
     font-weight: 700;
-
     background: #fff;
 }
 
 
-/* PRINT TEXT LINES */
+/* ==========================================
+   PRINT ANSWERS
+========================================== */
 
 .print-answer {
-    min-height: 65px;
+    min-height: 55px;
 
     border-bottom: 1px solid #333;
 
-    margin-bottom: 5px;
+    margin-bottom: 4px;
 
     font-size: 11px;
 
@@ -891,29 +1442,32 @@ button:disabled {
 
 .print-question {
     font-size: 12px;
-
     font-weight: 700;
 
-    margin-top: 14px;
-
-    margin-bottom: 5px;
+    margin-top: 10px;
+    margin-bottom: 4px;
 }
 
 
-/* PRINT DETAILS */
+/* ==========================================
+   PRINT DETAILS
+========================================== */
 
 .print-details {
     border: 2px solid #222;
 
-    margin-top: 15px;
+    margin-top: 10px;
+
+    page-break-inside: avoid;
+    break-inside: avoid;
 }
 
 .print-detail-row {
-    min-height: 55px;
+    min-height: 45px;
 
     border-bottom: 1px solid #222;
 
-    padding: 13px 10px;
+    padding: 9px 10px;
 
     font-size: 12px;
 }
@@ -927,158 +1481,299 @@ button:disabled {
 }
 
 .print-signature {
-    height: 80px;
+    height: 70px;
+}
+
+.print-footer {
+    margin-top: 20px;
+
+    text-align: center;
+
+    font-size: 10px;
+
+    page-break-inside: avoid;
 }
 
 
 /* ==========================================
-   PRINT MODAL ACTIONS
-========================================== */
-
-.print-actions {
-    flex-shrink: 0;
-
-    background: #fff;
-
-    border-top: 1px solid #e2e8f0;
-
-    padding: 12px 20px;
-
-    display: flex;
-
-    justify-content: flex-end;
-
-    gap: 10px;
-}
-
-
-/* ==========================================
-   RESPONSIVE
-========================================== */
-
-@media (max-width: 800px) {
-
-    .guest-card {
-        padding: 22px 17px;
-    }
-
-    .category-header,
-    .question {
-        grid-template-columns: 1fr 130px;
-    }
-
-    .details-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .info-box {
-        grid-template-columns: 1fr;
-    }
-
-    .print-document {
-        padding: 15px;
-    }
-
-    .print-page {
-        transform-origin: top center;
-
-        width: 210mm;
-    }
-}
-
-
-@media (max-width: 600px) {
-
-    .category-header,
-    .question {
-        grid-template-columns: 1fr 115px;
-    }
-
-    .question > p {
-        font-size: 12px;
-    }
-
-    .category-header h3 {
-        font-size: 12px;
-    }
-
-    .form-actions,
-    .success-actions {
-        flex-direction: column;
-    }
-
-    .form-actions button,
-    .success-actions button {
-        width: 100%;
-    }
-}
-
-
-/* ==========================================
-   ACTUAL PRINT
+   ACTUAL PRINT - SHORT BOND PAPER
 ========================================== */
 
 @media print {
 
     @page {
-        size: A4;
-        margin: 0;
+        size: 8.5in 11in;
+        margin: 0.5in;
     }
 
+
+    html,
     body {
+        width: 100% !important;
+
+        margin: 0 !important;
+        padding: 0 !important;
+
         background: #fff !important;
     }
 
+
+    body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+
+    /* HIDE EVERYTHING */
     body * {
         visibility: hidden;
     }
 
+
+    /* SHOW PRINT CONTENT ONLY */
+    #printModal,
+    #printModal *,
     #printDocument,
     #printDocument * {
         visibility: visible;
     }
 
-    #printDocument {
-        position: absolute;
 
-        left: 0;
-        top: 0;
+    /* PRINT MODAL */
+    #printModal {
 
-        width: 100%;
+        position: absolute !important;
+
+        top: 0 !important;
+        left: 0 !important;
+
+        width: 100% !important;
+
+        height: auto !important;
+
+        background: #fff !important;
+
+        display: block !important;
+
+        overflow: visible !important;
+
+        box-shadow: none !important;
     }
 
-    .print-page {
-        width: 210mm;
-        min-height: 0 !important;
-        height: fit-content !important;
 
-        margin: 0 auto 25px;
-
-        background: #fff;
-
-        padding: 8mm 15mm;
-
-        box-shadow:
-            0 4px 20px
-            rgba(0,0,0,.18);
-
-        font-family:
-            "Times New Roman",
-            serif;
-
-        color: #111;
-
-        box-sizing: border-box;
-    }
-
-    .print-page:last-child {
-        page-break-after: auto;
-
-        break-after: auto;
-    }
-
+    /* HIDE MODAL HEADER + BUTTONS */
     .print-modal-header,
     .print-actions {
+
         display: none !important;
     }
+
+
+    /* PRINT DOCUMENT */
+    #printDocument {
+
+        width: 100% !important;
+
+        height: auto !important;
+
+        padding: 0 !important;
+
+        margin: 0 !important;
+
+        overflow: visible !important;
+
+        display: block !important;
+    }
+
+
+    /* ==========================================
+       SHORT BOND CONTENT
+    ========================================== */
+
+    .print-page {
+
+        width: 100% !important;
+
+        height: auto !important;
+
+        min-height: 0 !important;
+
+        margin: 0 !important;
+
+        padding: 0 !important;
+
+        background: #fff !important;
+
+        box-shadow: none !important;
+
+        page-break-after: auto !important;
+
+        break-after: auto !important;
+
+        page-break-before: auto !important;
+
+        break-before: auto !important;
+
+        box-sizing: border-box !important;
+    }
+
+
+    /* ==========================================
+       TABLE
+    ========================================== */
+
+    .print-table {
+
+        width: 100% !important;
+
+        border-collapse: collapse !important;
+
+        margin: 0 0 8px 0 !important;
+
+        font-size: 10.5px !important;
+
+        /*
+         * Allow the browser to decide
+         * where the table should continue.
+         */
+        page-break-inside: auto !important;
+
+        break-inside: auto !important;
+    }
+
+
+    /*
+     * Prevent individual rows
+     * from being cut in half.
+     */
+    .print-table tr {
+
+        page-break-inside: avoid !important;
+
+        break-inside: avoid !important;
+    }
+
+
+    /*
+     * Repeat table header if the table
+     * continues onto another page.
+     */
+    .print-table thead {
+
+        display: table-header-group !important;
+    }
+
+
+    .print-table th,
+    .print-table td {
+
+        border: 1px solid #222 !important;
+
+        padding: 4px 5px !important;
+    }
+
+
+    .print-table td.rating {
+
+        width: 20px !important;
+
+        text-align: center !important;
+
+        padding: 0 !important;
+    }
+
+
+    /* ==========================================
+       TEXT ANSWERS
+    ========================================== */
+
+    .print-question {
+
+        margin-top: 8px !important;
+
+        margin-bottom: 4px !important;
+
+        font-size: 12px !important;
+    }
+
+
+    .print-answer {
+
+        min-height: 55px !important;
+
+        margin-bottom: 4px !important;
+    }
+
+
+    /* ==========================================
+       DETAILS
+    ========================================== */
+
+    .print-details {
+
+        page-break-inside: avoid !important;
+
+        break-inside: avoid !important;
+
+        margin-top: 8px !important;
+    }
+
+
+    .print-detail-row {
+
+        min-height: 45px !important;
+
+        padding: 8px 10px !important;
+    }
+
+
+    .print-signature {
+
+        height: 60px !important;
+    }
+
+
+    /* ==========================================
+       FOOTER
+    ========================================== */
+
+    .print-footer {
+
+        margin-top: 12px !important;
+
+        page-break-inside: avoid !important;
+
+        break-inside: avoid !important;
+    }
+
+
+    /* ==========================================
+       HEADER SPACING
+    ========================================== */
+
+    .print-header {
+
+        margin-top: 0 !important;
+
+        margin-bottom: 8px !important;
+    }
+
+
+    .print-title {
+
+        margin: 6px 0 8px !important;
+    }
+
+
+    .print-part-title {
+
+        margin: 8px 0 5px !important;
+    }
+
+
+    .print-intro {
+
+        margin: 4px 0 8px !important;
+    }
+
 }

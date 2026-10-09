@@ -429,6 +429,8 @@ $("internSelect")
 
             await loadTaskHistory();
 
+            restoreEvaluationDraft();
+
         }
     );
 
@@ -688,6 +690,248 @@ function getEvaluationData() {
 
 
 /* ==========================================
+   AUTO-SAVE LISTENERS
+========================================== */
+
+function initEvaluationAutoSave() {
+
+    const form =
+        $("evaluationForm");
+
+    if (!form) return;
+
+
+    form.addEventListener(
+        "input",
+        () => {
+
+            saveEvaluationDraft();
+
+        }
+    );
+
+
+    form.addEventListener(
+        "change",
+        () => {
+
+            saveEvaluationDraft();
+
+        }
+    );
+
+}
+
+
+/* ==========================================
+   AUTO-SAVE EVALUATION DRAFT
+========================================== */
+
+function getDraftKey() {
+
+    if (!token || !chosenIntern?.id)
+        return null;
+
+    return `ojt_evaluation_draft_${token}_${chosenIntern.id}`;
+
+}
+
+
+function saveEvaluationDraft() {
+
+    const key = getDraftKey();
+
+    if (!key) return;
+
+    const evaluation =
+        getEvaluationData();
+
+    const draft = {
+
+        ...evaluation,
+
+        savedAt:
+            new Date().toISOString()
+
+    };
+
+    localStorage.setItem(
+        key,
+        JSON.stringify(draft)
+    );
+
+    console.log(
+        "Evaluation draft auto-saved."
+    );
+
+}
+
+
+function restoreEvaluationDraft() {
+
+    const key =
+        getDraftKey();
+
+    if (!key) return;
+
+    const savedDraft =
+        localStorage.getItem(key);
+
+    if (!savedDraft) return;
+
+
+    try {
+
+        const draft =
+            JSON.parse(savedDraft);
+
+        const form =
+            $("evaluationForm");
+
+
+        /* TEXTAREAS / INPUTS */
+
+        if (form.elements.strongPoints) {
+
+            form.elements.strongPoints.value =
+                draft.strongPoints || "";
+
+        }
+
+
+        if (form.elements.limitations) {
+
+            form.elements.limitations.value =
+                draft.limitations || "";
+
+        }
+
+
+        if (form.elements.professionalImprovement) {
+
+            form.elements.professionalImprovement.value =
+                draft.professionalImprovement || "";
+
+        }
+
+
+        if (form.elements.programSuggestion) {
+
+            form.elements.programSuggestion.value =
+                draft.programSuggestion || "";
+
+        }
+
+
+        if (form.elements.wouldHire) {
+
+            const hireRadio =
+                form.querySelector(
+                    `input[name="wouldHire"][value="${draft.wouldHire}"]`
+                );
+
+            if (hireRadio) {
+
+                hireRadio.checked = true;
+
+            }
+
+        }
+
+
+        if (form.elements.dateAccomplished) {
+
+            form.elements.dateAccomplished.value =
+                draft.dateAccomplished || "";
+
+        }
+
+
+        if (form.elements.evaluatorName) {
+
+            form.elements.evaluatorName.value =
+                draft.evaluatorName || "";
+
+        }
+
+
+        if (form.elements.evaluatorCompany) {
+
+            form.elements.evaluatorCompany.value =
+                draft.evaluatorCompany || "";
+
+        }
+
+
+        if (form.elements.evaluatorPosition) {
+
+            form.elements.evaluatorPosition.value =
+                draft.evaluatorPosition || "";
+
+        }
+
+
+        /* RATINGS */
+
+        if (draft.ratings) {
+
+            Object.entries(draft.ratings)
+                .forEach(
+                    ([key, value]) => {
+
+                        if (!value) return;
+
+                        const radio =
+                            form.querySelector(
+                                `input[name="${key}"][value="${value}"]`
+                            );
+
+                        if (radio) {
+
+                            radio.checked = true;
+
+                        }
+
+                    }
+                );
+
+        }
+
+
+        console.log(
+            "Evaluation draft restored."
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Could not restore evaluation draft:",
+            error
+        );
+
+    }
+
+}
+
+
+function clearEvaluationDraft() {
+
+    const key =
+        getDraftKey();
+
+    if (!key) return;
+
+    localStorage.removeItem(key);
+
+    console.log(
+        "Evaluation draft cleared."
+    );
+
+}
+
+
+/* ==========================================
    SUBMIT
 ========================================== */
 
@@ -738,6 +982,7 @@ $("evaluationForm")
                 submittedEvaluation =
                     evaluation;
 
+                clearEvaluationDraft();
 
                 $("evaluationContent")
                     .classList.add("hidden");
@@ -895,6 +1140,9 @@ $("evaluationForm")
                     evaluation;
 
 
+                clearEvaluationDraft();
+
+
                 $("evaluationContent")
                     .classList.add("hidden");
 
@@ -904,7 +1152,10 @@ $("evaluationForm")
 
             } catch (error) {
 
-                console.error("EVALUATION SUBMISSION ERROR:", error);
+                console.error(
+                    "EVALUATION SUBMISSION ERROR:",
+                    error
+                );
 
                 alert(
                     "Submission Error:\n\n" +
@@ -929,41 +1180,15 @@ $("evaluationForm")
 
 
 /* ==========================================
-   PREVIEW BUTTON
-========================================== */
-
-$("previewBtn")
-    .addEventListener(
-        "click",
-        () => {
-
-            const form =
-                $("evaluationForm");
-
-
-            if (!form.reportValidity()) {
-
-                return;
-
-            }
-
-
-            submittedEvaluation =
-                getEvaluationData();
-
-
-            openPrintPreview();
-
-        }
-    );
-
-
-/* ==========================================
    VIEW AFTER SUBMIT
 ========================================== */
 
-$("viewSubmittedBtn")
-    .addEventListener(
+const viewSubmittedBtn =
+    $("viewSubmittedBtn");
+
+if (viewSubmittedBtn) {
+
+    viewSubmittedBtn.addEventListener(
         "click",
         () => {
 
@@ -972,9 +1197,19 @@ $("viewSubmittedBtn")
         }
     );
 
+}
 
-$("printAfterSubmitBtn")
-    .addEventListener(
+
+/* ==========================================
+   PRINT AFTER SUBMIT
+========================================== */
+
+const printAfterSubmitBtn =
+    $("printAfterSubmitBtn");
+
+if (printAfterSubmitBtn) {
+
+    printAfterSubmitBtn.addEventListener(
         "click",
         () => {
 
@@ -982,6 +1217,8 @@ $("printAfterSubmitBtn")
 
         }
     );
+
+}
 
 
 /* ==========================================
@@ -997,53 +1234,131 @@ function openPrintPreview() {
 
     }
 
+    const printDocument =
+        $("printDocument");
 
-    $("printDocument")
-        .innerHTML =
+    const printModal =
+        $("printModal");
+
+    if (!printDocument) {
+
+        console.error(
+            "printDocument element not found."
+        );
+
+        return;
+    }
+
+    if (!printModal) {
+
+        console.error(
+            "printModal element not found."
+        );
+
+        return;
+    }
+
+    printDocument.innerHTML =
         buildPrintDocument();
 
+    /*
+     * IMPORTANT:
+     * Show the modal.
+     */
 
-    $("printModal")
-        .classList.remove("hidden");
-
-}
-
-
-function closePrintPreview() {
-
-    $("printModal")
-        .classList.add("hidden");
-
-}
-
-
-$("closePrintModal")
-    .addEventListener(
-        "click",
-        closePrintPreview
+    printModal.classList.remove(
+        "hidden"
     );
 
+    document.body.style.overflow =
+        "hidden";
 
-$("closePrintBtn")
-    .addEventListener(
-        "click",
-        closePrintPreview
-    );
+    printDocument.scrollTop = 0;
+
+}
 
 
 /* ==========================================
-   PRINT
+   CLOSE PRINT PREVIEW
 ========================================== */
 
-$("printBtn")
-    .addEventListener(
+function closePrintPreview() {
+
+    const printModal =
+        $("printModal");
+
+    if (!printModal) return;
+
+    printModal.classList.add(
+        "hidden"
+    );
+
+    document.body.style.overflow =
+        "";
+
+}
+
+
+/* ==========================================
+   CLOSE BUTTON
+========================================== */
+
+const closePrintModal =
+    $("closePrintModal");
+
+if (closePrintModal) {
+
+    closePrintModal.addEventListener(
+        "click",
+        closePrintPreview
+    );
+
+}
+
+
+/* ==========================================
+   CLOSE PRINT BUTTON
+========================================== */
+
+const closePrintBtn =
+    $("closePrintBtn");
+
+if (closePrintBtn) {
+
+    closePrintBtn.addEventListener(
+        "click",
+        closePrintPreview
+    );
+
+}
+
+
+/* ==========================================
+   PRINT BUTTON
+========================================== */
+
+const printBtn =
+    $("printBtn");
+
+if (printBtn) {
+
+    printBtn.addEventListener(
         "click",
         () => {
 
-            window.print();
+            setTimeout(
+                () => {
+
+                    window.print();
+
+                },
+                150
+            );
 
         }
     );
+
+}
 
 
 /* ==========================================
@@ -1060,7 +1375,6 @@ function getRating(
             ?.ratings?.[
                 `${category}_${number}`
             ];
-
 
     return value
         ? Number(value)
@@ -1080,7 +1394,6 @@ function printRatingCells(
             number
         );
 
-
     return [1, 2, 3, 4, 5]
         .map(
             rating => `
@@ -1091,7 +1404,13 @@ function printRatingCells(
                             ? "selected"
                             : ""
                     }"
-                ></td>
+                >
+                    ${
+                        selected === rating
+                            ? "✓"
+                            : ""
+                    }
+                </td>
 
             `
         )
@@ -1111,16 +1430,25 @@ function printHeader() {
             </div>
 
             <div class="address">
+
                 <strong>
                     Global Reciprocal Colleges
                 </strong>
+
                 <br>
+
                 454 GRC Bldg., Rizal Avenue Ext.,
                 corner 9th Avenue
+
                 <br>
+
                 Grace Park Caloocan City, Philippines
+
                 <br>
-                Telefax: (02)361-63-30; (02) 452-29-45
+
+                Telefax: (02)361-63-30;
+                (02) 452-29-45
+
             </div>
 
         </div>
@@ -1129,6 +1457,10 @@ function printHeader() {
 
 }
 
+
+/* ==========================================
+   PRINT CATEGORY
+========================================== */
 
 function printCategory(
     title,
@@ -1167,8 +1499,10 @@ function printCategory(
                             <tr>
 
                                 <td class="question-text">
+
                                     ${index + 1}.
                                     ${question}
+
                                 </td>
 
                                 ${printRatingCells(
@@ -1192,25 +1526,51 @@ function printCategory(
 
 
 /* ==========================================
+   ANSWER QUESTION
+========================================== */
+
+function printAnswerQuestion(
+    question,
+    answer
+) {
+
+    return `
+
+        <div class="print-question">
+            ${question}
+        </div>
+
+        <div class="print-answer">
+            ${escapeHtml(answer || "")}
+        </div>
+
+        <div class="print-answer"></div>
+
+        <div class="print-answer"></div>
+
+    `;
+
+}
+
+
+/* ==========================================
    COMPLETE PRINT DOCUMENT
 ========================================== */
 
 function buildPrintDocument() {
 
     const e =
-        submittedEvaluation;
+        submittedEvaluation || {};
 
+    return `
 
-    /* --------------------------------------
-       PAGE 1
-    -------------------------------------- */
-
-    const page1 = `
+        <!-- =====================================
+             PAGE 1
+        ====================================== -->
 
         <section class="print-page">
 
             ${printHeader()}
-
 
             <div class="print-title">
                 ON THE JOB TRAINING EVALUATION FORM
@@ -1224,9 +1584,9 @@ function buildPrintDocument() {
 
             <p class="print-intro">
 
-                This questionnaire is designed to evaluate the
-                student who had undergone the OJT Program of
-                Global Reciprocal Colleges.
+                This questionnaire is designed to evaluate
+                the student who had undergone the OJT Program
+                of Global Reciprocal Colleges.
 
                 Please answer the questions below as accurately
                 and as honestly as you can by checking (✓)
@@ -1238,58 +1598,35 @@ function buildPrintDocument() {
 
 
             ${printCategory(
-
                 "Integration of Basic Theory in Practice",
-
                 "integration",
-
                 [
-
                     "The trainee possesses the necessary and expected professional body of information relevant to the assigned tasks.",
-
                     "The trainee easily gains knowledge and understanding of any instruction, skill or work assigned.",
-
                     "The trainee demonstrates a fundamental knowledge of job content.",
-
                     "The trainee effectively uses technology relevant to the assigned tasks.",
-
                     "The trainee shows his/her ability to perform assigned tasks with precision, thoroughness, and professionalism."
-
                 ]
-
             )}
 
 
             ${printCategory(
-
                 "Understanding of the Profession",
-
                 "profession",
-
                 [
-
                     "The trainee is capable to initiate and work voluntarily.",
-
                     "The trainee shows respect to the authorities and follows protocol.",
-
                     "The trainee displays his/her capability to analyze, interpret, weigh and judge certain ideas professionally.",
-
                     "The trainee understands the duties and responsibilities of the job as applied to the goals of the department/company."
-
                 ]
-
             )}
 
         </section>
 
-    `;
 
-
-    /* --------------------------------------
-       PAGE 2
-    -------------------------------------- */
-
-    const page2 = `
+        <!-- =====================================
+             PAGE 2
+        ====================================== -->
 
         <section class="print-page">
 
@@ -1297,75 +1634,55 @@ function buildPrintDocument() {
 
 
             ${printCategory(
-
                 "Understanding of the Profession",
-
                 "profession",
-
                 [
-
                     "The trainee demonstrates a high degree of professionalism and moral values and maintains the confidentiality of all office matters."
-
                 ]
-
             )}
 
 
             ${printCategory(
-
                 "Quality and Quantity of Work",
-
                 "quality",
-
                 [
-
                     "The trainee displays his/her hard work, diligence and conscientiousness in the performance of the assigned tasks.",
-
                     "The extent on how regular the trainee reports to work on time.",
-
                     "The trainee assumes responsibility beyond scope of normal work duties.",
-
                     "The trainee organizes work to improve output and minimize rework.",
-
                     "The extent the trainee completes assignments and meets commitments."
-
                 ]
-
             )}
 
 
             ${printCategory(
-
                 "Practicumer’s skill in various program settings and areas",
-
                 "skills",
-
                 [
-
                     "The trainee is capable of completing work under time pressure with satisfactory results.",
-
                     "The trainee is able to identify deficiencies in workflow or procedures.",
-
                     "The trainee follows job procedure and methods.",
-
                     "The trainee is able to adjust, accommodate and conform to the conditions of his/her workplace.",
-
                     "The trainee is able to convey his/her thoughts and ideas with ease and proficiency, whether verbally or in written form."
-
                 ]
+            )}
 
+
+            <div class="print-section-spacer"></div>
+
+
+            ${printCategory(
+                "Intrapersonal and interpersonal Skills",
+                "interpersonal",
+                []
             )}
 
         </section>
 
-    `;
 
-
-    /* --------------------------------------
-       PAGE 3
-    -------------------------------------- */
-
-    const page3 = `
+        <!-- =====================================
+             PAGE 3
+        ====================================== -->
 
         <section class="print-page">
 
@@ -1373,25 +1690,15 @@ function buildPrintDocument() {
 
 
             ${printCategory(
-
                 "Intrapersonal and interpersonal Skills",
-
                 "interpersonal",
-
                 [
-
                     "The trainee is receptive to feedback and constructive criticism.",
-
                     "The trainee focuses discussions on desired results.",
-
                     "The trainee works effectively in groups.",
-
                     "The trainee is able to relate with other departments.",
-
                     "The trainee promotes and uses candid and open communications."
-
                 ]
-
             )}
 
 
@@ -1404,45 +1711,47 @@ function buildPrintDocument() {
 
 
             ${printAnswerQuestion(
-
                 "1. What are the trainee’s strong points?",
-
                 e.strongPoints
-
             )}
 
 
             ${printAnswerQuestion(
-
                 "2. What are the trainee’s significant limitations?",
-
                 e.limitations
-
             )}
 
 
             ${printAnswerQuestion(
-
                 "3. What can the trainee do to improve himself professionally?",
-
                 e.professionalImprovement
-
             )}
 
 
             <div class="print-question">
 
-                4. If ever the practicumer would apply for a position
-                in your company for possible employment, would you hire him/her?
+                4. If ever the practicumer would apply for
+                a position in your company for possible
+                employment, would you hire him/her?
 
             </div>
 
 
             <p class="print-intro">
 
-                ______ Yes
+                ${
+                    e.wouldHire === "yes"
+                        ? "✓ Yes"
+                        : "_____ Yes"
+                }
+
                 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                ______ No
+
+                ${
+                    e.wouldHire === "no"
+                        ? "✓ No"
+                        : "_____ No"
+                }
 
             </p>
 
@@ -1457,14 +1766,10 @@ function buildPrintDocument() {
 
         </section>
 
-    `;
 
-
-    /* --------------------------------------
-       PAGE 4
-    -------------------------------------- */
-
-    const page4 = `
+        <!-- =====================================
+             PAGE 4
+        ====================================== -->
 
         <section class="print-page">
 
@@ -1481,32 +1786,20 @@ function buildPrintDocument() {
 
 
             ${printCategory(
-
                 "FACTORS",
-
                 "program",
-
                 [
-
                     "Policies and procedures of the trainee practicum program.",
-
                     "Coordination between the school and participating company/institution.",
-
                     "Quality of the content of the evaluation sheet.",
-
                     "Preparedness of the trainees to undergo on-job-training."
-
                 ]
-
             )}
 
 
             ${printAnswerQuestion(
-
                 "5. What other suggestion can you give to improve the Practicum Program of Global Reciprocal Colleges?",
-
                 e.programSuggestion
-
             )}
 
 
@@ -1520,7 +1813,7 @@ function buildPrintDocument() {
 
                     <strong>
                         ${escapeHtml(
-                            e.practicumerName
+                            e.practicumerName || ""
                         )}
                     </strong>
 
@@ -1535,7 +1828,7 @@ function buildPrintDocument() {
 
                     <strong>
                         ${escapeHtml(
-                            e.practicumerPosition
+                            e.practicumerPosition || ""
                         )}
                     </strong>
 
@@ -1550,7 +1843,7 @@ function buildPrintDocument() {
 
                     <strong>
                         ${escapeHtml(
-                            e.dateAccomplished
+                            e.dateAccomplished || ""
                         )}
                     </strong>
 
@@ -1560,14 +1853,10 @@ function buildPrintDocument() {
 
         </section>
 
-    `;
 
-
-    /* --------------------------------------
-       PAGE 5
-    -------------------------------------- */
-
-    const page5 = `
+        <!-- =====================================
+             PAGE 5
+        ====================================== -->
 
         <section class="print-page">
 
@@ -1578,11 +1867,13 @@ function buildPrintDocument() {
 
                 <div class="print-detail-row">
 
-                    Name of Evaluator:
+                    <span class="print-detail-label">
+                        Name of Evaluator:
+                    </span>
 
                     <strong>
                         ${escapeHtml(
-                            e.evaluatorName
+                            e.evaluatorName || ""
                         )}
                     </strong>
 
@@ -1591,11 +1882,13 @@ function buildPrintDocument() {
 
                 <div class="print-detail-row">
 
-                    Company:
+                    <span class="print-detail-label">
+                        Company:
+                    </span>
 
                     <strong>
                         ${escapeHtml(
-                            e.evaluatorCompany
+                            e.evaluatorCompany || ""
                         )}
                     </strong>
 
@@ -1604,11 +1897,13 @@ function buildPrintDocument() {
 
                 <div class="print-detail-row">
 
-                    Position:
+                    <span class="print-detail-label">
+                        Position:
+                    </span>
 
                     <strong>
                         ${escapeHtml(
-                            e.evaluatorPosition
+                            e.evaluatorPosition || ""
                         )}
                     </strong>
 
@@ -1617,7 +1912,9 @@ function buildPrintDocument() {
 
                 <div class="print-detail-row print-signature">
 
-                    Signature:
+                    <span class="print-detail-label">
+                        Signature:
+                    </span>
 
                     <br><br>
 
@@ -1628,13 +1925,7 @@ function buildPrintDocument() {
             </div>
 
 
-            <div
-                style="
-                    margin-top:45px;
-                    text-align:center;
-                    font-size:11px;
-                "
-            >
+            <div class="print-footer">
 
                 <strong>
                     OJT-LOGS
@@ -1648,49 +1939,6 @@ function buildPrintDocument() {
             </div>
 
         </section>
-
-    `;
-
-
-    return (
-
-        page1 +
-        page2 +
-        page3 +
-        page4 +
-        page5
-
-    );
-
-}
-
-
-/* ==========================================
-   PRINT ANSWER
-========================================== */
-
-function printAnswerQuestion(
-    question,
-    answer
-) {
-
-    return `
-
-        <div class="print-question">
-            ${question}
-        </div>
-
-        <div class="print-answer">
-
-            ${escapeHtml(
-                answer || ""
-            )}
-
-        </div>
-
-        <div class="print-answer"></div>
-
-        <div class="print-answer"></div>
 
     `;
 

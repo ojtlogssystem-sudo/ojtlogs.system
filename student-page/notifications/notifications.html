@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Notifications</title>
+
+    <link rel="stylesheet" href="notifications.css">
+    <link rel="stylesheet" href="../templated/header.css">
+    <link rel="stylesheet" href="../templated/sidebar.css">
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+</head>
+<body>
+
+<div class="dashboard">
+    <div id="sidebar-container"></div>
+
+    <main class="main">
+        <header id="header-container"></header>
+
+        <div class="notif-page">
+            <div class="notif-toolbar">
+                <div class="notif-tabs">
+                    <button type="button" class="notif-tab active" data-filter="all">All</button>
+                    <button type="button" class="notif-tab" data-filter="unread">Unread</button>
+                </div>
+                <button type="button" class="notif-mark-all" id="mark-all-read">Mark all as read</button>
+            </div>
+
+            <div class="nl-list" id="nl-list">
+                <div class="nl-empty">Loading...</div>
+            </div>
+        </div>
+    </main>
+</div>
+
+    <!-- Header: hiwalay na module para lumabas ito kahit may problema sa ibaba -->
+    <script type="module">
+        import { loadHeader } from "../templated/header-loader.js";
+        loadHeader("Notifications", { autoLoadProfile: true });
+
+        // Sidebar: pareho ng student_dashboard.js
+        fetch("../templated/sidebar.html")
+            .then(r => r.ok ? r.text() : "")
+            .then(html => {
+                const c = document.getElementById("sidebar-container");
+                if (c && html) c.innerHTML = html;
+            })
+            .catch(err => console.error("Error loading sidebar:", err));
+    </script>
+
+    <script type="module">
+        import {
+            loadNotifications,
+            fetchAllNotifications,
+            getSeenNotifKeys,
+            markNotifKeysSeen
+        } from "../templated/header-loader.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        const listEl = document.getElementById("nl-list");
+        const markAllBtn = document.getElementById("mark-all-read");
+        const tabs = document.querySelectorAll(".notif-tab");
+
+        let items = [];
+        let filter = "all";
+        let currentUid = null;
+
+        function kindClass(kind) {
+            if (kind === "ai-risk" || kind === "rejected") return "nl-risk";
+            if (kind === "ai-monitor") return "nl-monitor";
+            return "";
+        }
+
+        function render() {
+            const seen = getSeenNotifKeys();
+            const unseenCount = items.filter(it => !seen.includes(it.key)).length;
+            markAllBtn.disabled = unseenCount === 0;
+
+            const shown = filter === "unread"
+                ? items.filter(it => !seen.includes(it.key))
+                : items;
+
+            if (shown.length === 0) {
+                listEl.innerHTML = `<div class="nl-empty">${
+                    filter === "unread" ? "No unread notifications." : "No notifications yet."
+                }</div>`;
+                return;
+            }
+
+            listEl.innerHTML = shown.map(it => {
+                const posted = (it.posted || new Date()).toLocaleDateString("en-US", {
+                    month: "short", day: "numeric", year: "numeric"
+                });
+                const unseen = !seen.includes(it.key);
+                return `
+                    <div class="nl-item ${unseen ? "unseen" : ""} ${kindClass(it.kind)}" data-key="${it.key.replace(/"/g, "&quot;")}">
+                        <div class="nl-top">
+                            <p class="nl-title">${it.title}</p>
+                            <span class="nl-posted">Posted: ${posted}</span>
+                        </div>
+                        <p class="nl-note">${it.note}</p>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        // I-refresh ang bell badge sa header para sabay ang bilang.
+        function syncHeader() {
+            loadNotifications(currentUid);
+        }
+
+        listEl.addEventListener("click", (e) => {
+            const el = e.target.closest(".nl-item.unseen");
+            if (!el) return;
+            markNotifKeysSeen([el.dataset.key]);
+            render();
+            syncHeader();
+        });
+
+        markAllBtn.addEventListener("click", () => {
+            markNotifKeysSeen(items.map(it => it.key));
+            render();
+            syncHeader();
+        });
+
+        tabs.forEach(tab => {
+            tab.addEventListener("click", () => {
+                filter = tab.dataset.filter;
+                tabs.forEach(t => t.classList.toggle("active", t === tab));
+                render();
+            });
+        });
+
+        onAuthStateChanged(getAuth(), async (user) => {
+            currentUid = user ? user.uid : null;
+            try {
+                items = await fetchAllNotifications(currentUid);
+            } catch (err) {
+                console.error(err);
+                listEl.innerHTML = `<div class="nl-empty">Unable to load notifications.</div>`;
+                return;
+            }
+            render();
+        });
+    </script>
+</body>
+</html>

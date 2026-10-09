@@ -5,13 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Task History</title>
 
-    <link rel="stylesheet" href="tasks.css?v=1.2">
+    <link rel="stylesheet" href="tasks.css?v=1.7">
     <link rel="stylesheet" href="../templated/sidebar.css">
     <link rel="stylesheet" href="../templated/header.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block" rel="stylesheet">
+    <link rel="stylesheet"href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
 </head>
 <body>
+
+    <!-- INITIAL LOADING OVERLAY
+         Itinatago ito ng tasks.js pagkatapos matapos ang unang onSnapshot()
+         ng attendance/task data, para hindi makita ng user ang placeholder
+         ("Loading logged-in user tasks...") bago pa man dumating ang tunay
+         na datos. -->
+    <div class="page-loading-overlay" id="tasks-loading-overlay">
+        <div class="loading-spinner" aria-hidden="true"></div>
+        <p>Loading your task history…</p>
+    </div>
 
     <div class="dashboard">
         <div id="sidebar-container"></div>
@@ -24,31 +36,49 @@
                 <div class="card-header-title">
                     <span class="vertical-line red"></span>
                     <h3>Task History</h3>
-                </div>
 
-                <!-- Filter Controls Header -->
-                <div class="filter-controls">
-                    <div class="date-picker-btn" id="date-picker-btn">
-                        <i class="fa-regular fa-calendar"></i>
-                        <span id="date-range-text">This Week</span>
-                        <i class="fa-solid fa-chevron-down arrow-down"></i>
-                        <!-- Overlay input para ma-trigger ang native calendar sa click -->
-                        <input type="date" id="filter-date-input">
-                    </div>
-                    
                     <a href="../reportform/weeklyreport.html" style="text-decoration: none;">
                         <button class="filter-btn" id="filter-btn" type="button">
-                            <i class="fa-solid fa-file-lines"></i>
+                            <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">description</mat-icon>
                             <span>Weekly Reports</span>
                         </button>
                     </a>
                 </div>
 
+                <!-- Filter Controls Header -->
+                <div class="filter-controls">
+                    <div class="date-picker-wrapper">
+                        <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color icon-calendar" aria-hidden="true">calendar_month</mat-icon>
+
+                        <input
+                            type="text"
+                            id="dateRangePicker"
+                            placeholder="Select date range..."
+                            readonly
+                        >
+                    </div>
+                </div>
+
                 <!-- List of Dynamic Task Cards -->
                 <div class="task-history-list" id="user-tasks-container">
                     <div style="text-align: center; padding: 20px; color: #6b7280; font-size: 13px;">
-                        <i class="fa-solid fa-spinner fa-spin"></i> Loading logged-in user tasks...
+                        <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color spin" aria-hidden="true">progress_activity</mat-icon> Loading logged-in user tasks...
                     </div>
+                </div>
+
+                <!-- Pagination footer -->
+                <div class="pagination-bar" id="pagination-bar" hidden>
+                    <div class="pagination-buttons">
+                        <button type="button" class="page-btn" id="page-prev">
+                            <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">chevron_left</mat-icon>
+                            <span>Previous</span>
+                        </button>
+                        <button type="button" class="page-btn" id="page-next">
+                            <span>Next</span>
+                            <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">chevron_right</mat-icon>
+                        </button>
+                    </div>
+
                 </div>
             </div>
         </main>
@@ -58,6 +88,7 @@
     <script src="../templated/header-loader.js"></script>
 
     <!-- Functional Firebase Logic -->
-    <script type="module" src="tasks.js"></script>
+     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script type="module" src="tasks.js?v=1.7"></script>
 </body>
 </html>

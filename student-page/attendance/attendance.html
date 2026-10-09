@@ -5,10 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Attendance - OJT LOGS</title>
 
-    <link rel="stylesheet" href="../templated/header.css">
     <link rel="stylesheet" href="attendance.css">
+    <link rel="stylesheet" href="../templated/header.css">
     <link rel="stylesheet" href="../templated/sidebar.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
     
     <!-- Flatpickr Date Range Picker CDN -->
@@ -17,6 +18,17 @@
 </head>
 
 <body>
+
+<!-- INITIAL LOADING OVERLAY
+     Pinipigilan nito ang user na maka-click ng agad sa mga button
+     (Time In / Time Out) bago pa man matapos ang unang pag-fetch/
+     verify ng totoong attendance status mula Firestore. Awtomatiko
+     itong matatanggal ng attendance.js pagkatapos ng unang
+     refreshAttendanceUI(). -->
+<div class="page-loading-overlay" id="attendance-loading-overlay">
+    <div class="loading-spinner" aria-hidden="true"></div>
+    <p>Loading your attendance data…</p>
+</div>
 
 <div class="dashboard">
     <div id="sidebar-container"></div>
@@ -27,15 +39,29 @@
 
         <section class="dashboard-content">
 
+            <!-- LIVE DATE & TIME -->
+            <div class="datetime-bar">
+                <div class="datetime-item">
+                    <div>
+                        <small>Today</small>
+                        <strong id="student-current-date">--</strong>
+                    </div>
+                </div>
+
+                <div class="datetime-item">
+                    <div>
+                        <small>Current Time</small>
+                        <strong id="student-current-time">--:--:--</strong>
+                    </div>
+                </div>
+            </div>
+
             <!-- QR SCANNER CARDS -->
             <div class="qr-cards-grid">
                 
                 <!-- TIME IN CARD -->
                 <div class="qr-card">
                     <div class="card-top-header">
-                        <div class="qr-icon-circle green-bg">
-                            <i class="fa-solid fa-right-to-bracket"></i>
-                        </div>
                         <div class="card-header-info">
                             <h3>QR Time In</h3>
                             <p>Scan the QR code provided by your coordinator/company to time in.</p>
@@ -43,13 +69,13 @@
                     </div>
 
                     <button class="scan-btn green-btn" id="time-in-scan-btn" type="button">
-                        <i class="fa-solid fa-qrcode"></i>
+                        <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">qr_code_scanner</mat-icon>
                         Scan for Time In
                     </button>
 
                     <div class="qr-note">
-                        <i class="fa-solid fa-circle-info"></i>
-                        <span>QR scan & photo proof required.</span>
+                        <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">info</mat-icon>
+                        <span id="time-in-note-text">QR scan &amp; photo proof required.</span>
                     </div>
 
                     
@@ -58,9 +84,6 @@
                 <!-- TIME OUT CARD -->
                 <div class="qr-card">
                     <div class="card-top-header">
-                        <div class="qr-icon-circle gray-bg" id="time-out-icon-box">
-                            <i class="fa-solid fa-right-from-bracket"></i>
-                        </div>
                         <div class="card-header-info">
                             <h3>QR Time Out</h3>
                             <p>Scan the QR code provided by your coordinator/company to time out.</p>
@@ -68,21 +91,16 @@
                     </div>
 
                     <button class="scan-btn disabled-btn" id="time-out-scan-btn" type="button" disabled>
-                        <i class="fa-solid fa-qrcode"></i>
+                        <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">qr_code_scanner</mat-icon>
                         Scan for Time Out
                     </button>
 
                     <div class="qr-note">
-                        <i class="fa-solid fa-circle-info"></i>
+                        <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">info</mat-icon>
                         <span id="time-out-note-text">Note: 1 hour breaktime is automatically deducted from total hours.</span>
                     </div>
                 </div>
-                
-                <div class="firebase-badge-container">
-                    <div id="firebase-timestamp-badge" class="firebase-timestamp-badge">
-                        --:-- / -- --, ----
-                    </div>
-                </div>
+            
             </div>
 
             <!-- TODAY'S ATTENDANCE SUMMARY -->
@@ -104,10 +122,6 @@
                         <h4 id="today-company">--</h4>
                     </div>
                     <div class="summary-item">
-                        <span>Location Logged</span>
-                        <h4 id="today-location">--</h4>
-                    </div>
-                    <div class="summary-item">
                         <span>Time In</span>
                         <h4 class="text-green" id="today-time-in">--</h4>
                     </div>
@@ -123,17 +137,16 @@
             </div>
 
             <!-- ATTENDANCE HISTORY TABLE WITH FLATPICKR DATE FILTER -->
-            <div class="attendance-card">
+            <div class="attendance-card" id="attendance-history-card">
                 <div class="card-header-title">
                     <span class="vertical-line red"></span>
                     <h3>Attendance History</h3>
-                    <a href="attendance-history.html" class="view-all">View All</a>
                 </div>
 
                 <!-- Filter Bar Wrapper -->
                 <div class="filter-header-bar">
                     <div class="date-picker-wrapper">
-                        <i class="fa-regular fa-calendar-days icon-calendar"></i>
+                        <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color icon-calendar" aria-hidden="true">calendar_month</mat-icon>
                         <input type="text" id="dateRangePicker" placeholder="Select date range..." readonly>
                     </div>
                     <span class="recent-logs-label">Logs Date</span>
@@ -142,6 +155,20 @@
                 <!-- Dynamic History List -->
                 <div class="attendance-history-list" id="attendance-history-list">
                     <!-- Dynamic history items rendered via Firebase JS -->
+                </div>
+
+                <!-- Pagination footer -->
+                <div class="pagination-bar" id="history-pagination-bar" hidden>
+                    <div class="pagination-buttons">
+                        <button type="button" class="page-btn" id="history-page-prev">
+                            <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">chevron_left</mat-icon>
+                            <span>Previous</span>
+                        </button>
+                        <button type="button" class="page-btn" id="history-page-next">
+                            <span>Next</span>
+                            <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">chevron_right</mat-icon>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -165,52 +192,70 @@
     </div>
 </div>
 
-<!-- 2. PHOTO PROOF MODAL (TIME IN - CAMERA CAPTURE) -->
+<!-- 2. PHOTO PROOF MODAL (TIME IN - CAMERA CAPTURE, mobile-camera style) -->
 <div class="scanner-modal" id="photo-modal" hidden>
-    <div class="scanner-dialog">
-        <h3><i class="fa-solid fa-camera"></i> Take Selfie Photo Proof</h3>
-        <p>Live camera capture with automatic timestamp</p>
-        
+    <div class="scanner-dialog camera-dialog">
+
         <div class="photo-preview-wrapper">
             <video id="photo-video" autoplay playsinline></video>
             <canvas id="photo-canvas" hidden></canvas>
-            
+
             <div class="photo-overlay-stamp">
-                <span><i class="fa-regular fa-clock"></i> <span id="stamp-datetime">--:-- --</span></span>
-                <span><i class="fa-solid fa-building"></i> <span id="stamp-location">Locating...</span></span>
+                <span><mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">schedule</mat-icon> <span id="stamp-datetime">--:-- --</span></span>
+                <span><mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">apartment</mat-icon> <span id="stamp-location">Loading company...</span></span>
             </div>
         </div>
 
-        <div class="modal-actions">
-            <button class="action-btn cancel-btn" id="photo-cancel" type="button">Close</button>
-            <button class="action-btn capture-btn" id="capture-photo-btn" type="button">
-                <i class="fa-solid fa-camera"></i> Complete Time In
+        <div class="modal-actions camera-actions">
+            <button class="camera-side-btn" id="photo-cancel" type="button" title="Close">
+                <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">close</mat-icon>
+            </button>
+
+            <div class="camera-center-slot">
+                <button class="camera-shutter-btn" id="capture-photo-btn" type="button" title="Capture Photo">
+                    <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">photo_camera</mat-icon>
+                </button>
+                <button class="camera-shutter-btn confirm-btn" id="confirm-photo-btn" type="button" hidden>
+                    <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">check_circle</mat-icon> Complete Time In
+                </button>
+            </div>
+
+            <button class="camera-side-btn" id="switch-camera-btn" type="button" title="Switch camera">
+                <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">cameraswitch</mat-icon>
+            </button>
+            <button class="camera-side-btn retake-icon-btn" id="retake-photo-btn" type="button" title="Retake" hidden>
+                <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">rotate_left</mat-icon>
             </button>
         </div>
     </div>
-    
 </div>
 
 <!-- 3. TASK REPORT MODAL (TIME OUT) -->
 <div class="scanner-modal" id="task-modal" hidden>
     <div class="scanner-dialog" style="max-width: 460px;">
-        <h3 style="font-size: 15px; margin-bottom: 2px;">Daily Accomplishment Report</h3>
-        <p style="font-size: 11px; margin-bottom: 16px; color: #6b7280;">Summarize your work done today before signing out.</p>
+        <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 2px;">Daily Accomplishment Report</h3>
+        <p style="font-size: 12px; margin-bottom: 16px; color: #6b7280;">Summarize your work done today before signing out.</p>
 
         <!-- INPUT FIELDS FOR ADDING TASK -->
         <div style="text-align: left; margin-top: 14px;">
             <div class="form-group" style="margin-bottom: 10px;">   
-                <label style="font-size: 12px; font-weight: 600; color: #374151;">Task Title *</label>
-                <input type="text" id="task-title-input" placeholder="e.g., Networking" style="width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px; font-size: 12px; outline: none;">
+                <label style="font-size: 12px; font-weight: 600; color: #374151;">Task Title</label>
+                <select id="task-title-input" style="width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px; font-size: 12px; outline: none; background: #fff; color: #111827; cursor: pointer;">
+                    <option value="">Select Skill Focus</option>
+                    <option value="Networking">Networking</option>
+                    <option value="Software Development">Software Development</option>
+                    <option value="Hardware">Hardware</option>
+                    <option value="Database Management">Database Management</option>
+                </select>
             </div>
 
             <div class="form-group" style="margin-bottom: 10px;">
-                <label style="font-size: 12px; font-weight: 600; color: #374151;">Task Description *</label>
+                <label style="font-size: 12px; font-weight: 600; color: #374151;">Task Description</label>
                 <textarea id="task-desc-input" style="width: 100%; height: 60px; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 10px; font-size: 12px; outline: none; resize: none;" placeholder="Details of work done..."></textarea>
             </div>
 
             <button type="button" id="add-task-btn" style="width: 100%; padding: 10px; background: #e0f2fe; color: #0284c7; border: 1px dashed #0284c7; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s ease;">
-                <i class="fa-solid fa-plus"></i> Add Task to List
+                <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">add</mat-icon> Add Task to List
             </button>
         </div>
 
@@ -223,7 +268,7 @@
         </div>
 
         <button class="scan-btn green-btn" id="submit-task-btn" type="button" style="margin-top: 8px;">
-            <i class="fa-solid fa-check-circle"></i> Submit & Complete Time Out
+            <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">check_circle</mat-icon> Submit & Complete Time Out
         </button>
         <button class="scanner-cancel" id="task-cancel" type="button" style="margin-top: 8px;">Close</button>
     </div>
@@ -232,7 +277,7 @@
 <!-- 4. VIEW PHOTO PROOF MODAL (HISTORY PREVIEW) -->
 <div class="scanner-modal" id="view-photo-modal" hidden>
     <div class="scanner-dialog view-photo-dialog">
-        <h3><i class="fa-solid fa-image"></i> Photo Proof Details</h3>
+        <h3>Photo Proof Details</h3>
         <p>Verification photo submitted during time-in</p>
         
         <div class="photo-view-container">
@@ -242,33 +287,28 @@
         <!-- DETAILS CONTAINER (DATE, TIMESTAMP, COMPANY) -->
         <div class="photo-details-box">
             <div class="detail-row">
-                <i class="fa-solid fa-building"></i>
+                <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">apartment</mat-icon>
                 <div>
                     <span class="detail-label">Company</span>
                     <h5 id="view-photo-company">--</h5>
                 </div>
             </div>
             <div class="detail-row">
-                <i class="fa-regular fa-calendar-days"></i>
+                <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">calendar_month</mat-icon>
                 <div>
                     <span class="detail-label">Date</span>
                     <h5 id="view-photo-date">--</h5>
                 </div>
             </div>
             <div class="detail-row">
-                <i class="fa-regular fa-clock"></i>
+                <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">schedule</mat-icon>
                 <div>
                     <span class="detail-label">Time Stamp</span>
                     <h5 id="view-photo-time">--</h5>
                 </div>
             </div>
-
-            
         </div>
-
         <!-- Red Timestamp Badge Container -->
-        
-
         <button class="scanner-cancel" id="view-photo-btn-close" type="button" style="margin-top: 14px;">Close</button>
     </div>
 </div>

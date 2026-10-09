@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
-
 :root{
     --primary:#AB0A0A;
     --primary-hover:#8E0909;
@@ -13,11 +11,11 @@
     margin:0;
     padding:0;
     box-sizing:border-box;
-    font-family:'Poppins',sans-serif;
+    font-family:'Google Sans Flex', sans-serif;
 }
 
 body{
-    background:var(--light);
+    background:#fafafa;
     overflow-x:hidden;
 }
 
@@ -156,10 +154,12 @@ button{
 }
 
 .summary-card{
+    position:relative;
     background:#fff;
-    border-radius:14px;
-    padding: 16px;
-    box-shadow:0 4px 12px rgba(0,0,0,.05);
+    border:1px solid #eef0f6;
+    border-radius:16px;
+    padding:14px 16px;
+    box-shadow:0 1px 2px rgba(15,23,42,.04), 0 8px 24px rgba(15,23,42,.05);
 }
 
 .summary-row{
@@ -170,62 +170,186 @@ button{
 
 .card-top{
     display:flex;
+    align-items:center;
     justify-content:space-between;
-    align-items:flex-start;
+    gap:8px;
+    margin-bottom:8px;
 }
 
 .card-top h5{
     font-size:12px;
     font-weight:500;
-    color:#6b7280;
-    margin-bottom:4px;
+    line-height:1.3;
+    letter-spacing:.2px;
+    color:#64748b;
+    margin:0;
 }
 
-.card-top h2{
-    font-size:18px;
-    font-weight:700;
-    color:#111827;
+.summary-card h2{
+    font-size:16px;
+    font-weight:650;
+    line-height:1.2;
+    letter-spacing:-.2px;
+    color:#0f172a;
+}
+
+.summary-card.green h2{
+    font-size:20px;
 }
 
 .card-sub{
     font-size:12px;
-    color:#6b7280;
+    color:#64748b;
     margin-top:8px;
+    padding-top:6px;
+    border-top:1px solid #f1f5f9;
 }
 
 .card-icon{
-    width:38px;
-    height:38px;
-    border-radius:14px;
+    order:2;
+    width:28px;
+    height:28px;
+    flex-shrink:0;
+    border-radius:9px;
     display:flex;
     justify-content:center;
     align-items:center;
-    font-size:18px;
+    font-size:12px;
 }
 
-.green-icon{ background:rgba(34,197,94,.15); color:#22c55e; }
-.blue-icon{ background:rgba(59,130,246,.15); color:#3b82f6; }
-.orange-icon{ background:rgba(249,115,22,.15); color:#f97316; }
-.purple-icon{ background:rgba(147,51,234,.15); color:#9333ea; }
+/* ===== Welcome card ===== */
+.welcome-section {
+    padding: 16px 16px 0;
+}
+
+.welcome-card {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px 40px 16px 16px;
+    border-radius: 16px;
+    border: 1px solid #ffdede;
+    background: linear-gradient(135deg, #ffecee 0%, #fffafa 55%, #ffeff0 100%);
+    animation: welcomeIn .35s ease both;
+}
+
+@keyframes welcomeIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: none; }
+}
+
+.welcome-icon {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px #f2b8bd;
+    color: var(--primary);
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.welcome-body h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a1a2e;
+    line-height: 1.3;
+}
+
+.welcome-body p {
+    margin: 4px 0 10px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #555;
+}
+
+.welcome-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--primary);
+    font-size: 12.5px;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(171, 10, 10, .08);
+}
+
+.welcome-close {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    background: none;
+    border: none;
+    color: #9ca3af;
+    font-size: 15px;
+    cursor: pointer;
+    padding: 4px;
+}
+
+.welcome-close:hover { color: #6b7280; }
+
+/* ==========================================
+   OJT DEADLINE - ESTIMATED COMPLETION CARD
+========================================== */
+
+.deadline-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 9px;
+    padding-top: 7px;
+    border-top: 1px solid #f1f5f9;
+}
+
+.deadline-info span {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: 10px;
+    font-weight: 500;
+    color: #64748b;
+}
+
+.deadline-info strong {
+    font-size: 10px;
+    font-weight: 600;
+    color: #7c3aed;
+    white-space: nowrap;
+}
+
+.green-icon{ background:rgba(34,197,94,.12); color:#16a34a; }
+.blue-icon{ background:rgba(59,130,246,.12); color:#2563eb; }
+.orange-icon{ background:rgba(249,115,22,.12); color:#ea580c; }
+.purple-icon{ background:rgba(124,58,237,.12); color:#7c3aed; }
+.red-icon{ background:#fde8e8; color:#ab0a0a; }
+.pink-icon{ background:#fde8e8; color:#ab0a0a; }
 
 .progress{
     width:100%;
-    height:8px;
-    background:#ececec;
+    height:6px;
+    background:#eef2f7;
     border-radius:20px;
     margin-top:10px;
     overflow:hidden;
 }
 
 .progress-fill{ height:100%; border-radius:20px; }
-.green-fill{ width:60%; background:#10b981; }
+.green-fill{ width:60%; background:linear-gradient(90deg,#22c55e,#10b981); }
 
 .summary-card span{
     display:block;
     margin-top:8px;
     font-size:12px;
     font-weight:500;
-    color:#6b7280;
+    color:#64748b;
 }
 
 .status-text{
@@ -275,7 +399,7 @@ button{
 }
 
 .title-left h3{
-    font-size:14px;
+    font-size:15px;
     font-weight:600;
     color:#222;
 }
@@ -284,13 +408,13 @@ button{
     display:flex;
     justify-content:space-between;
     align-items:center;
-    padding: 12px;
-    border-radius:14px;
-    margin-bottom:10px;
+    padding: 7px 12px;
+    border-radius:12px;
+    margin-bottom:8px;
 }
 
 .green-box{ background:#eefbf2; }
-.orange-box{ background:#fff7eb; border: 1px solid #e8cc8a }
+.orange-box{ background:#fdf2f2; border: 1px solid #f8d7d7 }
 
 .box-left{
     display:flex;
@@ -298,25 +422,25 @@ button{
     gap:10px;
 }
 
-.box-left i{
-    width:36px;
-    height:36px;
+.box-left .mat-icon{
+    width:30px;
+    height:30px;
     border-radius:50%;
     display:flex;
     justify-content:center;
     align-items:center;
-    font-size:16px;
+    font-size:18px;
 }
 
-.green-box .box-left i{ background:rgba(34,197,94,.15); color:#22c55e; }
-.orange-box .box-left i{ background:rgba(249,115,22,.15); color:#f97316; }
+.green-box .box-left .mat-icon{ background:rgba(34,197,94,.15); color:#22c55e; }
+.orange-box .box-left .mat-icon{ background:#fde8e8; color:#ab0a0a; }
 
-.box-left h4{ font-size:14px; font-weight:600; }
-.box-left p{ font-size:12px; color:#777; }
+.box-left h4{ font-size:13px; font-weight:600; line-height:1.3; }
+.box-left p{ font-size:13px; color:#777; line-height:1.3; }
 
 .box-right{ text-align:right; }
-.box-right span{ font-size:11px; color:#777; }
-.box-right h2{ font-size:16px; font-weight:650; color:#222; }
+.box-right span{ font-size:13px; color:#777; }
+.box-right h2{ font-size:15px; font-weight:650; color:#222; line-height:1.2; }
 
 .attendance-footer{
     display:flex;
@@ -337,15 +461,15 @@ button{
 }
 
 .progress-circle{
-    flex:0 0 170px;
+    flex:0 0 110px;
     display:flex;   
     justify-content:center;
     align-items:center;
 }
 
 .circle{
-    width:130px;
-    height:130px;
+    width:110px;
+    height:110px;
     border-radius:50%;
     background:conic-gradient(#22c55e 64%,#ececec 0);
     display:flex;
@@ -360,8 +484,8 @@ button{
 .circle::before{
     content:"";
     position:absolute;
-    width:105px;
-    height:105px;
+    width:88px;
+    height:88px;
     background:#fff;
     border-radius:50%;
 }
@@ -372,7 +496,7 @@ button{
     top:45%;
     left:50%;
     transform:translate(-50%,-50%);
-    font-size:28px;
+    font-size:24px;
     font-weight:700;
     color:#16a34a;
 }
@@ -383,29 +507,30 @@ button{
     top:65%;
     left:50%;
     transform:translate(-50%,-50%);
-    font-size:11px;
+    font-size:12px;
     color:#777; 
 }
 
 .progress-details{
-    width:100%;
+    flex:1;
+    min-width:0;
     display:flex;
     flex-direction:column;
     gap:6px;
-    margin-left:-15px;
 }
 
 .detail-item{
     display:flex;
     justify-content:space-between;
     align-items:center;
-    padding:10px 14px;
+    gap:8px;
+    padding:10px 12px;
     background:#f8fafc;
     border-radius:8px;
 }
 
-.detail-item span{ font-size:11px; color:#777; }
-.detail-item strong{ font-size:11px; font-weight: 600; color:#222; }
+.detail-item span{ font-size:13px; color:#777; white-space:nowrap; }
+.detail-item strong{ font-size:13px; font-weight: 600; color:#222; white-space:nowrap; flex-shrink:0; }
 
 .progress-divider {
     border: none;
@@ -464,108 +589,10 @@ button{
     flex-shrink:0;
 }
 
-.header-right {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    margin-left: auto;
-    position: relative;
-}
-
-.user-profile {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-}
-
-.profile-circle {
-    width: 38px;
-    height: 38px;
-    background-color: #a80000;
-    color: #ffffff;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    font-weight: 700;
-    user-select: none;
-}
-
-.dashboard-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 20px;
-    background: #ffffff;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
-    position: relative;
-}
-
-.profile-card-dropdown {
-    display: none;
-    position: absolute;
-    top: 48px;
-    right: 0;
-    width: 200px;
-    background: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
-    border: 1px solid #eaeaea;
-    z-index: 1000;
-    overflow: hidden;
-}
-
-.profile-card-dropdown.show {
-    display: block;
-}
-
-.profile-card-header {
-    padding: 12px 14px 10px 14px;
-    border-bottom: 1px solid #f0f0f0;
-}
-
-.profile-card-header h4 {
-    font-size: 13px;
-    font-weight: 700;
-    color: #111827;
-    margin: 0;
-}
-
-.profile-card-header .role-title {
-    font-size: 11px;
-    color: #6b7280;
-    margin-top: 2px;
-}
-
-.profile-card-body {
-    padding: 6px;
-}
-
-.profile-menu-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 10px;
-    border-radius: 6px;
-    color: #374151;
-    font-size: 13px;
-    font-weight: 500;
-    text-decoration: none;
-}
-
-.profile-menu-item:hover {
-    background-color: #f3f4f6;
-}
-
-.profile-menu-item.logout {
-    color: #dc2626;
-}
-
 /* =========================================
    MODAL POP-UP STYLES (PARA SA VIEW ALL)
    ========================================= */
+/* Hidden by default; JS toggles .show so the modal never flashes on load. */
 .modal-overlay {
     position: fixed !important;
     top: 0 !important;
@@ -573,11 +600,16 @@ button{
     width: 100vw !important;
     height: 100vh !important;
     background-color: rgba(0, 0, 0, 0.5) !important;
-    display: flex !important;
+    display: none !important;
     justify-content: center !important;
     align-items: center !important;
     z-index: 99999 !important;
     backdrop-filter: blur(4px);
+    padding: 16px;
+}
+
+.modal-overlay.show {
+    display: flex !important;
 }
 
 #modal-container-wrapper .modal-content {
@@ -641,4 +673,651 @@ button{
 
 .activity-info{ flex:1; }
 .activity-info h4{ font-size:13px; font-weight:600; color:#222; }
-.activity-info p{ font-size:11px; color:#777; }
+.activity-info p{ font-size:13px; color:#777; }
+
+/* ========================================
+   INTERNSHIP CALENDAR
+======================================== */
+
+.calendar-card {
+    background: #ffffff;
+    border: 1px solid #ececec;
+    border-radius: 14px;
+    padding: 6px 15px 16px;
+    margin: 0 16px 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.calendar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-left: 8px;
+    margin-bottom: -4px;
+    gap: 8px;
+}
+
+
+.calendar-month-title {
+    display: flex;
+    align-items: center;
+}
+
+.calendar-accent {
+    display: inline-block;
+    width: 3.5px;
+    height: 15px;
+    background-color: #AB0A0A;
+    border-radius: 5px;
+    margin-right: 7px;
+}
+
+.calendar-month-title h3 {
+    margin: 0;
+    color: #222;
+    font-size: 15px;
+    font-weight: 600px;
+}
+
+.calendar-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.calendar-action-btn {
+    height: 28px;
+    padding: 0 11px;
+    border-radius: 8px;
+    background: #f7f8fa;
+    color: #111827;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    font-family: 'Google Sans Flex', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* ========================================
+   CALENDAR CONTROLS
+======================================== */
+
+.calendar-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 2px;
+}
+
+/* PLUS BUTTON */
+.calendar-add-btn {
+    width: 42px;
+    height: 42px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: none;
+    border-radius: 12px;
+
+    background: #f7f8fa;
+    color: #111827;
+
+    font-size: 15px;
+    cursor: pointer;
+
+    transition: all 0.2s ease;
+}
+
+.calendar-add-btn:hover {
+    background: #fceaea;
+    color: #ab0a0a;
+}
+
+/* CALENDAR BUTTON */
+.calendar-btn {
+    height: 36px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 8px;
+
+    padding: 0 15px;
+
+    border: none;
+    border-radius: 12px;
+
+    background: #f7f8fa;
+    color: #111827;
+
+    font-family: 'Google Sans Flex', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition: all 0.2s ease;
+}
+
+.calendar-btn .mat-icon {
+    font-size: 18px;
+}
+
+.calendar-btn:hover {
+    background: #fceaea;
+    color: #ab0a0a;
+}
+
+.calendar-action-btn:hover {
+    background: #fceaea;
+    color: #AB0A0A;
+    border: 1px solid #e8a8a8;
+}
+
+.calendar-divider {
+    height: 1px;
+    background: #eeeeee;
+    margin: 14px 0 16px;
+}
+
+.calendar-days {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    width: 100%;
+    /* visible, not hidden: a clipped ancestor was cutting off the
+       "Note: ..." popup that appears when a day is tapped. */
+    overflow: visible;
+}
+
+.calendar-day-list {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex: 1;
+    min-width: 0;
+    overflow: visible;
+}
+
+/* DATE BOX */
+.calendar-day { 
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 58px;
+    height: 60px; 
+    border: 1px solid transparent; 
+    background: #f7f8fa; 
+    border-radius: 13px; 
+    color: #111827; 
+ 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: center; 
+    gap: 5px; 
+ 
+    font-family: 'Google Sans Flex', sans-serif; 
+    cursor: pointer; 
+ 
+    transition: 
+        background-color 0.2s ease, 
+        border-color 0.2s ease; 
+}
+
+/* NUMBER */
+.calendar-day .day-number {
+    font-size: 17px;
+    line-height: 1;
+    font-weight: 600;
+}
+
+/* DAY NAME */
+.calendar-day .day-name {
+    font-size: 11px;
+    line-height: 1;
+    color: #6b7280;
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+/* HOVER */
+.calendar-day:hover {
+    background: #fceaea;
+    border-color: #e8baba;
+}
+
+/* SELECTED */
+.calendar-day.active {
+    background: #AB0A0A;
+    border-color: #AB0A0A;
+    color: #ffffff;
+    box-shadow: none;
+}
+
+.calendar-day.active .day-name {
+    color: #ffffff;
+}
+
+/* TODAY — NO BORDER */
+.calendar-day.today:not(.active) {
+    border-color: transparent;
+}
+
+/* HOURS LOGGED ON A DUTY DAY (e.g. "8h") */
+.calendar-day .calendar-day-hours {
+    font-size: 11px;
+    font-weight: 700;
+    color: #16a34a;
+    line-height: 1;
+    margin-top: 1px;
+}
+
+.calendar-day.active .calendar-day-hours {
+    color: #dcfce7;
+}
+
+/* Subtle green tint on days that already have logged hours */
+.calendar-day.has-duty:not(.active) {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+
+/* ARROWS */
+.calendar-body-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.calendar-days {
+    flex: 1;
+    min-width: 0;
+    overflow: visible;
+}
+
+.calendar-day-list {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-start;
+    min-width: 0;
+}
+
+.calendar-nav {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 10px;
+    color: #333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.2s;
+}
+
+.calendar-nav:hover {
+    background-color: #f1f5f9;
+}
+
+/* ========================================
+   FULL MONTH CALENDAR
+======================================== */
+
+.calendar-day-list.month-view {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+}
+
+
+/* WEEKDAY LABELS */
+
+.calendar-day-list.month-view .calendar-weekday {
+    width: 100%;
+    height: 28px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-family: 'Google Sans Flex', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+
+    color: #6b7280;
+}
+
+
+/* EMPTY CELLS */
+
+.calendar-day-list.month-view .calendar-empty {
+    width: 100%;
+    height: 46px;
+}
+
+
+/* DATE BOXES */
+
+.calendar-day-list.month-view .calendar-month-day {
+    width: 100%;
+    height: 33px;
+
+    padding: 0;
+    margin: 0;
+
+    border: 1px solid #eeeeee;
+    border-radius: 10px;
+
+    background: #f7f8fa;
+    color: #111827;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-family: 'Google Sans Flex', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+
+    cursor: pointer;
+
+    box-sizing: border-box;
+
+    transition:
+        background-color 0.2s ease,
+        border-color 0.2s ease,
+        color 0.2s ease;
+}
+
+
+/* HOVER */
+
+.calendar-day-list.month-view .calendar-month-day:hover {
+    background: #fceaea;
+    border-color: #e8baba;
+    color: #ab0a0a;
+}
+
+
+/* SELECTED DATE */
+
+.calendar-day-list.month-view .calendar-month-day.active {
+    background: #ab0a0a;
+    border-color: #ab0a0a;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+
+/* TODAY */
+
+.calendar-day-list.month-view
+.calendar-month-day.today:not(.active) {
+    border-color: #e8baba;
+}
+
+/* Subtle green tint on days that already have logged hours (tap the day
+   to see the exact hours rendered, shown in the popup tooltip). */
+.calendar-day-list.month-view .calendar-month-day.has-duty:not(.active) {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+    color: #15803d;
+}
+
+/* Red tint on past duty days with no logged hours and no excuse/holiday
+   on file — the same treatment as the green "has-duty" tint above, just
+   for the opposite case (absent instead of present). */
+.calendar-day-list.month-view .calendar-month-day.absent-day:not(.active) {
+    background: #fef2f2;
+    border-color: #fca5a5;
+    color: #b91c1c;
+}
+
+.calendar-day.absent-day:not(.active) {
+    background: #fef2f2;
+    border-color: #fca5a5;
+}
+
+/* EMPTY CELLS */
+
+.calendar-day-list.month-view .calendar-empty {
+    width: 100%;
+    height: 42px;
+    margin: 0;
+    padding: 0;
+}
+
+/* Note: .notification / .notification-badge styling now lives entirely
+   in the shared ../templated/header.css so the dashboard's header stays
+   in sync with every other page instead of keeping its own copy. */
+
+/* "View All" trigger in the Recent Activity header */
+.view-all-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: #0284c7;
+    font-family: inherit;
+    font-weight: 500;
+    font-size: 13px;
+}
+
+.view-all-btn:hover {
+    text-decoration: underline;
+}
+
+.activity-duration {
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 5px 10px;
+    margin-left: auto;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+
+/* ========================================
+   RESPONSIVE: MOBILE CALENDAR
+   The week-view day boxes now flex to share whatever width is left
+   after the two nav arrows (see ".calendar-day" above), so they
+   shrink instead of overflowing and pushing the right arrow off
+   screen. This just tightens spacing/fonts on narrow phones so the
+   shrunk boxes stay readable.
+======================================== */
+@media (max-width: 480px) {
+    .calendar-card {
+        padding: 8px 10px 12px;
+        margin: 0 12px 16px;
+    }
+
+    .calendar-body-wrapper {
+        gap: 4px;
+    }
+
+    .calendar-nav {
+        padding: 6px;
+        font-size: 15px;
+        flex-shrink: 0;
+    }
+
+    .calendar-day-list {
+        gap: 5px;
+    }
+
+    .calendar-day {
+        height: 54px;
+        gap: 3px;
+    }
+
+    .calendar-day .day-number {
+        font-size: 12px;
+    }
+
+    .calendar-day .day-name {
+        font-size: 9.5px;
+    }
+
+    .calendar-day .calendar-day-hours {
+        font-size: 9.5px;
+    }
+
+    .calendar-btn span {
+        display: none;
+    }
+
+    .calendar-btn {
+        padding: 0 10px;
+        width: 36px;
+    }
+}
+/* ==========================================
+   INITIAL PAGE LOADING OVERLAY
+   Ipinapakita habang hindi pa tapos ang unang
+   pag-fetch ng student profile (loadStudentData)
+   at unang snapshot ng attendance/activity data
+   mula Firestore. Pinipigilan nito na makita ng
+   user ang mga placeholder values ("Loading...",
+   "0 hours", "--") bago pa dumating ang totoong
+   datos.
+========================================== */
+.page-loading-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(2px);
+    transition: opacity 0.25s ease;
+}
+
+.page-loading-overlay.fade-out {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.page-loading-overlay .loading-spinner {
+    width: 42px;
+    height: 42px;
+    border: 4px solid #e5e7eb;
+    border-top-color: #AB0A0A;
+    border-radius: 50%;
+    animation: dashboard-loading-spin 0.8s linear infinite;
+}
+
+.page-loading-overlay p {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    font-family: 'Google Sans Flex', sans-serif;
+}
+
+@keyframes dashboard-loading-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ==========================================
+   MATERIAL SYMBOLS ICONS
+   (mat-icon + lumi-symbols)
+========================================== */
+
+.mat-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 1em;
+    height: 1em;
+    line-height: 1;
+    user-select: none;
+}
+
+.lumi-symbols,
+.mat-ligature-font {
+    font-family: 'Material Symbols Outlined';
+    font-weight: 400;
+    font-style: normal;
+    letter-spacing: normal;
+    text-transform: none;
+    white-space: nowrap;
+    direction: ltr;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: 'liga';
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+.lm-icon-xl {
+    font-size: 24px;
+}
+
+.mat-icon-no-color {
+    color: inherit;
+}
+
+/* sizes per place */
+.card-icon .mat-icon {
+    font-size: 16px;
+}
+
+.calendar-nav .mat-icon {
+    font-size: 22px;
+}
+
+.close-btn .mat-icon {
+    font-size: 20px;
+}
+
+/* ==========================================
+   PLANNED (SCHEDULED) HOURS ON THE CALENDAR
+   Mahinang kulay = planned lang, hindi pa na-log.
+========================================== */
+
+.calendar-day .calendar-day-hours.planned {
+    color: #9ca3af;
+    font-weight: 600;
+}
+
+.calendar-day.active .calendar-day-hours.planned {
+    color: #fecaca;
+}
+
+.calendar-day-list.month-view .calendar-month-day {
+    height: 42px;
+}
+
+.calendar-month-hours {
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1;
+    margin-top: 1px;
+    color: #16a34a;
+}
+
+.calendar-month-hours.planned {
+    color: #9ca3af;
+    font-weight: 600;
+}
+
+.calendar-month-day.active .calendar-month-hours,
+.calendar-month-day.active .calendar-month-hours.planned {
+    color: #ffffff;
+}

@@ -1,8 +1,7 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { 
     getAuth, 
-    onAuthStateChanged,
-    signOut 
+    onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { 
     getFirestore, 
@@ -18,6 +17,7 @@ import {
     limit, 
     serverTimestamp 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { loadHeader, getInitials } from "../templated/header-loader.js";
 
 // FIREBASE CONFIGURATION (OJT-LOGS Project Credentials)
 const firebaseConfig = {
@@ -31,14 +31,512 @@ const firebaseConfig = {
     measurementId: "G-DJ3JW7QH27"
 };
 
-const app = initializeApp(firebaseConfig);
+// Guarded init: header-loader.js also initializes the default Firebase app,
+// and whichever module's top-level code runs first "wins" — this avoids a
+// duplicate-app error regardless of import order.
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
 const auth = getAuth(app);
 const db = getFirestore(app);
 const attendanceRef = collection(db, "attendance");
 const companiesRef = collection(db, "companies");
 
+/* ==========================================
+   ATTENDANCE POLICY CONFIGURATION
+   - OFFICIAL_TIME_IN: tamang oras ng time in (8:00 AM)
+   - LATE_GRACE_MINUTES: grace period bago macall na "Late"
+     (halimbawa: 8:15 AM na time in = Late na, dahil lampas
+     na sa 15 minutes grace mula 8:00 AM)
+   - DUTY_DAYS: mga araw ng duty (0=Sunday ... 6=Saturday).
+     Default: Monday–Friday
+========================================== */
+const OFFICIAL_TIME_IN_HOUR = 8;
+const OFFICIAL_TIME_IN_MINUTE = 0;
+const LATE_GRACE_MINUTES = 15;
+const DUTY_DAYS = [1, 2, 3, 4, 5];
+
 let fullAttendanceHistory = [];
 let initialClockInterval = null;
+let todayNoDutyReason = null;
+
+// Naka-cache na schedule.days ng naka-login na student (mula sa users/{uid}
+// document sa Firestore), para hindi na paulit-ulit mag-fetch. Null pa
+// hangga't hindi pa na-a-attempt fetch; empty/undefined array kapag wala
+// pang na-set na schedule sa account niya.
+let studentScheduleDays = null;
+let studentSchedule = null;   // buong users/{uid}.schedule (days, morning, afternoon)
+let studentScheduleFetchedFor = null;
+// Completion info ng student (status / rendered hours / required hours)
+// para malaman kung tapos na ang OJT niya.
+let studentCompletionMeta = { completedFlag: false, renderedHours: 0, requiredHours: 600 };
+
+// Iisang absence-check lang ang sabay na tatakbo, para walang doble-doblehang
+// "Absent" record kapag sunod-sunod ang refreshAttendanceUI().
+let absenceCheckInFlight = null;
+
+// Naka-cache ang assigned companyName ng naka-login na student (mula sa
+// users/{uid} document), para hindi na paulit-ulit mag-fetch sa Firestore
+// tuwing mag-sscan ng QR. Null hangga't hindi pa na-a-attempt fetch.
+let studentAssignedCompany = null;
+let studentCompanyFetchedFor = null;
+
+// Kontrol sa "View All" toggle ng Attendance History list.
+// Attendance History pagination (Previous / Next)
+const HISTORY_PAGE_SIZE = 5;
+let historyPage = 1;
+
+/* ==========================================
+   TODAY'S NO-DUTY CHECK (Suspension / Holiday)
+   Reads from the same "calendar_exceptions"
+   collection the header notification bell and
+   the dashboard calendar already use.
+========================================== */
+async function getTodayNoDutyReason(dateStr) {
+    try {
+        const q = query(
+            collection(db, "calendar_exceptions"),
+            where("date", "==", dateStr)
+        );
+        const snap = await getDocs(q);
+
+        if (!snap.empty) {
+            const data = snap.docs[0].data();
+            return data.reason || data.title || "No Duty / Excused";
+        }
+    } catch (error) {
+        console.warn("Could not check calendar exceptions:", error);
+    }
+
+    return null;
+}
+
+/* ==========================================
+   LATE COMPUTATION
+   Ikinukumpara ang oras ng Time In sa opisyal na
+   schedule (8:00 AM) + grace period (15 mins).
+   Late na kapag lumampas sa 8:15 AM.
+========================================== */
+// "08:00" (galing sa <input type="time">) -> minuto mula hatinggabi
+function scheduleTimeToMinutes(value) {
+    const m = String(value || "").match(/^(\d{1,2}):(\d{2})/);
+    return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+}
+
+// Mga naka-enable na session ng student, sorted by simula ng oras
+function getScheduleSessions(schedule) {
+    if (!schedule) return [];
+
+    const sessions = [];
+
+    [["morning", "morningEnabled"], ["afternoon", "afternoonEnabled"]].forEach(([key, flag]) => {
+        const s = schedule[key];
+        if (!s || schedule[flag] === false || s[flag] === false) return;
+
+        const start = scheduleTimeToMinutes(s.timeIn);
+        const end = scheduleTimeToMinutes(s.timeOut);
+        if (start !== null && end !== null) sessions.push({ start, end });
+    });
+
+    return sessions.sort((a, b) => a.start - b.start);
+}
+
+/* Late kapag lumampas sa LATE_GRACE_MINUTES mula sa simula ng session
+   sa mismong schedule ng student (users/{uid}.schedule). Kung wala pang
+   schedule, babalik sa default na 8:00 AM. */
+function computeLateInfo(timeInDate, schedule = null) {
+    const sessions = getScheduleSessions(schedule);
+
+    if (sessions.length) {
+        const nowMins = timeInDate.getHours() * 60 + timeInDate.getMinutes() + timeInDate.getSeconds() / 60;
+
+        // Session na hindi pa tapos sa oras ng time-in (kung lampas na lahat, yung huli)
+        const target = sessions.find((s) => nowMins < s.end) || sessions[sessions.length - 1];
+
+        if (nowMins > target.start + LATE_GRACE_MINUTES) {
+            return { isLate: true, lateMinutes: Math.round(nowMins - target.start) };
+        }
+        return { isLate: false, lateMinutes: 0 };
+    }
+
+    const scheduled = new Date(timeInDate);
+    scheduled.setHours(OFFICIAL_TIME_IN_HOUR, OFFICIAL_TIME_IN_MINUTE, 0, 0);
+
+    const graceDeadline = new Date(scheduled.getTime() + LATE_GRACE_MINUTES * 60000);
+
+    if (timeInDate > graceDeadline) {
+        const lateMinutes = Math.round((timeInDate - scheduled) / 60000);
+        return { isLate: true, lateMinutes };
+    }
+    return { isLate: false, lateMinutes: 0 };
+}
+
+/* ==========================================
+   ABSENCE AUTO-DETECTION
+   Kapag walang Time In record ang isang user sa isang
+   duty day (weekday, at walang calendar exception /
+   suspension), awtomatikong mama-mark itong "Absent"
+   sa susunod na pag-load ng page (hindi kasama ang
+   araw na ito habang ongoing pa).
+========================================== */
+function isDutyDay(dateObj) {
+    return DUTY_DAYS.includes(dateObj.getDay());
+}
+
+/* ==========================================
+   PER-STUDENT SCHEDULE (users/{uid}.schedule.days)
+   Bawat student may sariling assigned na mga araw ng
+   duty (hal. ["Monday","Tuesday","Thursday"]), na naka-set
+   ng coordinator sa Firestore "users" collection. Dito
+   ina-align ang Time In / Time Out buttons sa personal na
+   schedule niya sa halip na sa generic Mon-Fri default.
+========================================== */
+async function getStudentScheduleDays(user) {
+    if (!user || !user.uid) return null;
+
+    // Gamitin ulit ang huling fetch kung same user pa rin,
+    // para hindi na tumawag ulit sa Firestore sa bawat refresh.
+    if (studentScheduleFetchedFor === user.uid) {
+        return studentScheduleDays;
+    }
+
+    try {
+        const userDocRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userDocRef);
+
+        if (userSnap.exists()) {
+            const data = userSnap.data();
+            const days = data.schedule?.days;
+            studentScheduleDays = Array.isArray(days) ? days : null;
+            studentSchedule = (data.schedule && typeof data.schedule === "object") ? data.schedule : null;
+
+            const statusText = String(data.internshipStatus || data.status || "").trim().toLowerCase();
+            studentCompletionMeta = {
+                completedFlag: statusText === "completed" || statusText.includes("graduated"),
+                renderedHours: Number(data.renderedHours || data.completedHours || data.hoursRendered || 0) || 0,
+                requiredHours: Number(data.requiredHours || data.totalRequiredHours || 600) || 600
+            };
+        } else {
+            studentScheduleDays = null;
+            studentSchedule = null;
+        }
+    } catch (error) {
+        console.warn("Could not fetch student schedule:", error);
+        studentScheduleDays = null;
+        studentSchedule = null;
+    }
+
+    studentScheduleFetchedFor = user.uid;
+    return studentScheduleDays;
+}
+
+// Buong schedule object ng student (para sa oras ng Morning/Afternoon session).
+async function getStudentSchedule(user) {
+    await getStudentScheduleDays(user);
+    return studentSchedule;
+}
+
+// Kinukuha ang companyName na naka-assign sa naka-login na student, mula
+// sa kanyang users/{uid} document. Ito yung ikukumpara sa company na
+// nakuha mula sa na-scan na QR code, para hindi tumanggap ng QR code
+// ng ibang company.
+async function getStudentAssignedCompany(user) {
+    if (!user || !user.uid) return null;
+
+    if (studentCompanyFetchedFor === user.uid) {
+        return studentAssignedCompany;
+    }
+
+    try {
+        const userDocRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userDocRef);
+
+        if (userSnap.exists()) {
+            const data = userSnap.data();
+            studentAssignedCompany = data.companyName || null;
+        } else {
+            studentAssignedCompany = null;
+        }
+    } catch (error) {
+        console.warn("Could not fetch student's assigned company:", error);
+        studentAssignedCompany = null;
+    }
+
+    studentCompanyFetchedFor = user.uid;
+    return studentAssignedCompany;
+}
+
+// True kapag "dateObj" ay isa sa mga naka-assign na duty day ng student.
+// Kung wala pang na-set na schedule sa account niya, babalik sa generic
+// Mon-Fri default (DUTY_DAYS) para hindi mag-lock ng buttons nang walang dahilan.
+function isTodayInStudentSchedule(dateObj, scheduleDays) {
+    if (!Array.isArray(scheduleDays) || scheduleDays.length === 0) {
+        return isDutyDay(dateObj);
+    }
+    const dayName = dateObj.toLocaleDateString("en-US", { weekday: "long" });
+    return scheduleDays.includes(dayName);
+}
+
+async function getNoDutyDatesInRange(startStr, endStr) {
+    const noDutySet = new Set();
+    try {
+        const q = query(
+            collection(db, "calendar_exceptions"),
+            where("date", ">=", startStr),
+            where("date", "<=", endStr)
+        );
+        const snap = await getDocs(q);
+        snap.forEach(d => {
+            if (d.data().date) noDutySet.add(d.data().date);
+        });
+    } catch (error) {
+        console.warn("Could not check calendar exceptions range:", error);
+    }
+    return noDutySet;
+}
+
+function checkAndMarkAbsences(user, todayStr, scheduleDays) {
+    if (!user) return Promise.resolve();
+    if (absenceCheckInFlight) return absenceCheckInFlight;
+
+    absenceCheckInFlight = markMissedAbsences(user, todayStr, scheduleDays)
+        .finally(() => { absenceCheckInFlight = null; });
+
+    return absenceCheckInFlight;
+}
+
+/* ==========================================
+   SAFER AUTO-ABSENT HELPERS
+   Para hindi mag-sulat ng maling "Absent" sa araw na
+   may totoong attendance record naman.
+========================================== */
+
+// Gawing YYYY-MM-DD ang petsa ng record, kahit iba ang format ng
+// pagkaka-save (hal. "Sep 24, 2026" o ISO string) — dati kasi `i.date`
+// lang ang binabasa, kaya kapag hindi YYYY-MM-DD ang format ay hindi
+// ito nakikilala at ma-ma-mark pa ring Absent ang araw na iyon.
+function getRecordDateKey(item) {
+    if (!item) return "";
+
+    const candidates = [item.date, item.formattedDate, item.timeInRaw];
+
+    for (const raw of candidates) {
+        if (!raw) continue;
+
+        if (typeof raw === "string" && /^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+            return raw;
+        }
+
+        const parsed = new Date(raw);
+        if (!isNaN(parsed.getTime())) {
+            return getLocalYYYYMMDD(parsed);
+        }
+    }
+
+    return "";
+}
+
+function hasRealTimeIn(item) {
+    return !!item && !!item.timeIn && item.timeIn !== "--";
+}
+
+function isAutoMarkedAbsent(item) {
+    return (
+        String(item?.status || "").toLowerCase() === "absent" &&
+        /auto-marked/i.test(String(item?.remarks || ""))
+    );
+}
+
+// Itago (hindi buburahin sa Firestore) ang auto-marked "Absent" kung may
+// totoong record na may Time In sa parehong araw.
+function hideShadowedAbsences(list) {
+    const attendedDates = new Set();
+
+    list.forEach(item => {
+        if (hasRealTimeIn(item)) {
+            const key = getRecordDateKey(item);
+            if (key) attendedDates.add(key);
+        }
+    });
+
+    return list.filter(item => {
+        if (!isAutoMarkedAbsent(item)) return true;
+        return !attendedDates.has(getRecordDateKey(item));
+    });
+}
+
+// Kapag COMPLETE na ang student (status "Completed" o abot na sa required
+// hours), hindi na dapat nagbibilang ng Absent pagkatapos ng huling araw
+// na nag-Time In siya. Ibinabalik ang petsang yun (YYYY-MM-DD), o "" kung
+// hindi pa complete (walang cutoff).
+function isStudentCompleted(list) {
+    let totalHours = 0;
+
+    list.forEach(item => {
+        if (!hasRealTimeIn(item)) return;
+        const status = String(item?.status || "").toLowerCase();
+        if (status !== "rejected" && status !== "absent") {
+            totalHours += Number(item?.hoursRendered) || 0;
+        }
+    });
+
+    const meta = studentCompletionMeta;
+    return (
+        meta.completedFlag ||
+        meta.renderedHours >= meta.requiredHours ||
+        totalHours >= meta.requiredHours
+    );
+}
+
+// May bukas pa bang session (naka-Time In pero hindi pa nakaka-Time Out)?
+// Pinapayagan pa ring mag-Time Out ito kahit complete na, para hindi ma-stuck.
+function hasOpenSession(list) {
+    return list.some(item => String(item?.status || "") === "Active");
+}
+
+function getCompletionCutoffDate(list) {
+    let lastTimeIn = "";
+    let totalHours = 0;
+
+    list.forEach(item => {
+        if (!hasRealTimeIn(item)) return;
+        const key = getRecordDateKey(item);
+        if (key && key > lastTimeIn) lastTimeIn = key;
+
+        const status = String(item?.status || "").toLowerCase();
+        if (status !== "rejected" && status !== "absent") {
+            totalHours += Number(item?.hoursRendered) || 0;
+        }
+    });
+
+    if (!lastTimeIn) return "";
+
+    const meta = studentCompletionMeta;
+    const isComplete =
+        meta.completedFlag ||
+        meta.renderedHours >= meta.requiredHours ||
+        totalHours >= meta.requiredHours;
+
+    return isComplete ? lastTimeIn : "";
+}
+
+// Itago (hindi buburahin sa Firestore) ang mga Absent na lampas na sa
+// huling Time In ng student na complete na.
+function hideAbsencesAfterCompletion(list) {
+    const cutoff = getCompletionCutoffDate(list);
+    if (!cutoff) return list;
+
+    return list.filter(item => {
+        const isAbsent = String(item?.status || "").toLowerCase() === "absent";
+        if (!isAbsent || hasRealTimeIn(item)) return true;
+        const key = getRecordDateKey(item);
+        return !key || key <= cutoff;
+    });
+}
+
+// Huling check diretso sa Firestore bago mag-sulat ng Absent.
+// Kapag hindi ma-verify (error), HUWAG mag-sulat — mas mabuting walang
+// Absent kaysa maling Absent.
+async function hasAttendanceRecordOnDate(user, dateStr) {
+    const queries = [];
+
+    if (user?.uid) {
+        queries.push(query(attendanceRef, where("userId", "==", user.uid), where("date", "==", dateStr)));
+    }
+    if (user?.email) {
+        queries.push(query(attendanceRef, where("userEmail", "==", user.email), where("date", "==", dateStr)));
+    }
+
+    for (const q of queries) {
+        try {
+            const snap = await getDocs(q);
+            if (!snap.empty) return true;
+        } catch (err) {
+            console.warn("Could not verify existing attendance for", dateStr, err);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+async function markMissedAbsences(user, todayStr, scheduleDays) {
+    if (!user) return;
+
+    const existingDates = new Set(fullAttendanceHistory.map(getRecordDateKey).filter(Boolean));
+
+    // Complete na ang student: huwag nang mag-mark ng Absent pagkatapos ng
+    // huling Time In niya.
+    const completionCutoff = getCompletionCutoffDate(fullAttendanceHistory);
+
+    // Lookback window: laging naka-cap sa ABSENCE_LOOKBACK_DAYS (14 days)
+    // paatras mula ngayon — hindi na hanggang sa earliest record ng
+    // estudyante. Dati, kapag may kahit isang record na siya noon (halimbawa
+    // 3-4 buwan na ang nakalipas), babalik doon ang cursor at magma-mark ng
+    // "Absent" para sa BAWAT Mon-Fri na walang record mula noon hanggang
+    // ngayon — pwedeng daan-daang maling Absent entries sa isang pagbukas
+    // lang ng page. Ang cap na ito ang dahilan kung bakit "super dami" at
+    // hindi tugma sa totoong (accurate) attendance.
+    const ABSENCE_LOOKBACK_DAYS = 14;
+    const todayDateObj = new Date(todayStr + "T00:00:00");
+    let cursor = new Date(todayDateObj);
+    cursor.setDate(cursor.getDate() - ABSENCE_LOOKBACK_DAYS);
+
+    // Huwag mag-mark ng "Absent" para sa mga araw bago pa nagkaroon ng account
+    // ang student (hindi pa siya part ng OJT noon).
+    const createdRaw = user.metadata?.creationTime;
+    if (createdRaw) {
+        const createdDay = new Date(createdRaw);
+        createdDay.setHours(0, 0, 0, 0);
+        if (cursor < createdDay) cursor = createdDay;
+    }
+
+    const startStr = getLocalYYYYMMDD(cursor);
+    const noDutySet = await getNoDutyDatesInRange(startStr, todayStr);
+
+    const userId = user.uid;
+    const userEmail = user.email;
+
+    // Hindi kasama ang "today" — ma-e-evaluate lang ito paglipas
+    // ng araw (sa susunod na pagbukas ng page).
+    while (cursor < todayDateObj) {
+        const dateStr = getLocalYYYYMMDD(cursor);
+
+        if (completionCutoff && dateStr > completionCutoff) break;
+
+        if (isTodayInStudentSchedule(cursor, scheduleDays) && !noDutySet.has(dateStr) && !existingDates.has(dateStr) && !(await hasAttendanceRecordOnDate(user, dateStr))) {
+            const absentRecord = {
+                userId: userId || "guest_user",
+                userEmail: userEmail || "no_email",
+                date: dateStr,
+                formattedDate: formatLocalDateDisplay(cursor),
+                company: "--",
+                location: "--",
+                timeIn: "--",
+                timeOut: "--",
+                photoProof: "",
+                tasks: "",
+                hoursRendered: 0,
+                todayHours: "0h 0m",
+                status: "Absent",
+                remarks: "No Time In Recorded (Auto-marked)",
+                createdAt: serverTimestamp()
+            };
+
+            try {
+                const docRef = await addDoc(attendanceRef, absentRecord);
+                fullAttendanceHistory.push({
+                    id: docRef.id,
+                    ...absentRecord,
+                    createdAt: new Date().toISOString()
+                });
+                existingDates.add(dateStr);
+            } catch (err) {
+                console.warn("Could not auto-mark absence for", dateStr, err);
+            }
+        }
+
+        cursor.setDate(cursor.getDate() + 1);
+    }
+}
 
 /* ==========================================
    NTP TIME FETCHER (Reliable Internet & Firebase Synchronized Time)
@@ -70,6 +568,12 @@ function formatLocalDateDisplay(dateObj = new Date()) {
     return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+// Kasama na ang pangalan ng araw (Monday, Tuesday, ...) — ginagamit sa
+// live timestamp badge para makita agad kung anong araw ngayon.
+function formatLocalDateWithDay(dateObj = new Date()) {
+    return dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 function formatAMPM(dateObj = new Date()) {
     return dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 }
@@ -79,13 +583,28 @@ function formatAMPM(dateObj = new Date()) {
 ========================================== */
 async function startInitialLiveClock() {
     const badge = document.getElementById("firebase-timestamp-badge");
-    if (!badge) return;
+    const dateEl = document.getElementById("student-current-date");
+    const timeEl = document.getElementById("student-current-time");
+    if (!badge && !dateEl && !timeEl) return;
 
     const updateClock = async () => {
         const now = await getCurrentNTPTime();
-        const dateStr = formatLocalDateDisplay(now);
+        const dateStr = formatLocalDateWithDay(now);
         const timeStr = formatAMPM(now);
-        badge.textContent = `${timeStr} / ${dateStr}`;
+
+        if (badge) badge.textContent = `${timeStr} / ${dateStr}`;
+
+        // "Today / Current Time" bar sa itaas ng page — parehong NTP time
+        // source ang ginagamit para laging magkatugma sila ng badge.
+        if (dateEl) dateEl.textContent = dateStr;
+        if (timeEl) {
+            timeEl.textContent = now.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            });
+        }
     };
 
     await updateClock();
@@ -94,47 +613,11 @@ async function startInitialLiveClock() {
     initialClockInterval = setInterval(updateClock, 1000);
 }
 
-async function loadHeader(title) {
-    try {
-        const response = await fetch("../templated/header.html");
-        const data = await response.text();
-        
-        const headerContainer = document.getElementById("header-container");
-        if (headerContainer) {
-            headerContainer.innerHTML = data;
-        }
-
-        const pageTitle = document.getElementById("page-title");
-        if (pageTitle) {
-            pageTitle.textContent = title;
-        }
-
-        if (auth.currentUser) {
-            await updateProfileInHeader(auth.currentUser);
-        }
-
-        initHeaderEvents();
-    } catch (err) {
-        console.error("Error loading header:", err);
-    }
-}
-
 /* ==========================================
-   INITIALS EXTRACTOR
+   NOTIFICATION BELL
+   Now handled globally by the shared header (see header-loader.js's
+   loadNotifications, called automatically inside loadHeader()).
 ========================================== */
-function getInitials(fullName) {
-    if (!fullName) return "ST";
-    const nameParts = fullName.trim().split(" ").filter(part => part.length > 0);
-    
-    if (nameParts.length === 1) {
-        return nameParts[0].charAt(0).toUpperCase();
-    }
-    
-    const firstName = nameParts[0];
-    const lastName = nameParts[nameParts.length - 1];
-    
-    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-}
 
 // Custom Toast Notification
 function showToast(message, type = "success") {
@@ -177,11 +660,11 @@ function showToast(message, type = "success") {
         transition: all 0.3s ease;
     `;
 
-    const iconClass = isSuccess ? "fa-circle-check" : type === "error" ? "fa-circle-xmark" : "fa-circle-info";
+    const iconName = isSuccess ? "check_circle" : type === "error" ? "cancel" : "info";
     
     toast.innerHTML = `
-        <i class="fa-solid ${iconClass}" style="font-size: 20px; color: ${iconColor};"></i>
-        <span style="color: ${textColor}; font-family: 'Poppins', sans-serif; font-size: 15px; font-weight: 500;">
+        <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" style="font-size: 20px; color: ${iconColor};" aria-hidden="true">${iconName}</mat-icon>
+        <span style="color: ${textColor}; font-family: 'Google Sans Flex', sans-serif; font-size: 15px; font-weight: 500;">
             ${message}
         </span>
     `;
@@ -196,8 +679,42 @@ function showToast(message, type = "success") {
     }, 3500);
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    loadHeader("Attendance");
+/* ==========================================
+   INITIAL LOADING OVERLAY
+   Naka-block ito sa buong page (kasama ang mga
+   Time In / Time Out button) hanggang matapos
+   ang unang refreshAttendanceUI() fetch. Ito ang
+   pumipigil sa bug na maka-click agad ang user
+   bago pa na-verify kung dapat ba talagang naka-
+   enable/disable ang mga button ayon sa totoong
+   estado niya ngayong araw.
+========================================== */
+function hideAttendanceLoadingOverlay() {
+    const overlay = document.getElementById("attendance-loading-overlay");
+    if (!overlay || overlay.dataset.hidden === "true") return;
+    overlay.dataset.hidden = "true";
+    overlay.classList.add("fade-out");
+    setTimeout(() => overlay.remove(), 300);
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+    // Safety net: kung sakaling matagal ang koneksyon o may error na
+    // hindi na-catch sa fetch chain, huwag hayaang ma-stuck ang user
+    // sa loading screen magpakailanman — itago pa rin pagkalipas ng
+    // ilang segundo.
+    setTimeout(() => {
+        const overlay = document.getElementById("attendance-loading-overlay");
+        if (overlay && overlay.dataset.hidden !== "true") {
+            console.warn("Attendance loading overlay auto-hidden after timeout — check network/Firestore.");
+            hideAttendanceLoadingOverlay();
+        }
+    }, 15000);
+
+    // Header markup (bell, avatar, dropdowns) is injected async — anything
+    // that targets its elements (notifications, mobile-menu wiring) has to
+    // wait for it first. autoLoadProfile lets the shared header populate the
+    // avatar/name itself since this page has no richer profile loader of its own.
+    await loadHeader("Attendance", { autoLoadProfile: true });
 
     fetch("../templated/sidebar.html?v=" + new Date().getTime())
         .then(response => response.ok ? response.text() : Promise.reject())
@@ -208,7 +725,6 @@ document.addEventListener("DOMContentLoaded", () => {
         })
         .catch(err => console.error("Error loading sidebar:", err));
 
-    setupMobileMenuToggle();
     initFlatpickrFilter();
 
     // I-display agad ang tamang oras mula sa internet/server ngayong araw sa pag-load pa lang ng pahina
@@ -221,23 +737,255 @@ document.addEventListener("DOMContentLoaded", () => {
 
 /* ==========================================
    FLATPICKR DATE RANGE PICKER
+   WITH ATTENDANCE DATE MARKS
 ========================================== */
-function initFlatpickrFilter() {
-    const datePickerInput = document.getElementById("dateRangePicker");
 
-    if (datePickerInput && typeof flatpickr !== "undefined") {
+function initFlatpickrFilter() {
+    const datePickerInput =
+        document.getElementById("dateRangePicker");
+
+    if (
+        datePickerInput &&
+        typeof flatpickr !== "undefined"
+    ) {
+
         flatpickr(datePickerInput, {
+
             mode: "range",
+
             dateFormat: "M j, Y",
+
+            /*
+             * Kapag gumawa ang Flatpickr
+             * ng bawat date cell, iche-check
+             * kung may attendance ang date na iyon.
+             */
+            onDayCreate: function (
+                selectedDates,
+                dateStr,
+                instance,
+                dayElem
+            ) {
+                markAttendanceDate(dayElem);
+            },
+
+            /*
+             * Kapag binuksan ang calendar,
+             * i-refresh ang marks.
+             */
+            onOpen: function (
+                selectedDates,
+                dateStr,
+                instance
+            ) {
+                markAllAttendanceDates(instance);
+            },
+
+            /*
+             * Kapag lumipat ng buwan.
+             */
+            onMonthChange: function (
+                selectedDates,
+                dateStr,
+                instance
+            ) {
+                markAllAttendanceDates(instance);
+            },
+
+            /*
+             * Kapag lumipat ng taon.
+             */
+            onYearChange: function (
+                selectedDates,
+                dateStr,
+                instance
+            ) {
+                markAllAttendanceDates(instance);
+            },
+
+            /*
+             * Existing date-range filtering.
+             */
             onChange: function (selectedDates) {
+
+                historyPage = 1;
+
                 if (selectedDates.length === 2) {
-                    filterHistoryByDateRange(selectedDates[0], selectedDates[1]);
-                } else if (selectedDates.length === 0) {
-                    renderHistoryItems(fullAttendanceHistory);
+
+                    filterHistoryByDateRange(
+                        selectedDates[0],
+                        selectedDates[1]
+                    );
+
+                } else if (
+                    selectedDates.length === 0
+                ) {
+
+                    renderHistoryItems(
+                        getDisplayHistory(
+                            fullAttendanceHistory
+                        )
+                    );
                 }
             }
         });
     }
+}
+/* ==========================================
+   GET DATES WITH ACTUAL ATTENDANCE
+========================================== */
+
+function getAttendanceDates() {
+
+    const attendanceDates =
+        new Set();
+
+    fullAttendanceHistory.forEach(
+        item => {
+
+            /*
+             * Kunin ang date ng attendance.
+             */
+            const date =
+                item.date ||
+                item.formattedDate;
+
+            if (!date) {
+                return;
+            }
+
+            /*
+             * Huwag markahan ang auto-generated
+             * Absent records bilang attendance.
+             *
+             * Ang gusto natin ay actual
+             * attendance lamang.
+             */
+            const status =
+                String(
+                    item.status || ""
+                ).toLowerCase();
+
+            const hasActualAttendance =
+                status === "present" ||
+                status === "late" ||
+                status === "active" ||
+                status === "completed" ||
+                hasRealTimeIn(item);
+
+            if (!hasActualAttendance) {
+                return;
+            }
+
+            /*
+             * Kung YYYY-MM-DD na ang date,
+             * gamitin directly.
+             */
+            if (
+                typeof date === "string" &&
+                /^\d{4}-\d{2}-\d{2}$/.test(date)
+            ) {
+
+                attendanceDates.add(
+                    date
+                );
+
+                return;
+            }
+
+            /*
+             * Fallback para sa ibang date format.
+             */
+            const parsedDate =
+                new Date(date);
+
+            if (
+                !isNaN(
+                    parsedDate.getTime()
+                )
+            ) {
+
+                attendanceDates.add(
+                    getLocalYYYYMMDD(
+                        parsedDate
+                    )
+                );
+            }
+        }
+    );
+
+    return attendanceDates;
+}
+
+
+/* ==========================================
+   MARK ONE DATE
+========================================== */
+
+function markAttendanceDate(dayElem) {
+
+    if (
+        !dayElem ||
+        !dayElem.dateObj
+    ) {
+        return;
+    }
+
+    const attendanceDates =
+        getAttendanceDates();
+
+    const calendarDate =
+        getLocalYYYYMMDD(
+            dayElem.dateObj
+        );
+
+    if (
+        attendanceDates.has(
+            calendarDate
+        )
+    ) {
+
+        dayElem.classList.add(
+            "has-attendance"
+        );
+
+    } else {
+
+        dayElem.classList.remove(
+            "has-attendance"
+        );
+    }
+}
+
+
+/* ==========================================
+   MARK ALL DATES CURRENTLY
+   DISPLAYED BY FLATPICKR
+========================================== */
+
+function markAllAttendanceDates(
+    instance
+) {
+
+    if (
+        !instance ||
+        !instance.calendarContainer
+    ) {
+        return;
+    }
+
+    const dayElements =
+        instance.calendarContainer.querySelectorAll(
+            ".flatpickr-day"
+        );
+
+    dayElements.forEach(
+        dayElem => {
+            markAttendanceDate(
+                dayElem
+            );
+        }
+    );
 }
 
 function filterHistoryByDateRange(startDate, endDate) {
@@ -252,7 +1000,7 @@ function filterHistoryByDateRange(startDate, endDate) {
         return itemDate >= start && itemDate <= end;
     });
 
-    renderHistoryItems(filtered);
+    renderHistoryItems(getDisplayHistory(filtered));
 }
 
 // Global View Photo Modal
@@ -265,7 +1013,7 @@ window.viewPhotoModal = function(photoUrl, company, date, timeIn) {
         viewModal.className = 'scanner-modal';
         viewModal.innerHTML = `
             <div class="scanner-dialog" style="max-width: 420px; padding: 20px;">
-                <h3 style="font-size: 16px; font-weight: 600; color: #111827; margin-bottom: 4px;"><i class="fa-solid fa-image" style="color: #3b82f6;"></i> Photo Proof Details</h3>
+                <h3 style="font-size: 16px; font-weight: 600; color: #111827; margin-bottom: 4px;"> Photo Proof Details</h3>
                 <p style="font-size: 11px; color: #6b7280; margin-bottom: 12px;">Verification photo submitted during time-in</p>
                 
                 <div style="width: 100%; height: 260px; border-radius: 12px; overflow: hidden; background: #111827; margin-bottom: 14px; display: flex; align-items: center; justify-content: center;">
@@ -300,6 +1048,70 @@ window.viewPhotoModal = function(photoUrl, company, date, timeIn) {
     viewModal.hidden = false;
 };
 
+// Pagination: ibinabalik lang ang records para sa kasalukuyang page
+// (HISTORY_PAGE_SIZE kada page) at ina-update ang Previous/Next footer.
+function getDisplayHistory(historyList) {
+    const totalPages = Math.max(1, Math.ceil(historyList.length / HISTORY_PAGE_SIZE));
+    historyPage = Math.min(Math.max(1, historyPage), totalPages);
+
+    updateHistoryPagination(historyList.length, totalPages);
+
+    const start = (historyPage - 1) * HISTORY_PAGE_SIZE;
+    return historyList.slice(start, start + HISTORY_PAGE_SIZE);
+}
+
+function updateHistoryPagination(totalItems, totalPages) {
+    const bar = document.getElementById("history-pagination-bar");
+    if (!bar) return;
+
+    // Walang records, o isang page lang = walang pagination
+    if (!totalItems || totalPages <= 1) {
+        bar.hidden = true;
+        return;
+    }
+
+    bar.hidden = false;
+
+    const prevBtn = document.getElementById("history-page-prev");
+    const nextBtn = document.getElementById("history-page-next");
+    if (prevBtn) prevBtn.disabled = historyPage <= 1;
+    if (nextBtn) nextBtn.disabled = historyPage >= totalPages;
+}
+
+function initHistoryPagination() {
+    const scrollToHistory = () => {
+        document.getElementById("attendance-history-card")
+            ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+
+    document.getElementById("history-page-prev")?.addEventListener("click", () => {
+        if (historyPage > 1) {
+            historyPage--;
+            applyHistoryDisplay();
+            scrollToHistory();
+        }
+    });
+
+    document.getElementById("history-page-next")?.addEventListener("click", () => {
+        historyPage++; // getDisplayHistory() clamps it to the last page
+        applyHistoryDisplay();
+        scrollToHistory();
+    });
+}
+
+// Ginagamit ng refreshAttendanceUI at ng Previous/Next buttons para
+// hindi mag-duplicate ng logic: kung may active date-range filter, i-apply
+// yun; kung wala, ipakita ang buong fullAttendanceHistory (paginated).
+function applyHistoryDisplay() {
+    const datePickerInput = document.getElementById("dateRangePicker");
+    if (datePickerInput && datePickerInput._flatpickr && datePickerInput._flatpickr.selectedDates.length === 2) {
+        const dates = datePickerInput._flatpickr.selectedDates;
+        filterHistoryByDateRange(dates[0], dates[1]);
+    } else {
+        renderHistoryItems(getDisplayHistory(fullAttendanceHistory));
+    }
+}
+
 // Render Logs List
 function renderHistoryItems(historyList) {
     const historyContainer = document.getElementById("attendance-history-list");
@@ -320,11 +1132,15 @@ function renderHistoryItems(historyList) {
         const isLate = item.status === 'Late';
         const isAbsent = item.status === 'Absent';
         const isActive = item.status === 'Active';
+        const isRejected = String(item.status || '').toLowerCase() === 'rejected';
+        const isExcused = String(item.status || '').toLowerCase() === 'excused';
 
         let badgeClass = 'green';
         let badgeText = item.status;
-        if (isLate) { badgeClass = 'orange'; }
+        if (isRejected) { badgeClass = 'red'; badgeText = 'Rejected'; }
+        else if (isLate) { badgeClass = 'orange'; }
         else if (isAbsent) { badgeClass = 'red'; }
+        else if (isExcused) { badgeClass = 'blue'; badgeText = 'Excused'; }
         else if (isActive) { badgeClass = 'blue'; badgeText = 'Active'; }
         else if (isCompleted) { badgeClass = 'green'; badgeText = 'Present'; }
 
@@ -332,9 +1148,6 @@ function renderHistoryItems(historyList) {
             <div class="attendance-history-item">
                 <div class="att-item-top">
                     <div class="att-item-left">
-                        <div class="att-icon-box ${badgeClass === 'green' ? 'green-bg' : badgeClass === 'orange' ? 'orange-bg' : badgeClass === 'red' ? 'red-bg' : 'blue-bg'}">
-                            <i class="fa-solid ${badgeClass === 'green' ? 'fa-circle-check' : badgeClass === 'orange' ? 'fa-clock' : badgeClass === 'red' ? 'fa-circle-xmark' : 'fa-spinner'}"></i>
-                        </div>
                         <div class="att-date-info">
                             <h4>${item.formattedDate || item.date}</h4>
                             <p>${item.company}</p>
@@ -349,15 +1162,13 @@ function renderHistoryItems(historyList) {
                 
                 <div class="att-item-bottom">
                     <div class="time-log-info">
-                        <span><i class="fa-solid fa-arrow-right-to-bracket text-green"></i> ${item.timeIn}</span>
+                        <span><mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color text-green" aria-hidden="true">login</mat-icon> ${item.timeIn}</span>
                         <span class="dot">•</span>
-                        <span><i class="fa-solid fa-arrow-right-from-bracket text-red"></i> ${item.timeOut}</span>
+                        <span><mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color text-red" aria-hidden="true">logout</mat-icon> ${item.timeOut}</span>
                     </div>
-                    ${photoSrc ? `<button type="button" onclick="viewPhotoModal('${photoSrc}', '${safeCompany}', '${safeDate}', '${safeTimeIn}')" style="font-size: 11px; color: #3b82f6; font-weight: 500; border:none; background:none; cursor:pointer; display:flex; align-items:center; gap:4px;"><i class="fa-solid fa-image"></i> Photo Proof</button>` : ''}
+                    ${photoSrc ? `<button type="button" onclick="viewPhotoModal('${photoSrc}', '${safeCompany}', '${safeDate}', '${safeTimeIn}')" style="font-size: 13px; color: #3b82f6; font-weight: 500; border:none; background:none; cursor:pointer; display:flex; align-items:center; gap:4px;"><mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" style="font-size: 16px;" aria-hidden="true">image</mat-icon> Photo Proof</button>` : ''}
                 </div>
-
-                ${item.tasks ? `<div class="task-summary-preview"><strong>Tasks:</strong> ${item.tasks}</div>` : ''}
-                ${item.remarks && item.remarks !== '--' ? `<div style="margin-top: 4px; font-size: 11px; color: ${isLate ? '#ea580c' : '#059669'};"><strong>Remarks:</strong> ${item.remarks}</div>` : ''}
+                ${item.remarks && item.remarks !== '--' ? `<div style="margin-top: 4px; font-size: 12px; color: ${isRejected ? '#dc2626' : isLate ? '#ea580c' : '#059669'};"><strong>Remarks:</strong> ${item.remarks}</div>` : ''}
             </div>
         `;
     }).join('');
@@ -375,25 +1186,6 @@ function initSidebar(activeMenuName) {
             }
         });
     }
-}
-
-function setupMobileMenuToggle() {
-    document.addEventListener("click", (e) => {
-        const mobileBtn = e.target.closest("#mobile-menu");
-        const sidebar = document.getElementById("sidebar");
-
-        if (mobileBtn && sidebar) {
-            e.stopPropagation();
-            sidebar.classList.toggle("show");
-            return;
-        }
-
-        if (sidebar && sidebar.classList.contains("show")) {
-            if (!sidebar.contains(e.target)) {
-                sidebar.classList.remove("show");
-            }
-        }
-    });
 }
 
 function updateRedTimestampBadge(timeIn, dateString) {
@@ -414,6 +1206,7 @@ function initAttendanceSystem(currentUser) {
     const timeOutScanBtn = document.getElementById("time-out-scan-btn");
     const timeOutIconBox = document.getElementById("time-out-icon-box");
     const timeOutNoteText = document.getElementById("time-out-note-text");
+    const timeInNoteText = document.getElementById("time-in-note-text");
 
     const scannerModal = document.getElementById("scanner-modal");
     const scannerStatus = document.getElementById("scanner-status");
@@ -424,7 +1217,10 @@ function initAttendanceSystem(currentUser) {
     const photoCanvas = document.getElementById("photo-canvas");
     const stampDatetime = document.getElementById("stamp-datetime");
     const stampLocation = document.getElementById("stamp-location");
+    const switchCameraBtn = document.getElementById("switch-camera-btn");
     const capturePhotoBtn = document.getElementById("capture-photo-btn");
+    const retakePhotoBtn = document.getElementById("retake-photo-btn");
+    const confirmPhotoBtn = document.getElementById("confirm-photo-btn");
     const photoCancel = document.getElementById("photo-cancel");
 
     const taskModal = document.getElementById("task-modal");
@@ -437,10 +1233,18 @@ function initAttendanceSystem(currentUser) {
     let qrScanner = null;
     let scanMode = null; 
     let photoStream = null;
-    let currentLocationStr = "Fetching Location...";
+    let currentFacingMode = "user";
+    let capturedPhotoBase64 = null;
+    let capturedAtTime = null;
+    let currentLocationStr = "Company Grounds";
     let clockInterval = null;
 
-    refreshAttendanceUI();
+    // Hintayin munang matapos ang unang pag-verify ng attendance status
+    // (Active / Completed / No Duty / Rejected / atbp.) bago tanggalin
+    // ang loading overlay — dito pa lang dapat pwede nang mag-click ang
+    // user ng Time In / Time Out. .finally() para tanggalin pa rin ang
+    // overlay kahit magka-error sa fetch, para hindi ma-stuck ang user.
+    refreshAttendanceUI().finally(hideAttendanceLoadingOverlay);
 
     // --- 1. QR SCANNER LOGIC ---
     const stopQRScanner = async () => {
@@ -456,11 +1260,26 @@ function initAttendanceSystem(currentUser) {
     };
 
     const openQRScanner = async (mode) => {
+        // Complete na ang OJT/batch ng student: bawal na mag Time In / Time Out.
+        if (isStudentCompleted(fullAttendanceHistory) && !hasOpenSession(fullAttendanceHistory)) {
+            showToast("Your OJT is already completed. You can no longer time in or time out.", "error");
+            return;
+        }
+
+        if (todayNoDutyReason) {
+            showToast(`No duty today — ${todayNoDutyReason}`, "info");
+            return;
+        }
+
         const now = await getCurrentNTPTime();
         const todayStr = getLocalYYYYMMDD(now);
         const latestToday = fullAttendanceHistory.find(i => i.date === todayStr);
 
         if (mode === "IN" && latestToday) {
+            if (String(latestToday.status || "").toLowerCase() === "rejected") {
+                showToast("Your attendance for today was rejected by your coordinator.", "error");
+                return;
+            }
             if (latestToday.status === "Completed" || latestToday.status === "Present" || latestToday.status === "Late") {
                 showToast("You have already completed attendance for today. Try again tomorrow!", "error");
                 return;
@@ -532,6 +1351,24 @@ function initAttendanceSystem(currentUser) {
             }
 
             const companyName = companyFound.companyName || companyFound.name || "Partner Company";
+
+            // --- COMPANY MATCH CHECK ---
+            // Dapat tumugma ang company ng na-scan na QR sa naka-assign na
+            // company ng mismong naka-login na student. Kapag QR code ito
+            // ng ibang company, i-reject at huwag ituloy ang time in/out.
+            const user = auth.currentUser || currentUser;
+            const assignedCompany = await getStudentAssignedCompany(user);
+
+            if (!assignedCompany) {
+                showToast("No assigned company found on your account. Contact your coordinator.", "error");
+                return;
+            }
+
+            if (assignedCompany.trim().toLowerCase() !== companyName.trim().toLowerCase()) {
+                showToast(`Wrong QR Code! This QR belongs to ${companyName}, not your assigned company (${assignedCompany}).`, "error");
+                return;
+            }
+
             localStorage.setItem("verified_company_name", companyName);
             
             showToast(`QR Scan Success! Welcome to ${companyName}`, "success");
@@ -557,17 +1394,54 @@ function initAttendanceSystem(currentUser) {
 
     scannerCancel?.addEventListener("click", async () => { await stopQRScanner(); scannerModal.hidden = true; });
 
-    // --- 2. LIVE PHOTO PROOF ---
+    // --- 2. LIVE PHOTO PROOF (with front/back camera switch, capture + retake) ---
+
+    // Nag-a-attempt mag-start ng bagong stream gamit ang hiniling na facingMode
+    // BAGO itigil ang lumang stream — kung mabigo ang bagong camera (halimbawa,
+    // walang back camera ang device), nananatiling gumagana ang dating preview.
+    const startPhotoCamera = async (facingMode) => {
+        const newStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: facingMode } },
+            audio: false
+        });
+
+        if (photoStream) photoStream.getTracks().forEach(t => t.stop());
+        photoStream = newStream;
+        photoVideo.srcObject = photoStream;
+        currentFacingMode = facingMode;
+    };
+
+    // Ibinabalik ang modal sa "live camera" na estado — ginagamit pagbukas
+    // ng modal, at tuwing pipindutin ang Retake.
+    const resetPhotoCaptureUI = () => {
+        capturedPhotoBase64 = null;
+        capturedAtTime = null;
+
+        if (photoCanvas) photoCanvas.hidden = true;
+        if (photoVideo) photoVideo.hidden = false;
+        if (switchCameraBtn) switchCameraBtn.hidden = false;
+
+        if (capturePhotoBtn) {
+            capturePhotoBtn.hidden = false;
+            capturePhotoBtn.disabled = false;
+            capturePhotoBtn.innerHTML = `<mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">photo_camera</mat-icon> Capture Photo`;
+        }
+        if (retakePhotoBtn) retakePhotoBtn.hidden = true;
+        if (confirmPhotoBtn) {
+            confirmPhotoBtn.hidden = true;
+            confirmPhotoBtn.disabled = false;
+            confirmPhotoBtn.innerHTML = `<mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">check_circle</mat-icon> Complete Time In`;
+        }
+    };
+
     const openPhotoProofModal = async () => {
         photoModal.hidden = false;
         fetchGeolocation();
+        resetPhotoCaptureUI();
 
         try {
-            photoStream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: "user" }, 
-                audio: false 
-            });
-            photoVideo.srcObject = photoStream;
+            currentFacingMode = "user";
+            await startPhotoCamera(currentFacingMode);
         } catch (err) {
             showToast("Camera access required for photo proof.", "error");
             photoModal.hidden = true;
@@ -583,35 +1457,41 @@ function initAttendanceSystem(currentUser) {
 
     const closePhotoModal = () => {
         if (photoStream) photoStream.getTracks().forEach(t => t.stop());
+        photoStream = null;
         if (clockInterval) clearInterval(clockInterval);
+        resetPhotoCaptureUI();
         photoModal.hidden = true;
     };
 
-    const fetchGeolocation = () => {
-        if (stampLocation) stampLocation.textContent = "Locating Company...";
-        if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    currentLocationStr = `Company GPS: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
-                    if (stampLocation) stampLocation.textContent = currentLocationStr;
-                },
-                () => {
-                    const compName = localStorage.getItem("verified_company_name") || "Company Grounds";
-                    currentLocationStr = `${compName}`;
-                    if (stampLocation) stampLocation.textContent = currentLocationStr;
-                },
-                { enableHighAccuracy: true, timeout: 5000 }
-            );
-        } else {
-            const compName = localStorage.getItem("verified_company_name") || "Company Grounds";
-            currentLocationStr = `${compName}`;
-            if (stampLocation) stampLocation.textContent = currentLocationStr;
+    // Front/Back camera toggle. Kung sablay ang paglipat (halimbawa, iisa
+    // lang ang camera ng device), nananatili ang kasalukuyang preview.
+    switchCameraBtn?.addEventListener("click", async () => {
+        switchCameraBtn.disabled = true;
+        const newMode = currentFacingMode === "user" ? "environment" : "user";
+        try {
+            await startPhotoCamera(newMode);
+        } catch (err) {
+            console.warn("Switch camera error:", err);
+            showToast("Unable to switch camera. Your device may only have one camera.", "error");
+        } finally {
+            switchCameraBtn.disabled = false;
         }
+    });
+
+    const fetchGeolocation = () => {
+        // Wala nang GPS/geolocation fetching — direkta na lang ilalagay
+        // ang pangalan ng company na naka-assign (naka-verify) sa user.
+        const compName = localStorage.getItem("verified_company_name") || "Company Grounds";
+        currentLocationStr = compName;
+        if (stampLocation) stampLocation.textContent = currentLocationStr;
     };
 
+    // STAGE 1 — Capture: kunin ang frame mula sa live video papunta sa
+    // canvas (kasama ang timestamp/company overlay), pero hindi pa ito
+    // ini-upload. Ipinapakita muna ang frozen preview kasama ang Retake
+    // at Confirm buttons, para may pagkakataon munang tingnan/i-redo.
     capturePhotoBtn?.addEventListener("click", async () => {
         capturePhotoBtn.disabled = true;
-        capturePhotoBtn.textContent = "Saving Time In...";
 
         const w = photoVideo.videoWidth || 640;
         const h = photoVideo.videoHeight || 480;
@@ -631,10 +1511,41 @@ function initAttendanceSystem(currentUser) {
         ctx.fillRect(0, overlayY, w, overlayHeight);
 
         ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 20px Poppins, sans-serif"; 
+        ctx.font = "bold 20px 'Google Sans Flex', sans-serif"; 
         ctx.fillText(`${formattedDateStr} ${formattedAMPM} | ${currentLocationStr}`, 16, overlayY + 38);
 
-        const photoBase64 = photoCanvas.toDataURL("image/jpeg", 0.3);
+        capturedPhotoBase64 = photoCanvas.toDataURL("image/jpeg", 0.3);
+        capturedAtTime = now;
+
+        // Palitan ang live video ng frozen preview + ipakita ang
+        // Retake/Confirm, itago ang Capture at ang camera-switch button.
+        photoVideo.hidden = true;
+        photoCanvas.hidden = false;
+        if (switchCameraBtn) switchCameraBtn.hidden = true;
+
+        capturePhotoBtn.hidden = true;
+        if (retakePhotoBtn) retakePhotoBtn.hidden = false;
+        if (confirmPhotoBtn) confirmPhotoBtn.hidden = false;
+    });
+
+    // Retake — balik sa live camera view, ide-discard ang nakuhang frame.
+    retakePhotoBtn?.addEventListener("click", () => {
+        resetPhotoCaptureUI();
+    });
+
+    // STAGE 2 — Confirm: ito na ang mag-a-upload sa Firestore gamit ang
+    // nakuhang photo mula sa Capture stage.
+    confirmPhotoBtn?.addEventListener("click", async () => {
+        if (!capturedPhotoBase64) return;
+
+        confirmPhotoBtn.disabled = true;
+        confirmPhotoBtn.textContent = "Saving Time In...";
+
+        const now = capturedAtTime || await getCurrentNTPTime();
+        const formattedDateStr = formatLocalDateDisplay(now);
+        const formattedAMPM = formatAMPM(now);
+
+        const photoBase64 = capturedPhotoBase64;
         const todayStr = getLocalYYYYMMDD(now);
         const timeInStr = formattedAMPM;
         const compName = localStorage.getItem("verified_company_name") || "Partner Company";
@@ -642,6 +1553,9 @@ function initAttendanceSystem(currentUser) {
         const user = auth.currentUser || currentUser;
         const userId = user ? user.uid : "guest_user";
         const userEmail = user ? user.email : "no_email";
+
+        // I-check kung Late ang Time In (lampas 15 mins grace mula 8:00 AM)
+        const lateInfo = computeLateInfo(now, await getStudentSchedule(user));
 
         const newRecord = {
             userId: userId,
@@ -658,7 +1572,9 @@ function initAttendanceSystem(currentUser) {
             hoursRendered: 0,
             todayHours: "0h 0m",
             status: "Active",
-            remarks: "--",
+            isLate: lateInfo.isLate,
+            lateMinutes: lateInfo.lateMinutes,
+            remarks: lateInfo.isLate ? `Late Arrival (${lateInfo.lateMinutes} minute/s late)` : "--",
             createdAt: serverTimestamp() // Gumagamit na ng Server Timestamp
         };
 
@@ -676,7 +1592,11 @@ function initAttendanceSystem(currentUser) {
             });
 
             localStorage.setItem("current_attendance_doc_id", docRef.id);
-            showToast("Time In Successful! Status is Active.", "success");
+            if (lateInfo.isLate) {
+                showToast(`Time In Successful, but you are Late by ${lateInfo.lateMinutes} minute/s.`, "info");
+            } else {
+                showToast("Time In Successful! Status is Active.", "success");
+            }
         } catch (e) {
             console.error("Firebase Firestore Time In Error:", e);
             const fallbackRecord = { ...newRecord, id: "local_" + Date.now(), createdAt: new Date().toISOString() };
@@ -687,9 +1607,6 @@ function initAttendanceSystem(currentUser) {
 
         closePhotoModal();
         await refreshAttendanceUI();
-
-        capturePhotoBtn.disabled = false;
-        capturePhotoBtn.innerHTML = `<i class="fa-solid fa-camera"></i> Complete Time In`;
     });
 
     photoCancel?.addEventListener("click", closePhotoModal);
@@ -717,13 +1634,13 @@ function initAttendanceSystem(currentUser) {
         }
 
         listContainer.innerHTML = pendingTasksList.map((item, index) => `
-            <li style="background: #f3f4f6; padding: 8px 10px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 11px; border: 1px solid #e5e7eb;">
+            <li style="background: #f3f4f6; padding: 8px 10px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; border: 1px solid #e5e7eb;">
                 <div style="text-align: left; padding-right: 8px;">
                     <strong style="color: #111827; display: block; font-weight: 600;">${item.title}</strong>
                     <span style="color: #4b5563;">${item.description}</span>
                 </div>
                 <button type="button" class="remove-task-btn" data-index="${index}" style="color: #dc2626; border: none; background: none; cursor: pointer; padding: 4px;">
-                    <i class="fa-solid fa-trash"></i>
+                    <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">delete</mat-icon>
                 </button>
             </li>
         `).join('');
@@ -761,7 +1678,23 @@ function initAttendanceSystem(currentUser) {
             return;
         }
 
-        const activeDocId = localStorage.getItem("current_attendance_doc_id");
+        const now = await getCurrentNTPTime();
+        const timeOutStr = formatAMPM(now);
+        const todayStr = getLocalYYYYMMDD(now);
+
+        // Fallback: kung nawala/nabura ang localStorage doc id (e.g. ibang
+        // device/browser o na-clear ang site data), hanapin sa naka-fetch nang
+        // attendance history ang Active record ngayong araw — parehong paraan
+        // ginagamit ng refreshAttendanceUI() para i-display ang "Active" badge.
+        let activeDocId = localStorage.getItem("current_attendance_doc_id");
+        if (!activeDocId || (!activeDocId.startsWith("local_") && !fullAttendanceHistory.some(i => i.id === activeDocId))) {
+            const fallbackSession = fullAttendanceHistory.find(i => i.status === "Active" && i.date === todayStr);
+            if (fallbackSession) {
+                activeDocId = fallbackSession.id;
+                localStorage.setItem("current_attendance_doc_id", activeDocId);
+            }
+        }
+
         if (!activeDocId) {
             showToast("No active Time In session found.", "error");
             return;
@@ -769,9 +1702,6 @@ function initAttendanceSystem(currentUser) {
 
         submitTaskBtn.disabled = true;
         submitTaskBtn.textContent = "Updating Record...";
-
-        const now = await getCurrentNTPTime();
-        const timeOutStr = formatAMPM(now);
 
         try {
             if (!activeDocId.startsWith("local_")) {
@@ -786,7 +1716,16 @@ function initAttendanceSystem(currentUser) {
 
                 if (docSnap.exists()) {
                     const data = docSnap.data();
-                    
+
+                    // Gamitin ang Late flag na na-compute noong Time In
+                    if (data.isLate) {
+                        finalStatus = "Late";
+                        finalRemarks = `Late Arrival (${data.lateMinutes || 0} minute/s late)`;
+                    } else {
+                        finalStatus = "Present";
+                        finalRemarks = "On-Time / Present";
+                    }
+
                     let timeInDate;
                     if (data.timeInRaw) {
                         timeInDate = new Date(data.timeInRaw);
@@ -848,7 +1787,7 @@ function initAttendanceSystem(currentUser) {
         await refreshAttendanceUI();
 
         submitTaskBtn.disabled = false;
-        submitTaskBtn.innerHTML = `<i class="fa-solid fa-check-circle"></i> Submit & Complete Time Out`;
+        submitTaskBtn.innerHTML = `<mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color" aria-hidden="true">check_circle</mat-icon> Submit & Complete Time Out`;
     });
 
     taskCancel?.addEventListener("click", closeTaskModal);
@@ -856,6 +1795,8 @@ function initAttendanceSystem(currentUser) {
     viewPhotoBtnClose?.addEventListener("click", () => {
         if (viewPhotoModalEl) viewPhotoModalEl.hidden = true;
     });
+
+    initHistoryPagination();
 
     // --- 4. REFRESH & BIND TODAY'S ATTENDANCE UI ---
     async function refreshAttendanceUI() {
@@ -868,10 +1809,13 @@ function initAttendanceSystem(currentUser) {
 
         const now = await getCurrentNTPTime();
         const todayStr = getLocalYYYYMMDD(now);
-        
+
+        todayNoDutyReason = await getTodayNoDutyReason(todayStr);
+
         if (todayDate) todayDate.textContent = formatLocalDateDisplay(now);
 
         let historyMap = new Map();
+        let historyFetchOk = true; // false kung pumalya ang pagkuha ng history
         const user = auth.currentUser || currentUser;
         const currentUid = user ? user.uid : null;
         const currentEmail = user ? user.email : localStorage.getItem("user_email");
@@ -881,7 +1825,7 @@ function initAttendanceSystem(currentUser) {
                 const qUser = query(attendanceRef, where("userId", "==", currentUid));
                 const snapUser = await getDocs(qUser);
                 snapUser.forEach(docSnap => historyMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() }));
-            } catch (e) { console.warn("Fetch userId err:", e); }
+            } catch (e) { historyFetchOk = false; console.warn("Fetch userId err:", e); }
         }
 
         if (currentEmail) {
@@ -889,16 +1833,59 @@ function initAttendanceSystem(currentUser) {
                 const qEmail = query(attendanceRef, where("userEmail", "==", currentEmail));
                 const snapEmail = await getDocs(qEmail);
                 snapEmail.forEach(docSnap => historyMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() }));
-            } catch (e) { console.warn("Fetch userEmail err:", e); }
+            } catch (e) { historyFetchOk = false; console.warn("Fetch userEmail err:", e); }
         }
 
         fullAttendanceHistory = Array.from(historyMap.values());
 
-        fullAttendanceHistory.sort((a, b) => {
-            const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime();
-            const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt || 0).getTime();
-            return timeB - timeA;
-        });
+        // Kunin ang personal na schedule.days ng student (mula sa
+        // users/{uid}) para malaman kung duty day niya ngayon.
+        const scheduleDays = await getStudentScheduleDays(user);
+        const isScheduledToday = isTodayInStudentSchedule(now, scheduleDays);
+
+        const sortHistory = () => {
+            fullAttendanceHistory = hideShadowedAbsences(fullAttendanceHistory);
+            fullAttendanceHistory = hideAbsencesAfterCompletion(fullAttendanceHistory);
+            fullAttendanceHistory.sort((a, b) => {
+                const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime();
+                const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt || 0).getTime();
+                // Auto-marked "Absent" records ay isinusulat sa susunod na pagbukas ng page,
+                // kaya mali ang createdAt para i-sort. Ang mismong petsa ng duty ang batayan.
+                const dateA = a.date || "";
+                const dateB = b.date || "";
+                if (dateA !== dateB) return dateA < dateB ? 1 : -1;
+                return timeB - timeA;
+            });
+        };
+
+        sortHistory();
+
+        // Awtomatikong i-mark na "Absent" ang mga nakaraang duty day
+        // na walang Time In record (hindi kasama ang araw na ito).
+        if ((currentUid || currentEmail) && historyFetchOk) {
+            await checkAndMarkAbsences(user, todayStr, scheduleDays);
+            sortHistory();
+        }
+
+        /* ==========================================
+        REFRESH ATTENDANCE MARKS
+        AFTER FIRESTORE DATA LOADS
+        ========================================== */
+
+        const datePickerInput =
+            document.getElementById(
+                "dateRangePicker"
+            );
+
+        if (
+            datePickerInput &&
+            datePickerInput._flatpickr
+        ) {
+
+            markAllAttendanceDates(
+                datePickerInput._flatpickr
+            );
+        }
 
         const activeDocId = localStorage.getItem("current_attendance_doc_id");
         const session = fullAttendanceHistory.find(i => i.id === activeDocId || (i.status === "Active" && i.date === todayStr));
@@ -919,21 +1906,47 @@ function initAttendanceSystem(currentUser) {
             if (timeOutIconBox) timeOutIconBox.className = "qr-icon-circle orange-bg";
             if (timeOutNoteText) timeOutNoteText.textContent = "Click to scan QR code and time out.";
 
-            const badgeDateStr = session.formattedDate || formatLocalDateDisplay(now);
+            const badgeDateStr = formatLocalDateWithDay(now);
             updateRedTimestampBadge(session.timeIn, badgeDateStr);
 
         } else {
             const latestToday = fullAttendanceHistory.find(i => i.date === todayStr);
 
-            if (latestToday && (latestToday.status === "Present" || latestToday.status === "Completed" || latestToday.status === "Late")) {
+            if (isStudentCompleted(fullAttendanceHistory)) {
+                // Complete na ang OJT: Status "Completed", naka-disable ang Time In at Time Out.
+                const showToday = latestToday && hasRealTimeIn(latestToday);
+                if (todayCompany) todayCompany.textContent = showToday ? (latestToday.company || "--") : "--";
+                if (todayLocation) todayLocation.textContent = showToday ? (latestToday.location || "--") : "--";
+                if (todayTimeIn) todayTimeIn.textContent = showToday ? (latestToday.timeIn || "--") : "--";
+                if (todayTimeOut) todayTimeOut.textContent = showToday ? (latestToday.timeOut || "--") : "--";
+
+                if (todayStatusBadge) {
+                    todayStatusBadge.textContent = "Completed";
+                    todayStatusBadge.className = "status-badge completed";
+                }
+
+                if (timeInScanBtn) { timeInScanBtn.disabled = true; timeInScanBtn.className = "scan-btn disabled-btn"; }
+                if (timeOutScanBtn) { timeOutScanBtn.disabled = true; timeOutScanBtn.className = "scan-btn disabled-btn"; }
+                if (timeOutIconBox) timeOutIconBox.className = "qr-icon-circle gray-bg";
+
+                const completedNote = "OJT completed — you can no longer time in or time out.";
+                if (timeInNoteText) timeInNoteText.textContent = completedNote;
+                if (timeOutNoteText) timeOutNoteText.textContent = completedNote;
+
+            } else if (latestToday && (latestToday.status === "Present" || latestToday.status === "Completed" || latestToday.status === "Late")) {
                 if (todayCompany) todayCompany.textContent = latestToday.company || "--";
                 if (todayLocation) todayLocation.textContent = latestToday.location || "--";
                 if (todayTimeIn) todayTimeIn.textContent = latestToday.timeIn || "--";
                 if (todayTimeOut) todayTimeOut.textContent = latestToday.timeOut || "--";
 
                 if (todayStatusBadge) {
-                    todayStatusBadge.textContent = "Present";
-                    todayStatusBadge.className = "status-badge completed";
+                    if (latestToday.status === "Late") {
+                        todayStatusBadge.textContent = "Late";
+                        todayStatusBadge.className = "status-badge late";
+                    } else {
+                        todayStatusBadge.textContent = "Present";
+                        todayStatusBadge.className = "status-badge completed";
+                    }
                 }
 
                 if (timeInScanBtn) { timeInScanBtn.disabled = true; timeInScanBtn.className = "scan-btn disabled-btn"; }
@@ -941,7 +1954,48 @@ function initAttendanceSystem(currentUser) {
                 if (timeOutIconBox) timeOutIconBox.className = "qr-icon-circle gray-bg";
                 if (timeOutNoteText) timeOutNoteText.textContent = "Attendance completed for today. Come back tomorrow!";
 
-                updateRedTimestampBadge(latestToday.timeIn, latestToday.formattedDate || formatLocalDateDisplay(now));
+                updateRedTimestampBadge(latestToday.timeIn, formatLocalDateWithDay(now));
+
+            } else if (latestToday && String(latestToday.status || "").toLowerCase() === "rejected") {
+                if (todayCompany) todayCompany.textContent = latestToday.company || "--";
+                if (todayLocation) todayLocation.textContent = latestToday.location || "--";
+                if (todayTimeIn) todayTimeIn.textContent = latestToday.timeIn || "--";
+                if (todayTimeOut) todayTimeOut.textContent = latestToday.timeOut || "--";
+
+                if (todayStatusBadge) {
+                    todayStatusBadge.textContent = "Rejected";
+                    todayStatusBadge.className = "status-badge rejected";
+                }
+
+                if (timeInScanBtn) { timeInScanBtn.disabled = true; timeInScanBtn.className = "scan-btn disabled-btn"; }
+                if (timeOutScanBtn) { timeOutScanBtn.disabled = true; timeOutScanBtn.className = "scan-btn disabled-btn"; }
+                if (timeOutIconBox) timeOutIconBox.className = "qr-icon-circle gray-bg";
+                if (timeInNoteText) timeInNoteText.textContent = "Your attendance for today was rejected by your coordinator.";
+                if (timeOutNoteText) timeOutNoteText.textContent = "Your attendance for today was rejected by your coordinator.";
+
+            } else if (todayNoDutyReason || !isScheduledToday) {
+                if (todayCompany) todayCompany.textContent = "--";
+                if (todayLocation) todayLocation.textContent = "--";
+                if (todayTimeIn) todayTimeIn.textContent = "--";
+                if (todayTimeOut) todayTimeOut.textContent = "--";
+
+                if (todayStatusBadge) {
+                    todayStatusBadge.textContent = "No Duty";
+                    todayStatusBadge.className = "status-badge no-duty";
+                }
+
+                if (timeInScanBtn) { timeInScanBtn.disabled = true; timeInScanBtn.className = "scan-btn disabled-btn"; }
+                if (timeOutScanBtn) { timeOutScanBtn.disabled = true; timeOutScanBtn.className = "scan-btn disabled-btn"; }
+                if (timeOutIconBox) timeOutIconBox.className = "qr-icon-circle gray-bg";
+
+                // Kung may calendar exception (suspension/holiday) gamitin
+                // yung reason nun; kung wala naman pero hindi lang siya naka-
+                // schedule ngayong araw, sabihin na wala siyang duty ngayon.
+                const noDutyNote = todayNoDutyReason
+                    ? `No duty today — ${todayNoDutyReason}`
+                    : "No duty today — not in your assigned schedule.";
+                if (timeInNoteText) timeInNoteText.textContent = noDutyNote;
+                if (timeOutNoteText) timeOutNoteText.textContent = noDutyNote;
 
             } else {
                 if (todayCompany) todayCompany.textContent = "--";
@@ -951,22 +2005,17 @@ function initAttendanceSystem(currentUser) {
 
                 if (todayStatusBadge) {
                     todayStatusBadge.textContent = latestToday && latestToday.status === "Absent" ? "Absent" : "Not Timed In";
-                    todayStatusBadge.className = latestToday && latestToday.status === "Absent" ? "status-badge late" : "status-badge not-timed-in";
+                    todayStatusBadge.className = latestToday && latestToday.status === "Absent" ? "status-badge absent" : "status-badge not-timed-in";
                 }
 
                 if (timeInScanBtn) { timeInScanBtn.disabled = latestToday && latestToday.status === "Absent"; timeInScanBtn.className = timeInScanBtn.disabled ? "scan-btn disabled-btn" : "scan-btn green-btn"; }
                 if (timeOutScanBtn) { timeOutScanBtn.disabled = true; timeOutScanBtn.className = "scan-btn disabled-btn"; }
                 if (timeOutIconBox) timeOutIconBox.className = "qr-icon-circle gray-bg";
+                if (timeInNoteText) timeInNoteText.textContent = "QR scan & photo proof required.";
                 if (timeOutNoteText) timeOutNoteText.textContent = "Note: 1 hour breaktime is automatically deducted from total hours.";
             }
         }
 
-        const datePickerInput = document.getElementById("dateRangePicker");
-        if (datePickerInput && datePickerInput._flatpickr && datePickerInput._flatpickr.selectedDates.length === 2) {
-            const dates = datePickerInput._flatpickr.selectedDates;
-            filterHistoryByDateRange(dates[0], dates[1]);
-        } else {
-            renderHistoryItems(fullAttendanceHistory);
-        }
+        applyHistoryDisplay();
     }
 }

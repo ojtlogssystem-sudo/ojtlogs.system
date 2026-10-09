@@ -245,7 +245,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         );
                     
                     const cardHtml = `
-                        <div class="company-card" data-id="${companyId}" data-name="${data.companyName || ''}">
+                        <div class="company-card" data-id="${companyId}" data-name="${data.companyName || ''}" data-total="${totalStudents}" data-active="${activeStudents}">
                             <div class="card-header">
                                 <div class="company-brand">
                                     <div class="brand-icon red"><i class="fa-solid fa-building"></i></div>
@@ -355,6 +355,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     `;
                     companyGrid.insertAdjacentHTML("beforeend", cardHtml);
                 });
+                applyCompanyView();
             });
         });
     }
@@ -491,16 +492,140 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // SEARCH FILTER
+    // ==========================================
+    // SEARCH + FILTER + SORT (company cards)
+    // Ang Filter at Sort buttons ay UI lang; dito nagsasama ang
+    // search, filter, at sort at ina-apply ulit pagkatapos ng bawat render.
+    // ==========================================
+    let companyStatusFilter = "All";
+    let companySortMode = "default";
+
+    function applyCompanyView() {
+        const grid = document.getElementById("companyGrid");
+        if (!grid) return;
+
+        const cards = Array.from(grid.querySelectorAll(".company-card"));
+        if (cards.length === 0) return;
+
+        const keyword = (document.getElementById("searchCompany")?.value || "").toLowerCase().trim();
+
+        // Itabi ang orihinal na pagkakasunod-sunod para sa "Default"
+        cards.forEach((card, i) => {
+            if (card.dataset.order === undefined) card.dataset.order = i;
+        });
+
+        let visibleCount = 0;
+        cards.forEach((card) => {
+            const searchable = [
+                card.querySelector(".brand-info"),
+                card.querySelector(".card-tags")
+            ].map(el => (el ? el.textContent : "")).join(" ").toLowerCase();
+
+            const hasActiveStudents = Number(card.dataset.active) > 0;
+            const matchesSearch = searchable.includes(keyword);
+            const matchesFilter =
+                companyStatusFilter === "All" ||
+                (companyStatusFilter === "Active" && hasActiveStudents) ||
+                (companyStatusFilter === "Inactive" && !hasActiveStudents);
+
+            const show = matchesSearch && matchesFilter;
+            card.style.display = show ? "flex" : "none";
+            if (show) visibleCount++;
+        });
+
+        // Sort (muling ina-append ang mga card ayon sa napiling order)
+        const byName = (a, b) => (a.dataset.name || "").localeCompare(b.dataset.name || "");
+        const sorted = cards.slice().sort((a, b) => {
+            switch (companySortMode) {
+                case "name-asc": return byName(a, b);
+                case "name-desc": return byName(b, a);
+                case "students-high": return Number(b.dataset.total) - Number(a.dataset.total);
+                case "students-low": return Number(a.dataset.total) - Number(b.dataset.total);
+                default: return Number(a.dataset.order) - Number(b.dataset.order);
+            }
+        });
+        sorted.forEach(card => grid.appendChild(card));
+
+        // Empty state kapag walang tumugma
+        let empty = document.getElementById("companyEmptyState");
+        if (visibleCount === 0) {
+            if (!empty) {
+                empty = document.createElement("p");
+                empty.id = "companyEmptyState";
+                empty.className = "company-empty-state";
+                empty.textContent = "No companies found.";
+            }
+            grid.appendChild(empty);
+        } else if (empty) {
+            empty.remove();
+        }
+    }
+
     const searchInput = document.getElementById("searchCompany");
     if (searchInput) {
-        searchInput.addEventListener("keyup", () => {
-            const keyword = searchInput.value.toLowerCase();
-            document.querySelectorAll(".company-card").forEach(card => {
-                card.style.display = card.innerText.toLowerCase().includes(keyword) ? "flex" : "none";
-            });
-        });
+        searchInput.addEventListener("input", applyCompanyView);
     }
+
+    // Filter & Sort popover buttons
+    (function initToolbarMenus() {
+        const filterBtn = document.getElementById("filterBtn");
+        const filterPopover = document.getElementById("filterPopover");
+        const sortBtn = document.getElementById("sortBtn");
+        const sortPopover = document.getElementById("sortPopover");
+        const filterBadge = document.getElementById("filterBadge");
+
+        const menus = [
+            { btn: filterBtn, pop: filterPopover },
+            { btn: sortBtn, pop: sortPopover }
+        ].filter(m => m.btn && m.pop);
+
+        const closeAll = () => {
+            menus.forEach(({ btn, pop }) => {
+                pop.classList.remove("open");
+                btn.setAttribute("aria-expanded", "false");
+            });
+        };
+
+        menus.forEach(({ btn, pop }) => {
+            btn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const willOpen = !pop.classList.contains("open");
+                closeAll();
+                if (willOpen) {
+                    pop.classList.add("open");
+                    btn.setAttribute("aria-expanded", "true");
+                }
+            });
+            pop.addEventListener("click", (e) => e.stopPropagation());
+        });
+
+        document.addEventListener("click", closeAll);
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") closeAll();
+        });
+
+        const wireOptions = (pop, attr, onPick) => {
+            if (!pop) return;
+            const options = pop.querySelectorAll(".menu-option");
+            options.forEach((opt) => {
+                opt.addEventListener("click", () => {
+                    options.forEach(o => o.classList.toggle("active", o === opt));
+                    onPick(opt.getAttribute(attr));
+                    applyCompanyView();
+                    closeAll();
+                });
+            });
+        };
+
+        wireOptions(filterPopover, "data-filter", (value) => {
+            companyStatusFilter = value;
+            if (filterBadge) filterBadge.hidden = value === "All";
+        });
+
+        wireOptions(sortPopover, "data-sort", (value) => {
+            companySortMode = value;
+        });
+    })();
 
 // QR MODAL
 const qrModal = document.getElementById("qrModal");

@@ -72,19 +72,58 @@
                                     <input type="text" id="searchStudent" placeholder="Search student...">
                                 </div>
 
-                                <select id="sortSelect">
-                                    <option value="Sort By">Sort By</option>
-                                    <option value="Name (A-Z)">Name (A-Z)</option>
-                                    <option value="Name (Z-A)">Name (Z-A)</option>
-                                    <option value="Student ID">Student ID</option>
-                                </select>
+                                <!-- FILTER BUTTON + POPOVER -->
+                                <div class="toolbar-menu" id="filterMenu">
+                                    <button type="button" class="toolbar-btn" id="filterBtn" aria-haspopup="true" aria-expanded="false">
+                                        <svg class="toolbar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                                        <span>Filter</span>
+                                        <span class="toolbar-badge" id="filterBadge" hidden>0</span>
+                                    </button>
 
-                                <select id="statusFilter">
-                                    <option value="All Status">All Status</option>
-                                    <option value="Active">Active</option>
-                                    <option value="Pending">Pending</option>
-                                    <option value="Completed">Completed</option>
-                                </select>
+                                    <div class="toolbar-popover" id="filterPopover">
+                                        <div class="popover-field">
+                                            <label for="yearFilter">Academic Year</label>
+                                            <select id="yearFilter">
+                                                <option value="All Academic Years">All Academic Years</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="popover-field">
+                                            <label for="statusFilter">Status</label>
+                                            <select id="statusFilter">
+                                                <option value="All Status">All Status</option>
+                                                <option value="Active">Active</option>
+                                                <option value="Pending">Pending</option>
+                                                <option value="Completed">Completed</option>
+                                            </select>
+                                        </div>
+
+                                        <button type="button" class="popover-reset" id="resetFilterBtn">Reset filters</button>
+                                    </div>
+                                </div>
+
+                                <!-- SORT BUTTON + POPOVER -->
+                                <div class="toolbar-menu" id="sortMenu">
+                                    <button type="button" class="toolbar-btn" id="sortBtn" aria-haspopup="true" aria-expanded="false">
+                                        <svg class="toolbar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg>
+                                        <span>Sort</span>
+                                    </button>
+
+                                    <div class="toolbar-popover sort-popover" id="sortPopover">
+                                        <button type="button" class="sort-option active" data-sort="Sort By">Default</button>
+                                        <button type="button" class="sort-option" data-sort="Name (A-Z)">Name (A-Z)</button>
+                                        <button type="button" class="sort-option" data-sort="Name (Z-A)">Name (Z-A)</button>
+                                        <button type="button" class="sort-option" data-sort="Student ID">Student ID</button>
+                                    </div>
+
+                                    <!-- Hidden na lang ang select para gumana pa rin ang existing sorting logic -->
+                                    <select id="sortSelect" hidden>
+                                        <option value="Sort By">Sort By</option>
+                                        <option value="Name (A-Z)">Name (A-Z)</option>
+                                        <option value="Name (Z-A)">Name (Z-A)</option>
+                                        <option value="Student ID">Student ID</option>
+                                    </select>
+                                </div>
 
                             </div>
                         </div>
@@ -219,7 +258,7 @@
                                 <label class="day-chip-checkbox"><input type="checkbox" name="editDays" value="Thu"> <span>Thu</span></label>
                                 <label class="day-chip-checkbox"><input type="checkbox" name="editDays" value="Fri"> <span>Fri</span></label>
                                 <label class="day-chip-checkbox"><input type="checkbox" name="editDays" value="Sat"> <span>Sat</span></label>
-                                <label class="day-chip-checkbox"><input type="checkbox" name="editDays" value="Sat"> <span>Sun</span></label>
+                                <label class="day-chip-checkbox"><input type="checkbox" name="editDays" value="Sun"> <span>Sun</span></label>
                             </div>
                         </div>
 

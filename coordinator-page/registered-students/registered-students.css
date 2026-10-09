@@ -273,8 +273,10 @@ body {
 /* SEARCH */
 
 .search-box {
-    width: 280px;
-    height: 42px;
+    width: 300px;
+    height: 36px;
+
+    background: #ffffff;
 
     border: 1px solid #e5e7eb;
     border-radius: 8px;
@@ -300,6 +302,21 @@ body {
 }
 
 
+
+/* ========================================
+   POPUP MODE (loaded inside dashboard iframe)
+   Walang back button at summary cards; naka-align
+   ang Print Report sa title.
+======================================== */
+
+body.embedded .back-button-container,
+body.embedded .completed-summary-cards {
+    display: none;
+}
+
+body.embedded .print-btn {
+    margin-top: 0;
+}
 
 /* ========================================
    FILTER + SORT BAR
@@ -347,7 +364,8 @@ body {
     cursor: pointer;
 }
 
-.filter-field select:focus {
+.filter-field select:focus,
+.search-box:focus-within {
     outline: none;
     border-color: #AB0A0A;
 }

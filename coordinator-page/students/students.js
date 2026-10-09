@@ -212,6 +212,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Each init runs in its own try/catch so that if one of
     // them throws, it doesn't stop the rest from wiring up.
     safeInit(initStudentTableFilters, "initStudentTableFilters");
+    safeInit(initToolbarMenus, "initToolbarMenus");
     safeInit(initPaginationControls, "initPaginationControls");
     safeInit(initInviteModal, "initInviteModal");
     safeInit(initEditModal, "initEditModal");
@@ -1487,3 +1488,91 @@ window.viewFullAccountDetails = function() {
     const targetUrl = `/coordinator-page/attendance/attendance_details.html?email=${encodeURIComponent(studentEmail)}&name=${encodeURIComponent(studentName)}&id=${encodeURIComponent(studentId)}&from=students`;
 window.location.href = targetUrl;
 };
+
+/* ==========================================
+   FILTER & SORT BUTTONS (popover menus)
+   Gumagamit pa rin ng existing #yearFilter, #statusFilter at
+   #sortSelect - ang mga button/popover ay UI lang sa ibabaw nila.
+========================================== */
+function initToolbarMenus() {
+    const filterBtn = document.getElementById("filterBtn");
+    const filterPopover = document.getElementById("filterPopover");
+    const sortBtn = document.getElementById("sortBtn");
+    const sortPopover = document.getElementById("sortPopover");
+    const filterBadge = document.getElementById("filterBadge");
+    const yearFilter = document.getElementById("yearFilter");
+    const statusFilter = document.getElementById("statusFilter");
+    const sortSelect = document.getElementById("sortSelect");
+    const resetBtn = document.getElementById("resetFilterBtn");
+
+    const menus = [
+        { btn: filterBtn, pop: filterPopover },
+        { btn: sortBtn, pop: sortPopover }
+    ].filter(m => m.btn && m.pop);
+
+    const closeAll = () => {
+        menus.forEach(({ btn, pop }) => {
+            pop.classList.remove("open");
+            btn.setAttribute("aria-expanded", "false");
+        });
+    };
+
+    menus.forEach(({ btn, pop }) => {
+        btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const willOpen = !pop.classList.contains("open");
+            closeAll();
+            if (willOpen) {
+                pop.classList.add("open");
+                btn.setAttribute("aria-expanded", "true");
+            }
+        });
+        pop.addEventListener("click", (e) => e.stopPropagation());
+    });
+
+    document.addEventListener("click", closeAll);
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeAll();
+    });
+
+    // Badge: ilan ang active na filter
+    const updateFilterBadge = () => {
+        if (!filterBadge) return;
+        let count = 0;
+        if (yearFilter && yearFilter.value !== ALL_ACADEMIC_YEARS) count++;
+        if (statusFilter && statusFilter.value !== "All Status") count++;
+        filterBadge.textContent = count;
+        filterBadge.hidden = count === 0;
+    };
+
+    if (yearFilter) yearFilter.addEventListener("change", updateFilterBadge);
+    if (statusFilter) statusFilter.addEventListener("change", updateFilterBadge);
+
+    if (resetBtn) {
+        resetBtn.addEventListener("click", () => {
+            if (yearFilter) {
+                yearFilter.value = ALL_ACADEMIC_YEARS;
+                yearFilter.dispatchEvent(new Event("change"));
+            }
+            if (statusFilter) {
+                statusFilter.value = "All Status";
+                statusFilter.dispatchEvent(new Event("change"));
+            }
+        });
+    }
+
+    // Sort options
+    const sortOptions = sortPopover ? sortPopover.querySelectorAll(".sort-option") : [];
+    sortOptions.forEach((opt) => {
+        opt.addEventListener("click", () => {
+            sortOptions.forEach(o => o.classList.toggle("active", o === opt));
+            if (sortSelect) {
+                sortSelect.value = opt.dataset.sort;
+                sortSelect.dispatchEvent(new Event("change"));
+            }
+            closeAll();
+        });
+    });
+
+    updateFilterBadge();
+}

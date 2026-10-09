@@ -87,39 +87,88 @@
                     >
                 </div>
 
-                <!-- SECTION -->
-                <select id="sectionFilter">
-                    <option value="all">All Sections</option>
-                </select>
+                <!-- FILTER BUTTON + POPOVER
+                     (Section / Status = Student tabs | Intern Count / Deployment = Company tab | Company = lahat) -->
+                <div class="toolbar-menu" id="filterMenu">
+                    <button type="button" class="toolbar-btn" id="filterBtn" aria-haspopup="true" aria-expanded="false">
+                        <svg class="toolbar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                        <span>Filter</span>
+                        <span class="toolbar-badge" id="filterBadge" hidden>0</span>
+                    </button>
 
-                <!-- INTERN COUNT (Company Deployment lang) -->
-                <select id="internCountFilter" style="display:none;">
-                    <option value="all">All Intern Counts</option>
-                    <option value="1">1 Intern</option>
-                    <option value="2-5">2 &ndash; 5 Interns</option>
-                    <option value="6+">6 or More Interns</option>
-                </select>
+                    <div class="toolbar-popover" id="filterPopover">
 
-                <!-- COMPANY -->
-                <select id="companyFilter">
-                    <option value="all">All Companies</option>
-                </select>
+                        <div class="popover-field">
+                            <label for="sectionFilter">Section</label>
+                            <select id="sectionFilter">
+                                <option value="all">All Sections</option>
+                            </select>
+                        </div>
 
-                <!-- STATUS -->
-                <select id="statusFilter">
-                    <option value="all">All Status</option>
-                    <option value="On Track">On Track</option>
-                    <option value="Needs Monitoring">Needs Monitoring</option>
-                    <option value="At Risk">At Risk</option>
-                    <option value="Completed">Completed</option>
-                </select>
+                        <div class="popover-field">
+                            <label for="companyFilter">Company</label>
+                            <select id="companyFilter">
+                                <option value="all">All Companies</option>
+                            </select>
+                        </div>
 
-                <!-- DEPLOYMENT (Company Deployment lang) -->
-                <select id="deploymentFilter" style="display:none;">
-                    <option value="all">All Deployments</option>
-                    <option value="completed">With Completed Interns</option>
-                    <option value="ongoing">With Ongoing Interns</option>
-                </select>
+                        <div class="popover-field">
+                            <label for="statusFilter">Status</label>
+                            <select id="statusFilter">
+                                <option value="all">All Status</option>
+                                <option value="On Track">On Track</option>
+                                <option value="Needs Monitoring">Needs Monitoring</option>
+                                <option value="At Risk">At Risk</option>
+                                <option value="Completed">Completed</option>
+                            </select>
+                        </div>
+
+                        <!-- INTERN COUNT (Company Deployment lang) -->
+                        <div class="popover-field" style="display:none;">
+                            <label for="internCountFilter">Intern Count</label>
+                            <select id="internCountFilter">
+                                <option value="all">All Intern Counts</option>
+                                <option value="1">1 Intern</option>
+                                <option value="2-5">2 &ndash; 5 Interns</option>
+                                <option value="6+">6 or More Interns</option>
+                            </select>
+                        </div>
+
+                        <!-- DEPLOYMENT (Company Deployment lang) -->
+                        <div class="popover-field" style="display:none;">
+                            <label for="deploymentFilter">Deployment</label>
+                            <select id="deploymentFilter">
+                                <option value="all">All Deployments</option>
+                                <option value="completed">With Completed Interns</option>
+                                <option value="ongoing">With Ongoing Interns</option>
+                            </select>
+                        </div>
+
+                        <button type="button" class="popover-reset" id="resetFilterBtn">Reset filters</button>
+                    </div>
+                </div>
+
+                <!-- SORT BUTTON + POPOVER -->
+                <div class="toolbar-menu" id="sortMenu">
+                    <button type="button" class="toolbar-btn" id="sortBtn" aria-haspopup="true" aria-expanded="false">
+                        <svg class="toolbar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg>
+                        <span>Sort</span>
+                    </button>
+
+                    <div class="toolbar-popover sort-popover" id="sortPopover">
+                        <button type="button" class="menu-option active" data-sort="default" data-group="all">Default</button>
+
+                        <!-- Student Progress at Attendance tabs -->
+                        <button type="button" class="menu-option" data-sort="name-asc" data-group="students">Name (A-Z)</button>
+                        <button type="button" class="menu-option" data-sort="name-desc" data-group="students">Name (Z-A)</button>
+
+                        <!-- Company Deployment tab -->
+                        <button type="button" class="menu-option" data-sort="company-asc" data-group="company" hidden>Company (A-Z)</button>
+                        <button type="button" class="menu-option" data-sort="company-desc" data-group="company" hidden>Company (Z-A)</button>
+                        <button type="button" class="menu-option" data-sort="interns-high" data-group="company" hidden>Most Interns</button>
+                        <button type="button" class="menu-option" data-sort="interns-low" data-group="company" hidden>Least Interns</button>
+                    </div>
+                </div>
 
                 <!-- EXPORT / PRINT -->
                 <div class="report-actions">

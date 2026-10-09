@@ -42,6 +42,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let rangeTo = null;
 
     let dataReady = false;
+    let sortMode = "default";      // galing sa Sort button (default = orihinal na order)
     let currentPage = 1;
     let rowsPerPage = 6;
     let lastRebuiltMinute = -1;
@@ -178,6 +179,21 @@ document.addEventListener("DOMContentLoaded", () => {
             return matchSearch && matchSection && matchStatus;
 
         });
+
+        // SORT (Default = hindi ginagalaw ang orihinal na pagkakasunod-sunod)
+        if (sortMode !== "default") {
+            const byText = (field) => (a, b) =>
+                String(a[field] || "").localeCompare(String(b[field] || ""));
+
+            const sorters = {
+                "name-asc": byText("studentName"),
+                "name-desc": (a, b) => byText("studentName")(b, a),
+                "company-asc": byText("company"),
+                "company-desc": (a, b) => byText("company")(b, a)
+            };
+
+            if (sorters[sortMode]) filteredRecords.sort(sorters[sortMode]);
+        }
 
         const totalPages = Math.max(1, Math.ceil(filteredRecords.length / rowsPerPage));
 
@@ -368,6 +384,90 @@ document.addEventListener("DOMContentLoaded", () => {
     if (searchInput) searchInput.addEventListener("input", () => applyFilters());
     if (sectionFilter) sectionFilter.addEventListener("change", () => applyFilters());
     if (statusFilter) statusFilter.addEventListener("change", () => applyFilters());
+
+    // =================================================
+    // FILTER & SORT BUTTONS (popover menus)
+    // Ang #sectionFilter at #statusFilter ay nasa loob na ng Filter
+    // popover - ang existing filter logic sa itaas ang ginagamit pa rin.
+    // =================================================
+
+    (function initToolbarMenus() {
+
+        const filterBtn = document.getElementById("filterBtn");
+        const filterPopover = document.getElementById("filterPopover");
+        const sortBtn = document.getElementById("sortBtn");
+        const sortPopover = document.getElementById("sortPopover");
+        const filterBadge = document.getElementById("filterBadge");
+        const resetBtn = document.getElementById("resetFilterBtn");
+
+        const menus = [
+            { btn: filterBtn, pop: filterPopover },
+            { btn: sortBtn, pop: sortPopover }
+        ].filter((m) => m.btn && m.pop);
+
+        const closeAll = () => {
+            menus.forEach(({ btn, pop }) => {
+                pop.classList.remove("open");
+                btn.setAttribute("aria-expanded", "false");
+            });
+        };
+
+        menus.forEach(({ btn, pop }) => {
+            btn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const willOpen = !pop.classList.contains("open");
+                closeAll();
+                if (willOpen) {
+                    pop.classList.add("open");
+                    btn.setAttribute("aria-expanded", "true");
+                }
+            });
+            pop.addEventListener("click", (e) => e.stopPropagation());
+        });
+
+        document.addEventListener("click", closeAll);
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") closeAll();
+        });
+
+        // Badge: ilan ang active na filter (Section / Status)
+        const updateFilterBadge = () => {
+            if (!filterBadge) return;
+            let count = 0;
+            if (sectionFilter && sectionFilter.value !== "All Sections") count++;
+            if (statusFilter && statusFilter.value !== "All Status") count++;
+            filterBadge.textContent = count;
+            filterBadge.hidden = count === 0;
+        };
+
+        if (sectionFilter) sectionFilter.addEventListener("change", updateFilterBadge);
+        if (statusFilter) statusFilter.addEventListener("change", updateFilterBadge);
+
+        if (resetBtn) {
+            resetBtn.addEventListener("click", () => {
+                if (sectionFilter) sectionFilter.value = "All Sections";
+                if (statusFilter) statusFilter.value = "All Status";
+                updateFilterBadge();
+                applyFilters();
+            });
+        }
+
+        // Sort options
+        if (sortPopover) {
+            const options = sortPopover.querySelectorAll(".menu-option");
+            options.forEach((opt) => {
+                opt.addEventListener("click", () => {
+                    options.forEach((o) => o.classList.toggle("active", o === opt));
+                    sortMode = opt.getAttribute("data-sort") || "default";
+                    applyFilters();
+                    closeAll();
+                });
+            });
+        }
+
+        updateFilterBadge();
+
+    })();
 
     // =================================================
     // DATE RANGE (From / To / Apply)

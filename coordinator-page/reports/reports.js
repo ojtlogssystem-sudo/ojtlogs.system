@@ -68,6 +68,9 @@ let reportDataLoaded = false;
 
 let currentTab = "progress";
 
+// Napili sa Sort button ("default" = dating pagkakasunod-sunod)
+let sortMode = "default";
+
 let coordinatorName = "OJT Coordinator";
 
 const filters = {
@@ -291,6 +294,12 @@ async function loadAllData() {
         // Hindi isinasama ang mga WALANG PANG ACCESS sa system
         // (pending approval / na-invite pa lang ni coordinator).
         if (isPendingStudent(data)) {
+            return;
+        }
+
+        // FIX: Huwag isama ang mga na-"delete" na account (soft delete sa
+        // Students page) - pareho dapat ng bilang sa Students table.
+        if (data.accountDisabled === true) {
             return;
         }
 
@@ -1560,6 +1569,8 @@ function populateFilterOptions() {
 // ========================================
 
 function initToolbar() {
+    initToolbarMenus();
+
 
     const search =
         document.getElementById(
@@ -1942,7 +1953,7 @@ function updateToolbarForTab() {
     const show = (id, visible) => {
         const el = document.getElementById(id);
         if (el) {
-            el.style.display =
+            (el.closest(".popover-field") || el).style.display =
                 visible ? "" : "none";
         }
     };
@@ -1961,6 +1972,8 @@ function updateToolbarForTab() {
             : "Search students, company or section...";
     }
 
+
+    refreshToolbarMenus();
 }
 
 
@@ -2013,9 +2026,7 @@ const filtered =
 
         case "attendance":
 
-            renderAttendanceTab(
-                filtered
-            );
+            renderAttendanceTab(sortStudentsByMode(filtered));
 
             break;
 
@@ -2304,9 +2315,7 @@ function renderCompanyTab(
 
 
     const groups =
-        groupByCompany(
-            students
-        ).filter(g => {
+        sortCompanyGroups(groupByCompany(students)).filter(g => {
 
             if (filters.internCount === "1" && g.total !== 1) return false;
             if (filters.internCount === "2-5" && (g.total < 2 || g.total > 5)) return false;
@@ -2457,9 +2466,9 @@ function renderStudentProgressTab(
     const sortedStudents =
         [...students].sort(
             (a, b) =>
-                getName(a).localeCompare(
-                    getName(b)
-                )
+                sortMode === "name-desc"
+                    ? getName(b).localeCompare(getName(a))
+                    : getName(a).localeCompare(getName(b))
         );
 
 
@@ -3181,5 +3190,178 @@ function hideStatus() {
             "none";
 
     }
+
+}
+
+
+// ========================================
+// FILTER & SORT BUTTONS (popover menus)
+// ========================================
+// Ang mga dating <select> (section, company, status, intern count,
+// deployment) ay nasa loob na ng Filter popover - ang existing
+// listeners sa initToolbar() ang gumagana pa rin. Ang Sort naman
+// ay bago: iba ang options depende sa tab.
+
+function sortStudentsByMode(students) {
+
+    if (sortMode !== "name-asc" && sortMode !== "name-desc") {
+        return students;
+    }
+
+    const dir = sortMode === "name-desc" ? -1 : 1;
+
+    return [...students].sort(
+        (a, b) => dir * getName(a).localeCompare(getName(b))
+    );
+
+}
+
+
+function sortCompanyGroups(groups) {
+
+    switch (sortMode) {
+
+        case "company-asc":
+            return [...groups].sort((a, b) => a.company.localeCompare(b.company));
+
+        case "company-desc":
+            return [...groups].sort((a, b) => b.company.localeCompare(a.company));
+
+        case "interns-high":
+            return [...groups].sort((a, b) => b.total - a.total);
+
+        case "interns-low":
+            return [...groups].sort((a, b) => a.total - b.total);
+
+        default:
+            return groups;
+
+    }
+
+}
+
+
+function refreshToolbarMenus() {
+
+    const isCompany = currentTab === "company";
+
+    // Badge: ilan ang active na filter sa kasalukuyang tab
+    const badge = document.getElementById("filterBadge");
+
+    if (badge) {
+
+        const keys = isCompany
+            ? ["company", "internCount", "deployment"]
+            : ["section", "company", "status"];
+
+        const count = keys.filter(key => filters[key] !== "all").length;
+
+        badge.textContent = count;
+        badge.hidden = count === 0;
+
+    }
+
+    // Sort options: depende sa tab
+    const popover = document.getElementById("sortPopover");
+
+    if (!popover) return;
+
+    const group = isCompany ? "company" : "students";
+    const options = popover.querySelectorAll(".menu-option");
+
+    const stillValid = [...options].some(opt =>
+        opt.dataset.sort === sortMode &&
+        (opt.dataset.group === "all" || opt.dataset.group === group)
+    );
+
+    // Kung hindi umiiral ang napiling sort sa bagong tab, balik sa Default
+    if (!stillValid) sortMode = "default";
+
+    options.forEach(opt => {
+
+        const applies =
+            opt.dataset.group === "all" ||
+            opt.dataset.group === group;
+
+        opt.hidden = !applies;
+        opt.classList.toggle("active", opt.dataset.sort === sortMode);
+
+    });
+
+}
+
+
+function initToolbarMenus() {
+
+    const filterBtn = document.getElementById("filterBtn");
+    const filterPopover = document.getElementById("filterPopover");
+    const sortBtn = document.getElementById("sortBtn");
+    const sortPopover = document.getElementById("sortPopover");
+    const resetBtn = document.getElementById("resetFilterBtn");
+
+    const menus = [
+        { btn: filterBtn, pop: filterPopover },
+        { btn: sortBtn, pop: sortPopover }
+    ].filter(m => m.btn && m.pop);
+
+    const closeAll = () => {
+        menus.forEach(({ btn, pop }) => {
+            pop.classList.remove("open");
+            btn.setAttribute("aria-expanded", "false");
+        });
+    };
+
+    menus.forEach(({ btn, pop }) => {
+
+        btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const willOpen = !pop.classList.contains("open");
+            closeAll();
+            if (willOpen) {
+                pop.classList.add("open");
+                btn.setAttribute("aria-expanded", "true");
+            }
+        });
+
+        pop.addEventListener("click", (e) => e.stopPropagation());
+
+    });
+
+    document.addEventListener("click", closeAll);
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeAll();
+    });
+
+    // Reset filters (section, company, status, intern count, deployment)
+    if (resetBtn) {
+        resetBtn.addEventListener("click", () => {
+
+            ["section", "company", "status", "internCount", "deployment"].forEach(key => {
+                filters[key] = "all";
+            });
+
+            ["sectionFilter", "companyFilter", "statusFilter", "internCountFilter", "deploymentFilter"]
+                .forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.value = "all";
+                });
+
+            renderActiveTab();
+
+        });
+    }
+
+    // Sort options
+    if (sortPopover) {
+        sortPopover.querySelectorAll(".menu-option").forEach(opt => {
+            opt.addEventListener("click", () => {
+                sortMode = opt.dataset.sort || "default";
+                renderActiveTab();
+                closeAll();
+            });
+        });
+    }
+
+    refreshToolbarMenus();
 
 }

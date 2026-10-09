@@ -3,6 +3,11 @@ let filteredStudents = [];
 let currentPage = 1;
 let rowsPerPage = 10;
 
+/* Kapag naka-load bilang popup (iframe) sa dashboard */
+if (window.self !== window.top) {
+    document.body.classList.add("embedded");
+}
+
 
 /* ========================================
    LOAD AT-RISK STUDENTS

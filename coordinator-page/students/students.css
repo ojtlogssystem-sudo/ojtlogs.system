@@ -1540,3 +1540,156 @@ table thead th i {
         grid-column: span 1;
     }
 }
+
+/* ==========================================
+   FILTER & SORT BUTTONS (toolbar)
+========================================== */
+.toolbar-menu {
+    position: relative;
+}
+
+.toolbar-btn {
+    height: 40px;
+    padding: 0 18px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    color: #1f2937;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+}
+
+.toolbar-btn:hover {
+    background: #fafafa;
+    border-color: #d1d5db;
+}
+
+.toolbar-btn[aria-expanded="true"] {
+    border-color: var(--primary, #ab0a0a);
+    box-shadow: 0 0 0 3px rgba(171, 10, 10, 0.08);
+}
+
+.toolbar-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+.toolbar-badge {
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: var(--primary, #ab0a0a);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.toolbar-badge[hidden] {
+    display: none;
+}
+
+.toolbar-popover {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    min-width: 230px;
+    padding: 14px;
+    background: #fff;
+    border: 1px solid #ececec;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+    z-index: 20;
+}
+
+.toolbar-popover.open {
+    display: block;
+    animation: fadeIn 0.15s ease-out;
+}
+
+.popover-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.popover-field label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+}
+
+/* Mas mataas na specificity para ma-override ang .table-header-right select */
+.table-header-right .toolbar-popover select {
+    width: 100%;
+    min-width: 0;
+    height: 38px;
+}
+
+.popover-reset {
+    width: 100%;
+    height: 36px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary, #ab0a0a);
+    cursor: pointer;
+    transition: background .2s ease;
+}
+
+.popover-reset:hover {
+    background: #fdecec;
+}
+
+.sort-popover {
+    min-width: 180px;
+    padding: 6px;
+}
+
+.sort-option {
+    width: 100%;
+    padding: 9px 12px;
+    background: none;
+    border: none;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    text-align: left;
+    cursor: pointer;
+}
+
+.sort-option:hover {
+    background: #f5f5f5;
+}
+
+.sort-option.active {
+    background: #fdecec;
+    color: var(--primary, #ab0a0a);
+    font-weight: 600;
+}
+
+.sort-option.active::after {
+    content: "\2713";
+    font-size: 12px;
+}

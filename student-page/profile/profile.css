@@ -867,3 +867,138 @@ body {
     font-size: 10px;
     color: var(--gray);
 }
+
+
+/* ==========================================
+   TERMS & CONDITIONS / PRIVACY POLICY MODAL
+   (lalabas pagka-click ng Continue sa Step 3)
+========================================== */
+.terms-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 3000;
+    justify-content: center;
+    align-items: center;
+    padding: 16px;
+}
+
+.terms-overlay.active {
+    display: flex;
+}
+
+.terms-card {
+    width: 100%;
+    max-width: 420px;
+    max-height: min(560px, 85vh);
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.terms-header {
+    padding: 14px 18px 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.terms-header h2 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: #111;
+    line-height: 1.3;
+}
+
+.terms-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 12px 18px;
+    font-size: 12px;
+    line-height: 1.55;
+    color: #333;
+    outline: none;
+}
+
+.terms-body h3 {
+    font-size: 13px;
+    font-weight: 700;
+    color: #111;
+    margin: 12px 0 4px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.terms-body p { margin-bottom: 6px; }
+.terms-body ul { margin: 0 0 6px 18px; padding: 0; }
+.terms-body li { margin-bottom: 3px; }
+
+.terms-notice {
+    background: #fdeaea;
+    border-left: 3px solid var(--primary);
+    padding: 8px 10px;
+    border-radius: 6px;
+}
+
+.terms-footer {
+    padding: 12px 18px 16px;
+    border-top: 1px solid #eee;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.terms-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 0;
+    font-size: 12px;
+    color: #111;
+    cursor: pointer;
+    line-height: 1.4;
+}
+
+.terms-check input {
+    width: 15px;
+    height: 15px;
+    margin-top: 1px;
+    flex-shrink: 0;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.terms-check.disabled { opacity: .5; cursor: not-allowed; }
+.terms-check.disabled input { cursor: not-allowed; }
+
+.terms-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.terms-actions .continue-btn {
+    flex: 1;
+    margin-top: 0;
+    height: 38px;
+}
+
+.terms-actions .terms-cancel-btn {
+    background: #888;
+}
+
+.terms-actions .terms-cancel-btn:hover {
+    background: #6f6f6f;
+}
+
+.terms-actions .continue-btn:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+.terms-actions .continue-btn:disabled:hover {
+    background: var(--primary);
+}

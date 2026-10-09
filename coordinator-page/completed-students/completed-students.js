@@ -33,6 +33,11 @@ const auth = getAuth(app);
 
 let completedStudents = [];
 
+/* Kapag naka-load bilang popup (iframe) sa dashboard */
+if (window.self !== window.top) {
+    document.body.classList.add("embedded");
+}
+
 
 /* ========================================
    RENDERED HOURS (single source of truth)

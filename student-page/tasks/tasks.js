@@ -79,7 +79,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 2. Load Header at i-setup ang pamagat (shared header now also handles
     // the profile avatar/name and the notification bell on its own).
-    loadHeader("Task History", { autoLoadProfile: true });
+    loadHeader("Tasks", { autoLoadProfile: true });
     initTaskFlatpickr();
     initPagination();
 

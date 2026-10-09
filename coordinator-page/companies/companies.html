@@ -70,33 +70,35 @@
                         placeholder="Search Company...">
                 </div>
 
-                <div class="custom-dropdown">
-                    <i class="fa-solid fa-filter icon-left"></i>
+                <!-- FILTER BUTTON + POPOVER -->
+                <div class="toolbar-menu" id="filterMenu">
+                    <button type="button" class="toolbar-btn" id="filterBtn" aria-haspopup="true" aria-expanded="false">
+                        <svg class="toolbar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                        <span>Filter</span>
+                        <span class="toolbar-badge" id="filterBadge" hidden>1</span>
+                    </button>
 
-                    <select id="companyFilter">
-                        <option value="" disabled selected hidden>Filter</option>
-                        <option value="All">All Companies</option>
-                        <option value="Active">Active</option>
-                        <option value="Full">Full</option>
-                        <option value="Inactive">Inactive</option>
-                    </select>
-
-                    <i class="fa-solid fa-chevron-down icon-right"></i>
+                    <div class="toolbar-popover" id="filterPopover">
+                        <button type="button" class="menu-option active" data-filter="All">All Companies</button>
+                        <button type="button" class="menu-option" data-filter="Active">Active</button>
+                        <button type="button" class="menu-option" data-filter="Inactive">Inactive</button>
+                    </div>
                 </div>
 
+                <!-- SORT BUTTON + POPOVER -->
+                <div class="toolbar-menu" id="sortMenu">
+                    <button type="button" class="toolbar-btn" id="sortBtn" aria-haspopup="true" aria-expanded="false">
+                        <svg class="toolbar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg>
+                        <span>Sort</span>
+                    </button>
 
-                <div class="custom-dropdown">
-                    <i class="fa-solid fa-arrow-down-short-wide icon-left"></i>
-
-                    <select id="companySort">
-                        <option value="" disabled selected hidden>Sort by</option>
-                        <option value="name-asc">Name (A-Z)</option>
-                        <option value="name-desc">Name (Z-A)</option>
-                        <option value="students-high">Most Students</option>
-                        <option value="students-low">Least Students</option>
-                    </select>
-
-                    <i class="fa-solid fa-chevron-down icon-right"></i>
+                    <div class="toolbar-popover" id="sortPopover">
+                        <button type="button" class="menu-option active" data-sort="default">Default</button>
+                        <button type="button" class="menu-option" data-sort="name-asc">Name (A-Z)</button>
+                        <button type="button" class="menu-option" data-sort="name-desc">Name (Z-A)</button>
+                        <button type="button" class="menu-option" data-sort="students-high">Most Students</button>
+                        <button type="button" class="menu-option" data-sort="students-low">Least Students</button>
+                    </div>
                 </div>
             </div>
         </div>

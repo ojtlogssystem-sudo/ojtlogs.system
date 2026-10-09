@@ -2471,3 +2471,87 @@
     background: transparent;
     border: none;
 }
+
+/* ========================================
+   AI STATUS CARDS - DASHBOARD STAT-CARD STYLE
+======================================== */
+
+.ai-card,
+.ai-card.risk,
+.ai-card.monitoring,
+.ai-card.safe {
+    position: relative;
+    display: block;
+    min-height: 120px;
+    padding: 20px 22px 20px 26px;
+    background: #fff;
+    border: 1px solid #e0e0e0c3;
+    border-radius: 18px;
+    box-shadow: 0 2px 8px rgba(171, 10, 10, 0.04);
+}
+
+.ai-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 18px rgba(171, 10, 10, 0.12);
+    border-color: #f7aab0;
+}
+
+.ai-card .ai-card-icon,
+.ai-card.risk .ai-card-icon,
+.ai-card.monitoring .ai-card-icon,
+.ai-card.safe .ai-card-icon {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    background: #fde8e8;
+    color: #ab0a0a;
+    font-size: 16px;
+}
+
+.ai-card p,
+.ai-card.risk p,
+.ai-card.monitoring p,
+.ai-card.safe p {
+    margin: 0 0 6px;
+    padding-right: 48px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.ai-card h2,
+.ai-card.risk h2,
+.ai-card.monitoring h2,
+.ai-card.safe h2 {
+    margin: 0 0 6px;
+    font-size: 28px;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.ai-card .ai-card-sub {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #27ae60;
+}
+
+.ai-card span {
+    display: block;
+    font-size: 12px;
+    color: #999;
+}
+
+.ai-card.selected,
+.ai-card.risk.selected,
+.ai-card.monitoring.selected,
+.ai-card.safe.selected {
+    border-color: #ab0a0a;
+    box-shadow: 0 8px 18px rgba(171, 10, 10, 0.14);
+}

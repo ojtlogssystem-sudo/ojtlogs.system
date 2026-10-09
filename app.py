@@ -51,6 +51,11 @@ import threading
 import pickle
 import hashlib
 
+try:
+    from google.api_core import exceptions as _gexc
+except Exception:
+    _gexc = None
+
 _cache = {}
 _cache_lock = threading.Lock()
 
@@ -65,11 +70,11 @@ def _disk_path(key):
     return os.path.join(CACHE_DIR, f"{key}.pkl")
 
 
-def _disk_load(key, ttl):
+def _disk_load(key, ttl, ignore_ttl=False):
     try:
         with open(_disk_path(key), 'rb') as f:
             stamp, value = pickle.load(f)
-        if time.time() - stamp < ttl:
+        if ignore_ttl or time.time() - stamp < ttl:
             return stamp, value
     except Exception:
         pass
@@ -98,10 +103,199 @@ def invalidate(*keys):
             pass
 
 
+# ------------------------------------------------------------
+# QUOTA / STALE-IF-ERROR
+# Kapag umabot sa limit ang Firestore (429 Quota exceeded) o may error
+# sa pagbasa, HINDI na babagsak ang buong analytics. Ibabalik na lang
+# ang huling matagumpay na naka-save na data (memory o disk, kahit
+# lampas na sa TTL) at lalagyan ng "stale": true para malaman ng page.
+# Pagkatapos ng quota error, 5 minuto munang hindi susubukan ulit ang
+# Firestore (para hindi mag-spam ng failing requests).
+# ------------------------------------------------------------
+_tl = threading.local()          # per-request: natatandaan kung lumang data ang nagamit
+_quota_block_until = 0.0
+QUOTA_RETRY_SECONDS = 300
+_force_expired = set()           # mga key na dapat i-reload pero hindi buburahin ang lumang kopya
+
+
+# ------------------------------------------------------------
+# DAILY READ BUDGET (proteksyon sa Firestore quota)
+# Binibilang ang bawat dokumentong binabasa ng app.py (stream/get).
+# Kapag umabot sa DAILY_READ_BUDGET, hindi na babasa ang server sa
+# Firestore hanggang sa susunod na araw - ang huling naka-save na
+# data na lang ang ipapakita. Ang quota ng Firestore ay nagre-reset
+# tuwing midnight Pacific Time, kaya ganoon din ang pagbilang dito.
+# Baguhin gamit ang env var FIRESTORE_DAILY_READ_BUDGET (0 = walang limit).
+# Nagbibigay ito ng puwang para sa ibang pages (Students, Reports, header)
+# na sabay na gumagamit ng 50,000 reads/day ng Spark plan.
+# ------------------------------------------------------------
+DAILY_READ_BUDGET = int(os.environ.get('FIRESTORE_DAILY_READ_BUDGET', '15000'))
+USAGE_FILE = os.path.join(CACHE_DIR, 'usage.json')
+_usage_lock = threading.Lock()
+
+
+def _quota_day():
+    try:
+        from zoneinfo import ZoneInfo
+        return datetime.now(ZoneInfo("America/Los_Angeles")).strftime("%Y-%m-%d")
+    except Exception:
+        return (datetime.now(timezone.utc) - timedelta(hours=8)).strftime("%Y-%m-%d")
+
+
+try:
+    with open(USAGE_FILE, 'r', encoding='utf-8') as _uf:
+        _usage = json.load(_uf)
+except Exception:
+    _usage = {}
+if not isinstance(_usage, dict) or _usage.get("day") != _quota_day():
+    _usage = {"day": _quota_day(), "reads": 0}
+
+
+def _save_usage():
+    try:
+        with _usage_lock:
+            tmp = USAGE_FILE + '.tmp'
+            with open(tmp, 'w', encoding='utf-8') as f:
+                json.dump(_usage, f)
+            os.replace(tmp, USAGE_FILE)
+    except Exception as e:
+        print(f"[usage] save skipped: {e}")
+
+
+def _count_reads(n=1):
+    with _usage_lock:
+        today = _quota_day()
+        if _usage.get("day") != today:
+            _usage["day"] = today
+            _usage["reads"] = 0
+        _usage["reads"] = _usage.get("reads", 0) + n
+        should_save = _usage["reads"] % 100 == 0
+    if should_save:
+        _save_usage()
+
+
+def _reads_today():
+    with _usage_lock:
+        if _usage.get("day") != _quota_day():
+            return 0
+        return _usage.get("reads", 0)
+
+
+def _over_budget():
+    return DAILY_READ_BUDGET > 0 and _reads_today() >= DAILY_READ_BUDGET
+
+
+# Bilangin ang bawat dokumentong nababasa gamit ang .stream() at .get()
+try:
+    from google.cloud.firestore_v1.query import Query as _FsQuery
+    from google.cloud.firestore_v1.document import DocumentReference as _FsDocRef
+
+    _orig_query_stream = _FsQuery.stream
+    _orig_doc_get = _FsDocRef.get
+
+    def _counting_stream(self, *args, **kwargs):
+        for snap in _orig_query_stream(self, *args, **kwargs):
+            _count_reads(1)
+            yield snap
+
+    def _counting_doc_get(self, *args, **kwargs):
+        _count_reads(1)
+        return _orig_doc_get(self, *args, **kwargs)
+
+    _FsQuery.stream = _counting_stream
+    _FsDocRef.get = _counting_doc_get
+except Exception as _patch_error:
+    print(f"[usage] hindi mabilang ang reads (okay lang, gagana pa rin): {_patch_error}")
+
+
+def _budget_guard(fn):
+    """Para sa mga debug endpoint na direktang bumabasa ng Firestore."""
+    import functools
+
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        if _over_budget():
+            return jsonify({
+                "status": "error",
+                "message": f"Daily read budget reached ({_reads_today()}/{DAILY_READ_BUDGET}). Subukan bukas."
+            }), 429
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+@app.route('/api/usage-status', methods=['GET'])
+def usage_status():
+    """Tingnan kung ilang reads na ang nagamit ng app.py ngayong araw (libre, 0 reads)."""
+    return jsonify({
+        "status": "success",
+        "day": _quota_day(),
+        "readsToday": _reads_today(),
+        "dailyBudget": DAILY_READ_BUDGET,
+        "overBudget": _over_budget(),
+        "quotaBlockedUntilRetry": _firestore_blocked()
+    })
+
+
+def _is_quota_error(e):
+    if _gexc is not None and isinstance(e, _gexc.ResourceExhausted):
+        return True
+    s = str(e).lower()
+    return '429' in s or 'quota' in s or 'resource exhausted' in s or 'resource_exhausted' in s
+
+
+def _firestore_blocked():
+    return time.time() < _quota_block_until or _over_budget()
+
+
+def _mark_stale(stamp):
+    cur = getattr(_tl, 'stale_since', None)
+    _tl.stale_since = stamp if cur is None else min(cur, stamp)
+
+
+def _can_write():
+    """Huwag mag-write kung quota-blocked o kung lumang data ang pinagbatayan."""
+    return not _firestore_blocked() and not getattr(_tl, 'stale_since', None)
+
+
+def _safe_write(fn):
+    """Mag-write sa Firestore nang hindi nasisira ang analytics kapag may error/quota."""
+    global _quota_block_until
+    if not _can_write():
+        return False
+    try:
+        fn()
+        return True
+    except Exception as e:
+        if _is_quota_error(e):
+            _quota_block_until = time.time() + QUOTA_RETRY_SECONDS
+        print(f"[firestore] write skipped: {e}")
+        return False
+
+
+def _stale_lookup(key, persist=True):
+    """Pinakabagong naka-save na kopya (kahit expired na) -> (stamp, value) o None."""
+    with _cache_lock:
+        hit = _cache.get(key)
+    if hit:
+        return hit
+    if persist:
+        return _disk_load(key, 0, ignore_ttl=True)
+    return None
+
+
+def expire(*keys):
+    """Gawing 'kailangan i-reload' ang mga key, PERO itinatago ang lumang kopya
+    bilang fallback (di tulad ng invalidate() na binubura ito)."""
+    with _cache_lock:
+        _force_expired.update(keys)
+
+
 def cached(key, ttl, loader, force=False, persist=True):
-    """Ibalik ang cached na value kung bago pa (ttl = segundo); kung hindi, i-load ulit."""
+    """Ibalik ang cached na value kung bago pa (ttl = segundo); kung hindi, i-load ulit.
+    Kapag pumalya ang loader (hal. Firestore quota), ibabalik ang lumang kopya."""
+    global _quota_block_until
     now = time.time()
-    if not force:
+    if not force and key not in _force_expired:
         with _cache_lock:
             hit = _cache.get(key)
             if hit and now - hit[0] < ttl:
@@ -112,19 +306,42 @@ def cached(key, ttl, loader, force=False, persist=True):
                 with _cache_lock:
                     _cache[key] = disk
                 return disk[1]
-    value = loader()
+
+    stale = _stale_lookup(key, persist)
+
+    # Kakabagsak lang ng Firestore dahil sa quota -> huwag munang ulitin.
+    # Ang daily read budget ay sinusunod kahit "refresh" (force).
+    if stale and (_over_budget() or (not force and _firestore_blocked())):
+        _mark_stale(stale[0])
+        return stale[1]
+
+    try:
+        value = loader()
+    except Exception as e:
+        if stale:
+            if _is_quota_error(e):
+                _quota_block_until = time.time() + QUOTA_RETRY_SECONDS
+            print(f"[cache] '{key}' failed ({e}); gamit ang naka-save na kopya.")
+            _mark_stale(stale[0])
+            return stale[1]
+        raise
+
     stamp = time.time()
     with _cache_lock:
         _cache[key] = (stamp, value)
+        _force_expired.discard(key)
     if persist:
         _disk_save(key, stamp, value)
+    _save_usage()
     return value
 
 
 # TTL settings (segundo) - dagdagan para mas makatipid, bawasan para mas "live"
-ATTENDANCE_CACHE_TTL = 900       # 15 min
-USERS_CACHE_TTL = 600            # 10 min
-PREDICT_RISK_CACHE_TTL = 600     # 10 min
+# LOW-USAGE MODE: pinahaba para kaunti ang reads. Pwedeng baguhin gamit ang env var.
+# (Ang predict-risk ay walang sariling reads - gawa ito mula sa users + attendance.)
+ATTENDANCE_CACHE_TTL = int(os.environ.get('ATTENDANCE_CACHE_TTL', '10800'))   # 3 oras
+USERS_CACHE_TTL = int(os.environ.get('USERS_CACHE_TTL', '7200'))              # 2 oras
+PREDICT_RISK_CACHE_TTL = int(os.environ.get('PREDICT_RISK_CACHE_TTL', '1800'))  # 30 min
 SKILL_PROFILE_CACHE_TTL = 86400  # 24 oras (bihirang magbago ang tasks/skills)
 COMPANIES_CACHE_TTL = 86400      # 24 oras
 
@@ -272,6 +489,10 @@ def _load_attendance_records_uncached():
                 f"[predict-risk] Failed to load '{collection_name}': "
                 f"{attendance_error}"
             )
+            # FIX: dati, [] ang ibinabalik at ina-cache (15 min + sa disk) kapag
+            # nag-error ang Firestore, kaya mali/walang attendance ang lumalabas.
+            # Ngayon, ipinapasa ang error para magamit ang lumang naka-save na kopya.
+            raise
     return records
 
 def _get_student_records(attendance_records, student_doc_id, student_id_value,
@@ -737,6 +958,7 @@ def _is_graduated(data, ai_status):
     return ai_status == "Completed"
 
 @app.route('/api/debug-student-access', methods=['GET'])
+@_budget_guard
 def debug_student_access():
     """
     Diagnostic: ipinapakita kung sino ang binibilang / hindi binibilang sa
@@ -791,14 +1013,40 @@ def debug_student_access():
 
 @app.route('/api/predict-risk', methods=['GET'])
 def predict_student_risk():
+    global _quota_block_until
+    _tl.stale_since = None
     try:
         force = request.args.get('refresh') == '1'
         if force:
-            invalidate('attendance', 'users')  # i-refresh din ang attendance at users
+            _quota_block_until = 0.0
+            # FIX: expire (hindi invalidate) - para hindi mabura ang lumang kopya
+            # na ginagamit na fallback kapag quota exceeded.
+            expire('attendance', 'users')
         data = cached('predict-risk', PREDICT_RISK_CACHE_TTL, _build_predict_risk, force)
+
+        stale_since = getattr(_tl, 'stale_since', None)
+        if stale_since:
+            # Nabuo mula sa lumang data -> huwag i-treat na "fresh" sa cache
+            expire('predict-risk')
+            return jsonify(_with_stale_meta(data, stale_since))
         return jsonify(data)
     except Exception as e:
+        fallback = _stale_lookup('predict-risk')
+        if fallback and isinstance(fallback[1], dict):
+            return jsonify(_with_stale_meta(fallback[1], fallback[0], str(e)))
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+def _with_stale_meta(data, stamp, reason=None):
+    out = dict(data)
+    out["stale"] = True
+    out["cachedAt"] = datetime.fromtimestamp(stamp, tz=timezone.utc).isoformat()
+    out["staleReason"] = reason or (
+        "Firestore quota exceeded - ipinapakita ang huling naka-save na data."
+        if _firestore_blocked() else
+        "Hindi ma-refresh ang data mula sa Firestore - ipinapakita ang huling naka-save na data."
+    )
+    return out
 
 
 def _build_predict_risk():
@@ -1221,22 +1469,21 @@ def _build_predict_risk():
                     json.dumps(analytics_payload, sort_keys=True, default=str).encode('utf-8')
                 ).hexdigest()
                 if _last_written.get(doc.id) != payload_key:
-                    analytics_doc_ref.set(
-                        {**analytics_payload, "lastUpdated": firestore.SERVER_TIMESTAMP},
-                        merge=True
-                    )
-                    _last_written[doc.id] = payload_key
-                    _writes_done += 1
+                    if _safe_write(lambda: analytics_doc_ref.set(
+                            {**analytics_payload, "lastUpdated": firestore.SERVER_TIMESTAMP},
+                            merge=True)):
+                        _last_written[doc.id] = payload_key
+                        _writes_done += 1
 
                 # Nabasa na natin ang users doc, kaya libre ang paghahambing
                 if data.get('internshipStatus') != ai_status:
-                    db.collection('users').document(doc.id).set({
-                        "internshipStatus": ai_status
-                    }, merge=True)
-                    try:
-                        doc._data['internshipStatus'] = ai_status   # sync sa cached copy
-                    except Exception:
-                        pass
+                    if _safe_write(lambda: db.collection('users').document(doc.id).set({
+                            "internshipStatus": ai_status
+                    }, merge=True)):
+                        try:
+                            doc._data['internshipStatus'] = ai_status   # sync sa cached copy
+                        except Exception:
+                            pass
 
             except Exception as doc_error:
                 print(f"[predict-risk] Skipped doc {doc.id}: {doc_error}")
@@ -1377,6 +1624,7 @@ def get_student_attendance(student_doc_id):
 #             /api/debug-absences?refresh=1  (i-reload ang attendance)
 # ==========================================
 @app.route('/api/debug-absences', methods=['GET'])
+@_budget_guard
 def debug_absences():
     try:
         if request.args.get('refresh') == '1':
@@ -1672,6 +1920,8 @@ def _load_task_records(students):
                 for doc in col.stream():
                     add(doc, col.id, "top")
         except Exception as e:
+            if _is_quota_error(e):
+                raise   # FIX: huwag i-cache ang kulang/walang laman na resulta
             print(f"[skill-exposure] top-level scan failed: {e}")
     else:
         for name in top_names:
@@ -1683,6 +1933,8 @@ def _load_task_records(students):
                 for doc in db.collection(name).stream():
                     add(doc, name, "top")
             except Exception as e:
+                if _is_quota_error(e):
+                    raise   # FIX: huwag i-cache ang kulang/walang laman na resulta
                 print(f"[skill-exposure] top-level '{name}' skipped: {e}")
 
     # 2. COLLECTION GROUPS (sakop din ang top-level na kapareho ng pangalan)
@@ -1691,6 +1943,8 @@ def _load_task_records(students):
             for doc in db.collection_group(name).stream():
                 add(doc, name, "groups")
         except Exception as e:
+            if _is_quota_error(e):
+                raise   # FIX: huwag i-cache ang kulang/walang laman na resulta
             print(f"[skill-exposure] collection_group '{name}' skipped: {e}")
 
     # 3. SUBCOLLECTIONS NG BAWAT USER
@@ -1701,6 +1955,8 @@ def _load_task_records(students):
                     for doc in sub.stream():
                         add(doc, sub.id, "sub", st['id'])
             except Exception as e:
+                if _is_quota_error(e):
+                    raise   # FIX: huwag i-cache ang kulang/walang laman na resulta
                 print(f"[skill-exposure] subcollections of {st['id']} skipped: {e}")
     else:
         for name in sub_names:
@@ -1709,6 +1965,8 @@ def _load_task_records(students):
                     for doc in db.collection('users').document(st['id']).collection(name).stream():
                         add(doc, name, "sub", st['id'])
                 except Exception as e:
+                    if _is_quota_error(e):
+                        raise   # FIX: huwag i-cache ang kulang/walang laman na resulta
                     print(f"[skill-exposure] users/{st['id']}/{name} skipped: {e}")
 
     if discover:
@@ -1840,6 +2098,7 @@ def _build_company_skill_profiles_uncached():
 
 
 @app.route('/api/debug-skill-sources', methods=['GET'])
+@_budget_guard
 def debug_skill_sources():
     """Open in the browser to see where tasks really live in Firestore."""
     try:
@@ -1869,7 +2128,7 @@ def analyze_company_skill_exposure():
             except OSError:
                 pass
         if force:
-            invalidate('users', 'companies')
+            expire('users', 'companies')   # hindi invalidate: itatago ang lumang kopya bilang fallback
         return jsonify({"status": "success", "data": build_company_skill_profiles(force)})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500

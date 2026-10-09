@@ -747,6 +747,91 @@ if (toggleReauthPassword && reauthPasswordInput) {
 
 
 // ==========================================
+// TERMS & CONDITIONS / PRIVACY POLICY GATE
+// Lalabas pagka-click ng "Continue" sa Step 3, bago mai-save ang profile
+// at makapasok sa student dashboard. Kailangang i-scroll hanggang baba
+// ang terms bago ma-enable ang checkbox, at kailangang naka-check ito
+// bago ma-enable ang "I Agree".
+// ==========================================
+
+const termsModal = document.getElementById('termsModal');
+const termsBody = document.getElementById('termsBody');
+const termsCheckbox = document.getElementById('termsCheckbox');
+const termsCheckLabel = document.getElementById('termsCheckLabel');
+const termsAgreeBtn = document.getElementById('termsAgreeBtn');
+const termsCancelBtn = document.getElementById('termsCancelBtn');
+
+// Kapag nag-agree na sa session na ito (hal. nag-reauthenticate pa
+// pagkatapos), hindi na ipapakita ulit.
+let termsAgreed = false;
+
+// Nagre-resolve ng true kapag nag-"I Agree", false kapag nag-Cancel.
+function requireTermsAgreement() {
+    if (termsAgreed) return Promise.resolve(true);
+
+    if (!termsModal || !termsBody || !termsCheckbox || !termsAgreeBtn || !termsCancelBtn) {
+        console.error("Terms modal markup is missing in profile.html.");
+        return Promise.resolve(true);
+    }
+
+    return new Promise((resolve) => {
+        let reachedBottom = false;
+
+        // Reset sa bawat bukas ng modal
+        termsBody.scrollTop = 0;
+        termsCheckbox.checked = false;
+        termsCheckbox.disabled = true;
+        termsCheckLabel.classList.add('disabled');
+        termsAgreeBtn.disabled = true;
+
+        function checkScroll() {
+            if (reachedBottom) return;
+            // 8px na tolerance para sa rounding ng browser
+            const atBottom = termsBody.scrollTop + termsBody.clientHeight >= termsBody.scrollHeight - 8;
+            if (!atBottom) return;
+
+            reachedBottom = true;
+            termsCheckbox.disabled = false;
+            termsCheckLabel.classList.remove('disabled');
+        }
+
+        function finish(result) {
+            termsBody.onscroll = null;
+            termsCheckbox.onchange = null;
+            termsAgreeBtn.onclick = null;
+            termsCancelBtn.onclick = null;
+            window.removeEventListener('resize', checkScroll);
+            termsModal.classList.remove('active');
+            document.body.style.overflow = '';
+            resolve(result);
+        }
+
+        termsBody.onscroll = checkScroll;
+        window.addEventListener('resize', checkScroll);
+
+        termsCheckbox.onchange = () => {
+            termsAgreeBtn.disabled = !termsCheckbox.checked;
+        };
+
+        termsAgreeBtn.onclick = () => {
+            if (!termsCheckbox.checked) return;
+            termsAgreed = true;
+            finish(true);
+        };
+
+        termsCancelBtn.onclick = () => finish(false);
+
+        document.body.style.overflow = 'hidden';
+        termsModal.classList.add('active');
+
+        // Pagkatapos lumabas ng modal, i-check kung sapat na ang laki ng
+        // screen kaya hindi na kailangang mag-scroll.
+        requestAnimationFrame(checkScroll);
+    });
+}
+
+
+// ==========================================
 // FINAL FORM SUBMISSION (STEP 3 SAVE & REDIRECT)
 // ==========================================
 
@@ -829,6 +914,9 @@ async function saveProfileData(password) {
         section: section,
         schedule: scheduleData,
         profileCompleted: true,
+        // Record ng pagsang-ayon sa Terms & Conditions / Privacy Policy
+        termsAccepted: true,
+        termsAcceptedAt: serverTimestamp(),
         // Oras ng pagkumpleto - ginagamit ng notification bell ng
         // coordinator (../header/header.js) para malaman kung kailan
         // natapos ng estudyante ang profile.
@@ -865,6 +953,14 @@ if (profileForm) {
 
         if (!currentUser) {
             showAlert("No authenticated user found. Please log in again.");
+            return;
+        }
+
+        // Terms & Conditions / Privacy Policy - kailangan munang mag-agree
+        // bago mai-save ang profile at makapasok sa dashboard.
+        const agreedToTerms = await requireTermsAgreement();
+        if (!agreedToTerms) {
+            showAlert("You need to agree to the Terms & Conditions and Privacy Policy to continue.");
             return;
         }
 

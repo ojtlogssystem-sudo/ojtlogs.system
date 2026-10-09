@@ -51,6 +51,73 @@ async function apiFetch(path, options) {
 
 
 // ==========================================
+// OFFLINE / QUOTA FALLBACK
+// Sine-save sa browser ang huling matagumpay na /api/predict-risk
+// response. Kapag nag-error ang server (hal. Firestore 429 Quota
+// exceeded) o hindi maabot, ito ang ipapakita para makita pa rin ang
+// huling data, may paalala na lumang data ito.
+// ==========================================
+
+const ANALYTICS_CACHE_KEY = "ojtAnalyticsPredictRiskCache";
+
+function saveAnalyticsCache(result) {
+    try {
+        localStorage.setItem(
+            ANALYTICS_CACHE_KEY,
+            JSON.stringify({ savedAt: Date.now(), result })
+        );
+    } catch (e) { /* puno o bawal ang storage - okay lang */ }
+}
+
+function loadAnalyticsCache() {
+    try {
+        const raw = localStorage.getItem(ANALYTICS_CACHE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return parsed && parsed.result && parsed.result.status === "success"
+            ? parsed
+            : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function hideStaleNotice() {
+    const el = document.getElementById("analyticsStaleNotice");
+    if (el) el.remove();
+}
+
+function showStaleNotice(savedAtMs, reason) {
+    hideStaleNotice();
+
+    const host = document.querySelector(".analytics-content");
+    if (!host) return;
+
+    const when = savedAtMs && !isNaN(savedAtMs)
+        ? new Date(savedAtMs).toLocaleString("en-PH", {
+            month: "short", day: "numeric", year: "numeric",
+            hour: "numeric", minute: "2-digit"
+        })
+        : "unknown time";
+
+    const notice = document.createElement("div");
+    notice.id = "analyticsStaleNotice";
+    notice.style.cssText =
+        "display:flex;align-items:flex-start;gap:10px;margin:0 0 14px;" +
+        "padding:10px 14px;border-radius:10px;font-size:12.5px;line-height:1.5;" +
+        "background:#fff7e0;border:1px solid #f0d58a;color:#7a5a00;";
+    notice.innerHTML =
+        '<i class="fa-solid fa-triangle-exclamation" style="margin-top:3px;"></i>' +
+        "<div><strong>Showing saved data (as of " + when + ").</strong> " +
+        String(reason || "Hindi ma-refresh ang live data ngayon (maaaring umabot na sa limit ang Firestore). Babalik sa live data kapag naayos na.")
+            .replace(/</g, "&lt;") +
+        "</div>";
+
+    host.insertBefore(notice, host.firstChild);
+}
+
+
+// ==========================================
 // CHARTS (BAR + PIE) - gamit ang Chart.js
 //
 // Kulay ng system:
@@ -581,14 +648,80 @@ document.addEventListener("DOMContentLoaded", () => {
 
         try {
 
-            const response =
-                await apiFetch(
-                    "/api/predict-risk"
-                );
+            let result;
+
+            try {
+
+                const response =
+                    await apiFetch(
+                        "/api/predict-risk"
+                    );
+
+                result =
+                    await response.json();
+
+            } catch (fetchError) {
+
+                // Hindi maabot ang server - gamitin ang huling naka-save
+                // sa browser kung meron; kung wala, ipasa sa catch sa baba.
+                const cache = loadAnalyticsCache();
+
+                if (!cache) throw fetchError;
+
+                result = {
+                    ...cache.result,
+                    stale: true,
+                    cachedAt: new Date(cache.savedAt).toISOString(),
+                    staleReason: "Hindi maabot ang AI server."
+                };
+
+            }
 
 
-            const result =
-                await response.json();
+            if (
+                result.status !== "success"
+            ) {
+
+                // May error ang server (hal. 429 Quota exceeded) -
+                // gamitin ang huling naka-save sa browser kung meron.
+                const cache = loadAnalyticsCache();
+
+                if (cache) {
+
+                    result = {
+                        ...cache.result,
+                        stale: true,
+                        cachedAt: new Date(cache.savedAt).toISOString(),
+                        staleReason:
+                            /quota|429/i.test(String(result.message || ""))
+                                ? "Umabot na sa daily limit ang Firestore (429 Quota exceeded). Mag-reset ito araw-araw."
+                                : "May error ang AI server: " + (result.message || "Unknown error")
+                    };
+
+                }
+
+            }
+
+
+            if (
+                result.status === "success"
+            ) {
+
+                if (result.stale) {
+
+                    showStaleNotice(
+                        result.cachedAt ? Date.parse(result.cachedAt) : null,
+                        result.staleReason
+                    );
+
+                } else {
+
+                    saveAnalyticsCache(result);
+                    hideStaleNotice();
+
+                }
+
+            }
 
 
             if (
@@ -610,7 +743,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     riskContainer.innerHTML = `
                         <div style="padding:20px;text-align:center;color:#dc2626;">
                             AI Server Error: ${
-                                (result.message || "Unknown error")
+                                (/quota|429/i.test(String(result.message || ""))
+                                    ? "Umabot na sa daily limit ang Firestore (429 Quota exceeded) at wala pang naka-save na data sa browser na ito. Subukan ulit kapag nag-reset na ang quota."
+                                    : (result.message || "Unknown error"))
                                     .toString()
                                     .replace(/</g, "&lt;")
                             }

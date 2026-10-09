@@ -130,7 +130,7 @@
                 <div class="summary-card clickable-card" id="lateCard" role="button" tabindex="0" title="View late students">
                     <div class="summary-icon"><i class="fa-solid fa-clock"></i></div>
                     <div class="stat-content">
-                        <p class="title">Late</p>
+                        <p class="title">Late Today</p>
                         <h3 id="statLate">--</h3>
                         <div class="stat-footer">
                             <span class="negative">
@@ -146,7 +146,7 @@
                 <div class="summary-card clickable-card" id="absentCard" role="button" tabindex="0" title="View absent students">
                     <div class="summary-icon"><i class="fa-solid fa-user-xmark"></i></div>
                     <div class="stat-content">
-                        <p class="title">Absent</p>
+                        <p class="title">Absent Today</p>
                         <h3 id="statAbsent">--</h3>
                         <div class="stat-footer">
                             <span class="negative">
@@ -207,47 +207,53 @@
 
 
 
-                        <!-- SECTION -->
+                        <!-- FILTER BUTTON + POPOVER (Section & Status) -->
+                        <div class="toolbar-menu" id="filterMenu">
+                            <button type="button" class="toolbar-btn" id="filterBtn" aria-haspopup="true" aria-expanded="false">
+                                <svg class="toolbar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                                <span>Filter</span>
+                                <span class="toolbar-badge" id="filterBadge" hidden>0</span>
+                            </button>
 
-                        <select id="sectionFilter">
+                            <div class="toolbar-popover" id="filterPopover">
+                                <div class="popover-field">
+                                    <label for="sectionFilter">Section</label>
+                                    <select id="sectionFilter">
+                                        <option value="All Sections">All Sections</option>
+                                    </select>
+                                </div>
 
-                            <option value="All Sections">
-                                All Sections
-                            </option>
+                                <div class="popover-field">
+                                    <label for="statusFilter">Status</label>
+                                    <select id="statusFilter">
+                                        <option value="All Status">All Status</option>
+                                        <option value="Present">Present</option>
+                                        <option value="Late">Late</option>
+                                        <option value="Pending">Pending</option>
+                                        <option value="Absent">Absent</option>
+                                        <option value="Rejected">Rejected</option>
+                                    </select>
+                                </div>
 
-                        </select>
+                                <button type="button" class="popover-reset" id="resetFilterBtn">Reset filters</button>
+                            </div>
+                        </div>
 
+                        <!-- SORT BUTTON + POPOVER -->
+                        <div class="toolbar-menu" id="sortMenu">
+                            <button type="button" class="toolbar-btn" id="sortBtn" aria-haspopup="true" aria-expanded="false">
+                                <svg class="toolbar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg>
+                                <span>Sort</span>
+                            </button>
 
-
-                        <!-- STATUS -->
-
-                        <select id="statusFilter">
-
-                            <option value="All Status">
-                                All Status
-                            </option>
-
-                            <option value="Present">
-                                Present
-                            </option>
-
-                            <option value="Late">
-                                Late
-                            </option>
-
-                            <option value="Pending">
-                                Pending
-                            </option>
-
-                            <option value="Absent">
-                                Absent
-                            </option>
-
-                            <option value="Rejected">
-                                Rejected
-                            </option>
-
-                        </select>
+                            <div class="toolbar-popover sort-popover" id="sortPopover">
+                                <button type="button" class="menu-option active" data-sort="default">Default</button>
+                                <button type="button" class="menu-option" data-sort="name-asc">Name (A-Z)</button>
+                                <button type="button" class="menu-option" data-sort="name-desc">Name (Z-A)</button>
+                                <button type="button" class="menu-option" data-sort="company-asc">Company (A-Z)</button>
+                                <button type="button" class="menu-option" data-sort="company-desc">Company (Z-A)</button>
+                            </div>
+                        </div>
 
                     </div>
 

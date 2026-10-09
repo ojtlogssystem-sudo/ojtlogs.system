@@ -35,22 +35,6 @@
     border: none;
 }
 
-/* Red Indicator Line on Hover */
-.summary-card::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    height: 42px; 
-    width: 3.5px;
-    background-color: #ab0a0a;
-    border-radius: 0 4px 4px 0;
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
-    box-shadow: 2px 0 6px rgba(171, 10, 10, 0.4);
-    transition: all 0.3s ease;
-}
 
 .summary-card:hover::before {
     height: 80px;
@@ -69,13 +53,13 @@
     position: absolute;
     top: 18px;
     right: 18px;
-    width: 38px;
-    height: 38px;
+    width: 32px;
+    height: 32px;
     border-radius: 8px;
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 16px;
+    font-size: 12px;
     flex-shrink: 0;
     background: #fde8e8 !important;
     color: #ab0a0a !important;
@@ -383,9 +367,17 @@
 /* ========================================
    ACTION BUTTONS
 ======================================== */
-.actions {
-    display: flex;
-    gap: 8px;
+/* Naka-<td> ang .actions, kaya HUWAG gawing flex ang mismong td
+   (nawawala ang table-cell at hindi aabot ang border-bottom line).
+   Nasa loob ng td ang button, kaya inline-flex lang ang button. */
+.students-table td.actions {
+    display: table-cell;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.students-table td.actions .action-btn + .action-btn {
+    margin-left: 8px;
 }
 
 .action-btn {
@@ -1125,4 +1117,173 @@
 
 .student-list-table-card .students-table {
     width: 100%;
+}
+
+/* ========================================
+   EXCUSED STATUS BADGE (ini-excuse ng coordinator)
+======================================== */
+
+.status.excused {
+    background: #f0eaff;
+    color: #7c4dff;
+    border: 1px solid #ddd0ff;
+}
+
+/* ==========================================
+   FILTER & SORT BUTTONS (toolbar)
+========================================== */
+.toolbar-menu {
+    position: relative;
+}
+
+.toolbar-btn {
+    height: 40px;
+    padding: 0 18px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    color: #1f2937;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+}
+
+.toolbar-btn:hover {
+    background: #fafafa;
+    border-color: #d1d5db;
+}
+
+.toolbar-btn[aria-expanded="true"] {
+    border-color: var(--primary, #ab0a0a);
+    box-shadow: 0 0 0 3px rgba(171, 10, 10, 0.08);
+}
+
+.toolbar-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+.toolbar-badge {
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: var(--primary, #ab0a0a);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.toolbar-badge[hidden] {
+    display: none;
+}
+
+/* Naka-align sa kanan ng button para hindi maputol ng card (overflow: hidden) */
+.toolbar-popover {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 230px;
+    padding: 14px;
+    background: #fff;
+    border: 1px solid #ececec;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+    z-index: 30;
+}
+
+.toolbar-popover.open {
+    display: block;
+    animation: toolbarPopoverIn 0.15s ease-out;
+}
+
+@keyframes toolbarPopoverIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.popover-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.popover-field label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+}
+
+/* Mas mataas na specificity para ma-override ang .table-header-right select */
+.table-header-right .toolbar-popover select {
+    width: 100%;
+    min-width: 0;
+    height: 38px;
+}
+
+.popover-reset {
+    width: 100%;
+    height: 36px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary, #ab0a0a);
+    cursor: pointer;
+    transition: background .2s ease;
+}
+
+.popover-reset:hover {
+    background: #fdecec;
+}
+
+.sort-popover {
+    min-width: 190px;
+    padding: 6px;
+}
+
+.menu-option {
+    width: 100%;
+    padding: 9px 12px;
+    background: none;
+    border: none;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    text-align: left;
+    cursor: pointer;
+}
+
+.menu-option:hover {
+    background: #f5f5f5;
+}
+
+.menu-option.active {
+    background: #fdecec;
+    color: var(--primary, #ab0a0a);
+    font-weight: 600;
+}
+
+.menu-option.active::after {
+    content: "\2713";
+    font-size: 12px;
 }

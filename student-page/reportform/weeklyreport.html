@@ -9,33 +9,81 @@
 </head>
 <body>
 
-    <!-- Print / Back / Submit Controls (Hidden on Print) -->
-    <div class="no-print" style="margin-bottom: 20px; display: flex; gap: 10px; align-items: center;">
-        <button onclick="window.print()" style="padding: 8px 16px; background: #AB0A0A; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
-            Print Report
-        </button>
-        <button id="btn-submit-report" style="padding: 8px 16px; background: #16a34a; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 5px;">
-            Submit Report
-        </button>
-        <!-- INAYOS: Nilagyan ng id="btn-back-report" at tinanggal ang onclick history back -->
-        <button id="btn-back-report" style="padding: 8px 16px; background: #6b7280; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
-            Back
-        </button>
-        <span id="submit-status" style="font-size: 14px; font-weight: bold; margin-left: 10px;"></span>
+    <!-- TOOLBAR (Hidden on Print): Back / Print + Week selector -->
+    <div class="no-print report-toolbar">
+
+        <div class="toolbar-actions">
+            <button type="button" id="btn-back-report" class="tb-btn tb-ghost">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+                <span>Back</span>
+            </button>
+
+            <button type="button" class="tb-btn tb-primary" onclick="window.print()">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                <span>Print Report</span>
+            </button>
+        </div>
+
+        <!-- WEEK SELECTOR - isang linggo lang (Mon - Sun) ang lumalabas sa form -->
+        <div class="week-nav">
+            <div class="week-switch">
+                <button type="button" id="btn-prev-week" class="week-arrow" aria-label="Previous week">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+                    <span class="week-arrow-text">Previous</span>
+                </button>
+
+                <span id="week-label" class="week-label">--</span>
+
+                <button type="button" id="btn-next-week" class="week-arrow" aria-label="Next week">
+                    <span class="week-arrow-text">Next</span>
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+            </div>
+
+            <button type="button" id="btn-this-week" class="week-this">This Week</button>
+        </div>
     </div>
 
     <div class="header">
-        <img src="/images/images.png" alt="GRC Logo" class="header-logo">
+        <img src="/images/logo-orig.png" alt="GRC Logo" class="header-logo">
         <p>Touching Hearts.....Renewing Minds.....Transforming Lives</p>
         454 GRC Bldg., Rizal Avenue Ext., corner 9th Avenue<br>
         Grace Park Caloocan City, Philippines<br>
         Telefax: (02)361-63-30; (02) 452-29-45
     </div>
 
+
+    <div class="report-information">
+            <div class="report-info-row">
+                <div class="report-info-item">
+                    <span class="report-info-label">Name:</span>
+                    <span id="report-student-name" class="report-info-value"></span>
+                </div>
+
+                <div class="report-info-item">
+                    <span class="report-info-label">Company Name:</span>
+                    <span id="report-company" class="report-info-value"></span>
+                </div>
+            </div>
+
+            <div class="report-info-row">
+                <div class="report-info-item">
+                    <span class="report-info-label">Section:</span>
+                    <span id="report-section" class="report-info-value"></span>
+                </div>
+
+                <div class="report-info-item">
+                    <span class="report-info-label">Date:</span>
+                    <span id="report-date-range" class="report-date-line"></span>
+                </div>
+            </div>
+        </div>
+
     <div class="title-bar">
         ACCOMPLISHMENT REPORT
     </div>
 
+    <div class="table-wrapper">
     <table>
         <thead>
             <tr>
@@ -63,17 +111,52 @@
             </tr>
         </tfoot>
     </table>
+    </div>
+
+    <div class="supervisor-notes">
+        <div class="notes-title">Supervisor's Notes:</div>
+        <div class="notes-box"></div>
+    </div>
+
 
     <div class="footer-section">
-        <div class="footer-content">
+    <div class="footer-content">
+
+        <!-- SUPERVISOR CERTIFICATION -->
+        <div class="supervisor-certification">
+            <p class="certification-text">
+                I certify that the above information is true and correct.
+            </p>
+        </div>
+
+        <!-- SUPERVISOR SIGNATURE -->
+        <div class="supervisor-signature">
+
+            <div class="signature-box">
+                <div class="signature-line"></div>
+
+                <div class="signature-label">
+                    Supervisor's Signature over Printed Name
+                </div>
+            </div>
+        </div>
+
+        <!-- WEEKLY ACCOMPLISHMENT -->
+        <div class="weekly-accomplishment-fixed">
             <hr class="footer-line">
+
             <div class="footer-bottom-row">
                 <div class="footer-accent-box"></div>
-                <span class="footer-title-text">WEEKLY ACCOMPLISHMENT</span>
+
+                <span class="footer-title-text">
+                    WEEKLY ACCOMPLISHMENT
+                </span>
             </div>
         </div>
     </div>
+</div>
 
+</div>
     <!-- FIREBASE MODULE LOGIC -->
     <script type="module" src="weeklyreport.js"></script>
 

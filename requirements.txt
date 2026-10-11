@@ -1,0 +1,6 @@
+Flask==3.0.0
+flask-cors
+firebase-admin
+numpy
+scikit-learn
+gunicorn==21.2.0

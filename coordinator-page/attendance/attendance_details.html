@@ -7,6 +7,7 @@
 
     <!-- CSS Links -->
     <link rel="stylesheet" href="../sidebar/sidebar-web.css">
+    <link rel="stylesheet" href="../header/header.css">
     <link rel="stylesheet" href="attendance_details.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
@@ -23,35 +24,19 @@
     <main class="main">
         
         <!-- Header -->
-        <header>
-            <div>
-                <h2>Attendance Details</h2>
-                <p>View complete attendance history of the selected student.</p>
-            </div>
-
-            <div class="top-right">
-                <div class="notification">
-                    <i class="fa-regular fa-bell"></i>
-                    <span class="badge">3</span>
-                </div>
-
-                <div class="profile">
-                    <div class="avatar" id="headerAvatar">MB</div>
-                    <div class="profile-info">
-                        <h4 id="profileName">Coordinator</h4>
-                        <p>OJT Coordinator</p>
-                    </div>
-                    <i class="fa-solid fa-chevron-down"></i>
-                </div>
-            </div>
-        </header>
+        <header
+            id="header-container"
+            data-page-title="Attendance Details"
+            data-page-subtitle="View complete attendance history of the selected student."
+        ></header>
 
         <!-- Details Content -->
         <div class="attendance-content">
 
             <!-- Back Button -->
-            <a href="todays_attendance.html" class="back-btn-header">
-                <i class="fa-solid fa-arrow-left"></i> Back to Attendance Records
+            <a href="#" class="back-btn-header" id="backBtn">
+                <i class="fa-solid fa-arrow-left"></i>
+                <span id="backBtnText">Back</span>
             </a>
 
             <!-- TWO-COLUMN GRID LAYOUT -->
@@ -169,22 +154,31 @@
                                     <i class="fa-regular fa-calendar"></i>
                                 </div>
 
-                                <select class="filter-select">
-                                    <option>All Status</option>
-                                    <option>Present</option>
-                                    <option>Late</option>
-                                    <option>Absent</option>
-                                    <option>Rejected</option>
-                                </select>
+                                <!-- FILTER BUTTON + POPOVER -->
+                                <div class="toolbar-menu" id="filterMenu">
+                                    <button type="button" class="toolbar-btn" id="filterBtn" aria-haspopup="true" aria-expanded="false">
+                                        <svg class="toolbar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                                        <span>Filter</span>
+                                        <span class="toolbar-badge" id="filterBadge" hidden>0</span>
+                                    </button>
 
-                                <div class="search-input">
-                                    <i class="fa-solid fa-magnifying-glass"></i>
-                                    <input type="text" placeholder="Search by date...">
+                                    <div class="toolbar-popover" id="filterPopover">
+                                        <div class="popover-field">
+                                            <label for="statusFilter">Status</label>
+                                            <select class="filter-select" id="statusFilter">
+                                                <option value="all">All Status</option>
+                                                <option value="present">Present</option>
+                                                <option value="late">Late</option>
+                                                <option value="absent">Absent</option>
+                                                <option value="excused">Excused</option>
+                                                <option value="adjusted">Adjusted</option>
+                                                <option value="rejected">Rejected</option>
+                                            </select>
+                                        </div>
+
+                                        <button type="button" class="popover-reset" id="resetFilterBtn">Reset filters</button>
+                                    </div>
                                 </div>
-
-                                <button class="filter-btn">
-                                    <i class="fa-solid fa-filter"></i> Filter
-                                </button>
                             </div>
                         </div>
 
@@ -213,16 +207,13 @@
                         <!-- PAGINATION -->
                         <div class="table-footer">
                             <span class="records-info">Showing 0 of 0 records</span>
-                            <div class="pagination">
-                                <button class="page-btn"><i class="fa-solid fa-chevron-left"></i></button>
-                                <button class="page-btn active">1</button>
-                                <button class="page-btn"><i class="fa-solid fa-chevron-right"></i></button>
-                            </div>
+                            <div class="pagination" id="pagination"></div>
                             <div class="rows-per-page">
                                 <span>Rows per page:</span>
-                                <select>
-                                    <option>10</option>
-                                    <option>20</option>
+                                <select id="rowsPerPage">
+                                    <option value="10">10</option>
+                                    <option value="20">20</option>
+                                    <option value="50">50</option>
                                 </select>
                             </div>
                         </div>
@@ -270,6 +261,11 @@
                         </label>
                     </div>
 
+                    <label class="excuse-reason-label">
+                        <span>Reason for Adjustment</span>
+                        <textarea id="editReason" rows="3" placeholder="e.g. Forgot to time in, confirmed by company supervisor; device time error..."></textarea>
+                    </label>
+
                     <div class="adjustment-note">
                         <i class="fa-solid fa-circle-info"></i>
                         <span>You may reduce the rendered hours when the company has approved a deduction, such as 1 hour.</span>
@@ -304,7 +300,7 @@
                         <i class="fa-solid fa-triangle-exclamation"></i>
                         <div>
                             <strong>Are you sure you want to reject this attendance?</strong>
-                            <p>The rejected record will remain visible in the student's account details for tracking.</p>
+                            <p>The day's rendered hours will be deducted from the student's total and the student will be notified. The record will remain visible for tracking.</p>
                         </div>
                     </div>
                 </div>
@@ -318,11 +314,55 @@
             </div>
         </div>
 
+        <!-- EXCUSE ATTENDANCE MODAL -->
+        <div class="attendance-modal" id="excuseAttendanceModal" aria-hidden="true">
+            <div class="modal-overlay" data-close-modal="excuseAttendanceModal"></div>
+            <div class="attendance-modal-box excuse-modal-box" role="dialog" aria-modal="true" aria-labelledby="excuseAttendanceTitle">
+                <div class="modal-header">
+                    <div>
+                        <h3 id="excuseAttendanceTitle">Excuse Attendance</h3>
+                        <p>This will mark the student as excused for the selected day.</p>
+                    </div>
+                    <button class="modal-close" type="button" data-close-modal="excuseAttendanceModal" aria-label="Close">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="selected-date-box">
+                        <i class="fa-regular fa-calendar"></i>
+                        <div>
+                            <small>Attendance Date</small>
+                            <strong id="excuseAttendanceDate">—</strong>
+                        </div>
+                    </div>
+
+                    <label class="excuse-reason-label">
+                        <span>Reason for Excuse</span>
+                        <textarea id="excuseReason" rows="3" placeholder="e.g. Approved leave, medical reason, company-sanctioned absence..."></textarea>
+                    </label>
+
+                    <div class="adjustment-note">
+                        <i class="fa-solid fa-circle-info"></i>
+                        <span>The student will not be counted as absent for this day once excused.</span>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="modal-secondary-btn" type="button" data-close-modal="excuseAttendanceModal">Cancel</button>
+                    <button class="modal-excuse-btn" type="button" id="confirmExcuseBtn">
+                        <i class="fa-solid fa-user-check"></i> Excuse Student
+                    </button>
+                </div>
+            </div>
+        </div>
+
     </main>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="../sidebar/sidebar-web.js"></script>
+<script type="module" src="../header/header.js"></script>
 <script type="module" src="attendance_details.js"></script>
 
 </body>

@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Change Password - OJT-LOGS</title>
 
-    <link rel="stylesheet" href="/templated/header.css">
-    <link rel="stylesheet" href="/templated/sidebar.css">
+    <link rel="stylesheet" href="../templated/header.css">
+    <link rel="stylesheet" href="../templated/sidebar.css">
     <link rel="stylesheet" href="change-pass.css">
 
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -76,16 +76,22 @@
     </main>
 </div>
 
-<script src="/templated/header-loader.js"></script>
-<script src="/templated/sidebar-loader.js"></script>
-<script type="module" src="change-pass.js"></script>
+<!-- SUCCESS POPUP (lalabas pagkatapos ma-update ang password) -->
+<div class="success-modal-overlay" id="successModalOverlay">
+    <div class="success-modal">
+        <div class="success-modal-icon">
+            <i class="fa-solid fa-check"></i>
+        </div>
+        <h3>Password Updated</h3>
+        <p>Your password has been changed successfully.</p>
+    </div>
+</div>
 
-<script>
-    document.addEventListener("DOMContentLoaded", () => {
-        if (typeof loadHeader === "function") loadHeader("Change Password");
-        if (typeof loadSidebar === "function") loadSidebar("Settings");
-    });
-</script>
+<!-- sidebar-loader.js is a classic (non-module) script — defines loadSidebar globally -->
+<script src="../templated/sidebar-loader.js"></script>
+<!-- change-pass.js is a module: it imports loadHeader directly and also
+     handles the DOMContentLoaded wiring for both header and sidebar -->
+<script type="module" src="change-pass.js"></script>
 
 </body>
 </html>

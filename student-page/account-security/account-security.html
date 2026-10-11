@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OJT-LOGS - Account Security</title>
+    <link rel="stylesheet" href="account-security.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+</head>
+
+<body>
+    <div class="container">
+        <!-- Top Progress Header -->
+        <div class="progress-header">
+            <div class="progress-icon">
+                <i class="fa-solid fa-lock"></i>
+            </div>
+            <div class="progress-text">
+                <h2>Account Security</h2>
+                <p>Create a secure password to protect your student account.</p>
+            </div>
+            <div class="step-label">Step 3 of 3</div>
+            <div class="progress-bar">
+                <div class="progress-bar-fill" style="width: 100%;"></div>
+            </div>
+        </div>
+
+        <!-- Main Card -->
+        <div class="security-card">
+            <div class="card-title">
+                <span class="vertical-line red"></span>
+                <h2>Account Security</h2>
+            </div>
+
+            <!-- Error Message Alert -->
+            <div id="errorMessage" class="error-msg"></div>
+
+            <form id="accountSecurityForm" novalidate>
+                <div class="input-box password">
+                    <label for="newPassword">Set Password</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="newPassword" placeholder="Enter your password" required minlength="8">
+                        <i class="fa-regular fa-eye-slash toggle-icon" data-target="newPassword"></i>
+                    </div>
+                </div>
+
+                <div class="input-box password">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="confirmPassword" placeholder="Re-enter your password" required minlength="8">
+                        <i class="fa-regular fa-eye-slash toggle-icon" data-target="confirmPassword"></i>
+                    </div>
+                </div>
+
+                <!-- Live Password Requirements Checklist -->
+                <div class="requirements-box" id="requirementsBox">
+                    <p class="requirements-title">Password must contain:</p>
+                    <ul>
+                        <li id="reqLength"><i class="fa-solid fa-circle-xmark"></i> At least 8 characters</li>
+                        <li id="reqUpper"><i class="fa-solid fa-circle-xmark"></i> At least 1 uppercase letter</li>
+                        <li id="reqNumber"><i class="fa-solid fa-circle-xmark"></i> At least 1 number</li>
+                        <li id="reqMatch"><i class="fa-solid fa-circle-xmark"></i> Passwords match</li>
+                    </ul>
+                </div>
+
+                <div class="button-group">
+                    <button type="button" class="back-btn" id="backBtn">Back</button>
+                    <button type="submit" class="continue-btn" id="continueBtn">Continue</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Reauthentication Modal (shown only if Firebase requires a fresh login) -->
+    <div class="modal-overlay" id="reauthModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>Please Confirm It's You</h2>
+                <i class="fa-solid fa-xmark" id="closeReauthModalBtn"></i>
+            </div>
+            <p class="modal-subtext">
+                For your security, please re-enter your current password to continue.
+            </p>
+
+            <div id="reauthMessage" class="error-msg"></div>
+
+            <form id="reauthForm">
+                <div class="input-box password">
+                    <input type="password" id="reauthPassword" placeholder=" " required>
+                    <label for="reauthPassword">Current Password</label>
+                    <i class="fa-regular fa-eye-slash toggle-icon" data-target="reauthPassword"></i>
+                </div>
+                <button type="submit" class="continue-btn" id="reauthSubmitBtn">Confirm</button>
+            </form>
+        </div>
+    </div>
+
+    <script type="module" src="account-security.js"></script>
+</body>
+
+</html>

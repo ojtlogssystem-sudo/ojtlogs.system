@@ -12,7 +12,7 @@ function loadSidebar(activeMenuName) {
                 // Auto-highlight batay sa activeMenuName
                 const menuLinks = container.querySelectorAll(".menu li a");
                 menuLinks.forEach(link => {
-                    const spanText = link.querySelector("span")?.textContent.trim();
+                    const spanText = link.querySelector("span:not(.mat-icon)")?.textContent.trim();
                     if (spanText && spanText.toLowerCase() === activeMenuName.toLowerCase()) {
                         link.parentElement.classList.add("active");
                     } else {

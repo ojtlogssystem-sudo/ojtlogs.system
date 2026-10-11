@@ -578,3 +578,127 @@ header p {
         display: none;
     }
 }
+
+
+/* ==========================
+   SIDEBAR TOOLTIP (COLLAPSED MODE)
+========================== */
+.sidebar-tooltip {
+    position: fixed;
+    z-index: 2000;
+    transform: translateY(-50%) translateX(-4px);
+    padding: 7px 12px;
+    background: #1f1f1f;
+    color: #ffffff;
+    font-size: 12.5px;
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+    border-radius: 8px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.sidebar-tooltip::before {
+    content: "";
+    position: absolute;
+    left: -5px;
+    top: 50%;
+    width: 10px;
+    height: 10px;
+    background: #1f1f1f;
+    transform: translateY(-50%) rotate(45deg);
+    border-radius: 2px;
+}
+
+.sidebar-tooltip.show {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+}
+
+
+/* ==========================
+   SIDEBAR FLYOUT MENU (COLLAPSED MODE)
+========================== */
+.sidebar-flyout {
+    position: fixed;
+    z-index: 2100;
+    min-width: 200px;
+    padding: 8px;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(-6px);
+    transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s;
+}
+
+.sidebar-flyout.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(0);
+}
+
+/* tulay para hindi mawala ang flyout habang inililipat ang mouse */
+.sidebar-flyout::before {
+    content: "";
+    position: absolute;
+    left: -16px;
+    top: 0;
+    width: 16px;
+    height: 100%;
+}
+
+.sidebar-flyout-title {
+    padding: 6px 10px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #9aa0a6;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.sidebar-flyout-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 38px;
+    padding: 0 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #333333;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sidebar-flyout-item i {
+    width: 18px;
+    text-align: center;
+    font-size: 14px;
+    color: var(--primary);
+}
+
+.sidebar-flyout-item:hover {
+    background: #fff1f1;
+    color: var(--primary);
+}
+
+.sidebar-flyout-item.active {
+    background: #fde8e8;
+    color: var(--primary);
+    font-weight: 600;
+}
+
+/* Settings icon: naka-highlight kapag bukas ang flyout o nasa settings page */
+.sidebar.close .menu li.flyout-open > a {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+.sidebar.close .menu li.has-dropdown.has-active-child > a {
+    background: rgba(100, 0, 0, 0.5);
+    border-radius: 10px;
+}

@@ -9,6 +9,9 @@
     <link rel="stylesheet" href="../sidebar/sidebar-web.css">
     <link rel="stylesheet" href="../students/students.css">
 
+    <!-- Shared Coordinator Header CSS -->
+    <link rel="stylesheet" href="../header/header.css">
+
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
 </head>
@@ -22,28 +25,17 @@
 
     <!-- MAIN -->
     <main class="main">
-        <header>
-            <div>
-                <h2 id="companyTitleHeader">Company Interns</h2>
-                <p id="companySubtitleHeader">Managing interns for selected company.</p>
-            </div>
-
-            <div class="top-right">
-                <div class="notification">
-                    <i class="fa-regular fa-bell"></i>
-                    <span class="badge">3</span>
-                </div>
-
-                <div class="profile">
-                    <div class="avatar" id="userAvatar">CO</div>
-                    <div class="profile-info">
-                        <h4 id="userName">Coordinator</h4>
-                        <p id="userRole">OJT Coordinator</p>
-                    </div>
-                    <i class="fa-solid fa-chevron-down"></i>
-                </div>
-            </div>
-        </header>
+        <!-- =================================================
+             HEADER
+             (Loaded from ../header/header.html by
+             ../header/header.js - iisang file na lang ang
+             ie-edit kapag may babaguhin sa header.)
+        ================================================== -->
+        <header
+            id="header-container"
+            data-page-title="Company Interns"
+            data-page-subtitle="Managing interns for selected company."
+        ></header>
 
         <!-- STUDENTS CONTENT -->
         <div class="students-content">
@@ -105,14 +97,14 @@
                     <table class="students-table">
                         <thead>
                             <tr>
-                                <th>Photo <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
-                                <th>Student ID <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
-                                <th>Name <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
-                                <th>Course <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
-                                <th>Section <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
-                                <th>Company <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
-                                <th>Status <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
-                                <th>Actions <i class="fa-solid fa-arrow-down-up-across-line"></i></th>
+                                <th>Photo</i></th>
+                                <th>Student ID</i></th>
+                                <th>Name</i></th>
+                                <th>Course</i></th>
+                                <th>Section</i></th>
+                                <th>Company</i></th>
+                                <th>Status</i></th>
+                                <th>Actions</i></th>
                             </tr>
                         </thead>
 
@@ -149,7 +141,288 @@
     </main>
 </div>
 
+<!-- =================================================
+     STUDENT MODALS (kapareho ng nasa Students page)
+     - Edit Student Profile
+     - View Student Profile
+================================================== -->
+        <!-- EDIT STUDENT MODAL -->
+        <div class="modal" id="editModal">
+            <div class="modal-content profile-modal-content">
+                <div class="modal-header">
+                    <div class="modal-title-wrapper">
+                        <div class="modal-icon-badge">
+                            <i class="fa-solid fa-user-pen"></i>
+                        </div>
+                        <div>
+                            <h3>Edit Student Profile</h3>
+                            <p>Update intern details, status, and weekly schedule.</p>
+                        </div>
+                    </div>
+                    <button type="button" class="close-modal-btn" id="closeEditModalBtn">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <form id="editStudentForm" class="profile-form">
+                    <input type="hidden" id="editStudentEmail">
+                    
+                    <div class="modal-body-scroll">
+                        <!-- Basic Information Section -->
+                        <div class="form-section-title">Basic Information</div>
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Student ID</label>
+                                <div class="input-with-icon">
+                                    <i class="fa-solid fa-id-card"></i>
+                                    <input type="text" id="editStudentId" placeholder="e.g. 2024001">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Gender</label>
+                                <div class="input-with-icon">
+                                    <i class="fa-solid fa-venus-mars"></i>
+                                    <select id="editStudentGender" class="modal-select">
+                                        <option value="">Not specified</option>
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Full Name</label>
+                                <div class="input-with-icon">
+                                    <i class="fa-regular fa-user"></i>
+                                    <input type="text" id="editStudentName" required placeholder="Full Name">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Section / Program</label>
+                                <div class="input-with-icon">
+                                    <i class="fa-solid fa-graduation-cap"></i>
+                                    <input type="text" id="editStudentSection" placeholder="BSIT 304">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Company</label>
+                                <div class="input-with-icon">
+                                    <i class="fa-solid fa-building"></i>
+                                    <input type="text" id="editStudentCompany" placeholder="Company Name">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Status</label>
+                                <div class="input-with-icon">
+                                    <i class="fa-solid fa-chart-line"></i>
+                                    <select id="editStudentStatus" class="modal-select">
+                                        <option value="Pending">Pending</option>
+                                        <option value="Active">Active</option>
+                                        <option value="Completed">Completed</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Schedule Section -->
+                        <div class="form-section-title" style="margin-top: 20px;">OJT Schedule & Shift</div>
+
+                        <div class="form-group" style="margin-bottom: 14px;">
+                            <label>Days of the Week</label>
+                            <div class="days-checkbox-group">
+                                <label class="day-chip-checkbox"><input type="checkbox" name="editDays" value="Mon"> <span>Mon</span></label>
+                                <label class="day-chip-checkbox"><input type="checkbox" name="editDays" value="Tue"> <span>Tue</span></label>
+                                <label class="day-chip-checkbox"><input type="checkbox" name="editDays" value="Wed"> <span>Wed</span></label>
+                                <label class="day-chip-checkbox"><input type="checkbox" name="editDays" value="Thu"> <span>Thu</span></label>
+                                <label class="day-chip-checkbox"><input type="checkbox" name="editDays" value="Fri"> <span>Fri</span></label>
+                                <label class="day-chip-checkbox"><input type="checkbox" name="editDays" value="Sat"> <span>Sat</span></label>
+                                <label class="day-chip-checkbox"><input type="checkbox" name="editDays" value="Sat"> <span>Sun</span></label>
+                            </div>
+                        </div>
+
+                        <!-- Morning Session Toggle -->
+                        <div class="schedule-toggle-card">
+                            <div class="schedule-card-header" style="margin-bottom: 0;">
+                                <div class="schedule-card-icon morning-icon"><i class="fa-solid fa-cloud-sun"></i></div>
+                                <div>
+                                    <h4>Morning Session</h4>
+                                    <p id="morningToggleStatusText" class="toggle-status-text enabled">Enabled</p>
+                                </div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="editMorningEnabled" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <!-- Morning Schedule Card -->
+                        <div class="schedule-time-card" id="morningTimeCard">
+                            <div class="schedule-card-header">
+                                <div class="schedule-card-icon morning-icon"><i class="fa-solid fa-cloud-sun"></i></div>
+                                <div>
+                                    <h4>Morning</h4>
+                                    <p>Set your morning working hours</p>
+                                </div>
+                            </div>
+                            <div class="form-grid schedule-time-grid">
+                                <div class="form-group">
+                                    <label><i class="fa-regular fa-clock"></i> Time In</label>
+                                    <input type="time" id="editMorningIn" class="modal-time-input-full">
+                                </div>
+                                <div class="form-group">
+                                    <label><i class="fa-regular fa-clock"></i> Time Out</label>
+                                    <input type="time" id="editMorningOut" class="modal-time-input-full">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Afternoon Session Toggle -->
+                        <div class="schedule-toggle-card">
+                            <div class="schedule-card-header" style="margin-bottom: 0;">
+                                <div class="schedule-card-icon afternoon-icon"><i class="fa-solid fa-sun"></i></div>
+                                <div>
+                                    <h4>Afternoon Session</h4>
+                                    <p id="afternoonToggleStatusText" class="toggle-status-text enabled">Enabled</p>
+                                </div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="editAfternoonEnabled" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <!-- Afternoon Schedule Card -->
+                        <div class="schedule-time-card" id="afternoonTimeCard">
+                            <div class="schedule-card-header">
+                                <div class="schedule-card-icon morning-icon"><i class="fa-solid fa-cloud-sun"></i></div>
+                                <div>
+                                    <h4>Afternoon</h4>
+                                    <p>Set your afternoon working hours</p>
+                                </div>
+                            </div>
+                            <div class="form-grid schedule-time-grid">
+                                <div class="form-group">
+                                    <label><i class="fa-regular fa-clock"></i> Time In</label>
+                                    <input type="time" id="editAfternoonIn" class="modal-time-input-full">
+                                </div>
+                                <div class="form-group">
+                                    <label><i class="fa-regular fa-clock"></i> Time Out</label>
+                                    <input type="time" id="editAfternoonOut" class="modal-time-input-full">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn-cancel" id="cancelEditModal">Cancel</button>
+                        <button type="submit" class="btn-submit">
+                            <i class="fa-solid fa-floppy-disk"></i>
+                            Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- VIEW STUDENT PROFILE MODAL -->
+        <div class="modal" id="viewStudentModal">
+            <div class="modal-content profile-modal-content">
+                <div class="modal-header border-none">
+                    <h3 class="modal-title-text">Student Profile</h3>
+                    <span class="close-modal" id="closeViewModal">&times;</span>
+                </div>
+
+                <hr class="modal-divider">
+
+                <div class="modal-body">
+                    <div class="profile-header-card">
+                        <div class="profile-avatar-box" id="viewStudentAvatar"></div>
+                        <div class="profile-header-info">
+                            <h4 id="viewStudentName">Student Name</h4>
+                            <span class="status-pill pending" id="viewStudentStatus">Pending</span>
+                        </div>
+
+                        <!-- GENDER (nasa kanan, sa dulo ng profile header) -->
+                        <div class="profile-gender">
+                            <span class="profile-gender-label">Gender</span>
+                            <span class="profile-gender-value" id="viewStudentGenderBox">
+                                <i class="fa-solid fa-venus-mars" id="viewStudentGenderIcon"></i>
+                                <span id="viewStudentGender">Not specified</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="profile-details-grid">
+                        <div class="detail-card">
+                            <div class="icon-box"><i class="fa-solid fa-id-card"></i></div>
+                            <div class="detail-info">
+                                <label>STUDENT ID</label>
+                                <span id="viewStudentId">-</span>
+                            </div>
+                        </div>
+
+                        <div class="detail-card">
+                            <div class="icon-box"><i class="fa-solid fa-envelope"></i></div>
+                            <div class="detail-info">
+                                <label>GMAIL ADDRESS</label>
+                                <span id="viewStudentEmail">-</span>
+                            </div>
+                        </div>
+
+                        <div class="detail-card">
+                            <div class="icon-box"><i class="fa-solid fa-graduation-cap"></i></div>
+                            <div class="detail-info">
+                                <label>SECTION</label>
+                                <span id="viewStudentCourseDetail">-</span>
+                            </div>
+                        </div>
+
+                        <div class="detail-card">
+                            <div class="icon-box"><i class="fa-solid fa-building"></i></div>
+                            <div class="detail-info">
+                                <label>COMPANY</label>
+                                <span id="viewStudentCompany">Pending Assignment</span>
+                            </div>
+                        </div>
+
+                        <!-- SCHEDULE CARD -->
+                        <div class="detail-card detail-card-full">
+                            <div class="icon-box"><i class="fa-solid fa-calendar-days"></i></div>
+                            <div class="detail-info">
+                                <label>OJT SCHEDULE</label>
+                                <span id="viewStudentSchedule">No schedule set</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="profile-actions">
+                        <button type="button" class="btn-view-details" onclick="viewFullAccountDetails()">
+                            <i class="fa-solid fa-user-gear"></i> View Account Details
+                        </button>
+
+                        <button type="button" class="btn-edit-modal" onclick="openEditModalFromProfile()">
+                            <i class="fa-solid fa-pen-to-square"></i> Edit Profile
+                        </button>       
+                    </div>     
+                </div>
+            </div>
+        </div>
+
+<!-- TOAST NOTIFICATION CONTAINER -->
+<div class="toast-container" id="toastContainer"></div>
+
 <script src="../sidebar/sidebar-web.js"></script>
+<script type="module" src="../header/header.js"></script>
 <script type="module" src="company-student.js"></script>
 
 </body>

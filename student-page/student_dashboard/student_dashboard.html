@@ -8,70 +8,60 @@
     <link rel="stylesheet" href="student_dashboard.css">
     <link rel="stylesheet" href="../templated/header.css">
     <link rel="stylesheet" href="../templated/sidebar.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
 </head>
 <body>
+
+<!-- INITIAL LOADING OVERLAY
+     Itinatago ito ng student_dashboard.js pagkatapos matapos ang unang
+     pag-fetch ng student profile at unang snapshot ng attendance/activity
+     data, para hindi makita ng user ang mga placeholder ("Loading...",
+     "0 hours", "--") bago pa man dumating ang tunay na datos. -->
+<div class="page-loading-overlay" id="dashboard-loading-overlay">
+    <div class="loading-spinner" aria-hidden="true"></div>
+    <p>Loading your dashboard…</p>
+</div>
 
 <div class="dashboard">
     <div id="sidebar-container"></div>
 
     <main class="main">
-        <!-- Header Bar -->
-        <header id="header-container" class="dashboard-header">
-            <div class="header-left">
-                <button id="mobile-menu" class="mobile-menu-btn"><i class="fa-solid fa-bars"></i></button>
-                <h2 id="page-title">Dashboard</h2>
+        <!-- Header Bar (populated at runtime by loadHeader() from ../templated/header.html) -->
+        <header id="header-container"></header>
+
+        <section class="welcome-section" id="welcome-section" hidden>
+            <div class="welcome-card">
+
+                <div class="welcome-body">
+                    <h3 id="welcome-title">Welcome back!</h3>
+                    <p id="welcome-text"></p>
+                    <span class="welcome-pill">
+                        <i class="fa-regular fa-calendar" id="welcome-pill-icon"></i>
+                        <span id="welcome-pill-text"></span>
+                    </span>
+                </div>
+
+                <button type="button" class="welcome-close" id="welcome-close" aria-label="Close">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
             </div>
-            
-            <div class="header-right">
-                <div class="notification">
-                    <i class="fa-regular fa-bell"></i>
-                    <span class="notification-badge">3</span>
-                </div>
-
-                <div class="user-profile" id="profile-dropdown-btn">
-                    <div class="profile-circle" id="user-initials">--</div>
-                    <i class="fa-solid fa-chevron-down"></i>
-                </div>
-
-                <div class="profile-card-dropdown" id="profile-dropdown-menu">
-                    <div class="profile-card-header">
-                        <h4 id="dropdown-user-fullname">Loading...</h4>
-                        <p class="role-title">Student Intern</p>
-                    </div>
-
-                    <div class="profile-card-body">
-                        <a href="/profile/profile.html" class="profile-menu-item">
-                            <i class="fa-regular fa-user"></i>
-                            <span>My Profile</span>
-                        </a>
-                        <a href="/settings/settings.html" class="profile-menu-item">
-                            <i class="fa-solid fa-gear"></i>
-                            <span>Settings</span>
-                        </a>
-                        <a href="#" id="logout-btn" class="profile-menu-item logout">
-                            <i class="fa-solid fa-arrow-right-from-bracket"></i>
-                            <span>Logout</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </header>
+        </section>
 
         <!-- Summary Cards -->
         <section class="summary-cards">
+
+            <!-- Hours Completed -->
             <div class="summary-card green">
                 <div class="card-top">
-                    <div>
-                        <h5>Hours Completed</h5>
-                        <h2>0 hours</h2>
-                    </div>
-
                     <div class="card-icon green-icon">
-                        <i class="fa-regular fa-clock"></i>
+                        <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color ng-star-inserted" aria-hidden="true">schedule</mat-icon>
                     </div>
+                    <h5>Hours Completed</h5>
                 </div>
+
+                <h2>0 hours</h2>
 
                 <div class="progress">
                     <div class="progress-fill green-fill" style="width: 0%;"></div>
@@ -80,44 +70,75 @@
                 <span>0% of required hours</span>
             </div>
 
+            <!-- Required Hours + Estimated Completion -->
             <div class="summary-row">
+
+                <!-- Required Hours -->
                 <div class="summary-card blue">
                     <div class="card-top">
-                        <div>
-                            <h5>Required Hours</h5>
-                            <h2>-- hours</h2>
-                        </div>
-
                         <div class="card-icon blue-icon">
-                            <i class="fa-solid fa-bullseye"></i>
+                            <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color ng-star-inserted" aria-hidden="true">target</mat-icon>
                         </div>
+                        <h5>Required Hours</h5>
                     </div>
+
+                    <h2>-- hours</h2>
 
                     <p class="card-sub">-- hours remaining</p>
                 </div>
 
+                <!-- OJT Deadline -->
                 <div class="summary-card purple">
                     <div class="card-top">
-                        <div>
-                            <h5>Internship Status</h5>
-                            <h2>Loading...</h2>
-                        </div>
-
                         <div class="card-icon purple-icon">
-                            <i class="fa-solid fa-shield-halved"></i>
+                            <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color ng-star-inserted" aria-hidden="true">event_available</mat-icon>
                         </div>
+                        <h5>OJT Deadline</h5>
                     </div>
 
-                    <span class="status-text">
-                        Loading status...
-                    </span>
+                    <h2 id="ojt-deadline-date">--</h2>
+
+                    <p class="card-sub">
+                        Actual required completion date
+                    </p>
                 </div>
+            </div>
+        </section>
+
+        <!-- Internship Calendar -->
+        <section class="calendar-card">
+            <div class="calendar-header">
+                <div class="calendar-month-title">
+                    <span class="calendar-accent"></span>
+                    <h3 id="calendar-month">Sep 2026</h3>
+                </div>
+                <div class="calendar-controls">
+                    <button type="button" class="calendar-btn" id="calendar-btn">
+                        <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color ng-star-inserted" aria-hidden="true">calendar_month</mat-icon>
+                        <span>Calendar</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="calendar-divider"></div>
+
+            <div class="calendar-body-wrapper">
+                <button type="button" class="calendar-nav" id="calendar-prev" aria-label="Previous day">
+                    <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color ng-star-inserted" aria-hidden="true">chevron_left</mat-icon>
+                </button>
+
+                <div class="calendar-days">
+                    <div class="calendar-day-list week-view" id="calendar-day-list"></div>
+                </div>
+
+                <button type="button" class="calendar-nav" id="calendar-next" aria-label="Next day">
+                    <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color ng-star-inserted" aria-hidden="true">chevron_right</mat-icon>
+                </button>
             </div>
         </section>
 
         <!-- Main Content Sections -->
         <section class="dashboard-content">
-
             <!-- Today's Attendance -->
             <div class="attendance-card">
                 <div class="section-title">
@@ -129,7 +150,7 @@
 
                 <div class="attendance-box orange-box" id="timein-box">
                     <div class="box-left">
-                        <i class="fa-regular fa-clock" id="timein-icon"></i>
+                        <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color ng-star-inserted" id="timein-icon" aria-hidden="true">schedule</mat-icon>
                         <div>
                             <h4 id="timein-title">Time In</h4>
                             <p id="timein-desc">You haven't timed in yet.</p>
@@ -144,7 +165,7 @@
 
                 <div class="attendance-box orange-box" id="timeout-box">
                     <div class="box-left">
-                        <i class="fa-regular fa-clock" id="timeout-icon"></i>
+                        <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color ng-star-inserted" id="timeout-icon" aria-hidden="true">schedule</mat-icon>
                         <div>
                             <h4 id="timeout-title">Time Out</h4>
                             <p id="timeout-desc">Waiting for time in.</p>
@@ -165,7 +186,7 @@
                 </div>
             </div>
 
-            <!-- Internship Progress -->
+            <!-- Internship Progress
             <div class="progress-card">
                 <div class="section-title">
                     <div class="title-left">
@@ -206,28 +227,39 @@
                     <span class="required-label">Required Hours</span>
                     <strong class="required-value purple">--</strong>
                 </div>
-            </div>
+            </div> -->
         </section>
 
-        <!-- Sa Recent Activity List -->
-            <div class="activity-card">
-                <div class="section-title">
-                    <div class="title-left">
-                        <span class="vertical-line red"></span>
-                        <h3>Recent Activity</h3>
-                    </div>
-                    <a href="../activities/activities.html" id="view-all-btn" style="text-decoration: none; color: #0284c7; font-weight: 500; font-size: 14px;">View All</a>
+        <!-- Recent Activity List -->
+        <div class="activity-card">
+            <div class="section-title">
+                <div class="title-left">
+                    <span class="vertical-line red"></span>
+                    <h3>Recent Activity</h3>
                 </div>
+                <button type="button" id="view-all-btn" class="view-all-btn">View All</button>
+            </div>
 
-                <div class="activity-list" id="recent-activity-list">
-                    <!-- Dito kusang mag-a-appear ang dynamic items mula sa Firebase -->
+            <div class="activity-list" id="recent-activity-list"></div>
+        </div>
+
+        <!-- All Activities Modal (opened by the "View All" button) -->
+        <div id="modal-container-wrapper">
+            <div class="modal-overlay" id="activities-modal-overlay">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Activity History</h3>
+                        <button type="button" class="close-btn" id="explicit-close-btn" aria-label="Close">
+                            <mat-icon class="mat-icon notranslate lm-icon-xl lumi-symbols mat-ligature-font mat-icon-no-color ng-star-inserted" aria-hidden="true">close</mat-icon>
+                        </button>
+                    </div>
+
+                    <div class="activity-list" id="all-activities-list"></div>
                 </div>
             </div>
         </div>
     </main>
 </div>
-
-
 
 <script type="module" src="student_dashboard.js"></script>
 

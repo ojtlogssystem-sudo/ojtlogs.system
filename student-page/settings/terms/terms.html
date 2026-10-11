@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terms and Conditions</title>
+
+    <link rel="stylesheet" href="../legal.css">
+    <link rel="stylesheet" href="../templated/header.css">
+    <link rel="stylesheet" href="../templated/sidebar.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+</head>
+
+<body>
+    <div class="dashboard">
+        <div id="sidebar-container"></div>
+
+        <main class="main">
+            <header id="header-container"></header>
+
+            <section class="legal-container">
+                <a href="../settings.html" class="legal-back">
+                    <i class="fa-solid fa-arrow-left"></i> Back to Settings
+                </a>
+
+                <article class="legal-card">
+                    <div class="legal-title">
+                        <span class="red-line"></span>
+                        <h1>Student Terms and Conditions</h1>
+                    </div>
+                    <p class="legal-meta">&nbsp;</p>
+
+                    <p>By using the Student Internship Records and Performance Monitoring System, you agree to follow the terms and conditions stated below.</p>
+
+                    <h2>1. Account Responsibility</h2>
+                    <p>Students are responsible for keeping their account information and login credentials secure. Students must not share their account with another person or allow anyone else to use their account.</p>
+
+                    <h2>2. Attendance Recording</h2>
+                    <p>Students are required to use the designated QR code to record their internship attendance. The system may require a photo proof during Time In and/or Time Out to verify that the attendance was made by the registered student.</p>
+                    <p>Students must ensure that the submitted photo is clear, appropriate, and shows the student at the time of attendance. Submitting another person's photo, edited images, screenshots, or misleading information is not allowed.</p>
+
+                    <h2>3. Photo Proof and Data Privacy</h2>
+                    <p>By submitting a photo proof for attendance, the student acknowledges that the photo contains personal information and may be collected and processed solely for legitimate internship-related purposes, including attendance verification, record keeping, monitoring, and report generation.</p>
+                    <p>The submitted photo will not be used for unrelated purposes or publicly shared without a lawful basis or appropriate consent.</p>
+
+                    <h2>4. Accurate Information</h2>
+                    <p>Students are responsible for providing accurate and truthful information when using the system. Any attempt to falsify attendance records, manipulate submitted information, or misuse the system may result in appropriate action by the internship coordinator or authorized personnel.</p>
+
+                    <h2>5. Internship Records</h2>
+                    <p>Attendance, rendered hours, daily tasks, performance records, and other internship-related information may be recorded and maintained in the system to monitor the student's internship progress.</p>
+
+                    <h2>6. System Security</h2>
+                    <p>Students must not attempt to access, modify, delete, or obtain information belonging to other students, coordinators, companies, or supervisors without authorization.</p>
+                    <p>Any unauthorized access, misuse, or manipulation of the system may result in disciplinary action in accordance with applicable school policies.</p>
+
+                    <h2>7. Privacy</h2>
+                    <p>Student information will be handled in accordance with the system's <a href="privacy-policy.html">Privacy Policy</a> and applicable data protection laws, including the Data Privacy Act of 2012 (Republic Act No. 10173).</p>
+
+                    <h2>8. Agreement</h2>
+                    <p>By clicking "I Agree," registering an account, or using the system, the student confirms that they have read and understood these Terms and Conditions and agree to comply with them.</p>
+                </article>
+
+            </section>
+        </main>
+    </div>
+
+    <script src="../templated/sidebar-loader.js"></script>
+    <script type="module">
+        import { loadHeader } from "../templated/header-loader.js";
+
+        if (typeof loadSidebar === "function") {
+            loadSidebar("Settings");
+        } else {
+            console.error("loadSidebar() is not defined. Check ../templated/sidebar-loader.js");
+        }
+
+        loadHeader("Terms and Conditions", { autoLoadProfile: true })
+            .catch(err => console.error("Failed to load header:", err));
+    </script>
+</body>
+</html>

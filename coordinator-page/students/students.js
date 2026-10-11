@@ -480,7 +480,10 @@ async function refreshAndRenderStudents() {
             });
         });
 
-        allStudents = Array.from(studentMap.values());
+        // Ipakita lang ang mga student na tapos na sa profile setup.
+        // Ang mga imbitado pa lang / hindi pa nakakapag-complete ng profile
+        // (blangko ang name, ID, atbp.) ay hindi na lalabas sa table.
+        allStudents = Array.from(studentMap.values()).filter(s => s.profileDone === true);
         populateYearFilter();
         applyFiltersAndPagination();
 
@@ -1271,6 +1274,60 @@ function initViewModalCloseListeners() {
 /* ==========================================
    INVITE MODAL LOGIC
 ========================================== */
+// Isang email = isang invitation. Ginagamit ng single at bulk (CSV) invite.
+// Nagre-return ng { restored } - true kung na-restore ang dating na-"delete" na account.
+async function sendInviteToEmail(emailInput) {
+    const loginUrl = `${window.location.origin}/student-page/student_login/student_login.html?email=${encodeURIComponent(emailInput)}`;
+
+    // Tignan muna kung may existing "users" doc na para sa email
+    // na ito. Kung na-"delete" (disabled) na siya dati, ibig
+    // sabihin may natitirang Firebase Auth account pa rin siya
+    // (hindi natin kayang tanggalin 'yun client-side), kaya sa
+    // halip na gumawa ng bagong invitation na sisira dahil
+    // existing na ang Auth email na 'yun, ire-reset at
+    // ire-enable na lang natin ulit ang parehong "users" doc -
+    // blangko/clean slate, parang bagong account mula umpisa.
+    const existingUserSnapshot = await getDocs(
+        query(collection(db, "users"), where("email", "==", emailInput))
+    );
+    const disabledUserDoc = existingUserSnapshot.docs.find(
+        (docSnap) => docSnap.data().accountDisabled === true
+    );
+
+    if (disabledUserDoc) {
+        // I-reset ulit dito (hindi lang basta i-re-enable) sakaling
+        // na-disable ang account na ito bago pa i-deploy itong
+        // pag-reset-sa-delete - para siguradong blangko/clean
+        // slate talaga siya, parang bagong account.
+        await updateDoc(doc(db, "users", disabledUserDoc.id), {
+            accountDisabled: false,
+            disabledAt: null,
+            role: "student",
+            ...getProfileResetFields()
+        });
+    }
+
+    // Bagong "Pending" invitation record - para talagang parang
+    // panibagong imbitasyon ito mula umpisa, kasama ng ibang parte
+    // ng system na umaasa sa "invitations" collection (hal.
+    // notification bell ng coordinator).
+    await addDoc(collection(db, "invitations"), {
+        email: emailInput,
+        status: "Pending",
+        role: "student",
+        createdAt: new Date().toISOString()
+    });
+
+    if (window.emailjs) {
+        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+            to_email: emailInput,
+            invite_link: loginUrl
+        });
+    }
+
+    return { restored: !!disabledUserDoc };
+}
+
 function initInviteModal() {
     const addBtn = document.getElementById("addStudentBtn");
     const inviteModal = document.getElementById("inviteModal");
@@ -1280,6 +1337,132 @@ function initInviteModal() {
     const successMessage = document.getElementById("successMessage");
     const sentEmailText = document.getElementById("sentEmailText");
 
+    // CSV import elements
+    const studentEmailInput = document.getElementById("studentEmail");
+    const importCsvBtn = document.getElementById("importCsvBtn");
+    const csvFileInput = document.getElementById("csvFileInput");
+    const csvPreview = document.getElementById("csvPreview");
+    const csvSummary = document.getElementById("csvSummary");
+    const clearCsvBtn = document.getElementById("clearCsvBtn");
+    const submitBtn = inviteForm ? inviteForm.querySelector(".btn-submit") : null;
+    const submitBtnDefaultHtml = submitBtn ? submitBtn.innerHTML : "";
+
+    const EMAIL_REGEX = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
+    let csvEmails = [];      // mga email galing sa CSV
+    let csvNotes = "";       // hal. "2 duplicates skipped"
+    let isSending = false;
+
+    // Pinagsamang listahan (manual + CSV), walang duplicate.
+    const getAllEmails = () => {
+        const manual = studentEmailInput ? studentEmailInput.value.trim() : "";
+        const seen = new Set();
+        const result = [];
+        [manual, ...csvEmails].forEach((email) => {
+            if (!email) return;
+            const key = email.toLowerCase();
+            if (seen.has(key)) return;
+            seen.add(key);
+            result.push(email);
+        });
+        return result;
+    };
+
+    const updateSubmitLabel = () => {
+        if (!submitBtn || isSending) return;
+        const count = getAllEmails().length;
+        submitBtn.innerHTML = count > 1
+            ? `<i class="fa-solid fa-paper-plane"></i> Send ${count} Invites`
+            : submitBtnDefaultHtml;
+    };
+
+    const renderCsvPreview = () => {
+        if (!csvPreview) return;
+        if (csvEmails.length === 0) {
+            csvPreview.classList.remove("active");
+            updateSubmitLabel();
+            return;
+        }
+
+        csvSummary.textContent =
+            `${csvEmails.length} email${csvEmails.length > 1 ? "s" : ""} ready` +
+            (csvNotes ? ` · ${csvNotes}` : "");
+        csvPreview.classList.add("active");
+        updateSubmitLabel();
+    };
+
+    const resetCsv = () => {
+        csvEmails = [];
+        csvNotes = "";
+        if (csvFileInput) csvFileInput.value = "";
+        renderCsvPreview();
+    };
+
+    // Kukunin ang lahat ng email sa CSV, kahit ilang column pa.
+    // Ang cells na walang "@" (header, pangalan, atbp.) ay hindi pinapansin.
+    const parseCsvEmails = (text) => {
+        const tokens = text
+            .replace(/^\uFEFF/, "")
+            .split(/[\r\n,;\t]+/)
+            .map((t) => t.trim().replace(/^["']+|["']+$/g, "").trim())
+            .filter((t) => t.includes("@"));
+
+        const seen = new Set(csvEmails.map((e) => e.toLowerCase()));
+        const valid = [];
+        let invalid = 0;
+        let duplicates = 0;
+
+        tokens.forEach((token) => {
+            if (!EMAIL_REGEX.test(token)) {
+                invalid++;
+                return;
+            }
+            const key = token.toLowerCase();
+            if (seen.has(key)) {
+                duplicates++;
+                return;
+            }
+            seen.add(key);
+            valid.push(token);
+        });
+
+        return { valid, invalid, duplicates };
+    };
+
+    if (importCsvBtn && csvFileInput) {
+        importCsvBtn.addEventListener("click", () => {
+            if (!isSending) csvFileInput.click();
+        });
+
+        csvFileInput.addEventListener("change", () => {
+            const file = csvFileInput.files && csvFileInput.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = () => {
+                const { valid, invalid, duplicates } = parseCsvEmails(String(reader.result || ""));
+
+                if (valid.length === 0 && csvEmails.length === 0) {
+                    showToast("Walang valid na email na nakita sa CSV.", "error");
+                    csvFileInput.value = "";
+                    return;
+                }
+
+                csvEmails = csvEmails.concat(valid);
+                const notes = [];
+                if (duplicates) notes.push(`${duplicates} duplicate${duplicates > 1 ? "s" : ""} skipped`);
+                if (invalid) notes.push(`${invalid} invalid skipped`);
+                csvNotes = notes.join(" · ");
+                renderCsvPreview();
+                csvFileInput.value = "";
+            };
+            reader.onerror = () => showToast("Hindi mabasa ang CSV file.", "error");
+            reader.readAsText(file);
+        });
+    }
+
+    if (clearCsvBtn) clearCsvBtn.addEventListener("click", () => { if (!isSending) resetCsv(); });
+    if (studentEmailInput) studentEmailInput.addEventListener("input", updateSubmitLabel);
+
     if (addBtn && inviteModal) {
         addBtn.addEventListener("click", () => {
             inviteModal.classList.add("active");
@@ -1288,9 +1471,11 @@ function initInviteModal() {
     }
 
     const hideModal = () => {
+        if (isSending) return;
         if (inviteModal) {
             inviteModal.classList.remove("active");
             if (inviteForm) inviteForm.reset();
+            resetCsv();
             if (successMessage) successMessage.classList.remove("active");
         }
     };
@@ -1307,94 +1492,87 @@ function initInviteModal() {
     if (inviteForm) {
         inviteForm.addEventListener("submit", async (e) => {
             e.preventDefault();
+            if (isSending) return;
 
-            const emailInput = document.getElementById("studentEmail").value.trim();
-            if (!emailInput) return;
+            const emails = getAllEmails();
+            if (emails.length === 0) {
+                showToast("Maglagay ng email o mag-import ng CSV.", "error");
+                return;
+            }
 
-            const loginUrl = `${window.location.origin}/student-page/student_login/student_login.html?email=${encodeURIComponent(emailInput)}`;
+            const manualEmail = studentEmailInput ? studentEmailInput.value.trim().toLowerCase() : "";
 
-            try {
-                // Tignan muna kung may existing "users" doc na para sa email
-                // na ito. Kung na-"delete" (disabled) na siya dati, ibig
-                // sabihin may natitirang Firebase Auth account pa rin siya
-                // (hindi natin kayang tanggalin 'yun client-side), kaya sa
-                // halip na gumawa ng bagong invitation na sisira dahil
-                // existing na ang Auth email na 'yun, ire-reset at
-                // ire-enable na lang natin ulit ang parehong "users" doc -
-                // blangko/clean slate, parang bagong account mula umpisa.
-                const existingUserSnapshot = await getDocs(
-                    query(collection(db, "users"), where("email", "==", emailInput))
-                );
-                const disabledUserDoc = existingUserSnapshot.docs.find(
-                    (docSnap) => docSnap.data().accountDisabled === true
-                );
+            isSending = true;
+            if (submitBtn) submitBtn.disabled = true;
 
-                if (disabledUserDoc) {
-                    // I-reset ulit dito (hindi lang basta i-re-enable) sakaling
-                    // na-disable ang account na ito bago pa i-deploy itong
-                    // pag-reset-sa-delete - para siguradong blangko/clean
-                    // slate talaga siya, parang bagong account.
-                    await updateDoc(doc(db, "users", disabledUserDoc.id), {
-                        accountDisabled: false,
-                        disabledAt: null,
-                        role: "student",
-                        ...getProfileResetFields()
-                    });
+            let sentCount = 0;
+            let restoredCount = 0;
+            let lastSent = "";
+            const failed = [];
 
-                    // Bagong "Pending" invitation record - para talagang
-                    // parang panibagong imbitasyon ito mula umpisa, kasama
-                    // ng ibang parte ng system na umaasa sa "invitations"
-                    // collection (hal. notification bell ng coordinator).
-                    await addDoc(collection(db, "invitations"), {
-                        email: emailInput,
-                        status: "Pending",
-                        role: "student",
-                        createdAt: new Date().toISOString()
-                    });
-
-                    if (window.emailjs) {
-                        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-                            to_email: emailInput,
-                            invite_link: loginUrl
-                        });
-                    }
-
-                    if (sentEmailText) sentEmailText.textContent = emailInput;
-                    if (successMessage) successMessage.classList.add("active");
-                    showToast("Na-restore ang access - kailangan niya ulit kumpletuhin ang profile setup.", "success");
-
-                    setTimeout(() => {
-                        hideModal();
-                    }, 2000);
-                    return;
+            for (let i = 0; i < emails.length; i++) {
+                if (submitBtn && emails.length > 1) {
+                    submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Sending ${i + 1}/${emails.length}...`;
                 }
 
-                // Walang existing account - normal na bagong invitation flow.
-                await addDoc(collection(db, "invitations"), {
-                    email: emailInput,
-                    status: "Pending",
-                    role: "student",
-                    createdAt: new Date().toISOString()
-                });
-
-                if (window.emailjs) {
-                    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-                        to_email: emailInput,
-                        invite_link: loginUrl
-                    });
+                try {
+                    const result = await sendInviteToEmail(emails[i]);
+                    sentCount++;
+                    lastSent = emails[i];
+                    if (result.restored) restoredCount++;
+                } catch (error) {
+                    console.error("Error inviting student:", emails[i], error);
+                    failed.push(emails[i]);
                 }
 
-                if (sentEmailText) sentEmailText.textContent = emailInput;
+                // Maliit na pagitan para hindi ma-rate limit ang email service.
+                if (i < emails.length - 1) {
+                    await new Promise((resolve) => setTimeout(resolve, 300));
+                }
+            }
+
+            isSending = false;
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = submitBtnDefaultHtml;
+            }
+
+            if (restoredCount > 0) {
+                showToast(
+                    restoredCount === 1
+                        ? "Na-restore ang access - kailangan niya ulit kumpletuhin ang profile setup."
+                        : `${restoredCount} na account ang na-restore - kailangan nilang ulit kumpletuhin ang profile setup.`,
+                    "success"
+                );
+            }
+
+            if (failed.length === 0) {
+                if (sentEmailText) {
+                    sentEmailText.textContent = sentCount === 1 ? lastSent : `${sentCount} students`;
+                }
                 if (successMessage) successMessage.classList.add("active");
 
                 setTimeout(() => {
                     hideModal();
                 }, 2000);
-
-            } catch (error) {
-                console.error("Error inviting student:", error);
-                showToast("Hindi na-send ang imbitasyon.", "error");
+                return;
             }
+
+            // May pumalyang email - iiwan sa listahan para ma-retry.
+            showToast(
+                sentCount > 0
+                    ? `${sentCount} na-send, ${failed.length} ang hindi na-send. Pwede mo ulit i-try ang natira.`
+                    : "Hindi na-send ang imbitasyon.",
+                "error",
+                5000
+            );
+
+            const manualFailed = failed.some((f) => f.toLowerCase() === manualEmail);
+            if (!manualFailed && studentEmailInput) studentEmailInput.value = "";
+            csvEmails = failed.filter((f) => f.toLowerCase() !== manualEmail);
+            csvNotes = "";
+            renderCsvPreview();
+            updateSubmitLabel();
         });
     }
 }

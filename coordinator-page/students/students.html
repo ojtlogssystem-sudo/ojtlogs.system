@@ -200,7 +200,28 @@
 
                     <div class="input-with-icon">
                         <i class="fa-regular fa-envelope"></i>
-                        <input type="email" id="studentEmail" placeholder="student@gmail.com" required>
+                        <input type="email" id="studentEmail" placeholder="student@gmail.com">
+                    </div>
+
+                    <!-- BULK INVITE VIA CSV -->
+                    <div class="csv-divider"><span>or invite many at once</span></div>
+
+                    <div class="csv-import-row">
+                        <input type="file" id="csvFileInput" accept=".csv,.txt,text/csv" hidden>
+                        <button type="button" class="btn-import-csv" id="importCsvBtn">
+                            <i class="fa-solid fa-file-csv"></i>
+                            Import CSV
+                        </button>
+                    </div>
+
+                    <div class="csv-preview" id="csvPreview">
+                        <div class="csv-preview-header">
+                            <span class="csv-summary">
+                                <i class="fa-solid fa-circle-check"></i>
+                                <span id="csvSummary"></span>
+                            </span>
+                            <button type="button" class="csv-clear-btn" id="clearCsvBtn">Clear all</button>
+                        </div>
                     </div>
 
                     <div class="modal-actions">

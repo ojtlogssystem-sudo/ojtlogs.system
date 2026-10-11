@@ -5,6 +5,8 @@ import {
     signInWithEmailAndPassword, 
     GoogleAuthProvider, 
     signInWithPopup,
+    signInWithRedirect,
+    getRedirectResult,
     sendPasswordResetEmail,
     signOut
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -191,28 +193,12 @@ async function processUserLogin(user) {
     // 2. IF THIS IS A NEW LOGIN NOT YET IN THE USERS COLLECTION
     const emailKey = user.email.toLowerCase();
     
-    // Hanapin ang invitation doc gamit ang "email" FIELD, hindi ang
-    // document ID - dahil sa students.js, gamit ang addDoc (random/
-    // auto-generated ang document ID) ang paggawa ng invitation, kaya
-    // hindi kailanman tutugma ang naunang doc(db, "invitations", email)
-    // na lookup. Ito ang dahilan kung bakit "gumagana" (sa maling paraan)
-    // ang hindi-invited na Google accounts dati - hindi talaga natatagpuan
-    // ang invite, kaya bumabagsak lang sa default na "student" account
-    // creation sa halip na tanggihan.
     const invitesSnapshot = await getDocs(collection(db, "invitations"));
     const matchedInvite = invitesSnapshot.docs.find(
         (docSnap) => (docSnap.data().email || "").toLowerCase().trim() === emailKey
     );
     const inviteDoc = matchedInvite || null;
 
-    // Walang invitation mula sa coordinator para sa email na ito. Sa
-    // Google Sign-In, awtomatikong gumagawa si Firebase ng bagong Auth
-    // account kahit random na Google account ang piliin - kaya kailangan
-    // dito i-block bago pa ito maka-gawa ng "users" doc at makarating sa
-    // profile page. Tinatanggal din natin ang kaka-create lang na Auth
-    // account (sarili pa lang niyang account kaya kaya niya itong i-delete
-    // gamit ang client SDK, walang Admin SDK na kailangan) para hindi na
-    // ito magamit ulit sa susunod na pagtatangka.
     if (!inviteDoc) {
         try {
             await user.delete();
@@ -224,8 +210,6 @@ async function processUserLogin(user) {
         return;
     }
 
-    // May invitation - kunin ang details galing dito (coordinator, pangalan,
-    // role) para sa bagong account.
     const inviteData = inviteDoc.data();
     let coordinatorId = inviteData.coordinatorId || null;
     let userName = inviteData.name || user.displayName || "User";
@@ -243,7 +227,6 @@ async function processUserLogin(user) {
         createdAt: new Date()
     });
 
-    // Determine which page to go to based on the detected role
     if (detectedRole === "coordinator" || detectedRole === "admin") {
         goTo("/coordinator-page/dashboard/dashboard.html", "Opening dashboard...");
     } else {
@@ -281,7 +264,6 @@ if (loginForm) {
 function openForgotModal() {
     if (!forgotModal) return;
 
-    // Pre-fill using the value of the email field on the login form, if any
     const mainEmail = document.getElementById('email').value.trim();
     resetEmailInput.value = mainEmail;
     hideMessage(modalMessage);
@@ -308,7 +290,6 @@ if (closeModalBtn) {
     closeModalBtn.addEventListener('click', closeForgotModal);
 }
 
-// Close the modal when clicking outside the card
 if (forgotModal) {
     forgotModal.addEventListener('click', (e) => {
         if (e.target === forgotModal) {
@@ -317,7 +298,6 @@ if (forgotModal) {
     });
 }
 
-// Close the modal using the Escape key
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && forgotModal && forgotModal.classList.contains('active')) {
         closeForgotModal();
@@ -351,8 +331,6 @@ if (resetForm) {
                     showMessage(modalMessage, "Invalid email format. Please check and try again.", false);
                     break;
                 case 'auth/user-not-found':
-                    // We don't reveal whether an account exists, for security —
-                    // use the same message as the successful case.
                     showMessage(modalMessage, `If an account is registered with ${email}, a reset link will be sent.`, true);
                     break;
                 case 'auth/too-many-requests':
@@ -368,20 +346,25 @@ if (resetForm) {
     });
 }
 
-// GOOGLE SIGN-IN HANDLER
+// CATCH GOOGLE REDIRECT RESULT (Pagbalik galing sa Google sign-in page)
+getRedirectResult(auth)
+    .then(async (result) => {
+        if (result && result.user) {
+            await processUserLogin(result.user);
+        }
+    })
+    .catch((error) => {
+        console.error("Google Redirect Error:", error);
+        if (error.code !== 'auth/popup-closed-by-user') {
+            showError("Google Sign-In failed: " + error.message);
+        }
+    });
+
+// GOOGLE SIGN-IN HANDLER (Gamit ang Redirect para hindi ma-block)
 if (googleBtn) {
-    googleBtn.addEventListener('click', async () => {
+    googleBtn.addEventListener('click', () => {
         hideError();
         const provider = new GoogleAuthProvider();
-
-        try {
-            const result = await signInWithPopup(auth, provider);
-            await processUserLogin(result.user);
-        } catch (error) {
-            console.error("Google Auth Error:", error);
-            if (error.code !== 'auth/popup-closed-by-user') {
-                showError("Google Sign-In failed: " + error.message);
-            }
-        }
+        signInWithRedirect(auth, provider);
     });
 }

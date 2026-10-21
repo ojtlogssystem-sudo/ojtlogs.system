@@ -1395,3 +1395,212 @@ body {
         min-width: 0;
     }
 }
+/* ==========================================
+   EDIT MODAL - TASKS DONE
+   ========================================== */
+
+.task-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 14px 0;
+}
+
+.task-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #444;
+}
+
+.task-field em {
+    font-style: normal;
+    color: #ab0a0a;
+}
+
+.task-field input,
+.task-field textarea {
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 400;
+    color: #333;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    outline: none;
+    background: #fff;
+}
+
+.task-field textarea {
+    resize: vertical;
+}
+
+.task-field input:focus,
+.task-field textarea:focus {
+    border-color: #ab0a0a;
+    box-shadow: 0 0 0 3px rgba(171, 10, 10, 0.07);
+}
+
+.add-task-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 11px;
+    border: 1px dashed #3a9ad9;
+    background: #e3f2fc;
+    color: #0b7bc1;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.add-task-btn:hover {
+    background: #d3eafa;
+}
+
+.tasks-added-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #444;
+}
+
+.tasks-added-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 160px;
+    overflow-y: auto;
+}
+
+.tasks-empty {
+    margin: 0;
+    padding: 12px;
+    text-align: center;
+    font-size: 11px;
+    color: #999;
+    background: #f7f8fa;
+    border: 1px dashed #e2e4e8;
+    border-radius: 8px;
+}
+
+.task-item {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    background: #f7f8fa;
+    border: 1px solid #ececf0;
+    border-radius: 8px;
+}
+
+.task-item-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #222;
+}
+
+.task-item-desc {
+    margin-top: 2px;
+    font-size: 11px;
+    color: #666;
+    line-height: 1.45;
+    word-break: break-word;
+}
+
+.task-remove-btn {
+    flex-shrink: 0;
+    border: none;
+    background: transparent;
+    color: #b44;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 2px 4px;
+}
+
+.task-remove-btn:hover {
+    color: #ab0a0a;
+}
+
+/* ==========================================
+   TOAST NOTIFICATION
+   ========================================== */
+
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: calc(100vw - 40px);
+    pointer-events: none;
+}
+
+.toast {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 260px;
+    max-width: 380px;
+    padding: 13px 14px;
+    background: #fff;
+    border: 1px solid #eee;
+    border-left: 4px solid #2e9e5b;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    font-size: 12.5px;
+    font-weight: 500;
+    color: #222;
+    pointer-events: auto;
+    animation: toastIn 0.28s ease forwards;
+}
+
+.toast > i:first-child {
+    font-size: 16px;
+    color: #2e9e5b;
+}
+
+.toast span {
+    flex: 1;
+    line-height: 1.4;
+}
+
+.toast-error { border-left-color: #ab0a0a; }
+.toast-error > i:first-child { color: #ab0a0a; }
+
+.toast-warning { border-left-color: #e8932a; }
+.toast-warning > i:first-child { color: #e8932a; }
+
+.toast-close {
+    border: none;
+    background: transparent;
+    color: #999;
+    cursor: pointer;
+    padding: 2px 4px;
+    font-size: 12px;
+}
+
+.toast-close:hover { color: #333; }
+
+.toast.hide {
+    animation: toastOut 0.25s ease forwards;
+}
+
+@keyframes toastIn {
+    from { opacity: 0; transform: translateX(30px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes toastOut {
+    from { opacity: 1; transform: translateX(0); }
+    to { opacity: 0; transform: translateX(30px); }
+}

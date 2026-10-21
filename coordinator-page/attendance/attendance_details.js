@@ -759,12 +759,67 @@ document.addEventListener("DOMContentLoaded", () => {
     const excuseReason = document.getElementById("excuseReason");
     const editTimeIn = document.getElementById("editTimeIn");
     const editTimeOut = document.getElementById("editTimeOut");
-    const editReason = document.getElementById("editReason");
     const saveAttendanceBtn = document.getElementById("saveAttendanceBtn");
     const confirmRejectBtn = document.getElementById("confirmRejectBtn");
     const confirmExcuseBtn = document.getElementById("confirmExcuseBtn");
 
     let activeDocIdToModify = null;
+
+    // ---- Tasks Done (Edit Attendance modal) ----
+    const editTaskTitle = document.getElementById("editTaskTitle");
+    const editTaskDesc = document.getElementById("editTaskDesc");
+    const addTaskBtn = document.getElementById("addTaskBtn");
+    const editTaskList = document.getElementById("editTaskList");
+    let editTasks = [];
+
+    function escapeTaskHtml(str) {
+        return String(str).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    function renderEditTasks() {
+        if (!editTaskList) return;
+        if (!editTasks.length) {
+            editTaskList.innerHTML = '<p class="tasks-empty">No tasks added yet.</p>';
+            return;
+        }
+        editTaskList.innerHTML = editTasks.map((t, i) => `
+            <div class="task-item">
+                <div>
+                    <div class="task-item-title">${escapeTaskHtml(t.title)}</div>
+                    <div class="task-item-desc">${escapeTaskHtml(t.description)}</div>
+                </div>
+                <button type="button" class="task-remove-btn" data-task-index="${i}" aria-label="Remove task">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>`).join("");
+    }
+
+    function addCurrentTask() {
+        const title = editTaskTitle ? editTaskTitle.value.trim() : "";
+        const description = editTaskDesc ? editTaskDesc.value.trim() : "";
+        if (!title || !description) return false;
+        editTasks.push({ title, description });
+        if (editTaskTitle) editTaskTitle.value = "";
+        if (editTaskDesc) editTaskDesc.value = "";
+        renderEditTasks();
+        return true;
+    }
+
+    if (addTaskBtn) {
+        addTaskBtn.addEventListener("click", function () {
+            if (!addCurrentTask()) showToast("Please enter both Task Title and Task Description.", "warning");
+        });
+    }
+
+    if (editTaskList) {
+        editTaskList.addEventListener("click", function (e) {
+            const rm = e.target.closest(".task-remove-btn");
+            if (!rm) return;
+            editTasks.splice(Number(rm.dataset.taskIndex), 1);
+            renderEditTasks();
+        });
+    }
+
 
     // Three-dot action menu
     document.addEventListener("click", function (e) {
@@ -802,7 +857,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (editAttendanceDate) editAttendanceDate.textContent = selectedItem.formattedDate || selectedItem.date || "—";
                 if (editTimeIn) editTimeIn.value = toTimeInputValue(selectedItem.timeIn);
                 if (editTimeOut) editTimeOut.value = toTimeInputValue(selectedItem.timeOut);
-                if (editReason) editReason.value = "";
+                editTasks = Array.isArray(selectedItem.tasks) ? selectedItem.tasks.map(t => ({ ...t })) : [];
+                if (editTaskTitle) editTaskTitle.value = "";
+                if (editTaskDesc) editTaskDesc.value = "";
+                renderEditTasks();
                 if (editModal) {
                     editModal.classList.add("show");
                     editModal.style.display = "flex";
@@ -834,14 +892,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const newIn = editTimeIn ? editTimeIn.value : "";
             const newOut = editTimeOut ? editTimeOut.value : "";
-            const reason = editReason ? editReason.value.trim() : "";
+            // Kung may nakasulat pa na hindi pa na-add, isama na rin
+            if ((editTaskTitle && editTaskTitle.value.trim()) || (editTaskDesc && editTaskDesc.value.trim())) {
+                if (!addCurrentTask()) {
+                    showToast("Please complete both Task Title and Task Description, or clear them.", "warning");
+                    return;
+                }
+            }
 
             if (!newIn || !newOut) {
-                alert("Please enter both Time In and Time Out.");
+                showToast("Please enter both Time In and Time Out.", "warning");
                 return;
             }
             if (newOut <= newIn) {
-                alert("Time Out must be later than Time In.");
+                showToast("Time Out must be later than Time In.", "warning");
                 return;
             }
 
@@ -865,12 +929,12 @@ document.addEventListener("DOMContentLoaded", () => {
                     todayHours: todayHoursText,
                     hoursRendered: Number((netMinutes / 60).toFixed(2)),
                     // Kapag na-adjust ang oras, lalabas na Present / On-Time (kapareho ng normal na time in).
-                    // Nakatabi pa rin ang adjustedAt/adjustmentReason para may audit trail.
+                    // Nakatabi pa rin ang adjustedAt para may audit trail.
                     status: "Present",
                     remarks: "On-Time / Present",
                     adjustedAt: serverTimestamp(),
                     adjustedBy: (auth.currentUser && auth.currentUser.uid) || null,
-                    adjustmentReason: reason
+                    tasks: editTasks
                 };
 
                 // Itabi ang orihinal na record (isang beses lang) para may audit trail
@@ -882,12 +946,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 await updateDoc(attDocRef, editUpdates);
-                alert("Attendance updated successfully!");
+                showToast("Attendance updated successfully!", "success");
                 if (editModal) { editModal.classList.remove("show"); editModal.style.display = "none"; }
                 fetchAttendanceDetails();
             } catch (err) {
                 console.error("Error updating attendance:", err);
-                alert("Failed to update attendance.");
+                showToast("Failed to update attendance.", "error");
             }
         });
     }
@@ -900,7 +964,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 // Nare-reject na dati - huwag nang ulitin (mao-overwrite ang orihinal na oras).
                 if (isRejectedRecord(rejectedItem)) {
-                    alert("This attendance is already rejected.");
+                    showToast("This attendance is already rejected.", "warning");
                     if (rejectModal) { rejectModal.classList.remove("show"); rejectModal.style.display = "none"; }
                     return;
                 }
@@ -923,12 +987,12 @@ document.addEventListener("DOMContentLoaded", () => {
                     rejectedAt: serverTimestamp(),
                     rejectedBy: (auth.currentUser && auth.currentUser.uid) || null
                 });
-                alert("Attendance rejected. The student has been notified and the hours were deducted.");
+                showToast("Attendance rejected. The student has been notified and the hours were deducted.", "success");
                 if (rejectModal) { rejectModal.classList.remove("show"); rejectModal.style.display = "none"; }
                 fetchAttendanceDetails(); 
             } catch (err) {
                 console.error("Error rejecting attendance:", err);
-                alert("Failed to reject attendance.");
+                showToast("Failed to reject attendance.", "error");
             }
         });
     }
@@ -947,12 +1011,12 @@ document.addEventListener("DOMContentLoaded", () => {
                     status: "Excused",
                     remarks: reasonText
                 });
-                alert("Student has been excused for this day.");
+                showToast("Student has been excused for this day.", "success");
                 if (excuseModal) { excuseModal.classList.remove("show"); excuseModal.style.display = "none"; }
                 fetchAttendanceDetails();
             } catch (err) {
                 console.error("Error excusing attendance:", err);
-                alert("Failed to excuse student.");
+                showToast("Failed to excuse student.", "error");
             }
         });
     }
@@ -988,3 +1052,49 @@ document.addEventListener("DOMContentLoaded", () => {
 
     fetchAttendanceDetails();
 });
+
+
+// ==========================================
+// IN-SYSTEM TOAST NOTIFICATION (kapalit ng browser alert)
+// ==========================================
+function showToast(message, type = "success") {
+    let container = document.getElementById("toastContainer");
+    if (!container) {
+        container = document.createElement("div");
+        container.id = "toastContainer";
+        container.className = "toast-container";
+        document.body.appendChild(container);
+    }
+
+    const icons = {
+        success: "fa-circle-check",
+        error: "fa-circle-xmark",
+        warning: "fa-triangle-exclamation"
+    };
+
+    const toast = document.createElement("div");
+    toast.className = `toast toast-${type}`;
+    toast.setAttribute("role", "status");
+
+    const icon = document.createElement("i");
+    icon.className = `fa-solid ${icons[type] || icons.success}`;
+
+    const text = document.createElement("span");
+    text.textContent = message;
+
+    const closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.className = "toast-close";
+    closeBtn.setAttribute("aria-label", "Close");
+    closeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+
+    toast.append(icon, text, closeBtn);
+    container.appendChild(toast);
+
+    const dismiss = () => {
+        toast.classList.add("hide");
+        setTimeout(() => toast.remove(), 250);
+    };
+    closeBtn.addEventListener("click", dismiss);
+    setTimeout(dismiss, type === "error" ? 5000 : 3500);
+}

@@ -261,10 +261,26 @@
                         </label>
                     </div>
 
-                    <label class="excuse-reason-label">
-                        <span>Reason for Adjustment</span>
-                        <textarea id="editReason" rows="3" placeholder="e.g. Forgot to time in, confirmed by company supervisor; device time error..."></textarea>
-                    </label>
+                    <div class="task-section">
+                        <label class="task-field">
+                            <span>Task Title <em>*</em></span>
+                            <input type="text" id="editTaskTitle" placeholder="e.g. Software Development">
+                        </label>
+
+                        <label class="task-field">
+                            <span>Task Description <em>*</em></span>
+                            <textarea id="editTaskDesc" rows="3" placeholder="e.g. UI development, encoded inventory records..."></textarea>
+                        </label>
+
+                        <button type="button" class="add-task-btn" id="addTaskBtn">
+                            <i class="fa-solid fa-plus"></i> Add Task to List
+                        </button>
+
+                        <div class="tasks-added-label">Tasks Added:</div>
+                        <div class="tasks-added-list" id="editTaskList">
+                            <p class="tasks-empty">No tasks added yet.</p>
+                        </div>
+                    </div>
 
                     <div class="adjustment-note">
                         <i class="fa-solid fa-circle-info"></i>

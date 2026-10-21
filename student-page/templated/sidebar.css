@@ -1,4 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@300..700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap');
 
 /* SIDEBAR DRAWER FOR MOBILE (MATCHING DASHBOARD) */
 .sidebar {
@@ -119,4 +121,99 @@
     border-radius: 10px;
     color: var(--white, #ffffff);
     text-decoration: none;
+}
+
+/* ==========================================
+   SIDEBAR FONT + ICONS + SECTIONS
+   (hindi ginalaw ang burger button)
+========================================== */
+.sidebar,
+.sidebar * {
+    font-family: 'Google Sans Flex', 'Google Sans', sans-serif;
+}
+
+/* Material icons (white, outline, rounded) */
+.sidebar .mat-icon {
+    font-family: 'Material Symbols Rounded';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 22px;
+    line-height: 1;
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    letter-spacing: normal;
+    text-transform: none;
+    white-space: nowrap;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: 'liga';
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    user-select: none;
+}
+
+/* Section labels (MAIN, INTERNSHIP, ...) */
+.menu li.menu-label {
+    height: auto;
+    margin: 18px 12px 2px;
+    padding: 0 16px;
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.55);
+    pointer-events: none;
+}
+
+.menu li.menu-label:first-child {
+    margin-top: 8px;
+}
+
+.menu li a {
+    gap: 14px;
+}
+
+/* ==========================================
+   MENU HOVER + ACTIVE INDICATOR
+   hover  = light background + maikling line sa kaliwa
+   active = humahaba ang line
+========================================== */
+.menu li:not(.menu-label) {
+    position: relative;
+    transition: background-color 0.2s ease;
+}
+
+.menu li:not(.menu-label):hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+/* line sa kaliwang gilid ng sidebar */
+.menu li:not(.menu-label)::before {
+    content: "";
+    position: absolute;
+    left: -12px;              /* katumbas ng left margin ng li */
+    top: 50%;
+    width: 4px;
+    height: 0;
+    transform: translateY(-50%);
+    background: #f3b6bd;
+    border-radius: 0 4px 4px 0;
+    transition: height 0.25s ease;
+}
+
+.menu li:not(.menu-label):hover::before {
+    height: 14px;             /* maikli kapag hover */
+}
+
+.menu li.active::before,
+.menu li:not(.menu-label):active::before {
+    height: 32px;             /* humahaba kapag active / pinindot */
+}
+
+/* active item: huwag nang magbago ang kulay kapag hover */
+.menu li.active:hover {
+    background: rgba(0, 0, 0, 0.25);
 }

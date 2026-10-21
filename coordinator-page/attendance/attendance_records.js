@@ -1,63 +1,11 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-
 import {
-    getFirestore,
-    collection,
-    getDocs,
-    doc,
-    getDoc
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-import {
-    getAuth,
-    onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-
-
-// =====================================================
-// FIREBASE CONFIG
-// =====================================================
-
-const firebaseConfig = {
-
-    apiKey: "AIzaSyDvMQyEHIIJTW4etj4VQHjjIzd8oB2geJ8",
-
-    authDomain:
-        "ojt-logs-e1892.firebaseapp.com",
-
-    databaseURL:
-        "https://ojt-logs-e1892-default-rtdb.firebaseio.com",
-
-    projectId:
-        "ojt-logs-e1892",
-
-    storageBucket:
-        "ojt-logs-e1892.firebasestorage.app",
-
-    messagingSenderId:
-        "1012575426857",
-
-    appId:
-        "1:1012575426857:web:c2d6dbcdc0dc0ad965ff38",
-
-    measurementId:
-        "G-DJ3JW7QH27"
-
-};
-
-
-const app = initializeApp(firebaseConfig);
-
-const db = getFirestore(app);
-
-const auth = getAuth(app);
-
-
-const attendanceRef =
-    collection(db, "attendance");
-
-const usersRef =
-    collection(db, "users");
+    loadScheduledUsers,
+    subscribeAttendance,
+    buildTodayRows,
+    buildRowsForRange,
+    MAX_RANGE_DAYS,
+    escapeHtml
+} from "./attendance_shared.js";
 
 
 // =====================================================
@@ -66,630 +14,195 @@ const usersRef =
 
 document.addEventListener("DOMContentLoaded", () => {
 
+    const attendanceTable = document.getElementById("attendanceTable");
+    const searchInput = document.getElementById("attendanceSearch");
+    const sectionFilter = document.getElementById("sectionFilter");
+    const statusFilter = document.getElementById("statusFilter");
+    const paginationInfo = document.getElementById("paginationInfo");
+    const prevPageBtn = document.getElementById("prevPageBtn");
+    const nextPageBtn = document.getElementById("nextPageBtn");
+    const pageNumbers = document.getElementById("pageNumbers");
+    const rowsPerPageSelect = document.getElementById("rowsPerPageSelect");
 
-    const attendanceTable =
-        document.getElementById("attendanceTable");
+    const currentDateEl = document.getElementById("currentDate");
+    const currentTimeEl = document.getElementById("currentTime");
 
-    const searchInput =
-        document.getElementById("attendanceSearch");
+    const fromDateInput = document.getElementById("fromDate");
+    const toDateInput = document.getElementById("toDate");
+    const applyRangeBtn = document.getElementById("applyRangeBtn");
+    const tableTitle = document.getElementById("tableTitle");
 
-    const sectionFilter =
-        document.getElementById("sectionFilter");
-
-    const statusFilter =
-        document.getElementById("statusFilter");
-
-    const paginationInfo =
-        document.getElementById("paginationInfo");
-
-    const prevPageBtn =
-        document.getElementById("prevPageBtn");
-
-    const nextPageBtn =
-        document.getElementById("nextPageBtn");
-
-    const pageNumbers =
-        document.getElementById("pageNumbers");
-
-    const rowsPerPageSelect =
-        document.getElementById("rowsPerPageSelect");
-
-
-    let allRecords = [];
-
+    let scheduledUsers = [];      // lahat ng student na may valid na schedule
+    let attendanceDocs = [];      // raw attendance docs (realtime)
+    let todayRecords = [];        // rows para sa ngayong araw (summary cards)
+    let allRecords = [];          // rows na ipapakita sa table (today o napiling range)
     let filteredRecords = [];
 
-    let usersMap = {};
+    let rangeFrom = null;         // History range (default: huling 7 araw)
+    let rangeTo = null;
 
+    let dataReady = false;
+    let sortMode = "default";      // galing sa Sort button (default = orihinal na order)
     let currentPage = 1;
-
     let rowsPerPage = 6;
+    let lastRebuiltMinute = -1;
 
 
-
-    // =================================================
-    // INITIALS
-    // =================================================
-
-    function getInitials(name) {
-
-        if (!name || typeof name !== "string") {
-            return "CO";
-        }
-
-        const words =
-            name.trim().split(/\s+/);
-
-        if (words.length === 1) {
-            return words[0]
-                .charAt(0)
-                .toUpperCase();
-        }
-
-        return (
-            words[0].charAt(0) +
-            words[words.length - 1].charAt(0)
-        ).toUpperCase();
-
+    // "BSIT 403" -> "403" (tinatanggal ang course prefix sa section)
+    function shortSection(section) {
+        return String(section || "").replace(/^[A-Za-z]+[\s-]+(?=\d)/, "");
     }
 
 
-
     // =================================================
-    // PROFILE
-    // =================================================
-
-    function syncUserProfile() {
-
-        const profileNameEl =
-            document.getElementById("profileName");
-
-        const profileAvatarEl =
-            document.getElementById("profileAvatar");
-
-        const profileRoleEl =
-            document.getElementById("profileRole");
-
-
-        onAuthStateChanged(auth, async (user) => {
-
-            if (user) {
-
-                try {
-
-                    const snapshot =
-                        await getDocs(usersRef);
-
-                    let foundUser = null;
-
-
-                    snapshot.forEach((docSnap) => {
-
-                        const data =
-                            docSnap.data();
-
-                        if (
-                            data.email === user.email ||
-                            docSnap.id === user.uid
-                        ) {
-
-                            foundUser = data;
-
-                        }
-
-                    });
-
-
-                    const displayName =
-                        foundUser?.name ||
-                        foundUser?.fullName ||
-                        user.displayName ||
-                        user.email ||
-                        "Coordinator";
-
-
-                    const displayRole =
-                        foundUser?.role ||
-                        foundUser?.userType ||
-                        "OJT Coordinator";
-
-
-                    if (profileNameEl) {
-                        profileNameEl.textContent =
-                            displayName;
-                    }
-
-
-                    if (profileRoleEl) {
-                        profileRoleEl.textContent =
-                            displayRole;
-                    }
-
-
-                    if (profileAvatarEl) {
-
-                        profileAvatarEl.textContent =
-                            getInitials(displayName);
-
-                    }
-
-
-                } catch (error) {
-
-                    console.error(
-                        "Error loading profile:",
-                        error
-                    );
-
-                }
-
-            }
-
-        });
-
-    }
-
-
-
-    // =================================================
-    // TOTAL STUDENTS
+    // LIVE DATE & TIME
     // =================================================
 
-    async function fetchTotalStudents() {
+    function tickClock() {
 
-        try {
+        const now = new Date();
 
-            const snapshot =
-                await getDocs(usersRef);
-
-            let total =
-                0;
-
-
-            snapshot.forEach((docSnap) => {
-
-                const data =
-                    docSnap.data();
-
-                const role =
-                    (
-                        data.role ||
-                        data.userType ||
-                        ""
-                    ).toLowerCase();
-
-
-                if (
-                    role === "student" ||
-                    role === "" ||
-                    !data.role
-                ) {
-
-                    total++;
-
-                }
-
-            });
-
-
-            const cards =
-                document.querySelectorAll(
-                    ".attendance-summary .stat-content h3"
-                );
-
-
-            if (cards.length >= 1) {
-
-                cards[0].textContent =
-                    total;
-
-            }
-
-        } catch (error) {
-
-            console.error(
-                "Error counting students:",
-                error
-            );
-
+        if (currentDateEl) {
+            currentDateEl.textContent =
+                now.toLocaleDateString("en-US", {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric"
+                });
         }
 
+        if (currentTimeEl) {
+            currentTimeEl.textContent =
+                now.toLocaleTimeString("en-US", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit"
+                });
+        }
+
+        // Kada bagong minuto, i-recompute ang status
+        // (hal. Pending -> Absent kapag lampas na sa schedule)
+        const minuteKey = now.getHours() * 60 + now.getMinutes();
+
+        if (dataReady && minuteKey !== lastRebuiltMinute) {
+            rebuild();
+        }
     }
 
 
-
     // =================================================
-    // LOAD USERS
+    // LOAD STUDENTS + SCHEDULES
     // =================================================
 
     async function loadUsers() {
 
-        const usersSnapshot =
-            await getDocs(usersRef);
+        scheduledUsers = await loadScheduledUsers();
 
-
-        usersMap = {};
-
-
-        usersSnapshot.forEach((userDoc) => {
-
-            const userData =
-                userDoc.data();
-
-
-            const userInfo = {
-
-                id: userDoc.id,
-
-                name:
-                    userData.name ||
-                    userData.fullName ||
-                    "Student User",
-
-                email:
-                    userData.email ||
-                    "",
-
-                course:
-                    userData.course ||
-                    "BSIT",
-
-                section:
-                    userData.section ||
-                    "N/A",
-
-                company:
-                    userData.companyName ||
-                    userData.company ||
-                    userData.company_name ||
-                    "N/A"
-
-            };
-
-
-            usersMap[userDoc.id] =
-                userInfo;
-
-
-            if (userData.email) {
-
-                usersMap[
-                    userData.email.toLowerCase()
-                ] = userInfo;
-
-            }
-
-        });
-
-    }
-
-
-
-    // =================================================
-    // LOAD ATTENDANCE
-    // =================================================
-
-    async function loadAttendanceRecords() {
-
-        if (!attendanceTable) {
+        if (!sectionFilter) {
             return;
         }
 
-
-        try {
-
-            await loadUsers();
-
-
-            const attendanceSnapshot =
-                await getDocs(attendanceRef);
-
-
-            allRecords = [];
-
-
-            const sectionsSet =
-                new Set();
-
-
-            attendanceSnapshot.forEach((docSnap) => {
-
-                const data =
-                    docSnap.data();
-
-
-                let userDetail =
-                    null;
-
-
-                // Match by userId
-
-                if (
-                    data.userId &&
-                    usersMap[data.userId]
-                ) {
-
-                    userDetail =
-                        usersMap[data.userId];
-
-                }
-
-
-                // Match by email
-
-                else if (
-                    data.userEmail &&
-                    usersMap[
-                        data.userEmail.toLowerCase()
-                    ]
-                ) {
-
-                    userDetail =
-                        usersMap[
-                            data.userEmail.toLowerCase()
-                        ];
-
-                }
-
-
-                const studentName =
-                    userDetail?.name ||
-                    data.userName ||
-                    "Unknown Student";
-
-
-                const studentEmail =
-                    userDetail?.email ||
-                    data.userEmail ||
-                    "No Email";
-
-
-                const course =
-                    userDetail?.course ||
-                    data.course ||
-                    "BSIT";
-
-
-                const section =
-                    userDetail?.section ||
-                    data.section ||
-                    "N/A";
-
-
-                const company =
-                    userDetail?.company ||
-                    data.companyName ||
-                    data.company ||
-                    data.company_name ||
-                    "N/A";
-
-
-                if (section !== "N/A") {
-                    sectionsSet.add(section);
-                }
-
-
-                const photoProof =
-                    data.photoProof ||
-                    data.photoURL ||
-                    data.photoUrl ||
-                    data.photo ||
-                    data.imageUrl ||
-                    data.imageURL ||
-                    "";
-
-
-                allRecords.push({
-
-                    id:
-                        docSnap.id,
-
-                    userId:
-                        data.userId ||
-                        userDetail?.id ||
-                        "",
-
-                    studentName,
-
-                    studentEmail,
-
-                    course,
-
-                    section,
-
-                    company,
-
-                    timeIn:
-                        data.timeIn ||
-                        "--",
-
-                    timeOut:
-                        data.timeOut ||
-                        "--",
-
-                    totalHours:
-                        data.todayHours ||
-                        (
-                            data.hoursRendered
-                                ? `${data.hoursRendered} hrs`
-                                : "0h 0m"
-                        ),
-
-                    status:
-                        data.status ||
-                        "Present",
-
-                    photoProof,
-
-                    date:
-                        data.formattedDate ||
-                        data.date ||
-                        "N/A",
-
-                    rawTimestamp:
-                        data.timestamp ||
-                        data.createdAt ||
-                        0
-
-                });
-
-            });
-
-
-
-            // =================================================
-            // SECTION FILTER
-            // =================================================
-
-            if (sectionFilter) {
-
-                sectionFilter.innerHTML =
-                    `<option value="All Sections">
-                        All Sections
-                    </option>`;
-
-
-                [...sectionsSet]
-                    .sort()
-                    .forEach((section) => {
-
-                        sectionFilter.innerHTML +=
-                            `<option value="${section}">
-                                ${section}
-                            </option>`;
-
-                    });
-
-            }
-
-
-            // INITIAL DISPLAY
-
-            filterAttendance();
-
-
-        } catch (error) {
-
-            console.error(
-                "Error loading attendance records:",
-                error
-            );
-
-
-            attendanceTable.innerHTML = `
-
-                <tr>
-
-                    <td
-                        colspan="10"
-                        style="
-                            text-align:center;
-                            color:#e74c3c;
-                            padding:30px;
-                        ">
-
-                        Unable to load attendance records.
-
-                    </td>
-
-                </tr>
-
-            `;
-
+        const sections = [
+            ...new Set(
+                scheduledUsers
+                    .map((user) => user.section)
+                    .filter((section) => section !== "N/A")
+            )
+        ].sort();
+
+        const previous = sectionFilter.value;
+
+        sectionFilter.innerHTML =
+            `<option value="All Sections">All Sections</option>`;
+
+        sections.forEach((section) => {
+            sectionFilter.innerHTML +=
+                `<option value="${escapeHtml(section)}">${escapeHtml(section)}</option>`;
+        });
+
+        if (sections.includes(previous)) {
+            sectionFilter.value = previous;
         }
 
     }
 
+
+    // =================================================
+    // BUILD TODAY'S ROWS (schedule-based)
+    // =================================================
+
+    function rebuild() {
+
+        const now = new Date();
+
+        lastRebuiltMinute = now.getHours() * 60 + now.getMinutes();
+
+        todayRecords = buildTodayRows(scheduledUsers, attendanceDocs, now);
+
+        allRecords = (rangeFrom && rangeTo)
+            ? buildRowsForRange(scheduledUsers, attendanceDocs, rangeFrom, rangeTo, now)
+            : todayRecords;
+
+        renderStudentList();
+
+        applyFilters(true);
+        updateSummaryCards();
+    }
 
 
     // =================================================
     // FILTER
     // =================================================
 
-    function filterAttendance() {
+    function applyFilters(keepPage = false) {
 
-        const keyword =
-            searchInput
-                ? searchInput.value
-                    .toLowerCase()
-                    .trim()
-                : "";
+        const keyword = searchInput ? searchInput.value.toLowerCase().trim() : "";
+        const section = sectionFilter ? sectionFilter.value.toLowerCase() : "all sections";
+        const status = statusFilter ? statusFilter.value.toLowerCase() : "all status";
 
+        filteredRecords = allRecords.filter((item) => {
 
-        const section =
-            sectionFilter
-                ? sectionFilter.value.toLowerCase()
-                : "all sections";
+            const matchSearch =
+                item.studentName.toLowerCase().includes(keyword) ||
+                item.studentEmail.toLowerCase().includes(keyword) ||
+                item.company.toLowerCase().includes(keyword);
 
+            const matchSection =
+                section === "all sections" ||
+                item.section.toLowerCase() === section;
 
-        const status =
-            statusFilter
-                ? statusFilter.value.toLowerCase()
-                : "all status";
+            const matchStatus =
+                status === "all status" ||
+                item.status.toLowerCase() === status;
 
+            return matchSearch && matchSection && matchStatus;
 
-        filteredRecords =
-            allRecords.filter((item) => {
+        });
 
+        // SORT (Default = hindi ginagalaw ang orihinal na pagkakasunod-sunod)
+        if (sortMode !== "default") {
+            const byText = (field) => (a, b) =>
+                String(a[field] || "").localeCompare(String(b[field] || ""));
 
-                const name =
-                    (item.studentName || "")
-                        .toLowerCase();
+            const sorters = {
+                "name-asc": byText("studentName"),
+                "name-desc": (a, b) => byText("studentName")(b, a),
+                "company-asc": byText("company"),
+                "company-desc": (a, b) => byText("company")(b, a)
+            };
 
+            if (sorters[sortMode]) filteredRecords.sort(sorters[sortMode]);
+        }
 
-                const email =
-                    (item.studentEmail || "")
-                        .toLowerCase();
+        const totalPages = Math.max(1, Math.ceil(filteredRecords.length / rowsPerPage));
 
-
-                const company =
-                    (item.company || "")
-                        .toLowerCase();
-
-
-                const itemSection =
-                    (item.section || "")
-                        .toLowerCase();
-
-
-                const itemStatus =
-                    (item.status || "")
-                        .toLowerCase();
-
-
-                const matchSearch =
-                    name.includes(keyword) ||
-                    email.includes(keyword) ||
-                    company.includes(keyword);
-
-
-                const matchSection =
-                    section === "all sections" ||
-                    itemSection === section;
-
-
-                const matchStatus =
-                    status === "all status" ||
-                    itemStatus.includes(status);
-
-
-                return (
-                    matchSearch &&
-                    matchSection &&
-                    matchStatus
-                );
-
-            });
-
-
-        currentPage = 1;
+        currentPage = keepPage
+            ? Math.min(currentPage, totalPages)
+            : 1;
 
         renderTable();
-
-        updateSummaryCards();
-
     }
-
 
 
     // =================================================
@@ -702,278 +215,88 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-
         if (filteredRecords.length === 0) {
 
             attendanceTable.innerHTML = `
-
                 <tr>
-
-                    <td
-                        colspan="10"
-                        style="
-                            text-align:center;
-                            color:#777;
-                            padding:30px;
-                        ">
-
-                        No attendance records found.
-
+                    <td colspan="11" style="text-align:center; color:#777; padding:30px;">
+                        ${allRecords.length === 0
+                            ? "No attendance history found for the selected dates."
+                            : "No attendance records found."}
                     </td>
-
-                </tr>
-
-            `;
-
+                </tr>`;
 
             if (paginationInfo) {
-
-                paginationInfo.textContent =
-                    "Showing 0 to 0 of 0 records";
-
+                paginationInfo.textContent = "Showing 0 to 0 of 0 records";
             }
 
-
             updatePagination();
-
             return;
-
         }
 
 
+        const start = (currentPage - 1) * rowsPerPage;
+        const end = Math.min(start + rowsPerPage, filteredRecords.length);
 
-        const start =
-            (currentPage - 1) *
-            rowsPerPage;
+        attendanceTable.innerHTML = filteredRecords
+            .slice(start, end)
+            .map((item) => {
 
-
-        const end =
-            Math.min(
-                start + rowsPerPage,
-                filteredRecords.length
-            );
-
-
-        const pageRecords =
-            filteredRecords.slice(
-                start,
-                end
-            );
-
-
-
-        attendanceTable.innerHTML =
-            pageRecords.map((item) => {
-
-
-                let statusClass =
-                    "present";
-
-
-                const statusText =
-                    item.status ||
-                    "Present";
-
-
-                const lowerStatus =
-                    statusText.toLowerCase();
-
-
-                if (lowerStatus.includes("late")) {
-
-                    statusClass =
-                        "late";
-
-                }
-
-                else if (
-                    lowerStatus.includes("absent")
-                ) {
-
-                    statusClass =
-                        "absent";
-
-                }
-
-                else if (
-                    lowerStatus.includes("reject")
-                ) {
-
-                    statusClass =
-                        "rejected";
-
-                }
-
-
-
-                const photo =
-                    item.photoProof;
-
+                const statusClass = item.status.toLowerCase();
 
                 return `
-
                     <tr>
-
-
-                        <!-- STUDENT -->
+                        <td class="date-cell">${escapeHtml(item.dateText)}</td>
 
                         <td>
-
-                            <strong>
-                                ${item.studentName}
-                            </strong>
-
+                            <strong>${escapeHtml(item.studentName)}</strong>
                             <br>
-
-                            <small
-                                style="color:#777;">
-
-                                ${item.studentEmail}
-
+                            <small style="color:#777;">${escapeHtml(item.studentEmail)}</small>
+                            <br>
+                            <small style="color:#aaa;">
+                                <i class="fa-regular fa-calendar-check"></i>
+                                ${escapeHtml(item.scheduleText)}
                             </small>
-
                         </td>
 
-
-
-                        <!-- COURSE -->
-
-                        <td>
-                            ${item.course}
-                        </td>
-
-
-
-                        <!-- SECTION -->
-
-                        <td>
-                            ${item.section}
-                        </td>
-
-
-
-                        <!-- COMPANY -->
-
-                        <td>
-                            ${item.company}
-                        </td>
-
-
-
-                        <!-- TIME IN -->
-
-                        <td>
-                            ${item.timeIn}
-                        </td>
-
-
-
-                        <!-- TIME OUT -->
-
-                        <td>
-                            ${item.timeOut}
-                        </td>
-
-
-
-                        <!-- HOURS -->
-
-                        <td>
-                            ${item.totalHours}
-                        </td>
-
-
-
-                        <!-- PHOTO -->
+                        <td>${escapeHtml(item.course)}</td>
+                        <td>${escapeHtml(shortSection(item.section))}</td>
+                        <td>${escapeHtml(item.company)}</td>
+                        <td>${escapeHtml(item.timeIn)}</td>
+                        <td>${escapeHtml(item.timeOut)}</td>
+                        <td>${escapeHtml(item.totalHours)}</td>
 
                         <td class="photo-proof-cell">
-
-                            ${
-                                photo
-                                ? `
-
-                                    <button
-                                        type="button"
-                                        class="photo-proof-btn"
-                                        data-photo="${photo}">
-
-                                        <i
-                                            class="fa-solid fa-image">
-                                        </i>
-
-                                        View
-
-                                    </button>
-
-                                `
-                                : `
-
-                                    <span class="no-photo-proof">
-
-                                        No Photo
-
-                                    </span>
-
-                                `
-                            }
-
+                            ${item.photoProof
+                                ? `<button type="button" class="photo-proof-btn"
+                                        data-photo="${escapeHtml(item.photoProof)}">
+                                        <i class="fa-solid fa-image"></i> View
+                                   </button>`
+                                : `<span class="no-photo-proof">No Photo</span>`}
                         </td>
-
-
-
-                        <!-- STATUS -->
 
                         <td>
-
-                            <span
-                                class="status ${statusClass}">
-
-                                ${statusText}
-
-                            </span>
-
+                            <span class="status ${statusClass}">${item.status}</span>
                         </td>
-
-
-
-                        <!-- ACTION -->
 
                         <td class="actions">
-
-                            <button
-                                class="action-btn view-btn"
-                                data-id="${item.userId || item.id}"
+                            <button class="action-btn view-btn"
+                                data-id="${escapeHtml(item.userId || item.id)}"
                                 title="View Details">
-
-                                <i
-                                    class="fa-solid fa-eye">
-                                </i>
-
+                                <i class="fa-regular fa-eye"></i> View
                             </button>
-
                         </td>
-
-
-                    </tr>
-
-                `;
+                    </tr>`;
 
             }).join("");
 
-
-
         if (paginationInfo) {
-
             paginationInfo.textContent =
                 `Showing ${start + 1} to ${end} of ${filteredRecords.length} records`;
-
         }
 
-
         updatePagination();
-
     }
-
 
 
     // =================================================
@@ -982,482 +305,772 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function updatePagination() {
 
-        const totalPages =
-            Math.max(
-                1,
-                Math.ceil(
-                    filteredRecords.length /
-                    rowsPerPage
-                )
-            );
+        const totalPages = Math.max(1, Math.ceil(filteredRecords.length / rowsPerPage));
 
-
-        if (prevPageBtn) {
-
-            prevPageBtn.disabled =
-                currentPage <= 1;
-
-        }
-
-
-        if (nextPageBtn) {
-
-            nextPageBtn.disabled =
-                currentPage >= totalPages;
-
-        }
-
+        if (prevPageBtn) prevPageBtn.disabled = currentPage <= 1;
+        if (nextPageBtn) nextPageBtn.disabled = currentPage >= totalPages;
 
         if (!pageNumbers) {
             return;
         }
 
-
         pageNumbers.innerHTML = "";
 
+        for (let page = 1; page <= totalPages; page++) {
 
-        for (
-            let page = 1;
-            page <= totalPages;
-            page++
-        ) {
+            const button = document.createElement("button");
 
-            const button =
-                document.createElement("button");
-
-
-            button.className =
-                "page-num";
-
+            button.className = "page-num";
 
             if (page === currentPage) {
-
-                button.classList.add(
-                    "active"
-                );
-
+                button.classList.add("active");
             }
 
+            button.textContent = page;
 
-            button.textContent =
-                page;
+            button.addEventListener("click", () => {
+                currentPage = page;
+                renderTable();
+            });
 
-
-            button.addEventListener(
-                "click",
-                () => {
-
-                    currentPage =
-                        page;
-
-                    renderTable();
-
-                }
-            );
-
-
-            pageNumbers.appendChild(
-                button
-            );
-
+            pageNumbers.appendChild(button);
         }
-
     }
 
 
-
     // =================================================
-    // SUMMARY CARDS
+    // SUMMARY CARDS (based on today's schedule)
     // =================================================
 
     function updateSummaryCards() {
 
-        const cards =
-            document.querySelectorAll(
-                ".attendance-summary .stat-content h3"
-            );
+        // Laging ngayong araw lang ang summary cards (kahit may napiling range)
+        const total = todayRecords.length;
 
+        const count = (status) =>
+            todayRecords.filter((r) => r.status === status).length;
 
-        if (cards.length < 4) {
-            return;
-        }
+        const present = count("Present");
+        const late = count("Late");
+        const absent = count("Absent");
+        const pending = count("Pending");
 
+        const pct = (value) =>
+            total ? `${Math.round((value / total) * 100)}%` : "0%";
 
-        // TODAY ONLY
+        const set = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        };
 
-        const today =
-            new Date();
+        set("statScheduled", total);
+        set("statPending", `${pending} pending`);
 
+        set("statPresent", present);
+        set("statPresentPct", pct(present));
 
-        const todayString =
-            today.toLocaleDateString(
-                "en-US"
-            );
+        set("statLate", late);
+        set("statLatePct", pct(late));
 
-
-        let presentCount = 0;
-
-        let lateCount = 0;
-
-        let absentCount = 0;
-
-
-
-        allRecords.forEach((record) => {
-
-            let isToday = false;
-
-
-            if (record.date) {
-
-                const recordDate =
-                    new Date(record.date);
-
-
-                if (
-                    !isNaN(
-                        recordDate.getTime()
-                    )
-                ) {
-
-                    isToday =
-                        recordDate.toLocaleDateString(
-                            "en-US"
-                        ) === todayString;
-
-                }
-
-            }
-
-
-            // If date cannot be parsed,
-            // use records that have attendance time.
-
-            if (
-                !isToday &&
-                record.timeIn === "--"
-            ) {
-
-                return;
-
-            }
-
-
-            const status =
-                (
-                    record.status ||
-                    ""
-                ).toLowerCase();
-
-
-            if (
-                status === "present" ||
-                status === "active" ||
-                status === "completed"
-            ) {
-
-                presentCount++;
-
-            }
-
-            else if (
-                status === "late"
-            ) {
-
-                lateCount++;
-
-            }
-
-            else if (
-                status === "absent"
-            ) {
-
-                absentCount++;
-
-            }
-
-        });
-
-
-
-        cards[1].textContent =
-            presentCount;
-
-
-        cards[2].textContent =
-            lateCount;
-
-
-        cards[3].textContent =
-            absentCount;
-
+        set("statAbsent", absent);
+        set("statAbsentPct", pct(absent));
     }
-
 
 
     // =================================================
     // EVENTS
     // =================================================
 
-    if (searchInput) {
+    if (searchInput) searchInput.addEventListener("input", () => applyFilters());
+    if (sectionFilter) sectionFilter.addEventListener("change", () => applyFilters());
+    if (statusFilter) statusFilter.addEventListener("change", () => applyFilters());
 
-        searchInput.addEventListener(
-            "input",
-            filterAttendance
-        );
+    // =================================================
+    // FILTER & SORT BUTTONS (popover menus)
+    // Ang #sectionFilter at #statusFilter ay nasa loob na ng Filter
+    // popover - ang existing filter logic sa itaas ang ginagamit pa rin.
+    // =================================================
 
+    (function initToolbarMenus() {
+
+        const filterBtn = document.getElementById("filterBtn");
+        const filterPopover = document.getElementById("filterPopover");
+        const sortBtn = document.getElementById("sortBtn");
+        const sortPopover = document.getElementById("sortPopover");
+        const filterBadge = document.getElementById("filterBadge");
+        const resetBtn = document.getElementById("resetFilterBtn");
+
+        const menus = [
+            { btn: filterBtn, pop: filterPopover },
+            { btn: sortBtn, pop: sortPopover }
+        ].filter((m) => m.btn && m.pop);
+
+        const closeAll = () => {
+            menus.forEach(({ btn, pop }) => {
+                pop.classList.remove("open");
+                btn.setAttribute("aria-expanded", "false");
+            });
+        };
+
+        menus.forEach(({ btn, pop }) => {
+            btn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const willOpen = !pop.classList.contains("open");
+                closeAll();
+                if (willOpen) {
+                    pop.classList.add("open");
+                    btn.setAttribute("aria-expanded", "true");
+                }
+            });
+            pop.addEventListener("click", (e) => e.stopPropagation());
+        });
+
+        document.addEventListener("click", closeAll);
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") closeAll();
+        });
+
+        // Badge: ilan ang active na filter (Section / Status)
+        const updateFilterBadge = () => {
+            if (!filterBadge) return;
+            let count = 0;
+            if (sectionFilter && sectionFilter.value !== "All Sections") count++;
+            if (statusFilter && statusFilter.value !== "All Status") count++;
+            filterBadge.textContent = count;
+            filterBadge.hidden = count === 0;
+        };
+
+        if (sectionFilter) sectionFilter.addEventListener("change", updateFilterBadge);
+        if (statusFilter) statusFilter.addEventListener("change", updateFilterBadge);
+
+        if (resetBtn) {
+            resetBtn.addEventListener("click", () => {
+                if (sectionFilter) sectionFilter.value = "All Sections";
+                if (statusFilter) statusFilter.value = "All Status";
+                updateFilterBadge();
+                applyFilters();
+            });
+        }
+
+        // Sort options
+        if (sortPopover) {
+            const options = sortPopover.querySelectorAll(".menu-option");
+            options.forEach((opt) => {
+                opt.addEventListener("click", () => {
+                    options.forEach((o) => o.classList.toggle("active", o === opt));
+                    sortMode = opt.getAttribute("data-sort") || "default";
+                    applyFilters();
+                    closeAll();
+                });
+            });
+        }
+
+        updateFilterBadge();
+
+    })();
+
+    // =================================================
+    // DATE RANGE (From / To / Apply)
+    // =================================================
+
+    function toInputValue(date) {
+        const m = String(date.getMonth() + 1).padStart(2, "0");
+        const d = String(date.getDate()).padStart(2, "0");
+        return `${date.getFullYear()}-${m}-${d}`;
     }
 
-
-    if (sectionFilter) {
-
-        sectionFilter.addEventListener(
-            "change",
-            filterAttendance
-        );
-
+    function parseInputValue(value) {
+        if (!value) return null;
+        const [y, m, d] = value.split("-").map(Number);
+        return new Date(y, m - 1, d);
     }
 
-
-    if (statusFilter) {
-
-        statusFilter.addEventListener(
-            "change",
-            filterAttendance
-        );
-
+    function formatShort(date) {
+        return date.toLocaleDateString("en-US", {
+            month: "short", day: "numeric", year: "numeric"
+        });
     }
+
+    function initRangeInputs() {
+
+        if (!fromDateInput || !toDateInput) return;
+
+        const todayValue = toInputValue(new Date());
+
+        // Hindi puwedeng pumili ng petsa sa hinaharap
+        fromDateInput.max = todayValue;
+        toDateInput.max = todayValue;
+
+        // Default: huling 7 araw (kasama ngayon), hindi lalampas sa MAX_RANGE_DAYS
+        const span = Math.min(7, MAX_RANGE_DAYS || 7);
+        const from = new Date();
+        from.setDate(from.getDate() - (span - 1));
+
+        fromDateInput.value = toInputValue(from);
+        toDateInput.value = todayValue;
+
+        rangeFrom = parseInputValue(fromDateInput.value);
+        rangeTo = parseInputValue(toDateInput.value);
+    }
+
+    function applyRange() {
+
+        const from = parseInputValue(fromDateInput.value);
+        const to = parseInputValue(toDateInput.value);
+
+        toDateInput.setCustomValidity("");
+
+        if (!from || !to) {
+            toDateInput.setCustomValidity("Please choose both From and To dates.");
+            toDateInput.reportValidity();
+            return;
+        }
+
+        if (from > to) {
+            toDateInput.setCustomValidity("The From date must not be later than the To date.");
+            toDateInput.reportValidity();
+            return;
+        }
+
+        const days = Math.round((to - from) / 86400000) + 1;
+
+        if (days > MAX_RANGE_DAYS) {
+            toDateInput.setCustomValidity(`Please choose a range of ${MAX_RANGE_DAYS} days or less.`);
+            toDateInput.reportValidity();
+            return;
+        }
+
+        rangeFrom = from;
+        rangeTo = to;
+
+        if (dataReady) {
+            rebuild();
+            applyFilters();     // balik sa page 1
+        }
+    }
+
+    if (applyRangeBtn) applyRangeBtn.addEventListener("click", applyRange);
+
+    [fromDateInput, toDateInput].forEach((input) => {
+        if (input) input.addEventListener("input", () => toDateInput.setCustomValidity(""));
+    });
+
+    initRangeInputs();
 
 
     if (rowsPerPageSelect) {
-
-        rowsPerPageSelect.addEventListener(
-            "change",
-            () => {
-
-                rowsPerPage =
-                    parseInt(
-                        rowsPerPageSelect.value
-                    );
-
-                currentPage = 1;
-
-                renderTable();
-
-            }
-        );
-
+        rowsPerPageSelect.addEventListener("change", () => {
+            rowsPerPage = parseInt(rowsPerPageSelect.value, 10);
+            currentPage = 1;
+            renderTable();
+        });
     }
-
 
     if (prevPageBtn) {
-
-        prevPageBtn.addEventListener(
-            "click",
-            () => {
-
-                if (currentPage > 1) {
-
-                    currentPage--;
-
-                    renderTable();
-
-                }
-
+        prevPageBtn.addEventListener("click", () => {
+            if (currentPage > 1) {
+                currentPage--;
+                renderTable();
             }
-        );
-
+        });
     }
-
 
     if (nextPageBtn) {
-
-        nextPageBtn.addEventListener(
-            "click",
-            () => {
-
-                const totalPages =
-                    Math.ceil(
-                        filteredRecords.length /
-                        rowsPerPage
-                    );
-
-
-                if (
-                    currentPage <
-                    totalPages
-                ) {
-
-                    currentPage++;
-
-                    renderTable();
-
-                }
-
+        nextPageBtn.addEventListener("click", () => {
+            const totalPages = Math.ceil(filteredRecords.length / rowsPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderTable();
             }
-        );
-
+        });
     }
 
 
-
-    // =================================================
     // VIEW DETAILS
-    // =================================================
+    document.addEventListener("click", (event) => {
 
-    document.addEventListener(
-        "click",
-        (event) => {
+        const button = event.target.closest(".view-btn");
 
-            const button =
-                event.target.closest(
-                    ".view-btn"
-                );
-
-
-            if (!button) {
-                return;
-            }
-
-
-            const id =
-                button.getAttribute(
-                    "data-id"
-                );
-
-
-            if (id) {
-
-                window.location.href =
-                    `attendance_details.html?id=${id}`;
-
-            }
-
+        if (!button) {
+            return;
         }
-    );
+
+        const id = button.getAttribute("data-id");
+
+        if (id) {
+            window.location.href = `attendance_details.html?id=${id}`;
+        }
+
+    });
 
 
-
-    // =================================================
     // PHOTO PROOF
-    // =================================================
+    document.addEventListener("click", (event) => {
 
-    document.addEventListener(
-        "click",
-        (event) => {
+        const button = event.target.closest(".photo-proof-btn");
 
-            const button =
-                event.target.closest(
-                    ".photo-proof-btn"
-                );
-
-
-            if (!button) {
-                return;
-            }
-
-
-            const photo =
-                button.getAttribute(
-                    "data-photo"
-                );
-
-
-            if (!photo) {
-                return;
-            }
-
-
-            const modal =
-                document.getElementById(
-                    "photoProofModal"
-                );
-
-
-            const image =
-                document.getElementById(
-                    "photoProofImage"
-                );
-
-
-            if (!modal || !image) {
-                return;
-            }
-
-
-            image.src =
-                photo;
-
-
-            modal.classList.add(
-                "show"
-            );
-
+        if (!button) {
+            return;
         }
-    );
 
+        const photo = button.getAttribute("data-photo");
+        const modal = document.getElementById("photoProofModal");
+        const image = document.getElementById("photoProofImage");
+
+        if (!photo || !modal || !image) {
+            return;
+        }
+
+        image.src = photo;
+        modal.classList.add("show");
+
+    });
 
 
     // CLOSE PHOTO MODAL
+    document.addEventListener("click", (event) => {
 
-    document.addEventListener(
-        "click",
-        (event) => {
+        const closeButton = event.target.closest("#photoProofClose");
+        const modal = document.getElementById("photoProofModal");
+        const image = document.getElementById("photoProofImage");
 
-            const closeButton =
-                event.target.closest(
-                    "#photoProofClose"
-                );
+        if (closeButton || event.target === modal) {
 
-
-            const modal =
-                document.getElementById(
-                    "photoProofModal"
-                );
-
-
-            const image =
-                document.getElementById(
-                    "photoProofImage"
-                );
-
-
-            if (
-                closeButton ||
-                event.target === modal
-            ) {
-
-                if (modal) {
-
-                    modal.classList.remove(
-                        "show"
-                    );
-
-                }
-
-
-                if (image) {
-
-                    image.src =
-                        "";
-
-                }
-
-            }
+            if (modal) modal.classList.remove("show");
+            if (image) image.src = "";
 
         }
-    );
 
+    });
+
+
+    // =================================================
+    // CARD POPUPS
+    //
+    // Bawat summary card ay may sariling page na
+    // nilo-load sa iframe at lumalabas bilang popup
+    // (kagaya ng stat cards sa dashboard).
+    // =================================================
+
+    const listModal = document.getElementById("attendanceListModal");
+    const listFrame = document.getElementById("attendanceListFrame");
+    const listModalTitle = document.getElementById("attendanceListModalTitle");
+    const listModalIcon = document.getElementById("attendanceListModalIcon");
+    const listModalClose = document.getElementById("closeAttendanceListModalBtn");
+
+    const cardPopups = [
+    ];
+
+    function openListPopup(config) {
+
+        if (!listModal || !listFrame) {
+            return;
+        }
+
+        if (listModalTitle) listModalTitle.textContent = config.title;
+        if (listModalIcon) listModalIcon.className = config.icon;
+
+        // I-set ang src pagbukas lang para laging bago ang data
+        listFrame.src = config.src;
+
+        listModal.classList.add("show");
+
+        document.body.style.overflow = "hidden";
+    }
+
+    function closeListPopup() {
+
+        if (!listModal || !listFrame) {
+            return;
+        }
+
+        listModal.classList.remove("show");
+
+        listFrame.src = "about:blank";
+
+        document.body.style.overflow = "";
+    }
+
+    cardPopups.forEach((config) => {
+
+        const card = document.getElementById(config.card);
+
+        if (!card) {
+            return;
+        }
+
+        card.addEventListener("click", () => openListPopup(config));
+
+        card.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                openListPopup(config);
+            }
+        });
+
+    });
+
+    // Itago ang "Back" button sa loob ng iframe pages (Late / Absent)
+    if (listFrame) {
+        listFrame.addEventListener("load", () => {
+            try {
+                const doc = listFrame.contentDocument;
+
+                if (!doc || !doc.body) {
+                    return;
+                }
+
+                doc.querySelectorAll("button, a").forEach((el) => {
+                    const label = (el.textContent || "").trim().toLowerCase();
+                    const hint = `${el.id} ${el.className}`.toLowerCase();
+
+                    if (label === "back" || hint.includes("back")) {
+                        el.style.display = "none";
+                    }
+                });
+            } catch (error) {
+                // cross-origin / blank page - walang gagawin
+            }
+        });
+    }
+
+    if (listModalClose) {
+        listModalClose.addEventListener("click", closeListPopup);
+    }
+
+    if (listModal) {
+        listModal.addEventListener("click", (event) => {
+            if (event.target === listModal) {
+                closeListPopup();
+            }
+        });
+    }
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && listModal && listModal.classList.contains("show")) {
+            closeListPopup();
+        }
+    });
+
+    // Message galing sa loob ng popup (hal. "Back" button)
+    window.addEventListener("message", (event) => {
+        if (event.data && event.data.type === "closeAttendanceListModal") {
+            closeListPopup();
+        }
+    });
+
+
+    // =================================================
+    // STUDENT LIST POPUP (Scheduled Today / Present Today)
+    // Galing sa todayRecords - walang hiwalay na page.
+    // =================================================
+
+    const studentListModal = document.getElementById("studentListModal");
+    const studentListTable = document.getElementById("studentListTable");
+    const studentListSearch = document.getElementById("studentListSearch");
+
+    const listConfigs = {
+        scheduled: {
+            title: "Scheduled Today",
+            icon: "fa-solid fa-users",
+            filter: () => true,
+            empty: "No students are scheduled to duty today."
+        },
+        present: {
+            title: "Present Today",
+            icon: "fa-solid fa-user-check",
+            filter: (r) => r.status === "Present",
+            empty: "No students are present today."
+        },
+        late: {
+            title: "Late Today",
+            icon: "fa-solid fa-clock",
+            filter: (r) => r.status === "Late",
+            empty: "No late students today."
+        },
+        absent: {
+            title: "Absent Today",
+            icon: "fa-solid fa-user-xmark",
+            filter: (r) => r.status === "Absent",
+            empty: "No absent students today."
+        }
+    };
+
+    let activeList = null;
+
+    function getListRows() {
+
+        if (!activeList) {
+            return [];
+        }
+
+        const keyword = studentListSearch
+            ? studentListSearch.value.toLowerCase().trim()
+            : "";
+
+        return todayRecords
+            .filter(listConfigs[activeList].filter)
+            .filter((r) =>
+                r.studentName.toLowerCase().includes(keyword) ||
+                r.studentEmail.toLowerCase().includes(keyword) ||
+                r.company.toLowerCase().includes(keyword)
+            );
+    }
+
+    function renderStudentList() {
+
+        if (!activeList || !studentListTable) {
+            return;
+        }
+
+        const config = listConfigs[activeList];
+        const rows = getListRows();
+        const now = new Date();
+
+        const setText = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        };
+
+        setText("studentListHeaderTitle", config.title);
+        setText("studentListTitle", config.title);
+
+        setText(
+            "studentListSubtitle",
+            `${now.toLocaleDateString("en-US", {
+                weekday: "long", year: "numeric", month: "long", day: "numeric"
+            })} \u2022 as of ${now.toLocaleTimeString("en-US", {
+                hour: "2-digit", minute: "2-digit"
+            })}`
+        );
+
+        setText(
+            "studentListCount",
+            `${rows.length} ${rows.length === 1 ? "student" : "students"}`
+        );
+
+        if (rows.length === 0) {
+
+            studentListTable.innerHTML = `
+                <tr>
+                    <td colspan="10" style="text-align:center; color:#777; padding:30px;">
+                        ${studentListSearch && studentListSearch.value.trim()
+                            ? "No students match your search."
+                            : config.empty}
+                    </td>
+                </tr>`;
+
+            return;
+        }
+
+        studentListTable.innerHTML = rows.map((item, index) => `
+            <tr>
+                <td>${index + 1}</td>
+                <td>
+                    <strong>${escapeHtml(item.studentName)}</strong>
+                    <br>
+                    <small style="color:#777;">${escapeHtml(item.studentEmail)}</small>
+                </td>
+                <td>${escapeHtml(item.course)}</td>
+                <td>${escapeHtml(shortSection(item.section))}</td>
+                <td>${escapeHtml(item.company)}</td>
+                <td>${escapeHtml(item.scheduleText)}</td>
+                <td>${escapeHtml(item.timeIn)}</td>
+                <td>${escapeHtml(item.timeOut)}</td>
+                <td>${escapeHtml(item.totalHours)}</td>
+                <td><span class="status ${item.status.toLowerCase()}">${item.status}</span></td>
+            </tr>`).join("");
+    }
+
+    function openStudentList(type) {
+
+        if (!studentListModal) {
+            return;
+        }
+
+        activeList = type;
+
+        const icon = document.getElementById("studentListIcon");
+        if (icon) icon.className = listConfigs[type].icon;
+
+        if (studentListSearch) studentListSearch.value = "";
+
+        renderStudentList();
+
+        studentListModal.classList.add("show");
+
+        document.body.style.overflow = "hidden";
+    }
+
+    function closeStudentList() {
+
+        if (!studentListModal) {
+            return;
+        }
+
+        studentListModal.classList.remove("show");
+
+        activeList = null;
+
+        document.body.style.overflow = "";
+    }
+
+    function printStudentList() {
+
+        const rows = getListRows();
+
+        if (!activeList || rows.length === 0) {
+            return;
+        }
+
+        const win = window.open("", "_blank");
+
+        if (!win) {
+            return;
+        }
+
+        const body = rows.map((item, index) => `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${escapeHtml(item.studentName)}<br><small>${escapeHtml(item.studentEmail)}</small></td>
+                <td>${escapeHtml(item.course)}</td>
+                <td>${escapeHtml(shortSection(item.section))}</td>
+                <td>${escapeHtml(item.company)}</td>
+                <td>${escapeHtml(item.scheduleText)}</td>
+                <td>${escapeHtml(item.timeIn)}</td>
+                <td>${escapeHtml(item.timeOut)}</td>
+                <td>${escapeHtml(item.totalHours)}</td>
+                <td>${item.status}</td>
+            </tr>`).join("");
+
+        win.document.write(`
+            <html><head><title>${listConfigs[activeList].title}</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 24px; }
+                table { width: 100%; border-collapse: collapse; font-size: 12px; }
+                th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
+                th { background: #f3f3f3; }
+                small { color: #666; }
+            </style></head><body>
+            <h2>${listConfigs[activeList].title}</h2>
+            <p>${new Date().toLocaleString("en-US")}</p>
+            <table>
+                <thead><tr><th>#</th><th>Student Name</th><th>Course</th><th>Section</th>
+                <th>Company</th><th>Schedule</th><th>Time In</th><th>Time Out</th>
+                <th>Total Hours</th><th>Status</th></tr></thead>
+                <tbody>${body}</tbody>
+            </table></body></html>`);
+
+        win.document.close();
+        win.focus();
+        win.print();
+    }
+
+    const bindCard = (id, type) => {
+
+        const card = document.getElementById(id);
+
+        if (!card) {
+            return;
+        }
+
+        card.addEventListener("click", () => openStudentList(type));
+
+        card.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                openStudentList(type);
+            }
+        });
+    };
+
+    bindCard("scheduledCard", "scheduled");
+    bindCard("presentCard", "present");
+    bindCard("lateCard", "late");
+    bindCard("absentCard", "absent");
+
+    const bindClick = (id, handler) => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener("click", handler);
+    };
+
+    bindClick("closeStudentListBtn", closeStudentList);
+    bindClick("studentListPrintBtn", printStudentList);
+
+    if (studentListSearch) {
+        studentListSearch.addEventListener("input", renderStudentList);
+    }
+
+    if (studentListModal) {
+        studentListModal.addEventListener("click", (event) => {
+            if (event.target === studentListModal) {
+                closeStudentList();
+            }
+        });
+    }
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && studentListModal && studentListModal.classList.contains("show")) {
+            closeStudentList();
+        }
+    });
 
 
     // =================================================
     // RUN
     // =================================================
 
-    syncUserProfile();
+    tickClock();
 
-    fetchTotalStudents();
+    setInterval(tickClock, 1000);
 
-    loadAttendanceRecords();
+
+    (async function init() {
+
+        try {
+
+            await loadUsers();
+
+            // Realtime: lalabas agad ang bagong time-in / time-out
+            subscribeAttendance(
+                (docs) => {
+
+                    attendanceDocs = docs;
+
+                    dataReady = true;
+
+                    rebuild();
+
+                },
+                (error) => {
+
+                    console.error("Attendance listener error:", error);
+
+                    attendanceTable.innerHTML = `
+                        <tr>
+                            <td colspan="11" style="text-align:center; color:#e74c3c; padding:30px;">
+                                Unable to load attendance records.
+                            </td>
+                        </tr>`;
+
+                }
+            );
+
+        } catch (error) {
+
+            console.error("Error loading attendance:", error);
+
+            if (attendanceTable) {
+                attendanceTable.innerHTML = `
+                    <tr>
+                        <td colspan="11" style="text-align:center; color:#e74c3c; padding:30px;">
+                            Unable to load attendance records.
+                        </td>
+                    </tr>`;
+            }
+
+        }
+
+    })();
 
 });

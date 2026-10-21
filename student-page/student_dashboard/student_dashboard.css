@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
-
 :root{
     --primary:#AB0A0A;
     --primary-hover:#8E0909;
@@ -13,11 +11,11 @@
     margin:0;
     padding:0;
     box-sizing:border-box;
-    font-family:'Poppins',sans-serif;
+    font-family:'Google Sans Flex', sans-serif;
 }
 
 body{
-    background:var(--light);
+    background:#fafafa;
     overflow-x:hidden;
 }
 
@@ -156,10 +154,12 @@ button{
 }
 
 .summary-card{
+    position:relative;
     background:#fff;
-    border-radius:14px;
-    padding: 16px;
-    box-shadow:0 4px 12px rgba(0,0,0,.05);
+    border:1px solid #eef0f6;
+    border-radius:16px;
+    padding:14px 16px;
+    box-shadow:0 1px 2px rgba(15,23,42,.04), 0 8px 24px rgba(15,23,42,.05);
 }
 
 .summary-row{
@@ -170,62 +170,186 @@ button{
 
 .card-top{
     display:flex;
+    align-items:center;
     justify-content:space-between;
-    align-items:flex-start;
+    gap:8px;
+    margin-bottom:8px;
 }
 
 .card-top h5{
     font-size:12px;
     font-weight:500;
-    color:#6b7280;
-    margin-bottom:4px;
+    line-height:1.3;
+    letter-spacing:.2px;
+    color:#64748b;
+    margin:0;
 }
 
-.card-top h2{
-    font-size:18px;
-    font-weight:700;
-    color:#111827;
+.summary-card h2{
+    font-size:16px;
+    font-weight:650;
+    line-height:1.2;
+    letter-spacing:-.2px;
+    color:#0f172a;
+}
+
+.summary-card.green h2{
+    font-size:20px;
 }
 
 .card-sub{
     font-size:12px;
-    color:#6b7280;
+    color:#64748b;
     margin-top:8px;
+    padding-top:6px;
+    border-top:1px solid #f1f5f9;
 }
 
 .card-icon{
-    width:38px;
-    height:38px;
-    border-radius:14px;
+    order:2;
+    width:28px;
+    height:28px;
+    flex-shrink:0;
+    border-radius:9px;
     display:flex;
     justify-content:center;
     align-items:center;
-    font-size:18px;
+    font-size:12px;
 }
 
-.green-icon{ background:rgba(34,197,94,.15); color:#22c55e; }
-.blue-icon{ background:rgba(59,130,246,.15); color:#3b82f6; }
-.orange-icon{ background:rgba(249,115,22,.15); color:#f97316; }
-.purple-icon{ background:rgba(147,51,234,.15); color:#9333ea; }
+/* ===== Welcome card ===== */
+.welcome-section {
+    padding: 16px 16px 0;
+}
+
+.welcome-card {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px 40px 16px 16px;
+    border-radius: 16px;
+    border: 1px solid #ffdede;
+    background: linear-gradient(135deg, #ffecee 0%, #fffafa 55%, #ffeff0 100%);
+    animation: welcomeIn .35s ease both;
+}
+
+@keyframes welcomeIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: none; }
+}
+
+.welcome-icon {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px #f2b8bd;
+    color: var(--primary);
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.welcome-body h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a1a2e;
+    line-height: 1.3;
+}
+
+.welcome-body p {
+    margin: 4px 0 10px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #555;
+}
+
+.welcome-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--primary);
+    font-size: 12.5px;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(171, 10, 10, .08);
+}
+
+.welcome-close {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    background: none;
+    border: none;
+    color: #9ca3af;
+    font-size: 15px;
+    cursor: pointer;
+    padding: 4px;
+}
+
+.welcome-close:hover { color: #6b7280; }
+
+/* ==========================================
+   OJT DEADLINE - ESTIMATED COMPLETION CARD
+========================================== */
+
+.deadline-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 9px;
+    padding-top: 7px;
+    border-top: 1px solid #f1f5f9;
+}
+
+.deadline-info span {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: 10px;
+    font-weight: 500;
+    color: #64748b;
+}
+
+.deadline-info strong {
+    font-size: 10px;
+    font-weight: 600;
+    color: #7c3aed;
+    white-space: nowrap;
+}
+
+.green-icon{ background:rgba(34,197,94,.12); color:#16a34a; }
+.blue-icon{ background:rgba(59,130,246,.12); color:#2563eb; }
+.orange-icon{ background:rgba(249,115,22,.12); color:#ea580c; }
+.purple-icon{ background:rgba(124,58,237,.12); color:#7c3aed; }
+.red-icon{ background:#fde8e8; color:#ab0a0a; }
+.pink-icon{ background:#fde8e8; color:#ab0a0a; }
 
 .progress{
     width:100%;
-    height:8px;
-    background:#ececec;
+    height:6px;
+    background:#eef2f7;
     border-radius:20px;
     margin-top:10px;
     overflow:hidden;
 }
 
 .progress-fill{ height:100%; border-radius:20px; }
-.green-fill{ width:60%; background:#10b981; }
+.green-fill{ width:60%; background:linear-gradient(90deg,#22c55e,#10b981); }
 
 .summary-card span{
     display:block;
     margin-top:8px;
     font-size:12px;
     font-weight:500;
-    color:#6b7280;
+    color:#64748b;
 }
 
 .status-text{
@@ -275,7 +399,7 @@ button{
 }
 
 .title-left h3{
-    font-size:14px;
+    font-size:15px;
     font-weight:600;
     color:#222;
 }
@@ -284,13 +408,13 @@ button{
     display:flex;
     justify-content:space-between;
     align-items:center;
-    padding: 12px;
-    border-radius:14px;
-    margin-bottom:10px;
+    padding: 7px 12px;
+    border-radius:12px;
+    margin-bottom:8px;
 }
 
 .green-box{ background:#eefbf2; }
-.orange-box{ background:#fff7eb; border: 1px solid #e8cc8a }
+.orange-box{ background:#fdf2f2; border: 1px solid #f8d7d7 }
 
 .box-left{
     display:flex;
@@ -298,25 +422,25 @@ button{
     gap:10px;
 }
 
-.box-left i{
-    width:36px;
-    height:36px;
+.box-left .mat-icon{
+    width:30px;
+    height:30px;
     border-radius:50%;
     display:flex;
     justify-content:center;
     align-items:center;
-    font-size:16px;
+    font-size:18px;
 }
 
-.green-box .box-left i{ background:rgba(34,197,94,.15); color:#22c55e; }
-.orange-box .box-left i{ background:rgba(249,115,22,.15); color:#f97316; }
+.green-box .box-left .mat-icon{ background:rgba(34,197,94,.15); color:#22c55e; }
+.orange-box .box-left .mat-icon{ background:#fde8e8; color:#ab0a0a; }
 
-.box-left h4{ font-size:14px; font-weight:600; }
-.box-left p{ font-size:12px; color:#777; }
+.box-left h4{ font-size:13px; font-weight:600; line-height:1.3; }
+.box-left p{ font-size:13px; color:#777; line-height:1.3; }
 
 .box-right{ text-align:right; }
-.box-right span{ font-size:11px; color:#777; }
-.box-right h2{ font-size:16px; font-weight:650; color:#222; }
+.box-right span{ font-size:13px; color:#777; }
+.box-right h2{ font-size:15px; font-weight:650; color:#222; line-height:1.2; }
 
 .attendance-footer{
     display:flex;
@@ -337,15 +461,15 @@ button{
 }
 
 .progress-circle{
-    flex:0 0 170px;
+    flex:0 0 110px;
     display:flex;   
     justify-content:center;
     align-items:center;
 }
 
 .circle{
-    width:130px;
-    height:130px;
+    width:110px;
+    height:110px;
     border-radius:50%;
     background:conic-gradient(#22c55e 64%,#ececec 0);
     display:flex;
@@ -360,8 +484,8 @@ button{
 .circle::before{
     content:"";
     position:absolute;
-    width:105px;
-    height:105px;
+    width:88px;
+    height:88px;
     background:#fff;
     border-radius:50%;
 }
@@ -372,7 +496,7 @@ button{
     top:45%;
     left:50%;
     transform:translate(-50%,-50%);
-    font-size:28px;
+    font-size:24px;
     font-weight:700;
     color:#16a34a;
 }
@@ -383,29 +507,30 @@ button{
     top:65%;
     left:50%;
     transform:translate(-50%,-50%);
-    font-size:11px;
+    font-size:12px;
     color:#777; 
 }
 
 .progress-details{
-    width:100%;
+    flex:1;
+    min-width:0;
     display:flex;
     flex-direction:column;
     gap:6px;
-    margin-left:-15px;
 }
 
 .detail-item{
     display:flex;
     justify-content:space-between;
     align-items:center;
-    padding:10px 14px;
+    gap:8px;
+    padding:10px 12px;
     background:#f8fafc;
     border-radius:8px;
 }
 
-.detail-item span{ font-size:11px; color:#777; }
-.detail-item strong{ font-size:11px; font-weight: 600; color:#222; }
+.detail-item span{ font-size:13px; color:#777; white-space:nowrap; }
+.detail-item strong{ font-size:13px; font-weight: 600; color:#222; white-space:nowrap; flex-shrink:0; }
 
 .progress-divider {
     border: none;
@@ -464,108 +589,10 @@ button{
     flex-shrink:0;
 }
 
-.header-right {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    margin-left: auto;
-    position: relative;
-}
-
-.user-profile {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-}
-
-.profile-circle {
-    width: 38px;
-    height: 38px;
-    background-color: #a80000;
-    color: #ffffff;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    font-weight: 700;
-    user-select: none;
-}
-
-.dashboard-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 20px;
-    background: #ffffff;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
-    position: relative;
-}
-
-.profile-card-dropdown {
-    display: none;
-    position: absolute;
-    top: 48px;
-    right: 0;
-    width: 200px;
-    background: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
-    border: 1px solid #eaeaea;
-    z-index: 1000;
-    overflow: hidden;
-}
-
-.profile-card-dropdown.show {
-    display: block;
-}
-
-.profile-card-header {
-    padding: 12px 14px 10px 14px;
-    border-bottom: 1px solid #f0f0f0;
-}
-
-.profile-card-header h4 {
-    font-size: 13px;
-    font-weight: 700;
-    color: #111827;
-    margin: 0;
-}
-
-.profile-card-header .role-title {
-    font-size: 11px;
-    color: #6b7280;
-    margin-top: 2px;
-}
-
-.profile-card-body {
-    padding: 6px;
-}
-
-.profile-menu-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 10px;
-    border-radius: 6px;
-    color: #374151;
-    font-size: 13px;
-    font-weight: 500;
-    text-decoration: none;
-}
-
-.profile-menu-item:hover {
-    background-color: #f3f4f6;
-}
-
-.profile-menu-item.logout {
-    color: #dc2626;
-}
-
 /* =========================================
    MODAL POP-UP STYLES (PARA SA VIEW ALL)
    ========================================= */
+/* Hidden by default; JS toggles .show so the modal never flashes on load. */
 .modal-overlay {
     position: fixed !important;
     top: 0 !important;
@@ -573,11 +600,16 @@ button{
     width: 100vw !important;
     height: 100vh !important;
     background-color: rgba(0, 0, 0, 0.5) !important;
-    display: flex !important;
+    display: none !important;
     justify-content: center !important;
     align-items: center !important;
     z-index: 99999 !important;
     backdrop-filter: blur(4px);
+    padding: 16px;
+}
+
+.modal-overlay.show {
+    display: flex !important;
 }
 
 #modal-container-wrapper .modal-content {
@@ -641,4 +673,2011 @@ button{
 
 .activity-info{ flex:1; }
 .activity-info h4{ font-size:13px; font-weight:600; color:#222; }
-.activity-info p{ font-size:11px; color:#777; }
+.activity-info p{ font-size:13px; color:#777; }
+
+/* ========================================
+   INTERNSHIP CALENDAR
+======================================== */
+
+.calendar-card {
+    background: #ffffff;
+    border: 1px solid #ececec;
+    border-radius: 14px;
+    padding: 6px 15px 16px;
+    margin: 0 16px 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.calendar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-left: 8px;
+    margin-bottom: -4px;
+    gap: 8px;
+}
+
+
+.calendar-month-title {
+    display: flex;
+    align-items: center;
+}
+
+.calendar-accent {
+    display: inline-block;
+    width: 3.5px;
+    height: 15px;
+    background-color: #AB0A0A;
+    border-radius: 5px;
+    margin-right: 7px;
+}
+
+.calendar-month-title h3 {
+    margin: 0;
+    color: #222;
+    font-size: 15px;
+    font-weight: 600px;
+}
+
+.calendar-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.calendar-action-btn {
+    height: 28px;
+    padding: 0 11px;
+    border-radius: 8px;
+    background: #f7f8fa;
+    color: #111827;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    font-family: 'Google Sans Flex', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* ========================================
+   CALENDAR CONTROLS
+======================================== */
+
+.calendar-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 2px;
+}
+
+/* PLUS BUTTON */
+.calendar-add-btn {
+    width: 42px;
+    height: 42px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: none;
+    border-radius: 12px;
+
+    background: #f7f8fa;
+    color: #111827;
+
+    font-size: 15px;
+    cursor: pointer;
+
+    transition: all 0.2s ease;
+}
+
+.calendar-add-btn:hover {
+    background: #fceaea;
+    color: #ab0a0a;
+}
+
+/* CALENDAR BUTTON */
+.calendar-btn {
+    height: 36px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 8px;
+
+    padding: 0 15px;
+
+    border: none;
+    border-radius: 12px;
+
+    background: #f7f8fa;
+    color: #111827;
+
+    font-family: 'Google Sans Flex', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition: all 0.2s ease;
+}
+
+.calendar-btn .mat-icon {
+    font-size: 18px;
+}
+
+.calendar-btn:hover {
+    background: #fceaea;
+    color: #ab0a0a;
+}
+
+.calendar-action-btn:hover {
+    background: #fceaea;
+    color: #AB0A0A;
+    border: 1px solid #e8a8a8;
+}
+
+.calendar-divider {
+    height: 1px;
+    background: #eeeeee;
+    margin: 14px 0 16px;
+}
+
+.calendar-days {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    width: 100%;
+    /* visible, not hidden: a clipped ancestor was cutting off the
+       "Note: ..." popup that appears when a day is tapped. */
+    overflow: visible;
+}
+
+.calendar-day-list {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex: 1;
+    min-width: 0;
+    overflow: visible;
+}
+
+/* DATE BOX */
+.calendar-day { 
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 58px;
+    height: 60px; 
+    border: 1px solid transparent; 
+    background: #f7f8fa; 
+    border-radius: 13px; 
+    color: #111827; 
+ 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: center; 
+    gap: 5px; 
+ 
+    font-family: 'Google Sans Flex', sans-serif; 
+    cursor: pointer; 
+ 
+    transition: 
+        background-color 0.2s ease, 
+        border-color 0.2s ease; 
+}
+
+/* NUMBER */
+.calendar-day .day-number {
+    font-size: 17px;
+    line-height: 1;
+    font-weight: 600;
+}
+
+/* DAY NAME */
+.calendar-day .day-name {
+    font-size: 11px;
+    line-height: 1;
+    color: #6b7280;
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+/* HOVER */
+.calendar-day:hover {
+    background: #fceaea;
+    border-color: #e8baba;
+}
+
+/* SELECTED */
+.calendar-day.active {
+    background: #AB0A0A;
+    border-color: #AB0A0A;
+    color: #ffffff;
+    box-shadow: none;
+}
+
+.calendar-day.active .day-name {
+    color: #ffffff;
+}
+
+/* TODAY — NO BORDER */
+.calendar-day.today:not(.active) {
+    border-color: transparent;
+}
+
+/* HOURS LOGGED ON A DUTY DAY (e.g. "8h") */
+.calendar-day .calendar-day-hours {
+    font-size: 11px;
+    font-weight: 700;
+    color: #16a34a;
+    line-height: 1;
+    margin-top: 1px;
+}
+
+.calendar-day.active .calendar-day-hours {
+    color: #dcfce7;
+}
+
+/* Subtle green tint on days that already have logged hours */
+.calendar-day.has-duty:not(.active) {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+
+/* ARROWS */
+.calendar-body-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.calendar-days {
+    flex: 1;
+    min-width: 0;
+    overflow: visible;
+}
+
+.calendar-day-list {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-start;
+    min-width: 0;
+}
+
+.calendar-nav {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 10px;
+    color: #333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.2s;
+}
+
+.calendar-nav:hover {
+    background-color: #f1f5f9;
+}
+
+/* ========================================
+   FULL MONTH CALENDAR
+======================================== */
+
+.calendar-day-list.month-view {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+}
+
+
+/* WEEKDAY LABELS */
+
+.calendar-day-list.month-view .calendar-weekday {
+    width: 100%;
+    height: 28px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-family: 'Google Sans Flex', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+
+    color: #6b7280;
+}
+
+
+/* EMPTY CELLS */
+
+.calendar-day-list.month-view .calendar-empty {
+    width: 100%;
+    height: 46px;
+}
+
+
+/* DATE BOXES */
+
+.calendar-day-list.month-view .calendar-month-day {
+    width: 100%;
+    height: 33px;
+
+    padding: 0;
+    margin: 0;
+
+    border: 1px solid #eeeeee;
+    border-radius: 10px;
+
+    background: #f7f8fa;
+    color: #111827;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-family: 'Google Sans Flex', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+
+    cursor: pointer;
+
+    box-sizing: border-box;
+
+    transition:
+        background-color 0.2s ease,
+        border-color 0.2s ease,
+        color 0.2s ease;
+}
+
+
+/* HOVER */
+
+.calendar-day-list.month-view .calendar-month-day:hover {
+    background: #fceaea;
+    border-color: #e8baba;
+    color: #ab0a0a;
+}
+
+
+/* SELECTED DATE */
+
+.calendar-day-list.month-view .calendar-month-day.active {
+    background: #ab0a0a;
+    border-color: #ab0a0a;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+
+/* TODAY */
+
+.calendar-day-list.month-view
+.calendar-month-day.today:not(.active) {
+    border-color: #e8baba;
+}
+
+/* Subtle green tint on days that already have logged hours (tap the day
+   to see the exact hours rendered, shown in the popup tooltip). */
+.calendar-day-list.month-view .calendar-month-day.has-duty:not(.active) {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+    color: #15803d;
+}
+
+/* Red tint on past duty days with no logged hours and no excuse/holiday
+   on file — the same treatment as the green "has-duty" tint above, just
+   for the opposite case (absent instead of present). */
+.calendar-day-list.month-view .calendar-month-day.absent-day:not(.active) {
+    background: #fef2f2;
+    border-color: #fca5a5;
+    color: #b91c1c;
+}
+
+.calendar-day.absent-day:not(.active) {
+    background: #fef2f2;
+    border-color: #fca5a5;
+}
+
+/* EMPTY CELLS */
+
+.calendar-day-list.month-view .calendar-empty {
+    width: 100%;
+    height: 42px;
+    margin: 0;
+    padding: 0;
+}
+
+/* Note: .notification / .notification-badge styling now lives entirely
+   in the shared ../templated/header.css so the dashboard's header stays
+   in sync with every other page instead of keeping its own copy. */
+
+/* "View All" trigger in the Recent Activity header */
+.view-all-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: #0284c7;
+    font-family: inherit;
+    font-weight: 500;
+    font-size: 13px;
+}
+
+.view-all-btn:hover {
+    text-decoration: underline;
+}
+
+.activity-duration {
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 5px 10px;
+    margin-left: auto;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+
+/* ========================================
+   RESPONSIVE: MOBILE CALENDAR
+   The week-view day boxes now flex to share whatever width is left
+   after the two nav arrows (see ".calendar-day" above), so they
+   shrink instead of overflowing and pushing the right arrow off
+   screen. This just tightens spacing/fonts on narrow phones so the
+   shrunk boxes stay readable.
+======================================== */
+@media (max-width: 480px) {
+    .calendar-card {
+        padding: 8px 10px 12px;
+        margin: 0 12px 16px;
+    }
+
+    .calendar-body-wrapper {
+        gap: 4px;
+    }
+
+    .calendar-nav {
+        padding: 6px;
+        font-size: 15px;
+        flex-shrink: 0;
+    }
+
+    .calendar-day-list {
+        gap: 5px;
+    }
+
+    .calendar-day {
+        height: 54px;
+        gap: 3px;
+    }
+
+    .calendar-day .day-number {
+        font-size: 12px;
+    }
+
+    .calendar-day .day-name {
+        font-size: 9.5px;
+    }
+
+    .calendar-day .calendar-day-hours {
+        font-size: 9.5px;
+    }
+
+    .calendar-btn span {
+        display: none;
+    }
+
+    .calendar-btn {
+        padding: 0 10px;
+        width: 36px;
+    }
+}
+/* ==========================================
+   INITIAL PAGE LOADING OVERLAY
+   Ipinapakita habang hindi pa tapos ang unang
+   pag-fetch ng student profile (loadStudentData)
+   at unang snapshot ng attendance/activity data
+   mula Firestore. Pinipigilan nito na makita ng
+   user ang mga placeholder values ("Loading...",
+   "0 hours", "--") bago pa dumating ang totoong
+   datos.
+========================================== */
+.page-loading-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(2px);
+    transition: opacity 0.25s ease;
+}
+
+.page-loading-overlay.fade-out {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.page-loading-overlay .loading-spinner {
+    width: 42px;
+    height: 42px;
+    border: 4px solid #e5e7eb;
+    border-top-color: #AB0A0A;
+    border-radius: 50%;
+    animation: dashboard-loading-spin 0.8s linear infinite;
+}
+
+.page-loading-overlay p {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    font-family: 'Google Sans Flex', sans-serif;
+}
+
+@keyframes dashboard-loading-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ==========================================
+   MATERIAL SYMBOLS ICONS
+   (mat-icon + lumi-symbols)
+========================================== */
+
+.mat-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 1em;
+    height: 1em;
+    line-height: 1;
+    user-select: none;
+}
+
+.lumi-symbols,
+.mat-ligature-font {
+    font-family: 'Material Symbols Outlined';
+    font-weight: 400;
+    font-style: normal;
+    letter-spacing: normal;
+    text-transform: none;
+    white-space: nowrap;
+    direction: ltr;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: 'liga';
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+.lm-icon-xl {
+    font-size: 24px;
+}
+
+.mat-icon-no-color {
+    color: inherit;
+}
+
+/* sizes per place */
+.card-icon .mat-icon {
+    font-size: 16px;
+}
+
+.calendar-nav .mat-icon {
+    font-size: 22px;
+}
+
+.close-btn .mat-icon {
+    font-size: 20px;
+}
+
+/* ==========================================
+   PLANNED (SCHEDULED) HOURS ON THE CALENDAR
+   Mahinang kulay = planned lang, hindi pa na-log.
+========================================== */
+
+.calendar-day .calendar-day-hours.planned {
+    color: #9ca3af;
+    font-weight: 600;
+}
+
+.calendar-day.active .calendar-day-hours.planned {
+    color: #fecaca;
+}
+
+.calendar-day-list.month-view .calendar-month-day {
+    height: 42px;
+}
+
+.calendar-month-hours {
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1;
+    margin-top: 1px;
+    color: #16a34a;
+}
+
+.calendar-month-hours.planned {
+    color: #9ca3af;
+    font-weight: 600;
+}
+
+.calendar-month-day.active .calendar-month-hours,
+.calendar-month-day.active .calendar-month-hours.planned {
+    color: #ffffff;
+}
+
+/* ==========================================
+   PROFILE PICTURE PROMPT
+========================================== */
+.photo-prompt-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    animation: photo-prompt-fade 0.25s ease-out;
+}
+
+.photo-prompt-overlay[hidden] {
+    display: none;
+}
+
+.photo-prompt {
+    width: 100%;
+    max-width: 340px;
+    padding: 28px 24px 22px;
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.22);
+    text-align: center;
+    font-family: 'Google Sans Flex', sans-serif;
+    animation: photo-prompt-pop 0.25s ease-out;
+}
+
+.photo-prompt-avatar {
+    position: relative;
+    width: 104px;
+    height: 104px;
+    margin: 0 auto 16px;
+}
+
+.photo-prompt-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    background: #f4f4f4;
+    border: 3px solid #f2f2f2;
+}
+
+.photo-prompt-camera {
+    position: absolute;
+    right: 2px;
+    bottom: 2px;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #ffe9e9;
+    color: #AB0A0A;
+    font-size: 13px;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.photo-prompt h3 {
+    margin: 0 0 6px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.photo-prompt-text {
+    margin: 0 0 6px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #707070;
+}
+
+.photo-prompt-error {
+    margin: 8px 0 0;
+    font-size: 12px;
+    color: #b91c1c;
+}
+
+.photo-prompt-error[hidden] {
+    display: none;
+}
+
+.photo-prompt-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.photo-prompt-later,
+.photo-prompt-save {
+    flex: 1;
+    height: 42px;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+.photo-prompt-later {
+    border: 1px solid #ececec;
+    background: transparent;
+    color: #707070;
+}
+
+.photo-prompt-later:hover {
+    background: #f3f4f6;
+    color: #1a1a1a;
+}
+
+.photo-prompt-save {
+    border: none;
+    background: #AB0A0A;
+    color: #fff;
+}
+
+.photo-prompt-save:hover:not(:disabled) {
+    background: #8E0909;
+}
+
+.photo-prompt-save:disabled,
+.photo-prompt-later:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+@keyframes photo-prompt-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes photo-prompt-pop {
+    from { opacity: 0; transform: scale(0.94); }
+    to { opacity: 1; transform: scale(1); }
+}
+/* ==========================================
+   APPROVAL GATE
+   Lumalabas pagkatapos mag-login hanggat hindi pa
+   na-a-approve ng coordinator ang documents.
+   Nandito ang Submission Code na ipapakita ng student.
+========================================== */
+.approval-gate {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(250, 250, 250, 0.99);
+    font-family: 'Google Sans Flex', sans-serif;
+}
+
+.approval-gate[hidden] { display: none; }
+
+.approval-gate-card {
+    width: 100%;
+    max-width: 400px;
+    padding: 30px 24px 24px;
+    background: #fff;
+    border: 1px solid #ececec;
+    border-radius: 18px;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.approval-gate-icon {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #ffe9e9;
+    color: #AB0A0A;
+    font-size: 22px;
+}
+
+.approval-gate-card h3 {
+    margin: 0 0 6px;
+    font-size: 18px;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.approval-gate-text {
+    margin: 0 0 16px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #707070;
+}
+
+.approval-gate-code {
+    margin: 0 0 6px;
+    padding: 14px 10px;
+    border: 2px dashed #AB0A0A;
+    border-radius: 12px;
+    background: #fff7f7;
+    font-family: "Courier New", monospace;
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    color: #AB0A0A;
+    user-select: all;
+}
+
+.approval-gate-code-label {
+    display: block;
+    margin-bottom: 14px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #9ca3af;
+}
+
+.approval-gate-note {
+    margin: 0 0 14px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: #fef2f2;
+    font-size: 12px;
+    line-height: 1.5;
+    color: #b91c1c;
+    text-align: left;
+}
+
+.approval-gate-note[hidden] { display: none; }
+
+.approval-gate-actions { display: flex; gap: 10px; }
+
+.approval-gate-btn {
+    flex: 1;
+    height: 42px;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.approval-gate-btn.primary { background: #AB0A0A; color: #fff; }
+.approval-gate-btn.primary:hover { background: #8E0909; }
+.approval-gate-btn.secondary { border: 1px solid #ececec; color: #707070; }
+.approval-gate-btn.secondary:hover { background: #f3f4f6; color: #1a1a1a; }
+
+.approval-gate-logout {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 14px;
+    padding: 6px 10px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    color: #707070;
+    cursor: pointer;
+}
+.approval-gate-logout:hover { color: #AB0A0A; }
+.approval-gate-logout:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* ---- Approval gate: reasons list + resubmit form ---- */
+.approval-gate-card { max-height: 92vh; overflow-y: auto; }
+
+.approval-gate-note ul { margin: 0; padding-left: 18px; }
+.approval-gate-note li { margin: 2px 0; }
+
+.approval-gate-resubmit { text-align: left; }
+
+.approval-gate-row {
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    border: 1px solid #ececec;
+    border-radius: 10px;
+    background: #fafafa;
+}
+
+.approval-gate-row.required { border-color: #f3b4b4; background: #fff7f7; }
+
+.approval-gate-row-label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.approval-gate-row-tag { font-size: 11px; font-weight: 500; color: #9ca3af; }
+.approval-gate-row.required .approval-gate-row-tag { color: #b91c1c; font-weight: 600; }
+
+.approval-gate-row input[type="file"] { width: 100%; font-size: 12px; color: #374151; }
+
+.approval-gate-error {
+    margin: 0 0 12px;
+    font-size: 12px;
+    color: #b91c1c;
+    text-align: left;
+}
+.approval-gate-error[hidden] { display: none; }
+
+.approval-gate-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* ==========================================
+   RESUBMIT PANEL (Step 1 Requirements + Step 2 Schedule, walang password)
+   Kinopya at na-scope mula sa profile.css para hindi makagulo sa dashboard.
+========================================== */
+.resubmit-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 100001;
+    overflow-y: auto;
+    background: #f4f6f9;
+    --primary: #AB0A0A;
+    --primary-hover: #8E0909;
+    --white: #ffffff;
+    --light: #f4f6f9;
+    --text: #333333;
+    --gray: #666666;
+    --border: #ececec;
+    --shadow: 0 5px 20px rgba(0, 0, 0, .06);
+    --radius: 16px;
+}
+.resubmit-panel[hidden] { display: none; }
+.resubmit-close {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #707070;
+}
+.resubmit-close:hover { color: #AB0A0A; }
+#resubmitPanel .profile-container {
+    padding: 18px 16px 25px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+#resubmitPanel .step-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 18px;
+    margin-top: -6px;
+    box-shadow: var(--shadow);
+}
+#resubmitPanel .step-top {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 10px;
+}
+#resubmitPanel .step-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: #fdecec;
+    color: var(--primary);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+#resubmitPanel .step-info {
+    flex: 1;
+}
+#resubmitPanel .step-info h2 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 2px;
+}
+#resubmitPanel .step-info p {
+    font-size: 10px;
+    line-height: 1.4;
+    color: var(--gray);
+    margin: 0;
+}
+#resubmitPanel .step-progress {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+#resubmitPanel .step-progress span {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--primary);
+    white-space: nowrap;
+}
+#resubmitPanel .progress-bar {
+    flex: 1;
+    height: 6px;
+    background: #ececec;
+    border-radius: 30px;
+    overflow: hidden;
+}
+#resubmitPanel .progress-fill {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 30px;
+    transition: width 0.3s ease;
+}
+#resubmitPanel .profile-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 18px;
+    box-shadow: var(--shadow);
+    margin-bottom: 15px;
+    animation: fadeIn 0.3s ease-in-out;
+}
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+#resubmitPanel .card-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+#resubmitPanel .vertical-line.red {
+    width: 3.5px;
+    height: 16px;
+    background: #AB0A0A;
+    border-radius: 5px;
+    flex-shrink: 0;
+}
+#resubmitPanel .card-title h2 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #222;
+}
+#resubmitPanel #step2Content .card-title {
+    margin-bottom: 20px;
+}
+#resubmitPanel #step2Content .schedule-description {
+    margin-top: 0;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+#resubmitPanel #step2Content .schedule-label {
+    margin-top: 4px;
+    margin-bottom: 10px;
+}
+#resubmitPanel .form-group {
+    margin-bottom: 14px;
+}
+#resubmitPanel .form-group label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text);
+}
+#resubmitPanel .input-box {
+    position: relative;
+}
+#resubmitPanel .input-box input {
+    width: 100%;
+    height: 42px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    padding: 0 40px 0 14px;
+    font-size: 12px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.25s, box-shadow 0.25s;
+}
+#resubmitPanel .input-box input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(171, 10, 10, .08);
+}
+#resubmitPanel .input-box label {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #fff;
+    padding: 0 4px;
+    color: #9ca3af;
+    font-size: 12px;
+    font-weight: 400;
+    pointer-events: none;
+    transition: all 0.25s ease;
+}
+#resubmitPanel .input-box input:focus + label,
+#resubmitPanel .input-box input:not(:placeholder-shown) + label {
+    top: 0;
+    transform: translateY(-50%);
+    font-size: 10px;
+    color: var(--primary);
+    font-weight: 600;
+}
+#resubmitPanel .input-box i {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #777;
+    font-size: 14px;
+    cursor: pointer;
+}
+#resubmitPanel .input-box.icon-left input { padding: 0 14px 0 42px; }
+#resubmitPanel .input-box.icon-left label { left: 38px; }
+#resubmitPanel .input-box.icon-left input:focus + label,
+#resubmitPanel .input-box.icon-left input:not(:placeholder-shown) + label { left: 12px; }
+#resubmitPanel .input-box.icon-left i {
+    left: 15px;
+    right: auto;
+    color: var(--primary);
+    font-size: 14px;
+    width: 16px;
+    text-align: center;
+    cursor: default;
+    pointer-events: none;
+}
+#resubmitPanel .select-box {
+    position: relative;
+}
+#resubmitPanel .select-box select {
+    width: 100%;
+    height: 42px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    outline: none;
+    padding: 0 40px 0 14px;
+    font-size: 12px;
+    color: var(--text);
+    appearance: none;
+    cursor: pointer;
+    transition: border-color 0.25s;
+}
+#resubmitPanel .select-box select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(171, 10, 10, .08);
+}
+#resubmitPanel .select-box i {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+    color: #777;
+    pointer-events: none;
+}
+#resubmitPanel .input-box input:disabled {
+    background: #f5f5f5;
+    color: #999;
+    cursor: not-allowed;
+}
+#resubmitPanel .alert-banner {
+    background-color: #fde8e8;
+    color: #9b1c1c;
+    border: 1px solid #f8b4b4;
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.5;
+    margin-bottom: 15px;
+    animation: slideDown 0.25s ease-out;
+}
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+#resubmitPanel .continue-btn {
+    width: 100%;
+    height: 42px;
+    margin-top: 12px;
+    border: none;
+    border-radius: 10px;
+    background: var(--primary);
+    color: var(--white);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.25s ease, transform 0.1s ease;
+}
+#resubmitPanel .continue-btn:hover {
+    background: var(--primary-hover);
+}
+#resubmitPanel .continue-btn:active {
+    transform: scale(0.99);
+}
+#resubmitPanel .schedule-description {
+    font-size: 11px;
+    color: var(--gray);
+    margin-top: -10px;
+    margin-left: 0;
+    margin-bottom: 22px;
+    line-height: 1.5;
+}
+#resubmitPanel .schedule-section {
+    margin-bottom: 22px;
+}
+#resubmitPanel .schedule-label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 10px;
+}
+#resubmitPanel .schedule-label i {
+    color: var(--primary);
+    font-size: 14px;
+}
+#resubmitPanel .days-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+}
+#resubmitPanel .day-btn {
+    height: 36px;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    background: #fff;
+    color: #555;
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+#resubmitPanel .day-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+#resubmitPanel .day-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+#resubmitPanel .schedule-session {
+    border: 1px solid #eeeeee;
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 14px;
+    background: #fff;
+}
+#resubmitPanel .session-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+#resubmitPanel .session-title > i {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #fdecec;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+}
+#resubmitPanel .session-title h3 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+}
+#resubmitPanel .session-title p {
+    margin: 2px 0 0;
+    font-size: 9px;
+    color: var(--gray);
+}
+#resubmitPanel .time-group {
+    margin-bottom: 12px;
+}
+#resubmitPanel .time-group:last-child {
+    margin-bottom: 0;
+}
+#resubmitPanel .time-group label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--gray);
+    margin-bottom: 6px;
+}
+#resubmitPanel .time-group label i {
+    color: var(--primary);
+    font-size: 12px;
+}
+#resubmitPanel .time-group input[type="time"],
+#resubmitPanel .time-group input[type="date"] {
+    width: 100%;
+    height: 40px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    padding: 0 12px;
+    font-family: inherit;
+    font-size: 11px;
+    color: var(--text);
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.2s ease,
+                box-shadow 0.2s ease;
+}
+#resubmitPanel .time-group input[type="time"]:focus,
+#resubmitPanel .time-group input[type="date"]:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(171, 10, 10, .08);
+}
+#resubmitPanel .afternoon-toggle-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border: 1px solid #eeeeee;
+    border-radius: 12px;
+    padding: 13px 15px;
+    margin-bottom: 14px;
+    background: #fff;
+}
+#resubmitPanel .afternoon-toggle-card .session-title {
+    margin-bottom: 0;
+}
+#resubmitPanel .afternoon-toggle-card .session-title > i {
+    background: #fff4e5;
+    color: #e99a00;
+}
+#resubmitPanel .afternoon-toggle-card .session-title h3 {
+    font-size: 12px;
+}
+#resubmitPanel .afternoon-toggle-card .session-title p {
+    color: #22a65a;
+    font-size: 9px;
+}
+#resubmitPanel .switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 22px;
+    flex-shrink: 0;
+}
+#resubmitPanel .switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+#resubmitPanel .slider {
+    position: absolute;
+    inset: 0;
+    background: #d5d5d5;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: 0.25s ease;
+}
+#resubmitPanel .slider::before {
+    content: "";
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    left: 2px;
+    top: 2px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 1px 4px rgba(0,0,0,.15);
+    transition: 0.25s ease;
+}
+#resubmitPanel .switch input:checked + .slider {
+    background: var(--primary);
+}
+#resubmitPanel .switch input:checked + .slider::before {
+    transform: translateX(18px);
+}
+#resubmitPanel .step-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+}
+#resubmitPanel .step-buttons .continue-btn {
+    flex: 1;
+}
+#resubmitPanel .step-buttons .back-btn {
+    background: #888;
+}
+#resubmitPanel .step-buttons .back-btn:hover {
+    background: #707070;
+}
+@media (max-width: 380px) {
+#resubmitPanel .days-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+#resubmitPanel .day-btn {
+        height: 34px;
+    }
+}
+#resubmitPanel .day-btn {
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+#resubmitPanel .day-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+    box-shadow: 0 3px 8px rgba(171, 10, 10, 0.18);
+}
+#resubmitPanel .day-btn.active:hover {
+    background: var(--primary-hover);
+    border-color: var(--primary-hover);
+    color: #fff;
+}
+#resubmitPanel .afternoon-toggle-card .session-title p.disabled {
+    color: #999;
+}
+#resubmitPanel .time-group input[type="time"]:disabled,
+#resubmitPanel .time-group input[type="date"]:disabled {
+    background: #f5f5f5;
+    color: #999;
+    border-color: #e5e5e5;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+#resubmitPanel .modality-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+#resubmitPanel .modality-option {
+    display: block;
+    cursor: pointer;
+    margin: 0;
+}
+#resubmitPanel .modality-option input {
+    display: none;
+}
+#resubmitPanel .modality-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 11px;
+    border: 1px solid #e5e5e5;
+    border-radius: 9px;
+    background: #fff;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+#resubmitPanel .modality-card:hover {
+    border-color: var(--primary);
+    background: #fffafa;
+}
+#resubmitPanel .modality-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 13px;
+}
+#resubmitPanel .modality-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+#resubmitPanel .modality-info strong {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text);
+}
+#resubmitPanel .modality-info small {
+    font-size: 8px;
+    color: var(--gray);
+    line-height: 1.3;
+}
+#resubmitPanel .modality-option input:checked + .modality-card {
+    border-color: var(--primary);
+    background: #fff6f6;
+    box-shadow: 0 0 0 1px rgba(171, 10, 10, 0.06);
+}
+#resubmitPanel #step2Content .start-date-label {
+    margin-top: 16px;
+}
+#resubmitPanel .start-date-group {
+    margin-bottom: 0;
+}
+#resubmitPanel .field-hint {
+    display: block;
+    margin-top: 6px;
+    font-size: 10px;
+    color: var(--gray);
+}
+#resubmitPanel .requirements-note {
+    font-size: 12px;
+    color: var(--gray);
+    margin: 0 0 12px;
+    line-height: 1.5;
+}
+#resubmitPanel .requirements-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 22px;
+}
+#resubmitPanel .requirement-item {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 14px;
+    border: 1.5px dashed #d8d8d8;
+    border-radius: 12px;
+    background: #fafafa;
+    transition: border-color .2s ease, background .2s ease;
+}
+#resubmitPanel .requirement-item.has-file {
+    border-style: solid;
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+}
+#resubmitPanel .requirement-icon {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    border-radius: 10px;
+    background: #fff0f0;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+}
+#resubmitPanel .requirement-item.has-file .requirement-icon {
+    background: #dcfce7;
+    color: #16a34a;
+}
+#resubmitPanel .requirement-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+#resubmitPanel .requirement-info strong {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+}
+#resubmitPanel .requirement-info small {
+    font-size: 11px;
+    color: #888;
+    line-height: 1.35;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+#resubmitPanel .requirement-item.has-file .requirement-status {
+    color: #166534;
+}
+#resubmitPanel .requirement-btn {
+    flex-shrink: 0;
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1.5px solid var(--primary);
+    color: var(--primary);
+    background: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: .2s;
+}
+#resubmitPanel .requirement-btn:hover {
+    background: var(--primary);
+    color: #fff;
+}
+#resubmitPanel .requirement-view {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 12px;
+    border-radius: 8px;
+    border: 1.5px solid #d1d5db;
+    color: #374151;
+    background: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: .2s;
+}
+@media (hover: hover) {
+#resubmitPanel .requirement-view:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        background: #fdf2f2;
+    }
+}
+#resubmitPanel .requirement-remove {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 50%;
+    background: #fee2e2;
+    color: var(--primary);
+    cursor: pointer;
+    font-size: 12px;
+}
+#resubmitPanel .requirement-remove[hidden] {
+    display: none;
+}
+#resubmitPanel .requirements-subtitle {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 4px 0 14px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+}
+#resubmitPanel .requirement-view,
+#resubmitPanel .requirement-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    line-height: 1.2;
+    white-space: nowrap;
+    box-sizing: border-box;
+}
+#resubmitPanel .requirement-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+#resubmitPanel .requirement-info strong {
+    font-size: 14px;
+    line-height: 1.3;
+}
+#resubmitPanel .requirement-info small.requirement-sub {
+    white-space: normal;
+}
+#resubmitPanel .requirement-actions {
+    display: flex;
+    gap: 10px;
+}
+#resubmitPanel .requirement-view,
+#resubmitPanel .requirement-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 40px;
+    padding: 0 12px;
+    font-size: 13px;
+}
+#resubmitPanel .requirement-files {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+#resubmitPanel .requirement-files[hidden] {
+    display: none;
+}
+#resubmitPanel .requirement-file {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: #fff;
+    border: 1px solid #d9f2e1;
+    border-radius: 8px;
+    min-width: 0;
+}
+#resubmitPanel .requirement-file > i {
+    flex-shrink: 0;
+    color: #16a34a;
+    font-size: 14px;
+}
+#resubmitPanel .requirement-file-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+#resubmitPanel .requirement-file-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+#resubmitPanel .requirement-file-meta {
+    font-size: 10px;
+    color: #888;
+}
+#resubmitPanel .requirement-file .requirement-remove {
+    width: 28px;
+    height: 28px;
+}
+#resubmitPanel .requirement-file .requirement-remove:hover {
+    background: var(--primary);
+    color: #fff;
+}
+body.req-modal-open {
+    overflow: hidden;
+}
+#resubmitPanel .req-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(17, 24, 39, 0.55);
+    animation: reqModalFade .18s ease;
+}
+#resubmitPanel .req-modal[hidden] {
+    display: none;
+}
+#resubmitPanel .req-modal-dialog {
+    width: 100%;
+    max-width: 880px;
+    height: min(92vh, 960px);
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+    animation: reqModalPop .2s ease;
+}
+#resubmitPanel .req-modal-header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px 12px 18px;
+    border-bottom: 1px solid #ececec;
+    background: #fff;
+}
+#resubmitPanel .req-modal-header h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+}
+#resubmitPanel .req-modal-close {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border: none;
+    border-radius: 50%;
+    background: #f3f4f6;
+    color: #374151;
+    font-size: 15px;
+    cursor: pointer;
+    transition: .2s;
+}
+#resubmitPanel .req-modal-close:hover {
+    background: #fee2e2;
+    color: var(--primary);
+}
+#resubmitPanel .req-modal-body {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    background: #f3f4f6;
+}
+#resubmitPanel .req-modal-body iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: #f3f4f6;
+}
+#resubmitPanel .req-modal-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    color: #6b7280;
+}
+#resubmitPanel .req-modal-loading[hidden] {
+    display: none;
+}
+@keyframes reqModalFade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+@keyframes reqModalPop {
+    from { transform: translateY(12px) scale(.98); opacity: 0; }
+    to   { transform: none; opacity: 1; }
+}
+@media (max-width: 560px) {
+#resubmitPanel .req-modal {
+        padding: 0;
+    }
+#resubmitPanel .req-modal-dialog {
+        max-width: none;
+        height: 100vh;
+        height: 100dvh;
+        border-radius: 0;
+    }
+}
+#resubmitPanel .extract-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 14px;
+}
+#resubmitPanel .extract-note i {
+    color: var(--primary);
+    margin-top: 2px;
+}
+#resubmitPanel .extract-status {
+    margin: 10px 0 0;
+    font-size: 11px;
+    color: var(--gray, #6b7280);
+    text-align: center;
+}
+#resubmitPanel .continue-btn.is-loading {
+    position: relative;
+    opacity: .85;
+    cursor: progress;
+}
+#resubmitPanel .continue-btn.is-loading .btn-label::before {
+    content: "";
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 8px;
+    vertical-align: -2px;
+    border: 2px solid rgba(255, 255, 255, .45);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: extractSpin .7s linear infinite;
+}
+@keyframes extractSpin {
+    to { transform: rotate(360deg); }
+}
+#resubmitPanel .autofill-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: #fdf2f2;
+    border: 1px solid #f3d6d6;
+    border-left: 3px solid var(--primary);
+    color: var(--text);
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: 11px;
+    line-height: 1.5;
+    margin-bottom: 15px;
+}
+#resubmitPanel .autofill-notice[hidden] { display: none; }
+#resubmitPanel .autofill-notice > i {
+    color: var(--primary);
+    font-size: 13px;
+    margin-top: 1px;
+    flex-shrink: 0;
+}
+#resubmitPanel .autofill-notice .autofill-body { flex: 1; min-width: 0; }
+#resubmitPanel .autofill-notice strong { color: var(--primary); font-weight: 700; }
+#resubmitPanel .autofill-notice.warn {
+    background: #fde8e8;
+    border-color: #f8b4b4;
+    border-left-color: var(--primary);
+    color: #9b1c1c;
+}
+#resubmitPanel .autofill-notice p { margin: 0 0 4px; }
+#resubmitPanel .autofill-notice p:last-child { margin-bottom: 0; }
+#resubmitPanel .details-subtitle {
+    border-top: none;
+    padding-top: 0;
+}
+#resubmitPanel .input-box input.autofilled,
+#resubmitPanel .time-group input.autofilled {
+    background: #fdf2f2;
+    border-color: #e8b4b4;
+}
+
+#resubmitPanel .profile-container {
+    max-width: 430px;
+    min-height: 100vh;
+    margin: 0 auto;
+}
+
+/* ---- Approval gate: hiwalay na card bawat requirement sa review note ---- */
+.approval-gate-note ul { list-style: none; margin: 0; padding: 0; }
+.approval-gate-note li {
+    margin: 0 0 8px;
+    padding: 9px 12px;
+    background: #fff;
+    border: 1px solid #f8d7d7;
+    border-left: 3px solid #AB0A0A;
+    border-radius: 8px;
+}
+.approval-gate-note li:last-child { margin-bottom: 0; }
+.approval-gate-note li strong {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+.approval-gate-note li span { display: block; font-size: 12px; color: #b91c1c; }
+
+/* Pareho sa resubmit panel notice */
+#resubmitPanel .autofill-notice ul { list-style: none; margin: 6px 0 0; padding: 0; }
+#resubmitPanel .autofill-notice li {
+    margin: 0 0 6px;
+    padding: 8px 10px;
+    background: #fff;
+    border: 1px solid #f3d6d6;
+    border-radius: 8px;
+}
+#resubmitPanel .autofill-notice li:last-child { margin-bottom: 0; }
+#resubmitPanel .autofill-notice li strong { display: block; color: #1a1a1a; }
+#resubmitPanel .autofill-notice li span { display: block; color: #b91c1c; }

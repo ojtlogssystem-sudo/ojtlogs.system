@@ -1,0 +1,364 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 40px;
+    color: #000;
+    background: #f3f4f6;
+}
+
+html { overflow-x: hidden; }
+
+/* ========================================
+   TOOLBAR (screen only)
+======================================== */
+.req-toolbar {
+    max-width: 794px;
+    margin: 0 auto 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px 16px;
+    padding: 12px 14px;
+    background: #fff;
+    border: 1px solid #ececec;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.toolbar-actions { display: flex; align-items: center; gap: 8px; }
+
+.tb-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    height: 38px;
+    padding: 0 16px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: .2s ease;
+}
+
+.tb-primary { background: #AB0A0A; color: #fff; box-shadow: 0 3px 10px rgba(171, 10, 10, .25); }
+.tb-primary:hover { background: #8E0909; }
+.tb-ghost { background: #fff; color: #374151; border-color: #d1d5db; }
+.tb-ghost:hover { background: #f9fafb; border-color: #9ca3af; }
+.tb-btn:disabled { opacity: .65; cursor: progress; }
+
+.form-switch {
+    display: flex;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.form-switch button {
+    height: 36px;
+    padding: 0 14px;
+    background: transparent;
+    border: none;
+    border-right: 1px solid #e5e7eb;
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: #374151;
+    cursor: pointer;
+    transition: .2s ease;
+}
+
+.form-switch button:last-child { border-right: none; }
+.form-switch button:hover { background: #fdf2f2; color: #AB0A0A; }
+.form-switch button.active { background: #AB0A0A; color: #fff; }
+
+.tb-btn:focus-visible,
+.form-switch button:focus-visible { outline: 2px solid #AB0A0A; outline-offset: 2px; }
+
+/* ========================================
+   PAPER
+======================================== */
+.sheet-wrapper { max-width: 794px; margin: 0 auto; }
+
+.sheet {
+    position: relative;
+    width: 100%;
+    min-height: 1000px;
+    padding: 48px 56px;
+    background: #fff;
+    box-sizing: border-box;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, .08);
+    overflow: hidden;
+}
+
+.sheet-status { text-align: center; color: #6b7280; padding: 40px 0; }
+.sheet-status.error { color: #ef4444; }
+
+/* faint logo watermark */
+.sheet-watermark {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 520px;
+    max-width: 80%;
+    transform: translate(-50%, -50%);
+    opacity: .06;
+    pointer-events: none;
+}
+
+.sheet > *:not(.sheet-watermark) { position: relative; }
+
+/* ========================================
+   LETTERHEAD
+======================================== */
+.letterhead { text-align: center; margin-bottom: 36px; }
+.letterhead img { width: 150px; height: auto; margin-bottom: 8px; }
+.letterhead p {
+    margin: 1px 0;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+/* shared helpers */
+.fill {
+    display: inline-block;
+    min-width: 140px;
+    padding: 0 6px;
+    border-bottom: 1px solid #000;
+    line-height: 1.2;
+}
+
+.ph { color: #555; }       /* (PLACEHOLDER) text */
+
+/* ========================================
+   REQUEST LETTER
+======================================== */
+.letter { font-family: Calibri, Carlito, Arial, sans-serif; font-size: 14.5px; line-height: 1.55; }
+.letter .l-date { text-align: right; margin-bottom: 34px; }
+.letter .l-block p { margin: 0 0 2px; }
+.letter .l-salutation { margin: 28px 0 24px; }
+.letter p.indent { text-indent: 40px; text-align: justify; margin: 0 0 14px; }
+.letter .l-list { margin: 0 0 18px 20px; padding: 0; list-style: none; }
+.letter .l-list li { margin-bottom: 2px; }
+.letter .l-close { margin: 22px 0 14px; }
+.letter .l-sign { margin-top: 44px; }
+.letter .l-sign p { margin: 0; }
+
+/* ========================================
+   OJT ACCEPTANCE FORM
+======================================== */
+.acceptance { font-family: "Times New Roman", Times, serif; font-size: 15px; line-height: 1.6; }
+.acceptance .a-title { text-align: center; font-weight: 700; font-size: 17px; margin: 0 0 22px; }
+.acceptance .a-date { display: flex; flex-direction: column; align-items: flex-end; margin-bottom: 14px; }
+.acceptance .a-date .line { width: 170px; border-bottom: 1px solid #000; height: 20px; text-align: center; }
+.acceptance .a-date span.cap { width: 170px; text-align: center; font-size: 14px; }
+.acceptance p.body { text-align: justify; text-indent: 40px; margin: 0 0 20px; }
+.acceptance .a-lead { margin: 0 0 10px; }
+
+.acceptance table.a-table { width: 100%; border-collapse: collapse; margin-bottom: 28px; }
+.acceptance .a-table td { border: 1px solid #000; padding: 8px 10px; font-size: 15px; height: 20px; }
+.acceptance .a-table td:first-child { width: 36%; font-weight: 700; }
+
+.a-sign-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 50px; }
+.a-sign-col h5 { margin: 0 0 30px; font-size: 15px; font-weight: 700; }
+.sig { margin-bottom: 30px; text-align: center; }
+.sig .line { border-bottom: 1px solid #000; height: 22px; }
+.sig .cap { margin-top: 3px; font-size: 14px; }
+.sig .cap b { display: block; }
+
+.a-foot { display: flex; justify-content: space-between; margin-top: 46px; font-size: 14px; }
+
+/* ========================================
+   PRINT
+======================================== */
+@media print {
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    @page { size: A4 portrait; margin: 12mm; }
+    body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+    .no-print { display: none !important; }
+    .sheet-wrapper { max-width: none; }
+    .sheet { box-shadow: none; padding: 0; min-height: 0; overflow: visible; }
+    .sheet table, .sheet tr, .a-sign-grid, .a-foot { page-break-inside: avoid; }
+}
+
+/* ========================================
+   MOBILE
+======================================== */
+@media screen and (max-width: 768px) {
+    body { margin: 16px; }
+    .sheet { padding: 28px 20px; min-height: 0; }
+    .letterhead img { width: 110px; }
+    .req-toolbar { flex-direction: column; align-items: stretch; }
+    .toolbar-actions .tb-btn { flex: 1; }
+    .form-switch { width: 100%; }
+    .form-switch button { flex: 1; padding: 0 8px; font-size: 12px; }
+    .a-sign-grid { grid-template-columns: 1fr; }
+    .acceptance, .letter { font-size: 14px; }
+}
+
+
+/* ========================================
+   MEMORANDUM OF AGREEMENT
+======================================== */
+.moa { font-family: "Times New Roman", Times, serif; font-size: 14.5px; line-height: 1.45; }
+.moa-page + .moa-page { margin-top: 36px; padding-top: 36px; border-top: 2px dashed #d1d5db; }
+.moa-title { text-align: center; font-size: 19px; font-weight: 700; margin: 0 0 22px; }
+.moa-know { margin: 0 0 16px; font-size: 15px; }
+.moa-p { margin: 0 0 12px; }
+.moa-j, .moa-j li { text-align: justify; }
+.moa-p.moa-j { text-indent: 40px; }
+.moa-center { text-align: center; margin: 10px 0; }
+.moa-h { display: flex; gap: 12px; margin: 16px 0 6px; font-size: inherit; font-weight: 400; }
+.moa-h span { font-weight: 700; }
+.moa-list { margin: 0 0 8px 34px; padding-left: 24px; }
+.moa-list li { margin-bottom: 3px; padding-left: 6px; }
+.moa-fill { display: inline-block; border-bottom: 1px solid #000; height: 1em; vertical-align: baseline; }
+
+.moa-witness { margin-top: 26px; }
+.moa-sign-row { display: grid; grid-template-columns: 1fr 1fr; column-gap: 60px; margin-top: 34px; }
+.moa-sign-row.center { grid-template-columns: 1fr; justify-items: center; }
+.moa-sign-row.center .moa-sig { width: 50%; }
+.moa-sig { text-align: center; }
+.moa-sig .line { border-bottom: 1px solid #000; min-height: 22px; display: flex; align-items: flex-end; justify-content: center; }
+.moa-sig .cap { margin-top: 2px; font-size: 14px; }
+.moa-sig.by { display: flex; align-items: flex-end; gap: 6px; text-align: left; }
+.moa-sig.by > div { flex: 1; text-align: center; }
+.moa-presence { margin: 28px 0 0; }
+
+.moa-ack { text-align: center; font-size: 15px; font-weight: 400; margin: 20px 0 34px; }
+.moa-ss { line-height: 1.7; margin-bottom: 20px; }
+.moa-notary { margin: 26px 0 30px 62%; }
+.moa-docs { border-collapse: collapse; }
+.moa-docs td { border: none; padding: 1px 12px 1px 0; font-size: 14.5px; }
+
+@media print {
+    .moa { font-size: 12px; line-height: 1.35; }
+    .moa-page + .moa-page { margin-top: 0; padding-top: 0; border-top: none; page-break-before: always; }
+    .moa-title { margin-bottom: 14px; }
+    .moa-p { margin-bottom: 8px; }
+    .moa-sign-row { margin-top: 26px; }
+}
+
+@media screen and (max-width: 768px) {
+    .moa { font-size: 13.5px; }
+    .moa-list { margin-left: 8px; }
+    .moa-sign-row { grid-template-columns: 1fr; row-gap: 26px; }
+    .moa-sign-row.center .moa-sig { width: 100%; }
+    .moa-notary { margin-left: 0; }
+}
+
+/* ========================================
+   MOBILE VIEW (phone) - mas madaling basahin at i-tap
+======================================== */
+@media screen and (max-width: 768px) {
+    html { -webkit-text-size-adjust: 100%; }
+
+    body {
+        margin: 0;
+        padding: 10px 10px calc(16px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* Toolbar nananatili sa itaas habang nag-i-scroll */
+    .req-toolbar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        margin: 0 0 12px;
+        padding: 10px;
+        gap: 8px;
+    }
+
+    .tb-btn { height: 44px; font-size: 14px; }
+
+    /* Mga button ng form: puwedeng i-swipe pakaliwa/pakanan kung marami */
+    .form-switch {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    .form-switch::-webkit-scrollbar { display: none; }
+    .form-switch button {
+        flex: 1 0 auto;
+        height: 44px;
+        padding: 0 14px;
+        white-space: nowrap;
+    }
+
+    /* Papel */
+    .sheet {
+        padding: 22px 16px;
+        border-radius: 8px;
+        min-height: 0;
+    }
+
+    .sheet-watermark { width: 300px; }
+
+    .letterhead { margin-bottom: 22px; }
+    .letterhead img { width: 96px; }
+    .letterhead p { font-size: 10.5px; }
+
+    /* Justified text nagkakaroon ng malalaking butas sa makitid na screen */
+    .moa-j, .moa-j li, .moa-p.moa-j,
+    .letter p.indent, .acceptance p.body { text-align: left; }
+
+    /* ---- Request Letter ---- */
+    .letter { font-size: 14px; line-height: 1.55; }
+    .letter .l-date { margin-bottom: 22px; }
+    .letter p.indent { text-indent: 22px; }
+    .letter .l-list { margin-left: 4px; }
+
+    /* ---- Acceptance Form ---- */
+    .acceptance { font-size: 14px; }
+    .acceptance p.body { text-indent: 22px; }
+    .acceptance .fill {
+        min-width: 110px !important;
+        max-width: 100%;
+    }
+    .acceptance .a-table td { padding: 10px 8px; font-size: 14px; }
+    .acceptance .a-table td:first-child { width: 42%; }
+    .a-sign-grid { row-gap: 8px; }
+    .a-sign-col h5 { margin-bottom: 22px; }
+    .a-foot { flex-direction: column; gap: 6px; margin-top: 30px; }
+
+    /* ---- MOA ---- */
+    .moa { font-size: 13.5px; line-height: 1.5; }
+    .moa-title { font-size: 17px; }
+    .moa-p.moa-j { text-indent: 22px; }
+    .moa-h { gap: 8px; }
+    .moa-list { margin-left: 0; padding-left: 22px; }
+    .moa-fill { max-width: 100%; }
+    .moa-sign-row { margin-top: 28px; }
+
+    /* Label ng pahina para alam kung nasaan sa 3 pahina */
+    .moa-page { position: relative; }
+    .moa-page + .moa-page { margin-top: 30px; padding-top: 34px; }
+    .moa-page + .moa-page::before {
+        content: "Page " counter(moa-page) " of 3";
+        position: absolute;
+        top: 8px;
+        right: 0;
+        font-family: Arial, sans-serif;
+        font-size: 11px;
+        color: #9ca3af;
+    }
+    .moa { counter-reset: moa-page; }
+    .moa-page { counter-increment: moa-page; }
+}
+
+/* Napakaliit na phone (<= 400px) */
+@media screen and (max-width: 400px) {
+    .sheet { padding: 18px 12px; }
+    .letter, .acceptance { font-size: 13.5px; }
+    .moa { font-size: 13px; }
+    .tb-btn span { font-size: 13px; }
+}
+
+/* Siguraduhing hindi apektado ang pag-print ng mobile styles */
+@media print {
+    .moa-page + .moa-page::before { display: none !important; }
+}

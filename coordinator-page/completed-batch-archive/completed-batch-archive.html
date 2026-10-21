@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Batch Archive</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+    <link rel="stylesheet" href="completed-batch-archive.css">
+</head>
+<body>
+
+<div class="archive-page">
+
+    <!-- HEADER -->
+    <header class="archive-head">
+        <div class="archive-title">
+            <span class="title-bar"></span>
+            <div>
+                <h1>Batch Archive</h1>
+                <p>When an academic year ends, its batch is archived here automatically. Interns who did not finish their OJT are marked Incomplete.</p>
+            </div>
+        </div>
+
+        <div class="archive-head-actions">
+            <label class="search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input id="searchInput" type="text" placeholder="Search name, ID, section, company..." autocomplete="off">
+            </label>
+            <button id="backBtn" class="btn btn-ghost" type="button">
+                <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+            </button>
+        </div>
+    </header>
+
+    <!-- SUMMARY -->
+    <section class="summary-row">
+        <div class="summary-chip"><strong id="statBatches">0</strong><span>Archived Batches</span></div>
+        <div class="summary-chip"><strong id="statStudents">0</strong><span>Archived Students</span></div>
+        <div class="summary-chip"><strong id="statReady">0</strong><span>Ready to Archive</span></div>
+    </section>
+
+    <!-- TABS -->
+    <nav class="tabs" role="tablist">
+        <button class="tab" data-tab="archived" role="tab" type="button">
+            <i class="fa-solid fa-box-archive"></i> Archived Batches
+            <span class="tab-count" id="tabCountArchived">0</span>
+        </button>
+        <button class="tab active" data-tab="ready" role="tab" type="button">
+            <i class="fa-solid fa-clipboard-check"></i> Ready to Archive
+            <span class="tab-count" id="tabCountReady">0</span>
+        </button>
+    </nav>
+
+    <!-- FILTER + SORT TOOLBAR -->
+    <section class="toolbar">
+        <div class="toolbar-group">
+            <label class="field">
+                <span>Academic Year</span>
+                <select id="filterBatch"></select>
+            </label>
+            <label class="field">
+                <span>Section</span>
+                <select id="filterSection"></select>
+            </label>
+            <label class="field">
+                <span>Company</span>
+                <select id="filterCompany"></select>
+            </label>
+            <button id="resetFilters" class="btn btn-link" type="button">
+                Reset
+            </button>
+        </div>
+
+        <div class="toolbar-group">
+            <label class="field">
+                <span><i class="fa-solid fa-arrow-down-wide-short"></i> Sort academic years</span>
+                <select id="sortBatches">
+                    <option value="batch-desc">Newest academic year first</option>
+                    <option value="batch-asc">Oldest academic year first</option>
+                    <option value="count-desc">Most students</option>
+                    <option value="count-asc">Fewest students</option>
+                </select>
+            </label>
+            <label class="field">
+                <span><i class="fa-solid fa-arrow-up-a-z"></i> Sort students</span>
+                <select id="sortStudents">
+                    <option value="name-asc">Name (A–Z)</option>
+                    <option value="name-desc">Name (Z–A)</option>
+                    <option value="number-asc">Student No. (low–high)</option>
+                    <option value="number-desc">Student No. (high–low)</option>
+                    <option value="section-asc">Section</option>
+                    <option value="company-asc">Company</option>
+                    <option value="hours-desc">Hours (high–low)</option>
+                </select>
+            </label>
+        </div>
+    </section>
+
+    <div class="result-line" id="resultLine"></div>
+
+    <!-- BATCH LIST -->
+    <main id="batchList" class="batch-list"></main>
+
+</div>
+
+<!-- CONFIRM DIALOG -->
+<div class="confirm-overlay" id="confirmOverlay" hidden>
+    <div class="confirm-card">
+        <div class="confirm-icon"><i class="fa-solid fa-box-archive"></i></div>
+        <h3 id="confirmTitle">Archive this batch?</h3>
+        <p id="confirmText"></p>
+        <div class="confirm-actions">
+            <button id="confirmCancel" class="btn btn-ghost" type="button">Cancel</button>
+            <button id="confirmOk" class="btn btn-primary" type="button">Archive Batch</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script type="module" src="completed-batch-archive.js"></script>
+</body>
+</html>

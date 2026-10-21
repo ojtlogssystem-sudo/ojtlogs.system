@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>My Profile | OJT-LOGS</title>
+
+    <!-- Shared Layout -->
+    <link rel="stylesheet" href="../sidebar/sidebar-web.css">
+    <!-- Shared Header -->
+    <link rel="stylesheet" href="../header/header.css">
+    <!-- Page CSS -->
+    <link rel="stylesheet" href="profile.css">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css">
+
+</head>
+
+<body>
+
+<div class="dashboard">
+
+<!-- ===================== SIDEBAR ===================== -->
+
+<div id="sidebar-container"></div>
+
+<!-- ===================== MAIN CONTENT ===================== -->
+
+<main class="main">
+
+<!-- HEADER (shared: ../header/header.js + header.html)
+     Walang data-school-year dito - sa Reports page lang ang School Year. -->
+<header
+    id="header-container"
+    data-page-title="My Profile"
+    data-page-subtitle="Your details as they appear in OJT-LOGS."
+></header>
+
+<!-- ===================== PROFILE VIEW ===================== -->
+
+<section class="profile-page">
+
+    <!-- ============ HERO ============ -->
+
+    <div class="hero">
+
+        <div class="hero-avatar">
+            <div class="avatar-lg" id="heroAvatar">CO</div>
+            <span class="status-dot" id="heroDot"></span>
+        </div>
+
+        <div class="hero-main">
+
+            <span class="eyebrow">
+                <i class="fa-solid fa-shield-halved"></i>
+                Coordinator profile
+            </span>
+
+            <h1 id="heroName">Loading...</h1>
+
+            <div class="chips">
+                <span class="chip chip-role" id="chipRole">Coordinator</span>
+                <span class="chip chip-date"><i class="fa-regular fa-calendar"></i><span id="chipJoined">—</span></span>
+                <span class="chip chip-active" id="chipStatus"><i class="fa-solid fa-circle"></i>Active</span>
+            </div>
+
+        </div>
+
+        <div class="hero-actions">
+            <a class="btn-edit" href="../settings/settings.html">
+                <i class="fa-solid fa-pen"></i>
+                Edit profile
+            </a>
+        </div>
+
+    </div>
+
+    <!-- ============ TABS ============ -->
+
+    <div class="tabs" role="tablist" aria-label="Profile sections">
+
+        <button type="button" class="tab active" role="tab" id="tab-personal"
+                data-tab="personal" aria-selected="true" aria-controls="panel-personal">
+            <i class="fa-regular fa-user"></i> Personal
+        </button>
+
+        <button type="button" class="tab" role="tab" id="tab-contact"
+                data-tab="contact" aria-selected="false" aria-controls="panel-contact">
+            <i class="fa-solid fa-phone"></i> Contact
+        </button>
+
+    </div>
+
+    <!-- ============ PERSONAL ============ -->
+
+    <div class="info-card" role="tabpanel" id="panel-personal" aria-labelledby="tab-personal">
+
+        <div class="info-head">
+            <div class="icon-tile"><i class="fa-regular fa-user"></i></div>
+            <div>
+                <h3>Personal information</h3>
+                <p>Name and role</p>
+            </div>
+        </div>
+
+        <dl class="fields">
+            <div class="field"><dt>First name</dt><dd id="fFirst">—</dd></div>
+            <div class="field"><dt>Middle name</dt><dd id="fMiddle">—</dd></div>
+            <div class="field"><dt>Last name</dt><dd id="fLast">—</dd></div>
+            <div class="field"><dt>Role</dt><dd id="fRole">—</dd></div>
+            <div class="field span-2"><dt>Full name</dt><dd id="fFull">—</dd></div>
+            <div class="field"><dt>Account status</dt><dd id="fStatus">—</dd></div>
+        </dl>
+
+    </div>
+
+    <!-- ============ CONTACT ============ -->
+
+    <div class="info-card" role="tabpanel" id="panel-contact" aria-labelledby="tab-contact" hidden>
+
+        <div class="info-head">
+            <div class="icon-tile"><i class="fa-solid fa-phone"></i></div>
+            <div>
+                <h3>Contact information</h3>
+                <p>How students and admins can reach you</p>
+            </div>
+        </div>
+
+        <dl class="fields">
+            <div class="field span-2">
+                <dt>Email</dt>
+                <dd><span id="fEmail">—</span></dd>
+            </div>
+            <div class="field span-2"><dt>Phone number</dt><dd id="fPhone">—</dd></div>
+        </dl>
+
+    </div>
+
+</section>
+
+</main>
+
+</div>
+
+<script src="../sidebar/sidebar-web.js"></script>
+<script type="module" src="../header/header.js"></script>
+<script type="module" src="profile.js"></script>
+
+</body>
+</html>

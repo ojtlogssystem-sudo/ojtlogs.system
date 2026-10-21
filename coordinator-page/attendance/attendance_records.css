@@ -35,22 +35,6 @@
     border: none;
 }
 
-/* Red Indicator Line on Hover */
-.summary-card::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    height: 42px; 
-    width: 3.5px;
-    background-color: #ab0a0a;
-    border-radius: 0 4px 4px 0;
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
-    box-shadow: 2px 0 6px rgba(171, 10, 10, 0.4);
-    transition: all 0.3s ease;
-}
 
 .summary-card:hover::before {
     height: 80px;
@@ -69,13 +53,13 @@
     position: absolute;
     top: 18px;
     right: 18px;
-    width: 38px;
-    height: 38px;
+    width: 32px;
+    height: 32px;
     border-radius: 8px;
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 16px;
+    font-size: 12px;
     flex-shrink: 0;
     background: #fde8e8 !important;
     color: #ab0a0a !important;
@@ -355,7 +339,7 @@
 ======================================== */
 .status {
     display: inline-block;
-    padding: 4px 11px;
+    padding: 3px 11px;
     border-radius: 14px;
     font-size: 11px;
     font-weight: 600;
@@ -383,108 +367,163 @@
 /* ========================================
    ACTION BUTTONS
 ======================================== */
-.actions {
-    display: flex;
-    gap: 8px;
+/* Naka-<td> ang .actions, kaya HUWAG gawing flex ang mismong td
+   (nawawala ang table-cell at hindi aabot ang border-bottom line).
+   Nasa loob ng td ang button, kaya inline-flex lang ang button. */
+.students-table td.actions {
+    display: table-cell;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.students-table td.actions .action-btn + .action-btn {
+    margin-left: 8px;
 }
 
 .action-btn {
-    width: 36px;
-    height: 36px;
+    height: 34px;
+    padding: 0 14px;
     border-radius: 8px;
-    display: flex;
+    display: inline-flex;
     justify-content: center;
     align-items: center;
-    color: #fff;
-    border: none;
+    gap: 6px;
     cursor: pointer;
     transition: .25s;
+    font-family: 'Poppins', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
 }
 
 .action-btn:hover {
-    transform: translateY(-2px);
+    transform: translateY(-1px);
 }
 
-.view-btn { background: #4f8dfd; }
-.view-btn:hover { background: #2f73f2; }
+.view-btn {
+    background: #fff;
+    color: #ab0a0a;
+    border: 1px solid #ab0a0a;
+}
+.view-btn:hover { background: #fff5f5; }
 
-.edit-btn { background: #33b864; }
-.edit-btn:hover { background: #269c52; }
+.edit-btn {
+    background: #fff;
+    color: #33b864;
+    border: 1px solid #33b864;
+}
+.edit-btn:hover { background: #f2fbf6; }
 
 /* ========================================
-   TABLE FOOTER & PAGINATION
+   STUDENT TABLE FOOTER / PAGINATION
+   DASHBOARD STYLE
 ======================================== */
+
 .table-footer {
-    padding: 14px 25px;
+    padding: 12px 20px;
     border-top: 1px solid #ececec;
     background: #fafafa;
+
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 15px;
+
+    gap: 12px;
     flex-wrap: wrap;
-    margin-top: auto; /* PERMANENTENG IDIDIKIT SA DULO */
+
+    margin-top: auto;
 }
 
-.pagination-info {
-    font-size: 13px;
-    color: #666;
+.showing-text {
+    font-size: 11px;
+    color: #888;
+    font-weight: 400;
 }
 
 .pagination-controls {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
 }
 
 .page-numbers {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
 }
 
-.page-btn, .page-num {
-    height: 34px;
-    min-width: 34px;
-    padding: 0 8px;
+.page-btn,
+.page-num {
+    height: 30px;
+    min-width: 30px;
+    padding: 0 7px;
+
     background: #fff;
-    border: 1px solid #dcdcdc;
+    border: 1px solid #e5e5e5;
     border-radius: 6px;
-    color: #333;
-    font-size: 13px;
+
+    color: #666;
+
+    font-size: 11px;
     font-weight: 500;
+
     display: flex;
     align-items: center;
     justify-content: center;
+
     cursor: pointer;
+
     transition: all 0.2s ease;
 }
 
 .page-num.active {
-    background: var(--primary, #ab0a0a);
-    color: #ffffff;
-    border-color: var(--primary, #ab0a0a);
+    background: #ab0a0a;
+    color: #fff;
+    border-color: #ab0a0a;
     font-weight: 600;
+}
+
+.page-btn:hover:not(:disabled),
+.page-num:hover:not(.active) {
+    border-color: #d5d5d5;
+    background: #fff;
+    color: #ab0a0a;
+}
+
+.page-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
 }
 
 .rows-per-page {
     display: flex;
     align-items: center;
-    gap: 10px;
-    font-size: 13px;
-    color: #666;
+    gap: 8px;
+
+    font-size: 11px;
+    color: #888;
 }
 
 .rows-per-page select {
-    height: 34px;
-    padding: 0 10px;
+    height: 30px;
+
+    padding: 0 8px;
+
     background: #fff;
-    border: 1px solid #dcdcdc;
+    border: 1px solid #e5e5e5;
     border-radius: 6px;
-    font-size: 13px;
-    font-weight: 600;
-    color: #333;
+
+    font-size: 11px;
+    font-weight: 500;
+
+    color: #666;
+
     outline: none;
+    cursor: pointer;
+}
+
+.rows-per-page select:focus {
+    border-color: #ab0a0a;
 }
 
 /* ========================================
@@ -542,7 +581,7 @@
 
 .attendance-content .students-table {
     width: 100%;
-    min-width: 1000px;
+    min-width: 1100px;
 
     border-collapse: collapse;
 }
@@ -576,8 +615,8 @@
    COMPANY COLUMN
 ======================================== */
 
-.students-table th:nth-child(4),
-.students-table td:nth-child(4) {
+.students-table th:nth-child(5),
+.students-table td:nth-child(5) {
     min-width: 160px;
 }
 
@@ -594,11 +633,11 @@
     height: 32px;
     padding: 0 11px;
 
-    border: 1px solid #d9e3ff;
+    border: 1px solid #f5c6c6;
     border-radius: 7px;
 
-    background: #eef4ff;
-    color: #4f8dfd;
+    background: #fde8e8;
+    color: #ab0a0a;
 
     font-family: 'Poppins', sans-serif;
     font-size: 11px;
@@ -616,9 +655,9 @@
 }
 
 .photo-proof-btn:hover {
-    background: #4f8dfd;
+    background: #ab0a0a;
     color: #fff;
-    border-color: #4f8dfd;
+    border-color: #ab0a0a;
 
     transform: translateY(-1px);
 }
@@ -745,4 +784,506 @@
     object-fit: contain;
 
     border-radius: 8px;
+}
+
+
+/* ========================================
+   LIVE DATE & TIME BAR
+======================================== */
+
+.datetime-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+
+    flex-shrink: 0;
+
+    background: #fff;
+    border: 1px solid #ececec;
+    border-radius: 14px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .03);
+
+    padding: 12px 22px;
+    margin-bottom: 20px;
+}
+
+.datetime-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.datetime-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    background: #fde8e8;
+    color: #ab0a0a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+.datetime-item small {
+    display: block;
+    font-size: 11px;
+    color: #999;
+    margin-bottom: 2px;
+}
+
+.datetime-item strong {
+    font-size: 16px;
+    font-weight: 600;
+    color: #222;
+    font-variant-numeric: tabular-nums;
+}
+
+
+/* ========================================
+   EXTRA STATUS BADGES
+======================================== */
+
+.status.pending {
+    background: #eef2f7;
+    color: #64748b;
+    border: 1px solid #cbd5e1;
+}
+
+.status.rejected {
+    background: #f3e8ff;
+    color: #8e44ad;
+    border: 1px solid #d8b4fe;
+}
+
+
+
+/* ========================================
+   CLICKABLE SUMMARY CARDS
+======================================== */
+
+.summary-card.clickable-card {
+    cursor: pointer;
+}
+
+.summary-card.clickable-card:focus-visible {
+    outline: 2px solid #ab0a0a;
+    outline-offset: 2px;
+}
+
+
+/* ========================================
+   CARD LIST MODAL (iframe popup)
+======================================== */
+
+.attendance-list-overlay {
+    position: fixed;
+    inset: 0;
+
+    display: none;
+    align-items: center;
+    justify-content: center;
+
+    background: rgba(0, 0, 0, 0.5);
+
+    z-index: 9998;
+}
+
+.attendance-list-overlay.show {
+    display: flex;
+}
+
+.attendance-list-card {
+    width: 94%;
+    max-width: 1150px;
+    height: 88vh;
+
+    display: flex;
+    flex-direction: column;
+
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+
+    overflow: hidden;
+
+    animation: attendanceListFadeIn 0.2s ease-in-out;
+}
+
+@keyframes attendanceListFadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.attendance-list-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 16px 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.attendance-list-header h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    font-size: 16px;
+    font-weight: 600;
+    color: #222;
+    margin: 0;
+}
+
+.attendance-list-header h3 i {
+    color: #ab0a0a;
+}
+
+.attendance-list-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    line-height: 1;
+    color: #888;
+    cursor: pointer;
+}
+
+.attendance-list-close:hover {
+    color: #000;
+}
+
+.attendance-list-body {
+    flex: 1;
+    min-height: 0;
+}
+
+.attendance-list-body iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* ========================================
+   DATE RANGE FILTER (From / To / Apply)
+======================================== */
+
+.date-range-filter {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.date-range-filter label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: #94a3b8;
+}
+
+.date-range-filter input[type="date"] {
+    height: 38px;
+    padding: 0 10px;
+    background: #fff;
+    border: 1px solid #ececec;
+    border-radius: 10px;
+    color: #333;
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+.date-range-filter input[type="date"]:focus {
+    border-color: var(--primary, #ab0a0a);
+    box-shadow: 0 0 0 3px rgba(171, 10, 10, 0.08);
+}
+
+.apply-range-btn {
+    height: 38px;
+    padding: 0 20px;
+    border: none;
+    border-radius: 10px;
+    background: var(--primary, #ab0a0a);
+    color: #fff;
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.apply-range-btn:hover {
+    filter: brightness(0.92);
+    transform: translateY(-1px);
+}
+
+/* Date column */
+.students-table td.date-cell {
+    font-weight: 600;
+    white-space: nowrap;
+    color: #222;
+}
+
+/* ========================================
+   STUDENT LIST MODAL (Scheduled / Present)
+======================================== */
+
+.student-list-card {
+    max-width: 1250px;
+}
+
+.student-list-body {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    background: #f4f6fa;
+    padding: 24px;
+}
+
+.student-list-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+
+.student-list-top h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: #222;
+}
+
+.student-list-sub {
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: #888;
+}
+
+.student-list-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.student-count-badge {
+    padding: 8px 16px;
+    border-radius: 999px;
+    background: #fde8e8;
+    color: #ab0a0a;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.list-print-btn {
+    height: 40px;
+    padding: 0 20px;
+    border-radius: 10px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    background: var(--primary, #ab0a0a);
+    border: 1px solid var(--primary, #ab0a0a);
+    color: #fff;
+}
+
+.list-print-btn:hover {
+    filter: brightness(0.92);
+}
+
+.student-list-table-card {
+    background: #fff;
+    border: 1px solid #ececec;
+    border-radius: 14px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .03);
+    overflow-x: auto;
+}
+
+.student-list-table-card .students-table {
+    width: 100%;
+}
+
+/* ========================================
+   EXCUSED STATUS BADGE (ini-excuse ng coordinator)
+======================================== */
+
+.status.excused {
+    background: #f0eaff;
+    color: #7c4dff;
+    border: 1px solid #ddd0ff;
+}
+
+/* ==========================================
+   FILTER & SORT BUTTONS (toolbar)
+========================================== */
+.toolbar-menu {
+    position: relative;
+}
+
+.toolbar-btn {
+    height: 40px;
+    padding: 0 18px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    color: #1f2937;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+}
+
+.toolbar-btn:hover {
+    background: #fafafa;
+    border-color: #d1d5db;
+}
+
+.toolbar-btn[aria-expanded="true"] {
+    border-color: var(--primary, #ab0a0a);
+    box-shadow: 0 0 0 3px rgba(171, 10, 10, 0.08);
+}
+
+.toolbar-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+.toolbar-badge {
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: var(--primary, #ab0a0a);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.toolbar-badge[hidden] {
+    display: none;
+}
+
+/* Naka-align sa kanan ng button para hindi maputol ng card (overflow: hidden) */
+.toolbar-popover {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 230px;
+    padding: 14px;
+    background: #fff;
+    border: 1px solid #ececec;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+    z-index: 30;
+}
+
+.toolbar-popover.open {
+    display: block;
+    animation: toolbarPopoverIn 0.15s ease-out;
+}
+
+@keyframes toolbarPopoverIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.popover-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.popover-field label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+}
+
+/* Mas mataas na specificity para ma-override ang .table-header-right select */
+.table-header-right .toolbar-popover select {
+    width: 100%;
+    min-width: 0;
+    height: 38px;
+}
+
+.popover-reset {
+    width: 100%;
+    height: 36px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary, #ab0a0a);
+    cursor: pointer;
+    transition: background .2s ease;
+}
+
+.popover-reset:hover {
+    background: #fdecec;
+}
+
+.sort-popover {
+    min-width: 190px;
+    padding: 6px;
+}
+
+.menu-option {
+    width: 100%;
+    padding: 9px 12px;
+    background: none;
+    border: none;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    text-align: left;
+    cursor: pointer;
+}
+
+.menu-option:hover {
+    background: #f5f5f5;
+}
+
+.menu-option.active {
+    background: #fdecec;
+    color: var(--primary, #ab0a0a);
+    font-weight: 600;
+}
+
+.menu-option.active::after {
+    content: "\2713";
+    font-size: 12px;
 }

@@ -892,6 +892,190 @@ body{
     color: #b91c1c;
 }
 
+/* ==========================================
+   EVALUATION STATUS LIST (PREVIEW MODAL)
+========================================== */
+
+.eval-status-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 360px;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+.eval-status-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #f8fafc;
+}
+
+.eval-status-info h4 {
+    margin: 0 0 3px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.eval-status-info span {
+    font-size: 11px;
+    color: #64748b;
+}
+
+.eval-status-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+}
+
+.eval-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .3px;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.eval-status-badge.answered {
+    background: #fecec7;
+    color: #703131;
+    border: 1px solid #AB0A0A;
+}
+
+.eval-status-badge.waiting {
+    background: #fecec7;
+    color: #AB0A0A;
+    border: 1px solid #AB0A0A;
+}
+
+.eval-view-answers-btn {
+    border: 1px solid #AB0A0A;
+    background: #fff;
+    color: #AB0A0A;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.eval-view-answers-btn:hover {
+    background: #fff5f5;
+}
+
+.eval-empty-note {
+    text-align: center;
+    color: #94a3b8;
+    padding: 20px 0;
+    font-size: 13px;
+}
+
+/* ==========================================
+   EVALUATION ANSWERS VIEW
+========================================== */
+
+.eval-answers-meta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+    padding: 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+}
+
+.eval-answers-meta div span {
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    color: #94a3b8;
+    margin-bottom: 3px;
+}
+
+.eval-answers-meta div strong {
+    font-size: 12.5px;
+    color: #334155;
+}
+
+.eval-category-scores {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 18px;
+}
+
+.eval-category-score-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #334155;
+}
+
+.eval-category-score-row strong {
+    color: #AB0A0A;
+    font-size: 12px;
+}
+
+.eval-answer-block {
+    margin-bottom: 14px;
+}
+
+.eval-answer-block h5 {
+    margin: 0 0 5px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.eval-answer-block p {
+    margin: 0;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: #475569;
+    white-space: pre-wrap;
+}
+
+.eval-hire-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.eval-hire-pill.yes {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.eval-hire-pill.no {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
 .email-chips-input {
     flex: 1;
     min-width: 120px;
@@ -1021,22 +1205,16 @@ body{
 
 
 /* ==========================================
-   SOFT AVATAR COLORS
+   AVATAR COLORS
+   Pula na may puting initials (kapareho ng
+   "CO" avatar ng coordinator sa header)
 ========================================== */
 
-.supervisor-color-0 {
-    background: #e8e7ff;
-    color: #5148b8;
-}
-
-.supervisor-color-1 {
-    background: #dff7eb;
-    color: #16804a;
-}
-
+.supervisor-color-0,
+.supervisor-color-1,
 .supervisor-color-2 {
-    background: #fff0c9;
-    color: #a66a00;
+    background: #ab0a0a;
+    color: #ffffff;
 }
 
 
@@ -1095,4 +1273,311 @@ body{
     color: #94a3b8;
 
     font-weight: 500;
+}
+
+/* ==========================================
+   FILTER & SORT BUTTONS (toolbar)
+========================================== */
+.toolbar-menu {
+    position: relative;
+}
+
+.toolbar-btn {
+    height: 40px;
+    padding: 0 18px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    color: #1f2937;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+}
+
+.toolbar-btn:hover {
+    background: #fafafa;
+    border-color: #d1d5db;
+}
+
+.toolbar-btn[aria-expanded="true"] {
+    border-color: #ab0a0a;
+    box-shadow: 0 0 0 3px rgba(171, 10, 10, 0.08);
+}
+
+.toolbar-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+.toolbar-badge {
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: #ab0a0a;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.toolbar-badge[hidden] {
+    display: none;
+}
+
+.toolbar-popover {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    min-width: 190px;
+    padding: 6px;
+    background: #fff;
+    border: 1px solid #ececec;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+    z-index: 20;
+}
+
+.toolbar-popover.open {
+    display: block;
+    animation: toolbarPopoverIn 0.15s ease-out;
+}
+
+@keyframes toolbarPopoverIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.menu-option {
+    width: 100%;
+    padding: 9px 12px;
+    background: none;
+    border: none;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    text-align: left;
+    cursor: pointer;
+}
+
+.menu-option:hover {
+    background: #f5f5f5;
+}
+
+.menu-option.active {
+    background: #fdecec;
+    color: #ab0a0a;
+    font-weight: 600;
+}
+
+.menu-option.active::after {
+    content: "\2713";
+    font-size: 12px;
+}
+
+.company-empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: #94a3b8;
+    padding: 20px;
+    margin: 0;
+}
+
+/* ==========================================
+   BULK ADD COMPANIES (CSV import)
+========================================== */
+.csv-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 22px 0 16px;
+    color: #a0aec0;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+}
+
+.csv-divider::before,
+.csv-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: #e2e8f0;
+}
+
+.csv-import-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.btn-import-csv {
+    height: 38px;
+    padding: 0 18px;
+    border: 1.5px dashed #ab0a0a;
+    background: #fff5f5;
+    color: #ab0a0a;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: 0.2s;
+}
+
+.btn-import-csv:hover {
+    background: #ffe9e9;
+}
+
+.btn-import-csv:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.csv-hint {
+    text-align: left;
+    margin: 0 0 16px;
+    font-size: 11.5px;
+    color: #94a3b8;
+    line-height: 1.5;
+}
+
+.csv-hint strong {
+    font-weight: 600;
+    color: #64748b;
+}
+
+.csv-preview {
+    display: none;
+    margin-bottom: 4px;
+    border: 1px solid #bbf7d0;
+    border-radius: 8px;
+    background: #f0fdf4;
+    padding: 10px 14px 14px;
+}
+
+.csv-preview.active {
+    display: block;
+    animation: csvPreviewFade 0.25s ease-in-out;
+}
+
+@keyframes csvPreviewFade {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.csv-preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    min-height: 20px;
+}
+
+.csv-summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #166534;
+    line-height: 1.3;
+}
+
+.csv-summary i {
+    font-size: 15px;
+    color: #16a34a;
+    flex-shrink: 0;
+}
+
+.csv-clear-btn {
+    border: none;
+    background: none;
+    padding: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #ab0a0a;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.csv-clear-btn:hover {
+    text-decoration: underline;
+}
+
+.csv-notes {
+    margin: 6px 0 0;
+    font-size: 11.5px;
+    color: #64748b;
+}
+
+.csv-notes[hidden] {
+    display: none;
+}
+
+.csv-company-list {
+    list-style: none;
+    margin: 10px 0 12px;
+    padding: 0;
+    max-height: 120px;
+    overflow-y: auto;
+    font-size: 12.5px;
+    color: #334155;
+}
+
+.csv-company-list li {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 4px 0;
+    border-bottom: 1px dashed #d1fae5;
+}
+
+.csv-company-list li:last-child {
+    border-bottom: none;
+}
+
+.csv-company-list li span:last-child {
+    color: #94a3b8;
+    white-space: nowrap;
+}
+
+.csv-intro {
+    text-align: left;
+    margin: 0 0 16px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #64748b;
+}
+
+/* Nagba-blink ang Import CSV kapag pinindot ang Save nang wala pang CSV */
+.btn-import-csv.needs-input {
+    border-style: solid;
+    animation: csvNeedsInput 0.5s ease;
+}
+
+@keyframes csvNeedsInput {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-4px); }
+    40%, 80% { transform: translateX(4px); }
 }

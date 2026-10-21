@@ -173,59 +173,6 @@ body {
     margin-bottom: 10px;
 }
 
-/* ================= PROFILE IMAGE UPLOAD ================= */
-.profile-upload {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-bottom: 20px;
-}
-
-.profile-preview {
-    width: 100px;
-    height: 100px;
-    position: relative;
-}
-
-.profile-preview img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 50%;
-    background: #f4f4f4;
-    border: 3px solid #f2f2f2;
-}
-
-.profile-preview label {
-    position: absolute;
-    right: 2px;
-    bottom: 2px;
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    background: #ffe9e9;
-    color: var(--primary);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 13px;
-    cursor: pointer;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-}
-
-.profile-upload h3 {
-    margin-top: 12px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
-}
-
-.profile-upload p {
-    font-size: 10px;
-    color: var(--gray);
-    margin: 0;
-}
-
 /* ================= FORM INPUTS & FLOATING LABELS ================= */
 .card-title.security-title{
     margin-bottom: 40px;
@@ -298,6 +245,24 @@ body {
     cursor: pointer;
 }
 
+/* Icon sa kaliwa, kulay pula tulad ng ibang icon (Internship Details) */
+.input-box.icon-left input { padding: 0 14px 0 42px; }
+.input-box.icon-left label { left: 38px; }
+
+.input-box.icon-left input:focus + label,
+.input-box.icon-left input:not(:placeholder-shown) + label { left: 12px; }
+
+.input-box.icon-left i {
+    left: 15px;
+    right: auto;
+    color: var(--primary);
+    font-size: 14px;
+    width: 16px;
+    text-align: center;
+    cursor: default;
+    pointer-events: none;
+}
+
 .select-box {
     position: relative;
 }
@@ -330,6 +295,63 @@ body {
     font-size: 12px;
     color: #777;
     pointer-events: none;
+}
+
+/* ================= TYPEAHEAD COMBOBOX (type + pick) ================= */
+.input-box.combobox {
+    position: relative;
+}
+
+.input-box input:disabled {
+    background: #f5f5f5;
+    color: #999;
+    cursor: not-allowed;
+}
+
+.combobox-list {
+    list-style: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    margin: 0;
+    padding: 6px 0;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    max-height: 170px;
+    overflow-y: auto;
+    z-index: 30;
+    display: none;
+}
+
+.combobox-list.open {
+    display: block;
+}
+
+.combobox-list li {
+    padding: 9px 14px;
+    font-size: 12px;
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.combobox-list li:hover,
+.combobox-list li.active {
+    background: #fdecec;
+    color: var(--primary);
+}
+
+.combobox-list li.empty-option {
+    color: var(--gray);
+    cursor: default;
+}
+
+.combobox-list li.empty-option:hover {
+    background: transparent;
+    color: var(--gray);
 }
 
 /* ================= IN-APP ALERT BANNER ================= */
@@ -542,7 +564,8 @@ body {
     font-size: 12px;
 }
 
-.time-group input[type="time"] {
+.time-group input[type="time"],
+.time-group input[type="date"] {
     width: 100%;
     height: 40px;
     border: 1px solid var(--border);
@@ -558,7 +581,8 @@ body {
                 box-shadow 0.2s ease;
 }
 
-.time-group input[type="time"]:focus {
+.time-group input[type="time"]:focus,
+.time-group input[type="date"]:focus {
     border-color: var(--primary);
     box-shadow: 0 0 0 3px rgba(171, 10, 10, .08);
 }
@@ -711,10 +735,720 @@ body {
 
 
 /* Disabled time inputs */
-.time-group input[type="time"]:disabled {
+.time-group input[type="time"]:disabled,
+.time-group input[type="date"]:disabled {
     background: #f5f5f5;
     color: #999;
     border-color: #e5e5e5;
     cursor: not-allowed;
     opacity: 0.7;
+}
+
+/* ================= WORK MODALITY ================= */
+.modality-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.modality-option {
+    display: block;
+    cursor: pointer;
+    margin: 0;
+}
+
+.modality-option input {
+    display: none;
+}
+
+.modality-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 11px;
+    border: 1px solid #e5e5e5;
+    border-radius: 9px;
+    background: #fff;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+
+.modality-card:hover {
+    border-color: var(--primary);
+    background: #fffafa;
+}
+
+.modality-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 13px;
+}
+
+.modality-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.modality-info strong {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.modality-info small {
+    font-size: 8px;
+    color: var(--gray);
+    line-height: 1.3;
+}
+
+.modality-option input:checked + .modality-card {
+    border-color: var(--primary);
+    background: #fff6f6;
+    box-shadow: 0 0 0 1px rgba(171, 10, 10, 0.06);
+}
+
+/* ================= DUTY START DATE ================= */
+
+#step2Content .start-date-label {
+    margin-top: 16px;
+}
+
+.start-date-group {
+    margin-bottom: 0;
+}
+
+.field-hint {
+    display: block;
+    margin-top: 6px;
+    font-size: 10px;
+    color: var(--gray);
+}
+
+
+/* ==========================================
+   TERMS & CONDITIONS / PRIVACY POLICY MODAL
+   (lalabas pagka-click ng Continue sa Step 3)
+========================================== */
+.terms-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 3000;
+    justify-content: center;
+    align-items: center;
+    padding: 16px;
+}
+
+.terms-overlay.active {
+    display: flex;
+}
+
+.terms-card {
+    width: 100%;
+    max-width: 420px;
+    max-height: min(560px, 85vh);
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.terms-header {
+    padding: 14px 18px 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.terms-header h2 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: #111;
+    line-height: 1.3;
+}
+
+.terms-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 12px 18px;
+    font-size: 12px;
+    line-height: 1.55;
+    color: #333;
+    outline: none;
+}
+
+.terms-body h3 {
+    font-size: 13px;
+    font-weight: 700;
+    color: #111;
+    margin: 12px 0 4px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.terms-body p { margin-bottom: 6px; }
+.terms-body ul { margin: 0 0 6px 18px; padding: 0; }
+.terms-body li { margin-bottom: 3px; }
+
+.terms-notice {
+    background: #fdeaea;
+    border-left: 3px solid var(--primary);
+    padding: 8px 10px;
+    border-radius: 6px;
+}
+
+.terms-footer {
+    padding: 12px 18px 16px;
+    border-top: 1px solid #eee;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.terms-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 0;
+    font-size: 12px;
+    color: #111;
+    cursor: pointer;
+    line-height: 1.4;
+}
+
+.terms-check input {
+    width: 15px;
+    height: 15px;
+    margin-top: 1px;
+    flex-shrink: 0;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.terms-check.disabled { opacity: .5; cursor: not-allowed; }
+.terms-check.disabled input { cursor: not-allowed; }
+
+.terms-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.terms-actions .continue-btn {
+    flex: 1;
+    margin-top: 0;
+    height: 38px;
+}
+
+.terms-actions .terms-cancel-btn {
+    background: #888;
+}
+
+.terms-actions .terms-cancel-btn:hover {
+    background: #6f6f6f;
+}
+
+.terms-actions .continue-btn:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+.terms-actions .continue-btn:disabled:hover {
+    background: var(--primary);
+}
+
+/* ================= STEP 1: REQUIREMENT DOCUMENTS ================= */
+.requirements-note {
+    font-size: 12px;
+    color: var(--gray);
+    margin: 0 0 12px;
+    line-height: 1.5;
+}
+
+.requirements-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 22px;
+}
+
+.requirement-item {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 14px;
+    border: 1.5px dashed #d8d8d8;
+    border-radius: 12px;
+    background: #fafafa;
+    transition: border-color .2s ease, background .2s ease;
+}
+
+.requirement-item.has-file {
+    border-style: solid;
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+}
+
+.requirement-icon {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    border-radius: 10px;
+    background: #fff0f0;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+}
+
+.requirement-item.has-file .requirement-icon {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.requirement-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.requirement-info strong {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.requirement-info small {
+    font-size: 11px;
+    color: #888;
+    line-height: 1.35;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.requirement-item.has-file .requirement-status {
+    color: #166534;
+}
+
+.requirement-btn {
+    flex-shrink: 0;
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1.5px solid var(--primary);
+    color: var(--primary);
+    background: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: .2s;
+}
+
+.requirement-btn:hover {
+    background: var(--primary);
+    color: #fff;
+}
+
+.requirement-view {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 12px;
+    border-radius: 8px;
+    border: 1.5px solid #d1d5db;
+    color: #374151;
+    background: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: .2s;
+}
+
+@media (hover: hover) {
+    .requirement-view:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        background: #fdf2f2;
+    }
+}
+
+.requirement-remove {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 50%;
+    background: #fee2e2;
+    color: var(--primary);
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.requirement-remove[hidden] {
+    display: none;
+}
+
+.requirements-subtitle {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 4px 0 14px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+}
+/* ==========================================
+   REQUIREMENTS - ALIGNMENT SA MOBILE
+   Icon + pangalan sa unang row, mga button sa ikalawang row
+========================================== */
+.requirement-view,
+.requirement-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    line-height: 1.2;
+    white-space: nowrap;
+    box-sizing: border-box;
+}
+
+/* Row 1: icon + name. Row 2: file list. Row 3: View / Attach buttons.
+   Same layout on every screen size so it never gets squeezed. */
+.requirement-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.requirement-info strong {
+    font-size: 14px;
+    line-height: 1.3;
+}
+
+.requirement-info small.requirement-sub {
+    white-space: normal;
+}
+
+.requirement-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.requirement-view,
+.requirement-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 40px;
+    padding: 0 12px;
+    font-size: 13px;
+}
+
+/* ---- attached files list (any number of files) ---- */
+.requirement-files {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.requirement-files[hidden] {
+    display: none;
+}
+
+.requirement-file {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: #fff;
+    border: 1px solid #d9f2e1;
+    border-radius: 8px;
+    min-width: 0;
+}
+
+.requirement-file > i {
+    flex-shrink: 0;
+    color: #16a34a;
+    font-size: 14px;
+}
+
+.requirement-file-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.requirement-file-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.requirement-file-meta {
+    font-size: 10px;
+    color: #888;
+}
+
+.requirement-file .requirement-remove {
+    width: 28px;
+    height: 28px;
+}
+
+.requirement-file .requirement-remove:hover {
+    background: var(--primary);
+    color: #fff;
+}
+
+/* ==========================================
+   REQUIREMENT FORM VIEWER (modal container)
+========================================== */
+body.req-modal-open {
+    overflow: hidden;
+}
+
+.req-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(17, 24, 39, 0.55);
+    animation: reqModalFade .18s ease;
+}
+
+.req-modal[hidden] {
+    display: none;
+}
+
+.req-modal-dialog {
+    width: 100%;
+    max-width: 880px;
+    height: min(92vh, 960px);
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+    animation: reqModalPop .2s ease;
+}
+
+.req-modal-header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px 12px 18px;
+    border-bottom: 1px solid #ececec;
+    background: #fff;
+}
+
+.req-modal-header h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.req-modal-close {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border: none;
+    border-radius: 50%;
+    background: #f3f4f6;
+    color: #374151;
+    font-size: 15px;
+    cursor: pointer;
+    transition: .2s;
+}
+
+.req-modal-close:hover {
+    background: #fee2e2;
+    color: var(--primary);
+}
+
+.req-modal-body {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    background: #f3f4f6;
+}
+
+.req-modal-body iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: #f3f4f6;
+}
+
+.req-modal-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.req-modal-loading[hidden] {
+    display: none;
+}
+
+@keyframes reqModalFade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+@keyframes reqModalPop {
+    from { transform: translateY(12px) scale(.98); opacity: 0; }
+    to   { transform: none; opacity: 1; }
+}
+
+/* Phone: full screen */
+@media (max-width: 560px) {
+    .req-modal {
+        padding: 0;
+    }
+
+    .req-modal-dialog {
+        max-width: none;
+        height: 100vh;
+        height: 100dvh;
+        border-radius: 0;
+    }
+}
+
+/* ==========================================
+   AUTO-FILL MULA SA OJT ACCEPTANCE
+========================================== */
+.extract-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.extract-note i {
+    color: var(--primary);
+    margin-top: 2px;
+}
+
+.extract-status {
+    margin: 10px 0 0;
+    font-size: 11px;
+    color: var(--gray, #6b7280);
+    text-align: center;
+}
+
+.continue-btn.is-loading {
+    position: relative;
+    opacity: .85;
+    cursor: progress;
+}
+
+.continue-btn.is-loading .btn-label::before {
+    content: "";
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 8px;
+    vertical-align: -2px;
+    border: 2px solid rgba(255, 255, 255, .45);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: extractSpin .7s linear infinite;
+}
+
+@keyframes extractSpin {
+    to { transform: rotate(360deg); }
+}
+
+.autofill-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: #fdf2f2;
+    border: 1px solid #f3d6d6;
+    border-left: 3px solid var(--primary);
+    color: var(--text);
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: 11px;
+    line-height: 1.5;
+    margin-bottom: 15px;
+}
+
+.autofill-notice[hidden] { display: none; }
+
+.autofill-notice > i {
+    color: var(--primary);
+    font-size: 13px;
+    margin-top: 1px;
+    flex-shrink: 0;
+}
+
+.autofill-notice .autofill-body { flex: 1; min-width: 0; }
+.autofill-notice strong { color: var(--primary); font-weight: 700; }
+
+.autofill-notice.warn {
+    background: #fde8e8;
+    border-color: #f8b4b4;
+    border-left-color: var(--primary);
+    color: #9b1c1c;
+}
+
+.autofill-notice p { margin: 0 0 4px; }
+.autofill-notice p:last-child { margin-bottom: 0; }
+
+.details-subtitle {
+    border-top: none;
+    padding-top: 0;
+}
+
+/* kusang napunan - mawawala ang highlight kapag in-edit ni student */
+.input-box input.autofilled,
+.time-group input.autofilled {
+    background: #fdf2f2;
+    border-color: #e8b4b4;
+}
+
+/* Walang header/sidebar sa page na ito, kaya walang dapat na espasyo sa taas. */
+html body .dashboard,
+html body .main {
+    margin-top: 0;
+    padding-top: 0;
+}
+
+html body {
+    padding-top: 0;
+    margin-top: 0;
 }

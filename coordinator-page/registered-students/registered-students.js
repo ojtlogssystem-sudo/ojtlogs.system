@@ -150,6 +150,25 @@ function printStatusClass(status) {
    PENDING CHECK (same rule as students.js)
 ======================================== */
 
+/* APPROVAL NG COORDINATOR (kapareho ng students.js)
+   documentsStatus ang tinatakda ng coordinator sa Students page:
+   "approved" = na-approve ang requirements, "review" = hinihintay pa,
+   "revision" = ibinalik. Kung walang documentsStatus, ang dating
+   student na walang na-submit na requirements ay approved na; kapag
+   may na-submit na (requirementsSubmittedAt), "review" ang default. */
+function hasApprovedDocuments(data) {
+
+    const submitted = !!data.requirementsSubmittedAt;
+
+    const status = String(
+        data.documentsStatus || (submitted ? "review" : "approved")
+    ).trim().toLowerCase();
+
+    return status === "approved";
+
+}
+
+
 function isPendingStudent(data) {
 
     /* Kapareho ng _is_pending_student() sa app.py para
@@ -200,6 +219,13 @@ function isPendingStudent(data) {
 
     if (isCompleted) {
         return false;
+    }
+
+    /* HINDI PA NA-APPROVE ng coordinator ang requirements -
+       hindi pa registered. Kapag na-approve na, awtomatiko
+       na siyang papasok dito. */
+    if (!hasApprovedDocuments(data)) {
+        return true;
     }
 
     const email =
@@ -387,8 +413,14 @@ async function loadRegisteredStudents() {
                 Number(data.requiredHoursTotal) ||
                 600;
 
-            const renderedHours =
+            /* COMPLETED na pero 0 ang rendered hours - ituring na
+               natapos ang required hours (hal. 600). */
+            let renderedHours =
                 getRenderedHours(data);
+
+            if (isDone && renderedHours === 0) {
+                renderedHours = requiredHours;
+            }
 
 
             registeredStudents.push({

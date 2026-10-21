@@ -1,7 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { 
     getAuth, 
-    onAuthStateChanged
+    onAuthStateChanged,
+    signOut
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { 
     getFirestore, 
@@ -151,7 +152,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     onAuthStateChanged(auth, async (user) => {
         if (user) {
-            await loadStudentData(user);
+            const studentData = await loadStudentData(user);
+            initApprovalGate(user.uid);
             // Hintayin munang dumating ang UNANG snapshot ng attendance at
             // activity listeners (hindi lang yung isang beses na profile
             // fetch) bago tanggalin ang loading overlay — dito pa lang
@@ -161,11 +163,332 @@ document.addEventListener("DOMContentLoaded", async () => {
                 listenToStudentAttendance(user.uid),
                 listenToActivities(user.uid)
             ]).finally(hideDashboardLoadingOverlay);
+
+            // Walang profile picture pa? Magpakita ng prompt (hindi kapag
+            // pumalya ang fetch ng profile, para hindi magkamali ng labas).
+            // Lalabas lang ito kapag hindi (o hindi na) naka-gate ang student,
+            // ibig sabihin na-approve na ng coordinator ang documents.
+            if (studentData) {
+                pendingPhotoPrompt = { user, studentData };
+                runPendingPhotoPrompt();
+            }
         } else {
             window.location.href = "../student_login/student_login.html";
         }
     });
 });
+
+/* ==========================================
+   APPROVAL GATE
+   Pagka-login, kung na-submit na ng student ang documents pero hindi pa
+   na-a-approve ng coordinator, may full-screen na may Submission Code.
+   Kusang mawawala (real-time) kapag na-approve na.
+   !! Parehong-pareho ang getSubmissionCode sa students.js (coordinator) !!
+========================================== */
+// Ang "Resubmit documents" button ay nagbubukas ng resubmit panel dito mismo sa
+// dashboard (Step 1 requirements + Step 2 schedule, walang password).
+// Ang logic ay nasa student_resubmit.js (naka-lazy load).
+
+const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+function getSubmissionCode(uid) {
+    if (!uid) return "";
+    let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+    for (let i = 0; i < uid.length; i++) {
+        const ch = uid.charCodeAt(i);
+        h1 = Math.imul(h1 ^ ch, 2654435761);
+        h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    let n = 4294967296 * (2097151 & h2) + (h1 >>> 0);
+
+    let code = "";
+    for (let i = 0; i < 6; i++) {
+        code += CODE_ALPHABET[n % 32];
+        n = Math.floor(n / 32);
+    }
+    return `OJT-${code}`;
+}
+
+let approvalGateUnsub = null;
+let approvalGateResolved = false; // true kapag dumating na ang unang snapshot
+let pendingPhotoPrompt = null;
+// true LANG kapag may na-submit na documents AT na-approve na ng coordinator
+let documentsApproved = false;
+// true kapag itinago natin ang prompt dahil bumalik sa gate (hal. ibinalik ng
+// coordinator ang documents); ipapakita ulit pagka-approve.
+let photoPromptSuppressed = false;
+
+// Ipinapakita ang profile picture prompt pagkatapos lang ma-approve ng coordinator ang documents
+function runPendingPhotoPrompt() {
+    const gate = document.getElementById("approvalGate");
+    if (!pendingPhotoPrompt || !approvalGateResolved || !documentsApproved) return;
+    if (gate && !gate.hidden) return;
+
+    const { user, studentData } = pendingPhotoPrompt;
+    pendingPhotoPrompt = null;
+    maybeShowPhotoPrompt(user, studentData);
+}
+
+// Hinahati ang review note ng coordinator ("Endorsement Letter: Missing
+// signature; OJT Acceptance: Blurry...") sa hiwalay na item bawat requirement.
+function renderReviewNote(container, note) {
+    container.replaceChildren();
+    const items = String(note || "").split(";").map((s) => s.trim()).filter(Boolean);
+    if (!items.length) return;
+
+    const list = document.createElement("ul");
+    items.forEach((text) => {
+        const li = document.createElement("li");
+        const idx = text.indexOf(":");
+        if (idx > 0) {
+            const label = document.createElement("strong");
+            label.textContent = text.slice(0, idx).trim();
+            const reason = document.createElement("span");
+            reason.textContent = text.slice(idx + 1).trim();
+            li.append(label, reason);
+        } else {
+            li.textContent = text;
+        }
+        list.appendChild(li);
+    });
+    container.appendChild(list);
+}
+
+function initApprovalGate(uid) {
+    const gate = document.getElementById("approvalGate");
+    if (!gate || !uid) return;
+
+    // Iwas doble-listener kapag ilang beses nag-fire ang onAuthStateChanged
+    if (approvalGateUnsub) approvalGateUnsub();
+
+    const els = {
+        title: document.getElementById("approvalGateTitle"),
+        text: document.getElementById("approvalGateText"),
+        code: document.getElementById("approvalGateCode"),
+        note: document.getElementById("approvalGateNote"),
+        copy: document.getElementById("approvalGateCopy"),
+        fix: document.getElementById("approvalGateFix")
+    };
+    const code = getSubmissionCode(uid);
+    els.code.textContent = code;
+
+    els.copy.onclick = async () => {
+        try { await navigator.clipboard.writeText(code); els.copy.textContent = "Copied!"; }
+        catch (e) { els.copy.textContent = "Copy failed"; }
+        setTimeout(() => (els.copy.textContent = "Copy code"), 1500);
+    };
+    const logoutBtn = document.getElementById("approvalGateLogout");
+    if (logoutBtn) {
+        logoutBtn.onclick = async () => {
+            logoutBtn.disabled = true;
+            if (approvalGateUnsub) { approvalGateUnsub(); approvalGateUnsub = null; }
+            try { await signOut(auth); } catch (e) { console.error("Logout failed:", e); }
+            window.location.href = "../student_login/student_login.html";
+        };
+    }
+    let latestReviewNote = "";
+    els.fix.onclick = async () => {
+        els.fix.disabled = true;
+        try {
+            const { openResubmit } = await import("./student_resubmit.js");
+            openResubmit({ db, uid, note: latestReviewNote });
+        } catch (error) {
+            console.error("Could not open the resubmit panel:", error);
+            els.note.textContent = "Could not open the resubmit form. Please refresh and try again.";
+            els.note.hidden = false;
+        } finally {
+            els.fix.disabled = false;
+        }
+    };
+
+    approvalGateUnsub = onSnapshot(doc(db, "users", uid), (snap) => {
+        const d = snap.data() || {};
+        latestReviewNote = d.documentsReviewNote || "";
+        const hasSubmitted = !!d.requirementsSubmittedAt;
+        // Parehong rule sa coordinator: walang submission at walang documentsStatus = approved na
+        const status = String(d.documentsStatus || (hasSubmitted ? "review" : "approved")).toLowerCase();
+
+        approvalGateResolved = true;
+        documentsApproved = hasSubmitted && status === "approved";
+
+        const photoOverlay = document.getElementById("photo-prompt-overlay");
+
+        if (!hasSubmitted || status === "approved") {
+            gate.hidden = true;
+            // Kung naitago natin ang prompt kanina dahil bumalik sa gate, ibalik ngayong approved na
+            if (documentsApproved && photoPromptSuppressed && photoOverlay) {
+                photoOverlay.hidden = false;
+                photoPromptSuppressed = false;
+            }
+            runPendingPhotoPrompt();
+            return;
+        }
+
+        gate.hidden = false;
+        // Habang naka-gate (review/revision), hindi dapat nakabukas ang profile picture prompt
+        if (photoOverlay && !photoOverlay.hidden) {
+            photoOverlay.hidden = true;
+            photoPromptSuppressed = true;
+        }
+        if (status === "revision") {
+            els.title.textContent = "Documents Need Revision";
+            els.text.textContent = "Your coordinator returned your documents. Please fix them and submit again.";
+            renderReviewNote(els.note, latestReviewNote);
+            els.note.hidden = !latestReviewNote;
+            els.fix.hidden = false;
+        } else {
+            els.title.textContent = "Waiting for Approval";
+            els.text.textContent = "Show this code to your OJT Coordinator so they can find and review your documents.";
+            els.note.hidden = true;
+            els.fix.hidden = true;
+        }
+    });
+}
+
+/* ==========================================
+   PROFILE PICTURE PROMPT
+   Lalabas pagpasok sa dashboard kung wala pang profile picture.
+   - "Maybe later": itatago hanggang sa susunod na login.
+   - Kapag may naka-set nang picture: hindi na lalabas.
+========================================== */
+function getExistingPhoto(data) {
+    // Parehong field priority ng header-loader.js at edit-profile.js
+    return data.photo || data.profilePic || data.photoURL || data.image || data.avatar || null;
+}
+
+function compressImageToBase64(file, maxDimension = 400, quality = 0.7) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error("Could not read the file."));
+        reader.onload = (event) => {
+            const img = new Image();
+            img.onerror = () => reject(new Error("Could not load the image."));
+            img.onload = () => {
+                let { width, height } = img;
+                if (width > height && width > maxDimension) {
+                    height = Math.round((height * maxDimension) / width);
+                    width = maxDimension;
+                } else if (height > maxDimension) {
+                    width = Math.round((width * maxDimension) / height);
+                    height = maxDimension;
+                }
+                const canvas = document.createElement("canvas");
+                canvas.width = width;
+                canvas.height = height;
+                canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL("image/jpeg", quality));
+            };
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+let photoPromptShown = false;
+
+function maybeShowPhotoPrompt(user, student) {
+    if (photoPromptShown) return;
+    if (getExistingPhoto(student)) return;
+
+    // Bawat bagong login ay may bagong lastSignInTime, kaya lalabas ulit
+    // ang prompt sa susunod na login kung hindi pa rin nakakapag-set.
+    const dismissKey = `photoPromptDismissed:${user.uid}`;
+    const signInStamp = String(user.metadata?.lastSignInTime || "");
+    if (sessionStorage.getItem(dismissKey) === signInStamp) return;
+
+    const overlay = document.getElementById("photo-prompt-overlay");
+    const input = document.getElementById("photo-prompt-input");
+    const preview = document.getElementById("photo-prompt-preview");
+    const errorEl = document.getElementById("photo-prompt-error");
+    const laterBtn = document.getElementById("photo-prompt-later");
+    const saveBtn = document.getElementById("photo-prompt-save");
+    if (!overlay || !input || !preview || !laterBtn || !saveBtn) return;
+
+    photoPromptShown = true;
+    let selectedBase64 = null;
+
+    const showError = (message) => {
+        if (!errorEl) return;
+        errorEl.textContent = message;
+        errorEl.hidden = false;
+    };
+    const clearError = () => { if (errorEl) errorEl.hidden = true; };
+
+    const closePrompt = () => { overlay.hidden = true; };
+
+    laterBtn.addEventListener("click", () => {
+        sessionStorage.setItem(dismissKey, signInStamp);
+        closePrompt();
+    });
+
+    input.addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        clearError();
+        selectedBase64 = null;
+        saveBtn.disabled = true;
+
+        if (!file.type.startsWith("image/")) {
+            showError("Please choose an image file (JPG, PNG or GIF).");
+            input.value = "";
+            return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+            showError("Image is too large. Please pick a file 10MB or smaller.");
+            input.value = "";
+            return;
+        }
+
+        try {
+            let base64 = await compressImageToBase64(file, 400, 0.7);
+            if (base64.length > 700 * 1024) base64 = await compressImageToBase64(file, 300, 0.5);
+            if (base64.length > 900 * 1024) {
+                showError("Could not compress the image enough. Please try a different photo.");
+                input.value = "";
+                return;
+            }
+            selectedBase64 = base64;
+            preview.src = base64;
+            saveBtn.disabled = false;
+        } catch (error) {
+            console.error("Image compression error:", error);
+            showError("There was a problem processing that image. Please try again.");
+            input.value = "";
+        }
+    });
+
+    saveBtn.addEventListener("click", async () => {
+        if (!selectedBase64) return;
+
+        saveBtn.disabled = true;
+        laterBtn.disabled = true;
+        saveBtn.textContent = "Saving...";
+        clearError();
+
+        try {
+            // Parehong field ("photo") na ginagamit ng profile at edit-profile.
+            await updateDoc(doc(db, "users", user.uid), {
+                photo: selectedBase64,
+                updatedAt: new Date()
+            });
+
+            saveBtn.textContent = "Saved!";
+            // I-reload para lumabas agad ang bagong picture sa header.
+            setTimeout(() => window.location.reload(), 600);
+        } catch (error) {
+            console.error("Error saving profile picture:", error);
+            showError("Could not save your photo. Please try again.");
+            saveBtn.disabled = false;
+            laterBtn.disabled = false;
+            saveBtn.textContent = "Save photo";
+        }
+    });
+
+    overlay.hidden = false;
+}
 
 async function loadStudentData(user) {
     try {
@@ -207,8 +530,10 @@ async function loadStudentData(user) {
         // sa at-risk projection. Ito na ngayon yung nasa "Completion Date".
         updateCompletionDateUI(student.deadlineDate || FALLBACK_DEADLINE);
         showWelcomeCard(user, student);
+        return student;
     } catch (error) {
         console.error("Error fetching student profile:", error);
+        return null;
     }
 }
 

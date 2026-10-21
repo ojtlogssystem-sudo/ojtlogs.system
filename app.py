@@ -580,6 +580,32 @@ def _summarize_attendance(matched_records, start_date=None, today=None):
         "record_count": len(matched_records),
     }
 
+def _completed_legacy_summary(matched_records):
+    """Para sa Completed na walang schedule: bilangin lang ang mga araw
+    hanggang huling present; ang mga absent pagkatapos nito ay hindi na
+    binibilang, at wala nang consecutive absences."""
+    absent_dates = set()
+    present_dates = set()
+    for rec in matched_records:
+        rec_date = _record_date(rec)
+        if not rec_date:
+            continue
+        if _is_absent_record(rec):
+            absent_dates.add(rec_date)
+        else:
+            present_dates.add(rec_date)
+    absent_dates -= present_dates
+    if present_dates:
+        last_present = max(present_dates)
+        absent_dates = {d for d in absent_dates if d <= last_present}
+    else:
+        absent_dates = set()
+    return {
+        "absent_count": len(absent_dates),
+        "consecutive": 0,
+        "record_count": len(absent_dates) + len(present_dates),
+    }
+
 # ==========================================
 # SCHEDULE-BASED ATTENDANCE
 # Iisang source of truth para sa bilang ng absent (Analytics, attendance
@@ -701,15 +727,26 @@ def _pick_day_record(recs):
     return recs[0]
 
 def _is_completed_student(data):
-    status = str(data.get('internshipStatus') or data.get('aiStatus') or '').lower()
-    if status == 'completed':
-        return True
+    """True kung tapos na ang OJT ng student: manual status na Completed,
+    Completed/Graduated ang internshipStatus o aiStatus, o abot na ang
+    required hours. Hiwalay ang pag-check sa bawat field para hindi
+    matakpan ng ibang status (hal. lumang 'At Risk') ang 'Completed'."""
+    for field in ('status', 'internshipStatus', 'aiStatus'):
+        if str(data.get(field) or '').strip().lower() in ('completed', 'graduated'):
+            return True
     try:
         completed = float(data.get('completedHours'))
-        target = float(data.get('targetHours') or 0) or 600
-        return completed >= target
     except (TypeError, ValueError):
         return False
+    target = 0.0
+    for field in ('requiredHours', 'requiredHoursTotal', 'targetHours'):
+        try:
+            target = float(data.get(field) or 0)
+        except (TypeError, ValueError):
+            target = 0.0
+        if target > 0:
+            break
+    return completed >= (target or 600)
 
 def _derive_day_status(sessions, rec, now_minutes, day_end):
     stored = _stored_status(rec)
@@ -812,9 +849,14 @@ def _scheduled_day_statuses_ex(user_data, user_doc_id, attendance_index, start_d
                 last_time_in = key
         cursor += timedelta(days=1)
 
-    # Completed na: huwag nang bilangin ang absent pagkatapos ng huling time-in
-    if cutoff_mode and last_time_in:
-        statuses = {k: v for k, v in statuses.items() if k <= last_time_in}
+    # Completed na: stop na ang attendance. Huwag nang bilangin ang absent
+    # pagkatapos ng huling time-in; kung wala talagang time-in (hal. manual
+    # na Completed), wala nang bibilanging araw.
+    if cutoff_mode:
+        if last_time_in:
+            statuses = {k: v for k, v in statuses.items() if k <= last_time_in}
+        else:
+            statuses = {}
 
     reason = 'ok' if sessions else 'ok (walang valid na session times - gumamit ng 5:00 PM bilang uwian)'
     return statuses, reason
@@ -1161,9 +1203,20 @@ def _build_predict_risk():
                         start_date=start_date,
                         today=today_date
                     )
+                    if (
+                        _is_completed_student(data) and
+                        data.get('continueDutyAfterCompletion') is not True
+                    ):
+                        attendance_summary = _completed_legacy_summary(student_records)
                 absent_count = attendance_summary["absent_count"]
                 consecutive_absences = attendance_summary["consecutive"]
                 attendance_record_count = attendance_summary["record_count"]
+
+                # COMPLETED NA: wala nang absent na bibilangin. Tapos na ang
+                # required hours kaya hindi na dapat may absences sa Analytics.
+                if completed_hours >= target_hours or _is_completed_student(data):
+                    absent_count = 0
+                    consecutive_absences = 0
 
                 # --- Catch-up capacity (deadline-aware) ---
                 hours_remaining = max(target_hours - completed_hours, 0)
@@ -1250,7 +1303,14 @@ def _build_predict_risk():
                     duty_days_left > 0
                 )
 
-                if completed_hours >= target_hours:
+                # Completed na (hours abot na O manual na Completed) - stop na
+                # ang attendance kaya hindi na pwedeng At Risk / Needs Monitoring.
+                is_completed = (
+                    completed_hours >= target_hours or
+                    _is_completed_student(data)
+                )
+
+                if is_completed:
                     ai_status = "Completed"
                     risk_reason = "Internship requirements fully satisfied."
 
@@ -1376,7 +1436,7 @@ def _build_predict_risk():
                     estimated_days <= days_remaining_until_deadline
                 )
 
-                if hours_remaining <= 0:
+                if is_completed or hours_remaining <= 0:
                     forecast_key = "completed"
                 elif is_new_student or not_started:
                     forecast_key = "too_early"
@@ -1433,6 +1493,7 @@ def _build_predict_risk():
                     "graduated": graduated,
                     "archived": _is_archived(data),
                     "aiStatus": ai_status,
+                    "manualStatus": data.get('status'),   # Completed na sine-set ng coordinator
                     "riskReason": risk_reason
                 }
 
@@ -1574,6 +1635,23 @@ def get_student_attendance(student_doc_id):
 
             absent_dates -= present_dates
             record_count = len(matched_records)
+
+            # Completed na: stop na ang attendance
+            if (
+                _is_completed_student(data) and
+                data.get('continueDutyAfterCompletion') is not True
+            ):
+                if present_dates:
+                    last_present = max(present_dates)
+                    absent_dates = {d for d in absent_dates if d <= last_present}
+                else:
+                    absent_dates = set()
+                undated_absences = 0
+
+        # COMPLETED NA: tanggalin lahat ng absent sa attendance graph/summary
+        if _is_completed_student(data):
+            absent_dates = set()
+            undated_absences = 0
 
         timeline = sorted(absent_dates | present_dates)
 

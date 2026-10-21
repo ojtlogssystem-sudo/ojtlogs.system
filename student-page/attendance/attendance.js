@@ -15,7 +15,8 @@ import {
     where, 
     orderBy, 
     limit, 
-    serverTimestamp 
+    serverTimestamp,
+    onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { loadHeader, getInitials } from "../templated/header-loader.js";
 
@@ -57,6 +58,128 @@ const DUTY_DAYS = [1, 2, 3, 4, 5];
 let fullAttendanceHistory = [];
 let initialClockInterval = null;
 let todayNoDutyReason = null;
+
+// Status ng requirements ng student (inaaprubahan ng coordinator sa Students page).
+// Bawal mag Time In hangga't hindi "approved" ang documents niya.
+let studentDocsApproval = { approved: true, status: "approved" };
+
+// Kinukuha ang FRESH na status ng requirements mula sa users/{uid} (walang cache,
+// para agad na gumana kapag in-approve na ng coordinator).
+// Parehong logic sa Students page: ang mga dating student na walang documentsStatus
+// at walang na-submit na requirements ay itinuturing nang approved.
+async function getDocsApproval(user) {
+    if (!user || !user.uid) return { approved: false, status: "unknown" };
+
+    try {
+        const snap = await getDoc(doc(db, "users", user.uid));
+        if (!snap.exists()) return { approved: false, status: "unknown" };
+
+        const data = snap.data();
+        const hasSubmittedDocs = !!data.requirementsSubmittedAt;
+        const isProfileDone =
+            data.isProfileComplete === true ||
+            data.profileCompleted === true ||
+            hasSubmittedDocs;
+
+        if (!isProfileDone) return { approved: false, status: "pending" };
+
+        const status = String(
+            data.documentsStatus || (hasSubmittedDocs ? "review" : "approved")
+        ).toLowerCase();
+
+        // Petsa kung kailan in-approve ng coordinator ang requirements (kung meron)
+        let approvedDate = "";
+        if (status === "approved" && data.documentsReviewedAt) {
+            const raw = data.documentsReviewedAt;
+            const d = raw.toDate ? raw.toDate() : new Date(raw);
+            if (!isNaN(d.getTime())) approvedDate = getLocalYYYYMMDD(d);
+        }
+
+        const startDate = typeof data.schedule?.startDate === "string" ? data.schedule.startDate : "";
+
+        return { approved: status === "approved", status, approvedDate, startDate };
+    } catch (error) {
+        console.warn("Could not verify requirements status:", error);
+        return { approved: false, status: "unknown" };
+    }
+}
+
+// Unang araw na pwede nang bilangin ang Absent (YYYY-MM-DD):
+// ang mas huli sa (a) start date na nilagay sa schedule at (b) araw PAGKATAPOS
+// ma-approve ang requirements. Walang absent bago nun.
+function getAbsenceStartDateStr(approval) {
+    const candidates = [];
+    if (approval?.startDate && /^\d{4}-\d{2}-\d{2}$/.test(approval.startDate)) {
+        candidates.push(approval.startDate);
+    }
+    if (approval?.approvedDate) {
+        const next = new Date(approval.approvedDate + "T00:00:00");
+        next.setDate(next.getDate() + 1);
+        candidates.push(getLocalYYYYMMDD(next));
+    }
+    return candidates.length ? candidates.sort().pop() : "";
+}
+
+// Itago (hindi buburahin sa Firestore) ang auto-marked "Absent" na nasa bago
+// pa ang start date / bago pa ma-approve ang requirements ng student.
+function hidePreStartAbsences(list) {
+    const startStr = getAbsenceStartDateStr(studentDocsApproval);
+    return list.filter(item => {
+        if (!isAutoMarkedAbsent(item)) return true;
+        if (!studentDocsApproval.approved) return false;
+        const dateKey = getRecordDateKey(item);
+        return !(startStr && dateKey && dateKey < startStr);
+    });
+}
+
+// START DATE CHECK
+// Bawal mag Time In / Time Out hangga't (a) wala pang start date ang OJT ng
+// student sa schedule niya (users/{uid}.schedule.startDate), o (b) hindi pa
+// dumarating ang start date na iyon. todayStr = "YYYY-MM-DD".
+function getStartDateBlock(approval, todayStr) {
+    const startDate = approval?.startDate;
+    if (!startDate || !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+        return {
+            blocked: true,
+            badge: "Start Date Not Set",
+            message: "Your OJT start date hasn't been set yet. You can time in once it is set."
+        };
+    }
+    if (todayStr < startDate) {
+        const pretty = new Date(startDate + "T00:00:00").toLocaleDateString("en-PH", {
+            year: "numeric", month: "short", day: "numeric"
+        });
+        return {
+            blocked: true,
+            badge: "Not Started Yet",
+            message: `Your OJT starts on ${pretty}. You can time in starting that day.`
+        };
+    }
+    return { blocked: false };
+}
+
+// Text at kulay ng status badge habang hindi pa approved ang requirements.
+function getDocsBadge(status) {
+    switch (status) {
+        case "review":   return { text: "For Coordinator Review", cls: "no-duty" };
+        case "revision": return { text: "Needs Revision",         cls: "rejected" };
+        case "pending":  return { text: "Requirements Needed",    cls: "not-timed-in" };
+        default:         return { text: "Unable to Verify",       cls: "not-timed-in" };
+    }
+}
+
+function getDocsBlockedMessage(status) {
+    switch (status) {
+        case "revision":
+            return "Your requirements were returned by your coordinator. Please fix and resubmit them, then wait for approval before timing in.";
+        case "review":
+            return "Your requirements are still waiting for coordinator approval. You can time in once they are approved.";
+        case "pending":
+            return "Please submit your requirements first. You can time in once your coordinator approves them.";
+        default:
+            return "Could not verify your requirements status. Please check your connection and try again.";
+    }
+}
 
 // Naka-cache na schedule.days ng naka-login na student (mula sa users/{uid}
 // document sa Firestore), para hindi na paulit-ulit mag-fetch. Null pa
@@ -461,6 +584,9 @@ async function hasAttendanceRecordOnDate(user, dateStr) {
 async function markMissedAbsences(user, todayStr, scheduleDays) {
     if (!user) return;
 
+    // Walang Absent hangga't hindi pa approved ng coordinator ang requirements.
+    if (!studentDocsApproval.approved) return;
+
     const existingDates = new Set(fullAttendanceHistory.map(getRecordDateKey).filter(Boolean));
 
     // Complete na ang student: huwag nang mag-mark ng Absent pagkatapos ng
@@ -487,6 +613,14 @@ async function markMissedAbsences(user, todayStr, scheduleDays) {
         const createdDay = new Date(createdRaw);
         createdDay.setHours(0, 0, 0, 0);
         if (cursor < createdDay) cursor = createdDay;
+    }
+
+    // Magsisimula lang ang bilang ng Absent sa start date ng student, at hindi
+    // bago ma-approve ang requirements niya.
+    const absenceStartStr = getAbsenceStartDateStr(studentDocsApproval);
+    if (absenceStartStr) {
+        const absenceStart = new Date(absenceStartStr + "T00:00:00");
+        if (cursor < absenceStart) cursor = absenceStart;
     }
 
     const startStr = getLocalYYYYMMDD(cursor);
@@ -1246,6 +1380,25 @@ function initAttendanceSystem(currentUser) {
     // overlay kahit magka-error sa fetch, para hindi ma-stuck ang user.
     refreshAttendanceUI().finally(hideAttendanceLoadingOverlay);
 
+    // Live: kapag in-approve (o ni-reject) ng coordinator ang requirements habang
+    // bukas ang page na ito, mag-e-enable/mag-di-disable agad ang Time In nang
+    // hindi na kailangang mag-refresh ang student.
+    let docsWatchUid = null;
+    let lastDocsStatus = null;
+    onAuthStateChanged(auth, (watchUser) => {
+        if (!watchUser || docsWatchUid === watchUser.uid) return;
+        docsWatchUid = watchUser.uid;
+
+        onSnapshot(doc(db, "users", watchUser.uid), (snap) => {
+            const watched = snap.data() || {};
+            const status = `${watched.documentsStatus || ""}|${watched.schedule?.startDate || ""}`;
+            if (lastDocsStatus === null) { lastDocsStatus = status; return; }
+            if (status === lastDocsStatus) return;
+            lastDocsStatus = status;
+            refreshAttendanceUI();
+        }, (error) => console.warn("Documents status listener error:", error));
+    });
+
     // --- 1. QR SCANNER LOGIC ---
     const stopQRScanner = async () => {
         if (qrScanner) {
@@ -1271,9 +1424,29 @@ function initAttendanceSystem(currentUser) {
             return;
         }
 
+        // Bawal mag Time In kung hindi pa approved ng coordinator ang requirements.
+        if (mode === "IN") {
+            studentDocsApproval = await getDocsApproval(auth.currentUser || currentUser);
+            if (!studentDocsApproval.approved) {
+                showToast(getDocsBlockedMessage(studentDocsApproval.status), "error");
+                refreshAttendanceUI();
+                return;
+            }
+        }
+
         const now = await getCurrentNTPTime();
         const todayStr = getLocalYYYYMMDD(now);
         const latestToday = fullAttendanceHistory.find(i => i.date === todayStr);
+
+        // Bawal mag Time In kung wala pang start date o hindi pa dumarating ang start date.
+        if (mode === "IN") {
+            const startBlock = getStartDateBlock(studentDocsApproval, todayStr);
+            if (startBlock.blocked) {
+                showToast(startBlock.message, "error");
+                refreshAttendanceUI();
+                return;
+            }
+        }
 
         if (mode === "IN" && latestToday) {
             if (String(latestToday.status || "").toLowerCase() === "rejected") {
@@ -1541,12 +1714,32 @@ function initAttendanceSystem(currentUser) {
         confirmPhotoBtn.disabled = true;
         confirmPhotoBtn.textContent = "Saving Time In...";
 
+        // Huling check bago i-save: approved dapat ang requirements.
+        const approval = await getDocsApproval(auth.currentUser || currentUser);
+        if (!approval.approved) {
+            studentDocsApproval = approval;
+            showToast(getDocsBlockedMessage(approval.status), "error");
+            closePhotoModal();
+            await refreshAttendanceUI();
+            return;
+        }
+
         const now = capturedAtTime || await getCurrentNTPTime();
         const formattedDateStr = formatLocalDateDisplay(now);
         const formattedAMPM = formatAMPM(now);
 
         const photoBase64 = capturedPhotoBase64;
         const todayStr = getLocalYYYYMMDD(now);
+
+        // Huling check: dapat nakapagsimula na ang OJT (start date).
+        const startBlockFinal = getStartDateBlock(approval, todayStr);
+        if (startBlockFinal.blocked) {
+            studentDocsApproval = approval;
+            showToast(startBlockFinal.message, "error");
+            closePhotoModal();
+            await refreshAttendanceUI();
+            return;
+        }
         const timeInStr = formattedAMPM;
         const compName = localStorage.getItem("verified_company_name") || "Partner Company";
 
@@ -1842,10 +2035,12 @@ function initAttendanceSystem(currentUser) {
         // users/{uid}) para malaman kung duty day niya ngayon.
         const scheduleDays = await getStudentScheduleDays(user);
         const isScheduledToday = isTodayInStudentSchedule(now, scheduleDays);
+        studentDocsApproval = await getDocsApproval(user);
 
         const sortHistory = () => {
             fullAttendanceHistory = hideShadowedAbsences(fullAttendanceHistory);
             fullAttendanceHistory = hideAbsencesAfterCompletion(fullAttendanceHistory);
+            fullAttendanceHistory = hidePreStartAbsences(fullAttendanceHistory);
             fullAttendanceHistory.sort((a, b) => {
                 const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime();
                 const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt || 0).getTime();
@@ -1972,6 +2167,46 @@ function initAttendanceSystem(currentUser) {
                 if (timeOutIconBox) timeOutIconBox.className = "qr-icon-circle gray-bg";
                 if (timeInNoteText) timeInNoteText.textContent = "Your attendance for today was rejected by your coordinator.";
                 if (timeOutNoteText) timeOutNoteText.textContent = "Your attendance for today was rejected by your coordinator.";
+
+            } else if (!studentDocsApproval.approved) {
+                // Hindi pa naaprubahan ng coordinator ang requirements: bawal mag Time In.
+                if (todayCompany) todayCompany.textContent = "--";
+                if (todayLocation) todayLocation.textContent = "--";
+                if (todayTimeIn) todayTimeIn.textContent = "--";
+                if (todayTimeOut) todayTimeOut.textContent = "--";
+
+                if (todayStatusBadge) {
+                    const docsBadge = getDocsBadge(studentDocsApproval.status);
+                    todayStatusBadge.textContent = docsBadge.text;
+                    todayStatusBadge.className = `status-badge ${docsBadge.cls}`;
+                }
+
+                if (timeInScanBtn) { timeInScanBtn.disabled = true; timeInScanBtn.className = "scan-btn disabled-btn"; }
+                if (timeOutScanBtn) { timeOutScanBtn.disabled = true; timeOutScanBtn.className = "scan-btn disabled-btn"; }
+                if (timeOutIconBox) timeOutIconBox.className = "qr-icon-circle gray-bg";
+
+                const docsNote = getDocsBlockedMessage(studentDocsApproval.status);
+                if (timeInNoteText) timeInNoteText.textContent = docsNote;
+                if (timeOutNoteText) timeOutNoteText.textContent = docsNote;
+
+            } else if (getStartDateBlock(studentDocsApproval, todayStr).blocked) {
+                // Wala pang start date o hindi pa dumarating ang start date ng OJT: naka-disable.
+                const startBlock = getStartDateBlock(studentDocsApproval, todayStr);
+                if (todayCompany) todayCompany.textContent = "--";
+                if (todayLocation) todayLocation.textContent = "--";
+                if (todayTimeIn) todayTimeIn.textContent = "--";
+                if (todayTimeOut) todayTimeOut.textContent = "--";
+
+                if (todayStatusBadge) {
+                    todayStatusBadge.textContent = startBlock.badge;
+                    todayStatusBadge.className = "status-badge no-duty";
+                }
+
+                if (timeInScanBtn) { timeInScanBtn.disabled = true; timeInScanBtn.className = "scan-btn disabled-btn"; }
+                if (timeOutScanBtn) { timeOutScanBtn.disabled = true; timeOutScanBtn.className = "scan-btn disabled-btn"; }
+                if (timeOutIconBox) timeOutIconBox.className = "qr-icon-circle gray-bg";
+                if (timeInNoteText) timeInNoteText.textContent = startBlock.message;
+                if (timeOutNoteText) timeOutNoteText.textContent = startBlock.message;
 
             } else if (todayNoDutyReason || !isScheduledToday) {
                 if (todayCompany) todayCompany.textContent = "--";

@@ -10,6 +10,8 @@ import {
     getFirestore, 
     doc, 
     getDoc, 
+    setDoc,
+    deleteDoc,
     updateDoc,
     serverTimestamp,
     collection,
@@ -17,6 +19,7 @@ import {
     query,
     orderBy
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { extractFromAcceptanceFile } from "./requirementExtractor.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyDvMQyEHIIJTW4etj4VQHjjIzd8oB2geJ8",
@@ -33,15 +36,9 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Base64 string ng na-compress na profile picture (Firestore field: 'photo')
-let selectedPhotoBase64 = null;
-
 let currentUser = null;
 
-// Naka-save na company/supervisor ng user (kung meron), ise-select balik
-// ito sa mga dropdown pagkatapos ma-load ang listahan mula sa Firestore.
-let pendingCompanyName = null;
-let pendingSupervisorName = null;
+// True kapag nabasa na ang user doc (para hindi itago ang fields bago pa dumating ang data)
 
 // Helper Functions para sa Custom In-App Alert
 function showAlert(message, alertId = 'alertMessage') {
@@ -67,6 +64,10 @@ function hideAllAlerts() {
     hideAlert('alertMessage');
 }
 
+function escapeRegExp(text) {
+    return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // Auth State Check
 onAuthStateChanged(auth, async (user) => {
     if (user) {
@@ -76,31 +77,23 @@ onAuthStateChanged(auth, async (user) => {
 
         if (userDoc.exists()) {
             const data = userDoc.data();
-            if (data.name) document.getElementById('fullName').value = data.name;
-            if (data.gender) document.getElementById('genderInput').value = data.gender;
-            if (data.companyName) pendingCompanyName = data.companyName;
-            if (data.supervisorName) pendingSupervisorName = data.supervisorName;
-
-            const previewImageEl = document.getElementById('previewImage');
-            if (data.photo && previewImageEl) {
-                previewImageEl.src = data.photo;
-            }
-
-            applyPendingCompanySelection();
+            existingRequirements = normalizeRequirements(data.requirements || {});
+            refreshAllRequirementUI();
+            // Kung may naka-save nang detalye (bumalik si student), i-prefill
+            [['companyName', data.companyName], ['supervisorName', data.supervisorName],
+             ['jobTitle', data.jobTitle], ['requiredHours', data.requiredHours]]
+                .forEach(([id, value]) => {
+                    const el = document.getElementById(id);
+                    if (el && value && !el.value) el.value = value;
+                });
         }
     } else {
-        window.location.href = "../login/student_login.html";
+        window.location.href = "/student-page/student_login/student_login.html";
     }
 });
 
-// ==========================================
-// PROFILE PICTURE UPLOAD & PREVIEW (base64 sa Firestore)
-// ==========================================
-const profileImageInput = document.getElementById('profileImage');
-const previewImage = document.getElementById('previewImage');
-
-// I-resize/compress ang image papuntang maliit na JPEG bago i-convert sa
-// base64, para hindi lumagpas sa 1MB Firestore document limit.
+// I-resize/compress ang image papuntang JPEG bago i-convert sa base64.
+// Ginagamit ng requirements upload (mga image na attachment).
 function compressImageToBase64(file, maxDimension = 400, quality = 0.7) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -133,252 +126,74 @@ function compressImageToBase64(file, maxDimension = 400, quality = 0.7) {
     });
 }
 
-if (profileImageInput && previewImage) {
-    profileImageInput.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        // Payagan lang ang totoong image files
-        if (!file.type.startsWith('image/')) {
-            showAlert("Pumili ng valid image file lang (JPG, PNG, atbp.).");
-            profileImageInput.value = "";
-            return;
-        }
-
-        // Sanity check muna sa original file size (10MB) bago pa i-compress
-        const maxSizeBytes = 10 * 1024 * 1024;
-        if (file.size > maxSizeBytes) {
-            showAlert("Masyadong malaki ang image. Pumili ng file na 10MB o mas mababa.");
-            profileImageInput.value = "";
-            return;
-        }
-
-        try {
-            let base64 = await compressImageToBase64(file, 400, 0.7);
-
-            // Kung malaki pa rin pagkatapos i-compress, i-lower pa yung quality
-            if (base64.length > 700 * 1024) {
-                base64 = await compressImageToBase64(file, 300, 0.5);
-            }
-
-            if (base64.length > 900 * 1024) {
-                showAlert("Hindi ma-compress ang image sa sapat na laki. Sumubok ng ibang photo.");
-                profileImageInput.value = "";
-                return;
-            }
-
-            selectedPhotoBase64 = base64;
-            previewImage.src = base64;
-        } catch (error) {
-            console.error("Image compression error:", error);
-            showAlert("May problema sa pag-process ng image. Subukan ulit.");
-            profileImageInput.value = "";
-        }
-    });
-}
-
-
 // ==========================================
-// COMPANY & SUPERVISOR TYPEAHEAD (mula sa Firestore "companies" collection,
-// yung parehong data na pinapamahalaan ng coordinator sa companies.html)
-// Puwedeng mag-type para mag-search, at puwede ring piliin sa listahan.
+// INTERNSHIP DETAILS (company, supervisor, job title, required hours)
+// Awtomatikong napupunan mula sa OJT Acceptance ni student pagka-click ng
+// Next (tingnan ang requirementExtractor.js). Puwede pa ring i-edit.
+// Ang listahan ng "companies" ng coordinator ay ginagamit na lang bilang
+// suggestions (datalist) at para i-match ang pangalan ng company kung kamukha.
 // ==========================================
 
 // companyName -> array ng supervisor names para sa company na yun
 let companiesMap = {};
-let selectedCompany = null; // yung eksaktong company name na "committed"
 
 const companyNameInput = document.getElementById('companyName');
-const companyNameList = document.getElementById('companyNameList');
 const supervisorNameInput = document.getElementById('supervisorName');
-const supervisorNameList = document.getElementById('supervisorNameList');
+const jobTitleInput = document.getElementById('jobTitle');
+const requiredHoursInput = document.getElementById('requiredHours');
+const companyOptions = document.getElementById('companyOptions');
+const supervisorOptions = document.getElementById('supervisorOptions');
 
-// Generic na typeahead combobox: input + <ul> na listahan sa ibaba.
-// getOptions(query) -> array ng string na dapat ipakita.
-// onSelect(value) -> tatawagin kapag pinili (click o Enter) ang isang item.
-function setupCombobox(inputEl, listEl, getOptions, onSelect) {
-    if (!inputEl || !listEl) return { render: () => {} };
-
-    let activeIndex = -1;
-
-    function render(query) {
-        const options = getOptions(query);
-        activeIndex = -1;
-
-        if (options.length === 0) {
-            listEl.innerHTML = `<li class="empty-option">No matches found</li>`;
-        } else {
-            listEl.innerHTML = options
-                .map((opt, i) => `<li data-index="${i}" data-value="${opt.replace(/"/g, '&quot;')}">${opt}</li>`)
-                .join('');
-        }
-    }
-
-    function openList() {
-        if (inputEl.disabled) return;
-        render(inputEl.value);
-        listEl.classList.add('open');
-    }
-
-    function closeList() {
-        listEl.classList.remove('open');
-    }
-
-    function highlight(index) {
-        listEl.querySelectorAll('li[data-value]').forEach(li => li.classList.remove('active'));
-        const items = listEl.querySelectorAll('li[data-value]');
-        if (items[index]) {
-            items[index].classList.add('active');
-            items[index].scrollIntoView({ block: 'nearest' });
-        }
-    }
-
-    inputEl.addEventListener('focus', openList);
-
-    inputEl.addEventListener('input', () => {
-        openList();
-    });
-
-    inputEl.addEventListener('keydown', (e) => {
-        const items = listEl.querySelectorAll('li[data-value]');
-        if (!listEl.classList.contains('open') || items.length === 0) return;
-
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            activeIndex = Math.min(activeIndex + 1, items.length - 1);
-            highlight(activeIndex);
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            activeIndex = Math.max(activeIndex - 1, 0);
-            highlight(activeIndex);
-        } else if (e.key === 'Enter') {
-            if (activeIndex >= 0 && items[activeIndex]) {
-                e.preventDefault();
-                const value = items[activeIndex].dataset.value;
-                inputEl.value = value;
-                closeList();
-                onSelect(value);
-            }
-        } else if (e.key === 'Escape') {
-            closeList();
-        }
-    });
-
-    // mousedown (hindi click) para mauna ito bago mag-fire ang blur ng input
-    listEl.addEventListener('mousedown', (e) => {
-        const li = e.target.closest('li[data-value]');
-        if (!li) return;
-        e.preventDefault();
-        const value = li.dataset.value;
-        inputEl.value = value;
-        closeList();
-        onSelect(value);
-    });
-
-    inputEl.addEventListener('blur', () => {
-        // konting delay para umabot muna ang mousedown handler sa itaas
-        setTimeout(closeList, 120);
-    });
-
-    return { render, openList, closeList };
+function fillDatalist(listEl, values) {
+    if (!listEl) return;
+    listEl.innerHTML = values
+        .map((v) => `<option value="${String(v).replace(/"/g, '&quot;')}"></option>`)
+        .join('');
 }
 
-// I-filter ang mga company base sa tinype (case-insensitive, "contains")
-function getCompanyOptions(query) {
-    const q = query.trim().toLowerCase();
-    const names = Object.keys(companiesMap);
-    if (!q) return names;
-    return names.filter(name => name.toLowerCase().includes(q));
-}
-
-// I-filter ang mga supervisor. Kung may valid na napiling company, doon lang
-// mula sa company na yun. Kung wala pa (o wala pang companies sa coordinator),
-// ipakita na lang lahat ng supervisor na naka-record sa buong system - type
-// pa rin siya + pumipili sa listahan, hindi kailangang mauna ang company.
-function getAllKnownSupervisors() {
-    const all = new Set();
-    Object.values(companiesMap).forEach(list => {
-        (list || []).forEach(name => all.add(name));
-    });
-    return Array.from(all);
-}
-
-function getSupervisorOptions(query) {
-    const pool = selectedCompany
-        ? (companiesMap[selectedCompany] || [])
-        : getAllKnownSupervisors();
-
-    const q = query.trim().toLowerCase();
-    if (!q) return pool;
-    return pool.filter(name => name.toLowerCase().includes(q));
-}
-
-function commitCompanySelection(companyName, preselectSupervisor = null) {
-    selectedCompany = companyName;
-
-    if (supervisorNameInput && preselectSupervisor !== null) {
-        supervisorNameInput.value = preselectSupervisor;
-    }
-}
-
-// Kapag lumabas o na-edit ang company field, tingnan kung eksaktong tugma
-// (case-insensitive) sa isang tunay na company. Kung tugma, i-commit at
-// i-enable ang supervisor field; kung hindi, i-clear/disable ito.
-function reconcileCompanyValue() {
-    if (!companyNameInput) return;
-
-    const typedValue = companyNameInput.value.trim();
-    const match = Object.keys(companiesMap).find(
-        name => name.toLowerCase() === typedValue.toLowerCase()
+function refreshSupervisorOptions() {
+    const company = Object.keys(companiesMap).find(
+        (n) => n.toLowerCase() === (companyNameInput?.value || '').trim().toLowerCase()
     );
-
-    if (match) {
-        companyNameInput.value = match;
-        const keepSupervisor =
-            selectedCompany === match ? supervisorNameInput?.value || null : null;
-        commitCompanySelection(match, keepSupervisor);
-    } else {
-        selectedCompany = null;
-    }
+    const pool = company
+        ? companiesMap[company]
+        : Array.from(new Set(Object.values(companiesMap).flat()));
+    fillDatalist(supervisorOptions, pool);
 }
 
-if (companyNameInput) {
-    companyNameInput.addEventListener('blur', () => {
-        // konting delay din dito para hindi masagabal sa pag-pili sa listahan
-        setTimeout(reconcileCompanyValue, 130);
+if (companyNameInput) companyNameInput.addEventListener('input', refreshSupervisorOptions);
+
+// Pangalan na pinakamalapit sa nakuha natin (hal. "Acme Software Solutions"
+// vs "ACME SOFTWARE SOLUTIONS INC.") - kung sapat ang tugma, gamitin ang
+// eksaktong pangalan na nasa system ng coordinator.
+function normalizeName(text) {
+    return String(text)
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .split(/\s+/)
+        .filter((t) => t && !['inc', 'corp', 'corporation', 'co', 'ltd', 'company', 'the', 'and', 'of'].includes(t));
+}
+
+function closestMatch(value, candidates) {
+    const target = normalizeName(value);
+    if (!target.length) return null;
+
+    let best = null;
+    let bestScore = 0;
+    candidates.forEach((candidate) => {
+        const tokens = normalizeName(candidate);
+        if (!tokens.length) return;
+        const overlap = target.filter((t) => tokens.includes(t)).length;
+        const score = overlap / Math.max(target.length, tokens.length);
+        if (score > bestScore) {
+            bestScore = score;
+            best = candidate;
+        }
     });
-}
-
-setupCombobox(companyNameInput, companyNameList, getCompanyOptions, (value) => {
-    commitCompanySelection(value);
-});
-
-setupCombobox(supervisorNameInput, supervisorNameList, getSupervisorOptions, (value) => {
-    // pinili mula sa listahan, wala nang kailangang gawin bukod sa pag-set ng value
-});
-
-// Kung na-fetch na ang mga company at may naka-save nang company/supervisor
-// ang user (galing sa Firestore user doc), ise-select ito bilang default.
-function applyPendingCompanySelection() {
-    if (!companyNameInput || Object.keys(companiesMap).length === 0) return;
-    if (!pendingCompanyName) return;
-
-    const match = Object.keys(companiesMap).find(
-        name => name.toLowerCase() === pendingCompanyName.toLowerCase()
-    );
-
-    if (match) {
-        companyNameInput.value = match;
-        commitCompanySelection(match, pendingSupervisorName);
-    }
-
-    pendingCompanyName = null;
-    pendingSupervisorName = null;
+    return bestScore >= 0.75 ? best : null;
 }
 
 async function loadCompanies() {
-    if (!companyNameInput) return;
-
     try {
         const companiesQuery = query(collection(db, "companies"), orderBy("companyName"));
         const snapshot = await getDocs(companiesQuery);
@@ -392,13 +207,307 @@ async function loadCompanies() {
                 : [];
         });
 
-        applyPendingCompanySelection();
+        fillDatalist(companyOptions, Object.keys(companiesMap));
+        refreshSupervisorOptions();
     } catch (error) {
         console.error("Error loading companies:", error);
     }
 }
 
 loadCompanies();
+
+// ==========================================
+// REQUIREMENT DOCUMENTS (Endorsement Letter, OJT Acceptance, MOA)
+// Naka-save sa Firestore bilang base64, hinahati sa chunks para hindi
+// lumagpas sa 1MB document limit:
+//   users/{uid}/requirements/{key}_{index}  -> { key, index, total, data }
+// Metadata ng bawat file ay nasa users/{uid}.requirements
+// ==========================================
+const REQUIREMENT_LABELS = {
+    endorsementLetter: "Endorsement Letter",
+    ojtAcceptance: "OJT Acceptance",
+    moa: "MOA (Memorandum of Agreement)"
+};
+const REQUIREMENT_KEYS = Object.keys(REQUIREMENT_LABELS);
+const MAX_REQUIREMENT_BYTES = 3 * 1024 * 1024; // 3MB bawat file
+const REQUIREMENT_CHUNK_SIZE = 750 * 1024;     // characters bawat chunk
+
+// Kahit ilang file bawat requirement:
+const requirementFiles = {};      // key -> [File, ...] na napili ngayon (hindi pa naka-save)
+let existingRequirements = {};    // key -> { ...legacy fields, files: [meta, ...] } na naka-save na
+
+REQUIREMENT_KEYS.forEach((key) => { requirementFiles[key] = []; });
+
+// Metadata ng naka-save na files. Ang lumang format (isang file lang) ay
+// ginagawang listahan; ang unang file ay laging nasa chunks na `${key}_${i}`
+// (prefix = key) para gumana pa rin ang lumang pagbasa ng coordinator.
+function normalizeRequirements(raw) {
+    const result = {};
+    REQUIREMENT_KEYS.forEach((key) => {
+        const meta = raw[key];
+        if (!meta) return;
+        const files = Array.isArray(meta.files) && meta.files.length
+            ? meta.files
+            : [{
+                fileName: meta.fileName,
+                fileType: meta.fileType,
+                fileSize: meta.fileSize,
+                chunks: meta.chunks,
+                uploadedAt: meta.uploadedAt,
+                prefix: key
+            }];
+        result[key] = { ...meta, files };
+    });
+    return result;
+}
+
+function savedFilesOf(key) {
+    return (existingRequirements[key] && existingRequirements[key].files) || [];
+}
+
+function formatFileSize(bytes) {
+    if (!bytes) return "";
+    if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+    return Math.max(1, Math.round(bytes / 1024)) + " KB";
+}
+
+function hasRequirement(key) {
+    return requirementFiles[key].length > 0 || savedFilesOf(key).length > 0;
+}
+
+function fileRowHTML(name, size, removable, index) {
+    const safeName = String(name).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const sizeText = formatFileSize(size);
+    return `
+        <li class="requirement-file">
+            <i class="fa-regular fa-file"></i>
+            <span class="requirement-file-info">
+                <span class="requirement-file-name">${safeName}</span>
+                <span class="requirement-file-meta">${removable ? 'Ready to upload' : 'Uploaded'}${sizeText ? ' · ' + sizeText : ''}</span>
+            </span>
+            ${removable ? `<button type="button" class="requirement-remove" data-index="${index}" aria-label="Remove ${safeName}"><i class="fa-solid fa-xmark"></i></button>` : ''}
+        </li>`;
+}
+
+function refreshRequirementUI(key) {
+    const item = document.querySelector(`.requirement-item[data-req="${key}"]`);
+    if (!item) return;
+
+    const statusEl = item.querySelector('.requirement-status');
+    const attachBtn = item.querySelector('.requirement-btn');
+    const listEl = item.querySelector('.requirement-files');
+    const pending = requirementFiles[key];
+    const saved = savedFilesOf(key);
+    const total = pending.length + saved.length;
+
+    item.classList.toggle('has-file', total > 0);
+
+    statusEl.textContent = total === 0
+        ? "No file attached"
+        : `${total} file${total > 1 ? 's' : ''} attached`;
+
+    attachBtn.textContent = total > 0 ? "Add more" : "Attach";
+
+    listEl.innerHTML =
+        saved.map((f) => fileRowHTML(f.fileName || "file", f.fileSize, false)).join('') +
+        pending.map((f, i) => fileRowHTML(f.name, f.size, true, i)).join('');
+    listEl.hidden = total === 0;
+}
+
+function refreshAllRequirementUI() {
+    REQUIREMENT_KEYS.forEach(refreshRequirementUI);
+}
+
+REQUIREMENT_KEYS.forEach((key) => {
+    const input = document.getElementById(`req_${key}`);
+    const item = document.querySelector(`.requirement-item[data-req="${key}"]`);
+    if (!input || !item) return;
+
+    input.addEventListener('change', () => {
+        const picked = Array.from(input.files || []);
+        input.value = ""; // para puwedeng piliin ulit ang parehong file
+        if (!picked.length) return;
+
+        const problems = [];
+        let added = 0;
+
+        picked.forEach((file) => {
+            const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+            const isImage = file.type.startsWith('image/');
+
+            if (!isPdf && !isImage) {
+                problems.push(`${file.name}: PDF, JPG or PNG only.`);
+                return;
+            }
+            if (file.size > MAX_REQUIREMENT_BYTES) {
+                problems.push(`${file.name} is too large (max 3MB per file).`);
+                return;
+            }
+            const duplicate = requirementFiles[key].some(
+                (f) => f.name === file.name && f.size === file.size && f.lastModified === file.lastModified
+            );
+            if (duplicate) return;
+
+            requirementFiles[key].push(file);
+            added++;
+        });
+
+        if (problems.length) {
+            showAlert(`${REQUIREMENT_LABELS[key]} — ${problems.join(' ')}`, 'alertMessageStep1');
+        } else {
+            hideAlert('alertMessageStep1');
+        }
+        if (added) refreshRequirementUI(key);
+    });
+
+    // Remove button ng bawat file (event delegation dahil nire-render ang listahan)
+    item.querySelector('.requirement-files').addEventListener('click', (e) => {
+        const btn = e.target.closest('.requirement-remove');
+        if (!btn) return;
+        requirementFiles[key].splice(Number(btn.dataset.index), 1);
+        refreshRequirementUI(key);
+    });
+});
+
+// ==========================================
+// VIEW BUTTON - nagbubukas ng container (modal) na may reference form
+// na kailangang ipasa ni student. Nasa student-page/requirementform/ ang form.
+// ==========================================
+const reqFormModal = document.getElementById('reqFormModal');
+const reqFormFrame = document.getElementById('reqFormFrame');
+const reqFormTitle = document.getElementById('reqFormModalTitle');
+const reqFormLoading = document.getElementById('reqFormModalLoading');
+const reqFormClose = document.getElementById('reqFormModalClose');
+
+function openRequirementForm(formKey, title) {
+    if (!reqFormModal || !reqFormFrame) return;
+
+    const params = new URLSearchParams({ form: formKey });
+
+    // Gamitin ang company na kasalukuyang tinype/pinili ni student (kung meron na)
+    const typedCompany = companyNameInput ? companyNameInput.value.trim() : "";
+    if (typedCompany) params.set('company', typedCompany);
+
+    reqFormTitle.textContent = title || "Requirement Form";
+    reqFormLoading.hidden = false;
+    reqFormFrame.src = `../requirementform/requirementform.html?${params.toString()}`;
+
+    reqFormModal.hidden = false;
+    document.body.classList.add('req-modal-open');
+    reqFormClose.focus();
+}
+
+function closeRequirementForm() {
+    if (!reqFormModal || reqFormModal.hidden) return;
+    reqFormModal.hidden = true;
+    reqFormFrame.src = 'about:blank';
+    document.body.classList.remove('req-modal-open');
+}
+
+if (reqFormFrame) {
+    reqFormFrame.addEventListener('load', () => {
+        if (reqFormFrame.src && !reqFormFrame.src.startsWith('about:')) reqFormLoading.hidden = true;
+    });
+}
+
+document.querySelectorAll('.requirement-view').forEach((btn) => {
+    btn.addEventListener('click', () => openRequirementForm(btn.dataset.form, btn.dataset.title));
+});
+
+if (reqFormClose) reqFormClose.addEventListener('click', closeRequirementForm);
+
+// Click sa madilim na bahagi sa labas = isara
+if (reqFormModal) {
+    reqFormModal.addEventListener('click', (e) => {
+        if (e.target === reqFormModal) closeRequirementForm();
+    });
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeRequirementForm();
+});
+
+// Back button sa loob ng form -> isasara ang container
+window.addEventListener('message', (e) => {
+    if (e.origin !== window.location.origin) return;
+    if (e.data && e.data.type === 'closeRequirementFormModal') closeRequirementForm();
+});
+
+function readFileAsDataURL(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error("Could not read " + file.name));
+        reader.onload = () => resolve(String(reader.result));
+        reader.readAsDataURL(file);
+    });
+}
+
+// Larawan: i-compress muna. PDF: kunin as-is.
+async function prepareRequirementData(file) {
+    if (file.type.startsWith('image/')) {
+        return compressImageToBase64(file, 1600, 0.75);
+    }
+    return readFileAsDataURL(file);
+}
+
+// I-save ang mga napiling file; ibabalik ang metadata para sa user doc.
+async function saveRequirementFiles(uid) {
+    const metadata = {};
+
+    for (const key of REQUIREMENT_KEYS) {
+        const newFiles = requirementFiles[key];
+        const savedFiles = savedFilesOf(key);
+        const allFiles = [...savedFiles];
+
+        for (const file of newFiles) {
+            const dataUrl = await prepareRequirementData(file);
+            const total = Math.ceil(dataUrl.length / REQUIREMENT_CHUNK_SIZE);
+
+            // Ang pinakaunang file ng requirement ay gumagamit ng lumang
+            // pangalan (`${key}_${i}`); ang iba ay may sariling unique prefix.
+            const prefix = allFiles.length === 0
+                ? key
+                : `${key}_f${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+
+            for (let i = 0; i < total; i++) {
+                await setDoc(doc(db, "users", uid, "requirements", `${prefix}_${i}`), {
+                    key,
+                    prefix,
+                    index: i,
+                    total,
+                    data: dataUrl.slice(i * REQUIREMENT_CHUNK_SIZE, (i + 1) * REQUIREMENT_CHUNK_SIZE)
+                });
+            }
+
+            const mimeMatch = dataUrl.match(/^data:([^;,]+)/);
+            allFiles.push({
+                fileName: file.name,
+                fileType: mimeMatch ? mimeMatch[1] : file.type,
+                fileSize: file.size,
+                chunks: total,
+                uploadedAt: new Date().toISOString(),
+                prefix
+            });
+        }
+
+        if (!allFiles.length) continue;
+
+        // Top-level fields = unang file (compatible sa lumang format),
+        // `files` = buong listahan.
+        const first = allFiles[0];
+        metadata[key] = {
+            fileName: first.fileName,
+            fileType: first.fileType,
+            fileSize: first.fileSize,
+            chunks: first.chunks,
+            uploadedAt: first.uploadedAt,
+            fileCount: allFiles.length,
+            files: allFiles
+        };
+    }
+
+    return metadata;
+}
 
 // ==========================================
 // MULTI-STEP NAVIGATION LOGIC
@@ -422,73 +531,203 @@ const stepIcon = document.getElementById('stepIcon');
 
 
 // ==========================================
-// STUDENT NUMBER FORMAT  (YYYY-MM-00000, e.g. 2023-07-00975)
-// Numbers lang ang tinatanggap; kusang nilalagyan ng "-" habang nagta-type.
-// ==========================================
-
-const STUDENT_NUMBER_REGEX = /^\d{4}-\d{2}-\d{5}$/;
-
-function formatStudentNumber(raw) {
-    const digits = String(raw).replace(/\D/g, '').slice(0, 11);
-
-    let formatted = digits.slice(0, 4);
-    if (digits.length > 4) formatted += '-' + digits.slice(4, 6);
-    if (digits.length > 6) formatted += '-' + digits.slice(6, 11);
-
-    return formatted;
-}
-
-const studentNumberInput = document.getElementById('studentNumber');
-
-if (studentNumberInput) {
-    studentNumberInput.addEventListener('input', () => {
-        studentNumberInput.value = formatStudentNumber(studentNumberInput.value);
-    });
-}
-
-
-// ==========================================
 // STEP 1 → STEP 2
 // ==========================================
 
+// ----- Kunin ang file ng OJT Acceptance (bagong pili, o yung naka-save na) -----
+// Ibinabalik ang lahat ng file ng OJT Acceptance (bago + naka-save na), ayon
+// sa pagkakasunod. Subukan ang bawat isa hanggang may mabasa.
+async function getAcceptanceFiles() {
+    const files = [...requirementFiles.ojtAcceptance];
+    if (files.length) return files;
+
+    // Walang bagong pinili - gamitin ang mga naka-save na
+    if (!currentUser) return files;
+    for (const meta of savedFilesOf('ojtAcceptance')) {
+        const parts = [];
+        let complete = true;
+        for (let i = 0; i < (meta.chunks || 0); i++) {
+            const snap = await getDoc(doc(db, "users", currentUser.uid, "requirements", `${meta.prefix || 'ojtAcceptance'}_${i}`));
+            if (!snap.exists()) { complete = false; break; }
+            parts.push(snap.data().data);
+        }
+        if (!complete || !parts.length) continue;
+        const blob = await (await fetch(parts.join(''))).blob();
+        files.push(new File([blob], meta.fileName || "ojt-acceptance", { type: meta.fileType || blob.type }));
+    }
+    return files;
+}
+
+// Para hindi mabura ang mga na-edit ni student kapag bumalik at nag-Next ulit
+let lastExtractedSource = null;
+
+function setNextLoading(isLoading, message = '') {
+    const status = document.getElementById('extractStatus');
+    if (nextBtn) {
+        nextBtn.disabled = isLoading;
+        nextBtn.classList.toggle('is-loading', isLoading);
+        const label = nextBtn.querySelector('.btn-label');
+        if (label) label.textContent = isLoading ? 'Reading your requirements…' : 'Next';
+    }
+    if (status) {
+        status.hidden = !isLoading;
+        status.textContent = message;
+    }
+}
+
+// Lagyan ng highlight ang mga field na kusang napunan
+function markAutofilled(el) {
+    if (!el) return;
+    el.classList.add('autofilled');
+    el.addEventListener('input', () => el.classList.remove('autofilled'), { once: true });
+}
+
+function setValue(el, value) {
+    if (!el || value === null || value === undefined || value === '') return false;
+    el.value = value;
+    markAutofilled(el);
+    return true;
+}
+
+function applyExtractedDetails(info) {
+    const missing = [];
+    const filled = [];
+
+    // Company - i-snap sa pangalang nasa listahan ng coordinator kung kamukha
+    const companyValue = info.company
+        ? (closestMatch(info.company, Object.keys(companiesMap)) || info.company)
+        : '';
+    (setValue(companyNameInput, companyValue) ? filled : missing).push('Company name');
+    refreshSupervisorOptions();
+
+    const supervisorPool = companiesMap[companyValue] || [];
+    const supervisorValue = info.supervisor
+        ? (closestMatch(info.supervisor.replace(/^(mr|ms|mrs|engr|atty|dr)\.?\s+/i, ''), supervisorPool) || info.supervisor)
+        : '';
+    (setValue(supervisorNameInput, supervisorValue) ? filled : missing).push("Supervisor's name");
+
+    (setValue(jobTitleInput, info.jobTitle) ? filled : missing).push('Job title');
+    (setValue(requiredHoursInput, info.requiredHours) ? filled : missing).push('Required hours');
+    (setValue(document.getElementById('dutyStartDate'), info.effectiveDate) ? filled : missing).push('Effective date');
+
+    // Araw
+    if (info.days && info.days.length) {
+        document.querySelectorAll('.day-btn').forEach((btn) => {
+            btn.classList.toggle('active', info.days.includes(btn.dataset.day));
+        });
+        filled.push('Working days');
+    } else {
+        missing.push('Working days');
+    }
+
+    // Oras
+    if (info.morning || info.afternoon) {
+        const mToggle = document.getElementById('morningEnabled');
+        const aToggle = document.getElementById('afternoonEnabled');
+        mToggle.checked = !!info.morning;
+        aToggle.checked = !!info.afternoon;
+        updateMorningState();
+        updateAfternoonState();
+
+        if (info.morning) {
+            setValue(document.getElementById('morningTimeIn'), info.morning.timeIn);
+            setValue(document.getElementById('morningTimeOut'), info.morning.timeOut);
+        }
+        if (info.afternoon) {
+            setValue(document.getElementById('afternoonTimeIn'), info.afternoon.timeIn);
+            setValue(document.getElementById('afternoonTimeOut'), info.afternoon.timeOut);
+        }
+        filled.push('Working hours');
+    } else {
+        missing.push('Working hours');
+    }
+
+    // Abiso sa taas ng Step 2
+    const notice = document.getElementById('autofillNotice');
+    if (notice) {
+        const parts = [];
+        if (filled.length) {
+            parts.push(`<strong>Filled in from your OJT Acceptance:</strong> ${filled.join(', ')}. Please review and correct anything that looks wrong.`);
+        }
+        if (info.lunchAssumed) {
+            parts.push('Your form shows one continuous time range, so we assumed a 12:00–1:00 PM lunch break. Adjust the morning/afternoon times if needed.');
+        }
+        if (missing.length) {
+            parts.push(`<strong>Couldn't read:</strong> ${missing.join(', ')}. Please fill these in manually.`);
+        }
+        const iconClass = missing.length ? 'fa-triangle-exclamation' : 'fa-wand-magic-sparkles';
+        notice.innerHTML = `<i class="fa-solid ${iconClass}"></i><div class="autofill-body">${parts.map((p) => `<p>${p}</p>`).join('')}</div>`;
+        notice.classList.toggle('warn', missing.length > 0);
+        notice.hidden = false;
+    }
+}
+
+function showStep2() {
+    step1Content.style.display = "none";
+    step2Content.style.display = "block";
+
+    stepText.textContent = "Step 2 of 3";
+    progressFill.style.width = "66.66%";
+    stepTitle.textContent = "Internship Schedule";
+    stepSub.textContent = "Review the details we read from your OJT Acceptance.";
+    stepIcon.className = "fa-regular fa-calendar";
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 if (nextBtn) {
-    nextBtn.addEventListener('click', () => {
-        const fullName = document.getElementById('fullName').value.trim();
-        const studentNumber = document.getElementById('studentNumber').value.trim();
-        const gender = document.getElementById('genderInput').value.trim();
-        const companyName = document.getElementById('companyName').value.trim();
-        const supervisorName = document.getElementById('supervisorName').value.trim();
-        const section = document.getElementById('sectionInput').value.trim();
-
-        if (!fullName || !studentNumber || !gender || !companyName || !section) {
-            showAlert("Pakisagutan muna ang lahat ng kailangan sa Step 1.", 'alertMessageStep1');
-            return;
-        }
-
-        if (!STUDENT_NUMBER_REGEX.test(studentNumber)) {
-            showAlert("Mali ang format ng Student Number. Gamitin ang format na 2023-07-00975.", 'alertMessageStep1');
-            return;
-        }
-
-        if (!selectedCompany || selectedCompany.toLowerCase() !== companyName.toLowerCase()) {
-            showAlert("Pumili ng company mula sa listahan.", 'alertMessageStep1');
-            return;
-        }
-
-        if (!supervisorName) {
-            showAlert("Pumili ng supervisor mula sa listahan.", 'alertMessageStep1');
+    nextBtn.addEventListener('click', async () => {
+        // 1. Kailangan ang 3 requirement documents
+        const missingDocs = REQUIREMENT_KEYS.filter((key) => !hasRequirement(key));
+        if (missingDocs.length > 0) {
+            showAlert(
+                `Please attach: ${missingDocs.map((key) => REQUIREMENT_LABELS[key]).join(", ")}.`,
+                'alertMessageStep1'
+            );
             return;
         }
 
         hideAlert('alertMessageStep1');
-        step1Content.style.display = "none";
-        step2Content.style.display = "block";
 
-        stepText.textContent = "Step 2 of 3";
-        progressFill.style.width = "66.66%";
-        stepTitle.textContent = "Internship Schedule";
-        stepSub.textContent = "Set your internship days and working hours.";
-        stepIcon.className = "fa-regular fa-calendar";
+        // 2. Basahin ang OJT Acceptance at i-prefill ang mga input
+        //    (kung nabasa na dati at walang binago sa file, huwag nang ulitin)
+        const sourceKey = requirementFiles.ojtAcceptance.length
+            ? requirementFiles.ojtAcceptance.map((f) => `${f.name}:${f.size}:${f.lastModified}`).join('|')
+            : 'saved-file:' + savedFilesOf('ojtAcceptance').length;
+
+        if (sourceKey !== lastExtractedSource) {
+            lastExtractedSource = sourceKey;
+            setNextLoading(true, 'Loading… this can take a few seconds for scanned files.');
+            try {
+                const files = await getAcceptanceFiles();
+                if (!files.length) throw new Error('No OJT Acceptance file found.');
+
+                // Subukan ang bawat file hanggang may matagumpay na mabasa
+                let info = null;
+                let lastError = null;
+                for (const file of files) {
+                    try {
+                        info = await extractFromAcceptanceFile(file, (msg) => setNextLoading(true, msg));
+                        if (info) break;
+                    } catch (err) {
+                        lastError = err;
+                    }
+                }
+                if (!info) throw lastError || new Error('Could not read any OJT Acceptance file.');
+                applyExtractedDetails(info);
+            } catch (error) {
+                console.error('Could not read OJT Acceptance:', error);
+                const notice = document.getElementById('autofillNotice');
+                if (notice) {
+                    notice.innerHTML = '<p><strong>We couldn\'t read your OJT Acceptance automatically.</strong> Please fill in the details below manually.</p>';
+                    notice.classList.add('warn');
+                    notice.hidden = false;
+                }
+            } finally {
+                setNextLoading(false);
+            }
+        }
+
+        showStep2();
     });
 }
 
@@ -499,6 +738,26 @@ if (nextBtn) {
 
 if (scheduleNextBtn) {
     scheduleNextBtn.addEventListener('click', () => {
+        const detailChecks = [
+            [companyNameInput, "Please enter your company name."],
+            [supervisorNameInput, "Please enter your supervisor's name."],
+            [jobTitleInput, "Please enter your job title."]
+        ];
+        for (const [el, message] of detailChecks) {
+            if (!el || !el.value.trim()) {
+                showAlert(message, 'alertMessageStep2');
+                if (el) el.focus();
+                return;
+            }
+        }
+
+        const requiredHours = parseInt(requiredHoursInput?.value, 10);
+        if (!requiredHours || requiredHours < 1) {
+            showAlert("Please enter your required hours to complete.", 'alertMessageStep2');
+            if (requiredHoursInput) requiredHoursInput.focus();
+            return;
+        }
+
         const selectedDays = document.querySelectorAll('.day-btn.active');
 
         if (selectedDays.length === 0) {
@@ -566,9 +825,9 @@ if (scheduleBackBtn) {
 
         stepText.textContent = "Step 1 of 3";
         progressFill.style.width = "33.33%";
-        stepTitle.textContent = "Complete Your Profile";
-        stepSub.textContent = "Please fill in the required information below to complete your account setup.";
-        stepIcon.className = "fa-regular fa-user";
+        stepTitle.textContent = "Upload Requirements";
+        stepSub.textContent = "Attach your required documents to continue your account setup.";
+        stepIcon.className = "fa-regular fa-file-lines";
     });
 }
 
@@ -837,21 +1096,25 @@ function requireTermsAgreement() {
 
 const profileForm = document.getElementById('profileForm');
 
+// Nilalagyan ng pangalan ng hakbang ang error (hal. "[saving requirement files] ...")
+// para malaman agad kung saan pumalya ang pag-save.
+async function runSaveStage(stage, fn) {
+    try {
+        return await fn();
+    } catch (err) {
+        try { err.message = `[${stage}] ${err.message}`; } catch (_) { /* read-only */ }
+        throw err;
+    }
+}
+
 // Ang aktwal na pag-save ng bagong password + profile data. Hiwalay na
 // function ito para ma-retry agad pagkatapos mag-reauthenticate, kung
 // kailangan, nang hindi na-re-render/nawawala ang mga sagot ng estudyante.
 async function saveProfileData(password) {
-    const fullName = document.getElementById('fullName').value.trim();
-    const studentNumber = document.getElementById('studentNumber').value.trim();
-    const gender = document.getElementById('genderInput').value.trim();
     const companyName = document.getElementById('companyName').value.trim();
     const supervisorName = document.getElementById('supervisorName').value.trim();
-
-    // Kukunin ang Course (BSIT) at i-kokombina sa Section input para maging "BSIT 401"
-    const course = document.getElementById('courseInput').value.trim();
-    const rawSection = document.getElementById('sectionInput').value.trim();
-    const cleanSection = rawSection.replace(/^bsit\s*/i, '');
-    const section = `${course} ${cleanSection}`;
+    const jobTitle = document.getElementById('jobTitle').value.trim();
+    const requiredHours = parseInt(document.getElementById('requiredHours').value, 10) || null;
 
     const selectedDays = getSelectedInternshipDays();
 
@@ -900,29 +1163,34 @@ async function saveProfileData(password) {
     };
 
     // Update Firebase Auth Password
-    await updatePassword(currentUser, password);
+    await runSaveStage('updating password', () => updatePassword(currentUser, password));
+
+    // I-save ang 3 requirement documents (Endorsement Letter, OJT Acceptance, MOA)
+    const requirementsMeta = await runSaveStage('saving requirement files', () => saveRequirementFiles(currentUser.uid));
 
     // Update Firestore Profile Data
     const userDocRef = doc(db, "users", currentUser.uid);
-    await updateDoc(userDocRef, {
-        name: fullName,
-        studentNumber: studentNumber,
-        gender: gender,
+    await runSaveStage('saving profile', () => updateDoc(userDocRef, {
         companyName: companyName,
         supervisorName: supervisorName,
-        course: course,
-        section: section,
+        jobTitle: jobTitle,
+        requiredHours: requiredHours,
         schedule: scheduleData,
+        requirements: requirementsMeta,
+        requirementsSubmittedAt: serverTimestamp(),
         profileCompleted: true,
+        // Pagka-submit ng student, "Review Documents" na ang status niya sa
+        // coordinator hanggang ma-approve (o ma-return) ang mga documents.
+        documentsStatus: "review",
+        documentsReviewNote: "",
         // Record ng pagsang-ayon sa Terms & Conditions / Privacy Policy
         termsAccepted: true,
         termsAcceptedAt: serverTimestamp(),
         // Oras ng pagkumpleto - ginagamit ng notification bell ng
         // coordinator (../header/header.js) para malaman kung kailan
         // natapos ng estudyante ang profile.
-        profileCompletedAt: serverTimestamp(),
-        ...(selectedPhotoBase64 ? { photo: selectedPhotoBase64 } : {})
-    });
+        profileCompletedAt: serverTimestamp()
+    }));
 
     // Redirect to Dashboard
     window.location.href = "/student-page/student_dashboard/student_dashboard.html";

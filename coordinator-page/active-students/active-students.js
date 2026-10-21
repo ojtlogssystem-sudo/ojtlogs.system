@@ -232,16 +232,19 @@ async function loadStartedStudentIds() {
 
 function hasNotStartedOjt(docId, data, startedIds) {
 
+    /* May attendance record na o may rendered hours na =
+       nag-start na talaga, kahit ano pa ang nasa schedule. */
+
     if (startedIds.has(docId)) return false;
 
-    const hours = [
+    const hasHours = [
         data.renderedHours,
         data.hoursRendered,
         data.completedHours,
         data.totalHours
     ].some(v => Number(v) > 0);
 
-    if (hours) return false;
+    if (hasHours) return false;
 
     const startStr = data.schedule && data.schedule.startDate;
 
@@ -252,11 +255,34 @@ function hasNotStartedOjt(docId, data, startedIds) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        if (!isNaN(start) && start < today) return false;
+        /* Active na mismo sa araw ng start date (start <= today).
+           Kapag mamaya pa ang start date, hindi pa Active. */
+        if (!isNaN(start)) return start > today;
 
     }
 
+    /* Walang start date, walang hours, walang attendance =
+       wala pang nasisimulang duty. */
     return true;
+
+}
+
+
+/* APPROVAL NG COORDINATOR (kapareho ng students.js)
+   documentsStatus ang tinatakda ng coordinator sa Students page:
+   "approved" = na-approve ang requirements, "review" = hinihintay pa,
+   "revision" = ibinalik. Kung walang documentsStatus, ang dating
+   student na walang na-submit na requirements ay approved na; kapag
+   may na-submit na (requirementsSubmittedAt), "review" ang default. */
+function hasApprovedDocuments(data) {
+
+    const submitted = !!data.requirementsSubmittedAt;
+
+    const status = String(
+        data.documentsStatus || (submitted ? "review" : "approved")
+    ).trim().toLowerCase();
+
+    return status === "approved";
 
 }
 
@@ -361,6 +387,18 @@ async function loadActiveStudents() {
             // Hindi pa nag-start: huwag ituring na At Risk
             const notStarted =
                 hasNotStartedOjt(docSnap.id, data, startedIds);
+
+            /* HINDI PA NAG-START ANG DUTY - Registered pa lang,
+               hindi pa Active. Papasok lang dito sa mismong
+               start date ng OJT niya. */
+            if (notStarted) {
+                return;
+            }
+
+            /* HINDI PA APPROVED ng coordinator ang requirements */
+            if (!hasApprovedDocuments(data)) {
+                return;
+            }
 
             if (
                 rawStatus === "completed" ||

@@ -30,7 +30,7 @@
      1) Weekly report na na-submit ng estudyante   ("weekly_reports")
      2) At-risk na estudyante                      ("analytics", aiStatus = "At Risk")
      3) Na-evaluate ng supervisor ang estudyante   (EVALUATIONS_COLLECTION sa ibaba)
-     4) Natapos ng estudyante ang profile          ("users", profileCompleted = true)
+     4) Nag-submit ng requirements para ma-approve (REQUIREMENTS_COLLECTION, status = pending)
    Ang mga setting (pangalan ng collection, mga field, link) ay nasa
    "NOTIFICATION SETTINGS" sa ibaba ng import section.
 
@@ -130,13 +130,23 @@ const EVAL_TIME_FIELDS = ["submittedAt", "evaluatedAt", "createdAt", "timestamp"
 // para hindi bumaha ng "unread" ang mga lumang record.
 const NOTIF_EVALUATION_MAX_AGE_DAYS = 30;
 
-// PROFILE COMPLETED: lumalabas kapag natapos ng estudyante ang pagsagot
-// ng profile information pagkatapos gumawa ng account (profile.js ang
-// nagse-set ng users/{uid}.profileCompleted = true at profileCompletedAt).
-// Ang mga lumang record (walang profileCompletedAt) ay sinusubaybayan
-// ayon sa unang pagkakita, at ang mga nauna nang natapos bago mag-umpisa
-// ang tracking ay hindi ilalabas (para hindi bumaha ang bell).
-const NOTIF_PROFILE_MAX_AGE_DAYS = 30;
+// REQUIREMENTS FOR APPROVAL: lumalabas kapag may estudyanteng nag-submit
+// ng requirements na hinihintay pang i-approve ng coordinator. Isang
+// notification kada estudyante - nakalagay ang bilang ("3 requirements").
+// PALITAN kung iba ang tawag sa Firebase mo.
+const REQUIREMENTS_COLLECTION = "requirements";
+
+// Field at value na nagsasabing "pending" pa (hinihintay ang approval)
+const REQ_STATUS_FIELD = "status";
+const REQ_PENDING_STATUS = "pending";
+
+// Mga field ng requirement document (kukunin ang una na may laman)
+const REQ_STUDENT_ID_FIELDS = ["studentId", "internId", "studentUid", "userId", "uid"];
+const REQ_STUDENT_NAME_FIELDS = ["studentName", "internName", "student"];
+const REQ_TIME_FIELDS = ["submittedAt", "createdAt", "uploadedAt", "updatedAt", "timestamp"];
+
+// Requirement na mas luma rito (sa araw) ay hindi na ilalabas sa bell
+const NOTIF_REQUIREMENTS_MAX_AGE_DAYS = 30;
 
 // Saan pupunta kapag pinindot ang notification (null = walang pupuntahan).
 // Ang at-risk ay pupunta sa Analytics page - baguhin kung iba ang folder.
@@ -151,7 +161,7 @@ const NOTIF_LINKS = {
     report: null,
     risk: "../analytics/analytics.html",
     evaluation: null,
-    profile: null
+    requirements: null // ex. "../requirements/requirements.html"
 };
 
 
@@ -163,7 +173,7 @@ let studentNameMap = {};
 
 // Hiwalay ang listahan ng bawat klase, tapos pinagsasama at
 // inaayos ayon sa pinakabago (see rebuildNotifications).
-let notifBuckets = { report: [], risk: [], evaluation: [], profile: [] };
+let notifBuckets = { report: [], risk: [], evaluation: [], requirements: [] };
 let notifItems = [];
 
 let notifLastSeenAt = 0;
@@ -823,7 +833,7 @@ const NOTIF_TYPES = {
     report:     { icon: "fa-file-circle-check",   cls: "" },
     risk:       { icon: "fa-triangle-exclamation", cls: "risk" },
     evaluation: { icon: "fa-clipboard-check",      cls: "eval" },
-    profile:    { icon: "fa-user-check",           cls: "profile" }
+    requirements: { icon: "fa-file-circle-exclamation", cls: "requirements" }
 };
 
 
@@ -841,13 +851,16 @@ function notifMessageHtml(item) {
 
     }
 
-    if (item.type === "profile") {
+    if (item.type === "requirements") {
 
         const detail = item.detail
             ? `<span class="notif-detail">${escapeHtml(item.detail)}</span>`
             : "";
 
-        return `<p>${student} completed their profile information.</p>${detail}`;
+        const label =
+            item.count === 1 ? "1 requirement" : `${item.count} requirements`;
+
+        return `<p>${student} submitted <strong>${label}</strong> for your approval.</p>${detail}`;
 
     }
 
@@ -956,7 +969,7 @@ function rebuildNotifications() {
             ...notifBuckets.report,
             ...notifBuckets.risk,
             ...notifBuckets.evaluation,
-            ...notifBuckets.profile
+            ...notifBuckets.requirements
         ]
             .sort((a, b) => b.timestamp - a.timestamp)
             .slice(0, NOTIF_MAX_ITEMS);
@@ -1325,39 +1338,24 @@ async function startNotifications(uid) {
     }
 
     // ------------------------------------
-    // 4) PROFILE COMPLETED (bagong account na natapos ang profile)
+    // 4) REQUIREMENTS NA HINIHINTAY ANG APPROVAL NG COORDINATOR
+    //    Galing sa users/{uid}: may requirementsSubmittedAt at ang
+    //    documentsStatus ay "review" (o wala pa - parehong rule sa
+    //    Students page). Hindi na ginagamit ang hiwalay na
+    //    "requirements" collection.
     // ------------------------------------
 
     try {
 
-        const profileQuery =
+        const reviewQuery =
             query(
                 collection(db, "users"),
-                where("profileCompleted", "==", true)
+                where("role", "in", ["student", "intern"])
             );
 
         notifUnsubscribers.push(onSnapshot(
-            profileQuery,
+            reviewQuery,
             (snapshot) => {
-
-                const fromCache = Boolean(snapshot.metadata?.fromCache);
-
-                let seen = loadProfileSeen(uid);
-
-                const isBaseline = seen === null;
-
-                // Unang beses: hintayin ang totoong data mula sa server bago
-                // i-baseline, kung hindi ay magmumukhang "bago" ang lahat.
-                if (isBaseline && fromCache) return;
-
-                seen = seen || {};
-
-                const now = Date.now();
-
-                const oldestAllowed =
-                    now - NOTIF_PROFILE_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
-
-                let seenChanged = isBaseline;
 
                 const items = [];
 
@@ -1365,50 +1363,45 @@ async function startNotifications(uid) {
 
                     const data = docSnap.data();
 
-                    // Eksaktong oras kung galing sa bagong profile.js
-                    let timestamp = toMillis(data.profileCompletedAt);
+                    if (!data.requirementsSubmittedAt) return;
 
-                    // Kung wala, gamitin ang oras ng unang pagkakita
-                    // (0 = natapos na bago nag-umpisa ang tracking)
-                    if (!timestamp) {
+                    const status = String(
+                        data.documentsStatus || "review"
+                    ).toLowerCase();
 
-                        if (!(docSnap.id in seen)) {
+                    if (status !== "review") return;
 
-                            seen[docSnap.id] = isBaseline ? 0 : now;
-                            seenChanged = true;
+                    const reqKeys = Object.keys(data.requirements || {});
 
-                        }
+                    const name =
+                        data.fullName ||
+                        data.name ||
+                        (data.firstName
+                            ? `${data.firstName} ${data.lastName || ""}`.trim()
+                            : "") ||
+                        studentNameMap[docSnap.id] ||
+                        "A student";
 
-                        timestamp = seen[docSnap.id];
-
-                    }
-
-                    if (timestamp < oldestAllowed) return;
-
-                    const course =
-                        [data.section || data.course]
-                            .filter(Boolean)
-                            .join("");
-
-                    const company =
-                        data.companyName || data.company || "";
+                    const detail = [
+                        data.section || data.course,
+                        data.companyName || data.company
+                    ].filter(Boolean).join(" \u00b7 ");
 
                     items.push({
-                        type: "profile",
+                        type: "requirements",
                         id: docSnap.id,
-                        studentName:
-                            data.fullName || data.name || data.email || "A student",
-                        detail: [course, company].filter(Boolean).join(" · "),
-                        timestamp
+                        count: Math.max(reqKeys.length, 1),
+                        studentName: name,
+                        detail,
+                        timestamp:
+                            toMillis(data.requirementsSubmittedAt) || Date.now()
                     });
 
                 });
 
-                if (seenChanged) saveProfileSeen(uid, seen);
-
-                notifBuckets.profile =
+                notifBuckets.requirements =
                     items
-                        .sort((a, b) => b.timestamp - a.timestamp)
+                        .sort((x, y) => y.timestamp - x.timestamp)
                         .slice(0, 20);
 
                 rebuildNotifications();
@@ -1417,7 +1410,7 @@ async function startNotifications(uid) {
             (error) => {
 
                 console.error(
-                    "Error listening for profile-completed notifications:",
+                    "Error listening for requirement notifications (users):",
                     error
                 );
 
@@ -1426,7 +1419,7 @@ async function startNotifications(uid) {
 
     } catch (error) {
 
-        console.error("Could not start profile notifications:", error);
+        console.error("Could not start requirement notifications:", error);
 
     }
 
@@ -1480,7 +1473,7 @@ function initNotificationDropdown() {
 
                 }
 
-            } else if (type === "evaluation" || type === "profile") {
+            } else if (type === "evaluation" || type === "requirements") {
 
                 if (NOTIF_LINKS[type]) {
                     window.location.href = NOTIF_LINKS[type];

@@ -69,7 +69,7 @@
                             <div class="table-header-right">
                                 <div class="search-box">
                                     <i class="fa-solid fa-search"></i>
-                                    <input type="text" id="searchStudent" placeholder="Search student...">
+                                    <input type="text" id="searchStudent" placeholder="Search name, ID, section or code...">
                                 </div>
 
                                 <!-- FILTER BUTTON + POPOVER -->
@@ -94,6 +94,8 @@
                                                 <option value="All Status">All Status</option>
                                                 <option value="Active">Active</option>
                                                 <option value="Pending">Pending</option>
+                                                <option value="Review Documents">Review Documents</option>
+                                                <option value="Needs Revision">Needs Revision</option>
                                                 <option value="Completed">Completed</option>
                                             </select>
                                         </div>
@@ -184,7 +186,7 @@
 
         <!-- INVITE STUDENT MODAL -->
         <div class="modal" id="inviteModal">
-            <div class="modal-content">
+            <div class="modal-content invite-modal-content">
                 <div class="modal-header">
                     <h3>
                         <i class="fa-solid fa-paper-plane"></i>
@@ -194,6 +196,7 @@
                 </div>
 
                 <form id="inviteForm">
+                    <div class="invite-group">
                     <p class="modal-description">
                         Enter the student's Gmail address to send an invitation link:
                     </p>
@@ -202,7 +205,9 @@
                         <i class="fa-regular fa-envelope"></i>
                         <input type="email" id="studentEmail" placeholder="student@gmail.com">
                     </div>
+                    </div>
 
+                    <div class="invite-group">
                     <!-- BULK INVITE VIA CSV -->
                     <div class="csv-divider"><span>or invite many at once</span></div>
 
@@ -213,6 +218,9 @@
                             Import CSV
                         </button>
                     </div>
+                    <p class="csv-hint">
+                        CSV columns: <strong>Full Name, Student ID, Gender, Course, Section, Email</strong>
+                    </p>
 
                     <div class="csv-preview" id="csvPreview">
                         <div class="csv-preview-header">
@@ -220,8 +228,16 @@
                                 <i class="fa-solid fa-circle-check"></i>
                                 <span id="csvSummary"></span>
                             </span>
-                            <button type="button" class="csv-clear-btn" id="clearCsvBtn">Clear all</button>
+                            <div class="csv-preview-actions">
+                                <button type="button" class="csv-toggle-btn" id="toggleCsvListBtn" aria-expanded="false">
+                                    <span id="toggleCsvListText">View details</span>
+                                    <i class="fa-solid fa-chevron-down"></i>
+                                </button>
+                                <button type="button" class="csv-clear-btn" id="clearCsvBtn">Clear all</button>
+                            </div>
                         </div>
+                        <ul class="csv-preview-list" id="csvPreviewList"></ul>
+                    </div>
                     </div>
 
                     <div class="modal-actions">
@@ -456,6 +472,60 @@
                             <i class="fa-solid fa-pen-to-square"></i> Edit Intern Schedule 
                         </button>       
                     </div>     
+                </div>
+            </div>
+        </div>
+
+        <!-- SUBMITTED DOCUMENTS MODAL -->
+        <div class="modal" id="docsModal">
+            <div class="modal-content profile-modal-content">
+                <div class="modal-header">
+                    <div class="modal-title-wrapper">
+                        <div class="modal-icon-badge">
+                            <i class="fa-solid fa-file-circle-check"></i>
+                        </div>
+                        <div>
+                            <h3>Submitted Documents</h3>
+                            <p id="docsModalStudentName">Student</p>
+                        </div>
+                    </div>
+                    <button type="button" class="close-modal-btn" id="closeDocsModalBtn">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="modal-body">
+                    <!-- SUBMITTED DOCUMENTS (para sa review ng coordinator) -->
+                    <div class="docs-review" id="docsReviewSection" hidden>
+                        <div class="docs-code-box" id="docsCodeBox" hidden>
+                            <div class="docs-code-info">
+                                <span class="docs-code-label">Submission Code</span>
+                                <span class="docs-code-value" id="docsCodeValue"></span>
+                                <span class="docs-code-hint">Same code shown on the student's screen. Search it in the students list to verify.</span>
+                            </div>
+                            <button type="button" class="docs-code-copy" id="docsCodeCopyBtn" title="Copy code">
+                                <i class="fa-regular fa-copy"></i> Copy
+                            </button>
+                        </div>
+                        <div class="docs-review-title" hidden>
+                            <i class="fa-solid fa-file-circle-check"></i>
+                            Submitted Documents
+                        </div>
+                        <p class="docs-review-help" id="docsReviewHelp"></p>
+                        <ul class="docs-review-list" id="docsReviewList"></ul>
+
+                        <div class="docs-review-actions" id="docsReviewActions" hidden>
+                            <div class="docs-reject-reasons" id="docsRejectReasons"></div>
+                            <div class="docs-review-buttons">
+                                <button type="button" class="btn-return-docs" id="returnDocsBtn">
+                                    <i class="fa-solid fa-circle-xmark"></i> Reject / Return for Revision
+                                </button>
+                                <button type="button" class="btn-approve-docs" id="approveDocsBtn">
+                                    <i class="fa-solid fa-circle-check"></i> Approve Documents
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

@@ -1321,3 +1321,1363 @@ button{
 .calendar-month-day.active .calendar-month-hours.planned {
     color: #ffffff;
 }
+
+/* ==========================================
+   PROFILE PICTURE PROMPT
+========================================== */
+.photo-prompt-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    animation: photo-prompt-fade 0.25s ease-out;
+}
+
+.photo-prompt-overlay[hidden] {
+    display: none;
+}
+
+.photo-prompt {
+    width: 100%;
+    max-width: 340px;
+    padding: 28px 24px 22px;
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.22);
+    text-align: center;
+    font-family: 'Google Sans Flex', sans-serif;
+    animation: photo-prompt-pop 0.25s ease-out;
+}
+
+.photo-prompt-avatar {
+    position: relative;
+    width: 104px;
+    height: 104px;
+    margin: 0 auto 16px;
+}
+
+.photo-prompt-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    background: #f4f4f4;
+    border: 3px solid #f2f2f2;
+}
+
+.photo-prompt-camera {
+    position: absolute;
+    right: 2px;
+    bottom: 2px;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #ffe9e9;
+    color: #AB0A0A;
+    font-size: 13px;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.photo-prompt h3 {
+    margin: 0 0 6px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.photo-prompt-text {
+    margin: 0 0 6px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #707070;
+}
+
+.photo-prompt-error {
+    margin: 8px 0 0;
+    font-size: 12px;
+    color: #b91c1c;
+}
+
+.photo-prompt-error[hidden] {
+    display: none;
+}
+
+.photo-prompt-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.photo-prompt-later,
+.photo-prompt-save {
+    flex: 1;
+    height: 42px;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+.photo-prompt-later {
+    border: 1px solid #ececec;
+    background: transparent;
+    color: #707070;
+}
+
+.photo-prompt-later:hover {
+    background: #f3f4f6;
+    color: #1a1a1a;
+}
+
+.photo-prompt-save {
+    border: none;
+    background: #AB0A0A;
+    color: #fff;
+}
+
+.photo-prompt-save:hover:not(:disabled) {
+    background: #8E0909;
+}
+
+.photo-prompt-save:disabled,
+.photo-prompt-later:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+@keyframes photo-prompt-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes photo-prompt-pop {
+    from { opacity: 0; transform: scale(0.94); }
+    to { opacity: 1; transform: scale(1); }
+}
+/* ==========================================
+   APPROVAL GATE
+   Lumalabas pagkatapos mag-login hanggat hindi pa
+   na-a-approve ng coordinator ang documents.
+   Nandito ang Submission Code na ipapakita ng student.
+========================================== */
+.approval-gate {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(250, 250, 250, 0.99);
+    font-family: 'Google Sans Flex', sans-serif;
+}
+
+.approval-gate[hidden] { display: none; }
+
+.approval-gate-card {
+    width: 100%;
+    max-width: 400px;
+    padding: 30px 24px 24px;
+    background: #fff;
+    border: 1px solid #ececec;
+    border-radius: 18px;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.approval-gate-icon {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #ffe9e9;
+    color: #AB0A0A;
+    font-size: 22px;
+}
+
+.approval-gate-card h3 {
+    margin: 0 0 6px;
+    font-size: 18px;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.approval-gate-text {
+    margin: 0 0 16px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #707070;
+}
+
+.approval-gate-code {
+    margin: 0 0 6px;
+    padding: 14px 10px;
+    border: 2px dashed #AB0A0A;
+    border-radius: 12px;
+    background: #fff7f7;
+    font-family: "Courier New", monospace;
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    color: #AB0A0A;
+    user-select: all;
+}
+
+.approval-gate-code-label {
+    display: block;
+    margin-bottom: 14px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #9ca3af;
+}
+
+.approval-gate-note {
+    margin: 0 0 14px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: #fef2f2;
+    font-size: 12px;
+    line-height: 1.5;
+    color: #b91c1c;
+    text-align: left;
+}
+
+.approval-gate-note[hidden] { display: none; }
+
+.approval-gate-actions { display: flex; gap: 10px; }
+
+.approval-gate-btn {
+    flex: 1;
+    height: 42px;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.approval-gate-btn.primary { background: #AB0A0A; color: #fff; }
+.approval-gate-btn.primary:hover { background: #8E0909; }
+.approval-gate-btn.secondary { border: 1px solid #ececec; color: #707070; }
+.approval-gate-btn.secondary:hover { background: #f3f4f6; color: #1a1a1a; }
+
+.approval-gate-logout {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 14px;
+    padding: 6px 10px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    color: #707070;
+    cursor: pointer;
+}
+.approval-gate-logout:hover { color: #AB0A0A; }
+.approval-gate-logout:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* ---- Approval gate: reasons list + resubmit form ---- */
+.approval-gate-card { max-height: 92vh; overflow-y: auto; }
+
+.approval-gate-note ul { margin: 0; padding-left: 18px; }
+.approval-gate-note li { margin: 2px 0; }
+
+.approval-gate-resubmit { text-align: left; }
+
+.approval-gate-row {
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    border: 1px solid #ececec;
+    border-radius: 10px;
+    background: #fafafa;
+}
+
+.approval-gate-row.required { border-color: #f3b4b4; background: #fff7f7; }
+
+.approval-gate-row-label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.approval-gate-row-tag { font-size: 11px; font-weight: 500; color: #9ca3af; }
+.approval-gate-row.required .approval-gate-row-tag { color: #b91c1c; font-weight: 600; }
+
+.approval-gate-row input[type="file"] { width: 100%; font-size: 12px; color: #374151; }
+
+.approval-gate-error {
+    margin: 0 0 12px;
+    font-size: 12px;
+    color: #b91c1c;
+    text-align: left;
+}
+.approval-gate-error[hidden] { display: none; }
+
+.approval-gate-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* ==========================================
+   RESUBMIT PANEL (Step 1 Requirements + Step 2 Schedule, walang password)
+   Kinopya at na-scope mula sa profile.css para hindi makagulo sa dashboard.
+========================================== */
+.resubmit-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 100001;
+    overflow-y: auto;
+    background: #f4f6f9;
+    --primary: #AB0A0A;
+    --primary-hover: #8E0909;
+    --white: #ffffff;
+    --light: #f4f6f9;
+    --text: #333333;
+    --gray: #666666;
+    --border: #ececec;
+    --shadow: 0 5px 20px rgba(0, 0, 0, .06);
+    --radius: 16px;
+}
+.resubmit-panel[hidden] { display: none; }
+.resubmit-close {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #707070;
+}
+.resubmit-close:hover { color: #AB0A0A; }
+#resubmitPanel .profile-container {
+    padding: 18px 16px 25px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+#resubmitPanel .step-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 18px;
+    margin-top: -6px;
+    box-shadow: var(--shadow);
+}
+#resubmitPanel .step-top {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 10px;
+}
+#resubmitPanel .step-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: #fdecec;
+    color: var(--primary);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+#resubmitPanel .step-info {
+    flex: 1;
+}
+#resubmitPanel .step-info h2 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 2px;
+}
+#resubmitPanel .step-info p {
+    font-size: 10px;
+    line-height: 1.4;
+    color: var(--gray);
+    margin: 0;
+}
+#resubmitPanel .step-progress {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+#resubmitPanel .step-progress span {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--primary);
+    white-space: nowrap;
+}
+#resubmitPanel .progress-bar {
+    flex: 1;
+    height: 6px;
+    background: #ececec;
+    border-radius: 30px;
+    overflow: hidden;
+}
+#resubmitPanel .progress-fill {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 30px;
+    transition: width 0.3s ease;
+}
+#resubmitPanel .profile-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 18px;
+    box-shadow: var(--shadow);
+    margin-bottom: 15px;
+    animation: fadeIn 0.3s ease-in-out;
+}
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+#resubmitPanel .card-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+#resubmitPanel .vertical-line.red {
+    width: 3.5px;
+    height: 16px;
+    background: #AB0A0A;
+    border-radius: 5px;
+    flex-shrink: 0;
+}
+#resubmitPanel .card-title h2 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #222;
+}
+#resubmitPanel #step2Content .card-title {
+    margin-bottom: 20px;
+}
+#resubmitPanel #step2Content .schedule-description {
+    margin-top: 0;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+#resubmitPanel #step2Content .schedule-label {
+    margin-top: 4px;
+    margin-bottom: 10px;
+}
+#resubmitPanel .form-group {
+    margin-bottom: 14px;
+}
+#resubmitPanel .form-group label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text);
+}
+#resubmitPanel .input-box {
+    position: relative;
+}
+#resubmitPanel .input-box input {
+    width: 100%;
+    height: 42px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    padding: 0 40px 0 14px;
+    font-size: 12px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.25s, box-shadow 0.25s;
+}
+#resubmitPanel .input-box input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(171, 10, 10, .08);
+}
+#resubmitPanel .input-box label {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #fff;
+    padding: 0 4px;
+    color: #9ca3af;
+    font-size: 12px;
+    font-weight: 400;
+    pointer-events: none;
+    transition: all 0.25s ease;
+}
+#resubmitPanel .input-box input:focus + label,
+#resubmitPanel .input-box input:not(:placeholder-shown) + label {
+    top: 0;
+    transform: translateY(-50%);
+    font-size: 10px;
+    color: var(--primary);
+    font-weight: 600;
+}
+#resubmitPanel .input-box i {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #777;
+    font-size: 14px;
+    cursor: pointer;
+}
+#resubmitPanel .input-box.icon-left input { padding: 0 14px 0 42px; }
+#resubmitPanel .input-box.icon-left label { left: 38px; }
+#resubmitPanel .input-box.icon-left input:focus + label,
+#resubmitPanel .input-box.icon-left input:not(:placeholder-shown) + label { left: 12px; }
+#resubmitPanel .input-box.icon-left i {
+    left: 15px;
+    right: auto;
+    color: var(--primary);
+    font-size: 14px;
+    width: 16px;
+    text-align: center;
+    cursor: default;
+    pointer-events: none;
+}
+#resubmitPanel .select-box {
+    position: relative;
+}
+#resubmitPanel .select-box select {
+    width: 100%;
+    height: 42px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    outline: none;
+    padding: 0 40px 0 14px;
+    font-size: 12px;
+    color: var(--text);
+    appearance: none;
+    cursor: pointer;
+    transition: border-color 0.25s;
+}
+#resubmitPanel .select-box select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(171, 10, 10, .08);
+}
+#resubmitPanel .select-box i {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+    color: #777;
+    pointer-events: none;
+}
+#resubmitPanel .input-box input:disabled {
+    background: #f5f5f5;
+    color: #999;
+    cursor: not-allowed;
+}
+#resubmitPanel .alert-banner {
+    background-color: #fde8e8;
+    color: #9b1c1c;
+    border: 1px solid #f8b4b4;
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.5;
+    margin-bottom: 15px;
+    animation: slideDown 0.25s ease-out;
+}
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+#resubmitPanel .continue-btn {
+    width: 100%;
+    height: 42px;
+    margin-top: 12px;
+    border: none;
+    border-radius: 10px;
+    background: var(--primary);
+    color: var(--white);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.25s ease, transform 0.1s ease;
+}
+#resubmitPanel .continue-btn:hover {
+    background: var(--primary-hover);
+}
+#resubmitPanel .continue-btn:active {
+    transform: scale(0.99);
+}
+#resubmitPanel .schedule-description {
+    font-size: 11px;
+    color: var(--gray);
+    margin-top: -10px;
+    margin-left: 0;
+    margin-bottom: 22px;
+    line-height: 1.5;
+}
+#resubmitPanel .schedule-section {
+    margin-bottom: 22px;
+}
+#resubmitPanel .schedule-label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 10px;
+}
+#resubmitPanel .schedule-label i {
+    color: var(--primary);
+    font-size: 14px;
+}
+#resubmitPanel .days-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+}
+#resubmitPanel .day-btn {
+    height: 36px;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    background: #fff;
+    color: #555;
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+#resubmitPanel .day-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+#resubmitPanel .day-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+#resubmitPanel .schedule-session {
+    border: 1px solid #eeeeee;
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 14px;
+    background: #fff;
+}
+#resubmitPanel .session-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+#resubmitPanel .session-title > i {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #fdecec;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+}
+#resubmitPanel .session-title h3 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+}
+#resubmitPanel .session-title p {
+    margin: 2px 0 0;
+    font-size: 9px;
+    color: var(--gray);
+}
+#resubmitPanel .time-group {
+    margin-bottom: 12px;
+}
+#resubmitPanel .time-group:last-child {
+    margin-bottom: 0;
+}
+#resubmitPanel .time-group label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--gray);
+    margin-bottom: 6px;
+}
+#resubmitPanel .time-group label i {
+    color: var(--primary);
+    font-size: 12px;
+}
+#resubmitPanel .time-group input[type="time"],
+#resubmitPanel .time-group input[type="date"] {
+    width: 100%;
+    height: 40px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    padding: 0 12px;
+    font-family: inherit;
+    font-size: 11px;
+    color: var(--text);
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.2s ease,
+                box-shadow 0.2s ease;
+}
+#resubmitPanel .time-group input[type="time"]:focus,
+#resubmitPanel .time-group input[type="date"]:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(171, 10, 10, .08);
+}
+#resubmitPanel .afternoon-toggle-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border: 1px solid #eeeeee;
+    border-radius: 12px;
+    padding: 13px 15px;
+    margin-bottom: 14px;
+    background: #fff;
+}
+#resubmitPanel .afternoon-toggle-card .session-title {
+    margin-bottom: 0;
+}
+#resubmitPanel .afternoon-toggle-card .session-title > i {
+    background: #fff4e5;
+    color: #e99a00;
+}
+#resubmitPanel .afternoon-toggle-card .session-title h3 {
+    font-size: 12px;
+}
+#resubmitPanel .afternoon-toggle-card .session-title p {
+    color: #22a65a;
+    font-size: 9px;
+}
+#resubmitPanel .switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 22px;
+    flex-shrink: 0;
+}
+#resubmitPanel .switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+#resubmitPanel .slider {
+    position: absolute;
+    inset: 0;
+    background: #d5d5d5;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: 0.25s ease;
+}
+#resubmitPanel .slider::before {
+    content: "";
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    left: 2px;
+    top: 2px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 1px 4px rgba(0,0,0,.15);
+    transition: 0.25s ease;
+}
+#resubmitPanel .switch input:checked + .slider {
+    background: var(--primary);
+}
+#resubmitPanel .switch input:checked + .slider::before {
+    transform: translateX(18px);
+}
+#resubmitPanel .step-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+}
+#resubmitPanel .step-buttons .continue-btn {
+    flex: 1;
+}
+#resubmitPanel .step-buttons .back-btn {
+    background: #888;
+}
+#resubmitPanel .step-buttons .back-btn:hover {
+    background: #707070;
+}
+@media (max-width: 380px) {
+#resubmitPanel .days-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+#resubmitPanel .day-btn {
+        height: 34px;
+    }
+}
+#resubmitPanel .day-btn {
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+#resubmitPanel .day-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+    box-shadow: 0 3px 8px rgba(171, 10, 10, 0.18);
+}
+#resubmitPanel .day-btn.active:hover {
+    background: var(--primary-hover);
+    border-color: var(--primary-hover);
+    color: #fff;
+}
+#resubmitPanel .afternoon-toggle-card .session-title p.disabled {
+    color: #999;
+}
+#resubmitPanel .time-group input[type="time"]:disabled,
+#resubmitPanel .time-group input[type="date"]:disabled {
+    background: #f5f5f5;
+    color: #999;
+    border-color: #e5e5e5;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+#resubmitPanel .modality-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+#resubmitPanel .modality-option {
+    display: block;
+    cursor: pointer;
+    margin: 0;
+}
+#resubmitPanel .modality-option input {
+    display: none;
+}
+#resubmitPanel .modality-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 11px;
+    border: 1px solid #e5e5e5;
+    border-radius: 9px;
+    background: #fff;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+#resubmitPanel .modality-card:hover {
+    border-color: var(--primary);
+    background: #fffafa;
+}
+#resubmitPanel .modality-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 13px;
+}
+#resubmitPanel .modality-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+#resubmitPanel .modality-info strong {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text);
+}
+#resubmitPanel .modality-info small {
+    font-size: 8px;
+    color: var(--gray);
+    line-height: 1.3;
+}
+#resubmitPanel .modality-option input:checked + .modality-card {
+    border-color: var(--primary);
+    background: #fff6f6;
+    box-shadow: 0 0 0 1px rgba(171, 10, 10, 0.06);
+}
+#resubmitPanel #step2Content .start-date-label {
+    margin-top: 16px;
+}
+#resubmitPanel .start-date-group {
+    margin-bottom: 0;
+}
+#resubmitPanel .field-hint {
+    display: block;
+    margin-top: 6px;
+    font-size: 10px;
+    color: var(--gray);
+}
+#resubmitPanel .requirements-note {
+    font-size: 12px;
+    color: var(--gray);
+    margin: 0 0 12px;
+    line-height: 1.5;
+}
+#resubmitPanel .requirements-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 22px;
+}
+#resubmitPanel .requirement-item {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 14px;
+    border: 1.5px dashed #d8d8d8;
+    border-radius: 12px;
+    background: #fafafa;
+    transition: border-color .2s ease, background .2s ease;
+}
+#resubmitPanel .requirement-item.has-file {
+    border-style: solid;
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+}
+#resubmitPanel .requirement-icon {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    border-radius: 10px;
+    background: #fff0f0;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+}
+#resubmitPanel .requirement-item.has-file .requirement-icon {
+    background: #dcfce7;
+    color: #16a34a;
+}
+#resubmitPanel .requirement-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+#resubmitPanel .requirement-info strong {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+}
+#resubmitPanel .requirement-info small {
+    font-size: 11px;
+    color: #888;
+    line-height: 1.35;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+#resubmitPanel .requirement-item.has-file .requirement-status {
+    color: #166534;
+}
+#resubmitPanel .requirement-btn {
+    flex-shrink: 0;
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1.5px solid var(--primary);
+    color: var(--primary);
+    background: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: .2s;
+}
+#resubmitPanel .requirement-btn:hover {
+    background: var(--primary);
+    color: #fff;
+}
+#resubmitPanel .requirement-view {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 12px;
+    border-radius: 8px;
+    border: 1.5px solid #d1d5db;
+    color: #374151;
+    background: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: .2s;
+}
+@media (hover: hover) {
+#resubmitPanel .requirement-view:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        background: #fdf2f2;
+    }
+}
+#resubmitPanel .requirement-remove {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 50%;
+    background: #fee2e2;
+    color: var(--primary);
+    cursor: pointer;
+    font-size: 12px;
+}
+#resubmitPanel .requirement-remove[hidden] {
+    display: none;
+}
+#resubmitPanel .requirements-subtitle {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 4px 0 14px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+}
+#resubmitPanel .requirement-view,
+#resubmitPanel .requirement-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    line-height: 1.2;
+    white-space: nowrap;
+    box-sizing: border-box;
+}
+#resubmitPanel .requirement-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+#resubmitPanel .requirement-info strong {
+    font-size: 14px;
+    line-height: 1.3;
+}
+#resubmitPanel .requirement-info small.requirement-sub {
+    white-space: normal;
+}
+#resubmitPanel .requirement-actions {
+    display: flex;
+    gap: 10px;
+}
+#resubmitPanel .requirement-view,
+#resubmitPanel .requirement-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 40px;
+    padding: 0 12px;
+    font-size: 13px;
+}
+#resubmitPanel .requirement-files {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+#resubmitPanel .requirement-files[hidden] {
+    display: none;
+}
+#resubmitPanel .requirement-file {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: #fff;
+    border: 1px solid #d9f2e1;
+    border-radius: 8px;
+    min-width: 0;
+}
+#resubmitPanel .requirement-file > i {
+    flex-shrink: 0;
+    color: #16a34a;
+    font-size: 14px;
+}
+#resubmitPanel .requirement-file-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+#resubmitPanel .requirement-file-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+#resubmitPanel .requirement-file-meta {
+    font-size: 10px;
+    color: #888;
+}
+#resubmitPanel .requirement-file .requirement-remove {
+    width: 28px;
+    height: 28px;
+}
+#resubmitPanel .requirement-file .requirement-remove:hover {
+    background: var(--primary);
+    color: #fff;
+}
+body.req-modal-open {
+    overflow: hidden;
+}
+#resubmitPanel .req-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(17, 24, 39, 0.55);
+    animation: reqModalFade .18s ease;
+}
+#resubmitPanel .req-modal[hidden] {
+    display: none;
+}
+#resubmitPanel .req-modal-dialog {
+    width: 100%;
+    max-width: 880px;
+    height: min(92vh, 960px);
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+    animation: reqModalPop .2s ease;
+}
+#resubmitPanel .req-modal-header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px 12px 18px;
+    border-bottom: 1px solid #ececec;
+    background: #fff;
+}
+#resubmitPanel .req-modal-header h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+}
+#resubmitPanel .req-modal-close {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border: none;
+    border-radius: 50%;
+    background: #f3f4f6;
+    color: #374151;
+    font-size: 15px;
+    cursor: pointer;
+    transition: .2s;
+}
+#resubmitPanel .req-modal-close:hover {
+    background: #fee2e2;
+    color: var(--primary);
+}
+#resubmitPanel .req-modal-body {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    background: #f3f4f6;
+}
+#resubmitPanel .req-modal-body iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: #f3f4f6;
+}
+#resubmitPanel .req-modal-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    color: #6b7280;
+}
+#resubmitPanel .req-modal-loading[hidden] {
+    display: none;
+}
+@keyframes reqModalFade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+@keyframes reqModalPop {
+    from { transform: translateY(12px) scale(.98); opacity: 0; }
+    to   { transform: none; opacity: 1; }
+}
+@media (max-width: 560px) {
+#resubmitPanel .req-modal {
+        padding: 0;
+    }
+#resubmitPanel .req-modal-dialog {
+        max-width: none;
+        height: 100vh;
+        height: 100dvh;
+        border-radius: 0;
+    }
+}
+#resubmitPanel .extract-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 14px;
+}
+#resubmitPanel .extract-note i {
+    color: var(--primary);
+    margin-top: 2px;
+}
+#resubmitPanel .extract-status {
+    margin: 10px 0 0;
+    font-size: 11px;
+    color: var(--gray, #6b7280);
+    text-align: center;
+}
+#resubmitPanel .continue-btn.is-loading {
+    position: relative;
+    opacity: .85;
+    cursor: progress;
+}
+#resubmitPanel .continue-btn.is-loading .btn-label::before {
+    content: "";
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 8px;
+    vertical-align: -2px;
+    border: 2px solid rgba(255, 255, 255, .45);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: extractSpin .7s linear infinite;
+}
+@keyframes extractSpin {
+    to { transform: rotate(360deg); }
+}
+#resubmitPanel .autofill-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: #fdf2f2;
+    border: 1px solid #f3d6d6;
+    border-left: 3px solid var(--primary);
+    color: var(--text);
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: 11px;
+    line-height: 1.5;
+    margin-bottom: 15px;
+}
+#resubmitPanel .autofill-notice[hidden] { display: none; }
+#resubmitPanel .autofill-notice > i {
+    color: var(--primary);
+    font-size: 13px;
+    margin-top: 1px;
+    flex-shrink: 0;
+}
+#resubmitPanel .autofill-notice .autofill-body { flex: 1; min-width: 0; }
+#resubmitPanel .autofill-notice strong { color: var(--primary); font-weight: 700; }
+#resubmitPanel .autofill-notice.warn {
+    background: #fde8e8;
+    border-color: #f8b4b4;
+    border-left-color: var(--primary);
+    color: #9b1c1c;
+}
+#resubmitPanel .autofill-notice p { margin: 0 0 4px; }
+#resubmitPanel .autofill-notice p:last-child { margin-bottom: 0; }
+#resubmitPanel .details-subtitle {
+    border-top: none;
+    padding-top: 0;
+}
+#resubmitPanel .input-box input.autofilled,
+#resubmitPanel .time-group input.autofilled {
+    background: #fdf2f2;
+    border-color: #e8b4b4;
+}
+
+#resubmitPanel .profile-container {
+    max-width: 430px;
+    min-height: 100vh;
+    margin: 0 auto;
+}
+
+/* ---- Approval gate: hiwalay na card bawat requirement sa review note ---- */
+.approval-gate-note ul { list-style: none; margin: 0; padding: 0; }
+.approval-gate-note li {
+    margin: 0 0 8px;
+    padding: 9px 12px;
+    background: #fff;
+    border: 1px solid #f8d7d7;
+    border-left: 3px solid #AB0A0A;
+    border-radius: 8px;
+}
+.approval-gate-note li:last-child { margin-bottom: 0; }
+.approval-gate-note li strong {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+.approval-gate-note li span { display: block; font-size: 12px; color: #b91c1c; }
+
+/* Pareho sa resubmit panel notice */
+#resubmitPanel .autofill-notice ul { list-style: none; margin: 6px 0 0; padding: 0; }
+#resubmitPanel .autofill-notice li {
+    margin: 0 0 6px;
+    padding: 8px 10px;
+    background: #fff;
+    border: 1px solid #f3d6d6;
+    border-radius: 8px;
+}
+#resubmitPanel .autofill-notice li:last-child { margin-bottom: 0; }
+#resubmitPanel .autofill-notice li strong { display: block; color: #1a1a1a; }
+#resubmitPanel .autofill-notice li span { display: block; color: #b91c1c; }

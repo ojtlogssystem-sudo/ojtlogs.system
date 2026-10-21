@@ -41,7 +41,7 @@ function escapeHtml(str) {
         .replace(/'/g, "&#039;");
 }
 
-function getSeenNotifKeys() {
+export function getSeenNotifKeys() {
     try {
         const raw = localStorage.getItem("seen_notification_keys");
         if (raw) return JSON.parse(raw);
@@ -54,7 +54,7 @@ function getSeenNotifKeys() {
     }
 }
 
-function markNotifKeysSeen(keys) {
+export function markNotifKeysSeen(keys) {
     const seen = getSeenNotifKeys();
     const merged = Array.from(new Set([...seen, ...keys]));
     localStorage.setItem("seen_notification_keys", JSON.stringify(merged));
@@ -338,32 +338,147 @@ function watchRejectedAttendance(uid) {
     }
 }
 
-export async function loadNotifications(uid = null) {
-    const notifBtn = document.getElementById("notification-btn");
-    const badge = document.getElementById("notification-badge");
-    const panel = document.getElementById("notification-panel");
-    const listEl = document.getElementById("notification-list");
-    if (!notifBtn || !panel || !listEl) return;
+/* ==========================================
+   REJECTED REQUIREMENTS NOTIFICATION (per-student)
+   Data source: users/{uid}.documentsStatus = "revision" (sine-set ng
+   coordinator sa Students page kapag ni-reject ang documents) kasama ang
+   documentsReviewNote (mga napiling reason kada document).
+   Mawawala ito kapag na-approve na o na-resubmit na ang requirements.
+========================================== */
+async function fetchRejectedDocumentsNotification(uid) {
+    if (!uid) return null;
 
-    watchRejectedAttendance(uid);
-
-    let exceptions = [];
     try {
-        const snap = await getDocs(collection(db, "calendar_exceptions"));
-        snap.forEach(docSnap => {
-            const data = docSnap.data();
-            if (data && data.date) {
-                const postedRaw = data.updatedAt?.toDate
-                    ? data.updatedAt.toDate()
-                    : (data.updatedAt ? new Date(data.updatedAt) : null);
-                exceptions.push({ date: data.date, reason: data.reason || "No Duty / Excused", posted: postedRaw });
-            }
-        });
+        const snap = await getDoc(doc(db, "users", uid));
+        if (!snap.exists()) return null;
+
+        const data = snap.data();
+        if (String(data.documentsStatus || "").toLowerCase() !== "revision") return null;
+
+        const raw = data.documentsReviewedAt;
+        const posted = raw && raw.toDate ? raw.toDate() : new Date();
+
+        // Ang note ay "Document: Reason; Document: Reason" - ihiwalay kada linya.
+        const reasons = String(data.documentsReviewNote || "")
+            .split(";")
+            .map(r => r.trim())
+            .filter(Boolean);
+
+        const reasonLines = reasons.length
+            ? reasons.map(r => `&bull; ${escapeHtml(r)}`).join("<br>")
+            : "Please check your documents.";
+
+        return {
+            // Kasama ang oras ng reject sa key: kapag na-reject ulit, BAGONG
+            // notification ito at hindi na "seen".
+            key: `docs-rejected:${posted.getTime()}`,
+            kind: "rejected",
+            title: `<i class="fa-solid fa-file-circle-xmark"></i> Requirements Rejected`,
+            note: `Your coordinator rejected your requirements. Please fix and resubmit them.<br>${reasonLines}`,
+            posted,
+            sortTime: posted.getTime()
+        };
     } catch (error) {
-        console.error("Error loading calendar exceptions for notifications:", error);
-        listEl.innerHTML = `<div class="notif-empty">Unable to load notifications.</div>`;
-        return;
+        console.error("Error loading rejected requirements notification:", error);
+        return null;
     }
+}
+
+/* ==========================================
+   APPROVED REQUIREMENTS NOTIFICATION (per-student)
+   Data source: users/{uid}.documentsStatus = "approved" + documentsReviewedAt
+   (sine-set ng coordinator sa Students page kapag ni-approve ang documents).
+   Ang mga dating student na walang documentsReviewedAt ay walang notification.
+   Sinasabi rin kung kailan puwede mag Time In (ayon sa schedule.startDate).
+========================================== */
+async function fetchApprovedDocumentsNotification(uid) {
+    if (!uid) return null;
+
+    try {
+        const snap = await getDoc(doc(db, "users", uid));
+        if (!snap.exists()) return null;
+
+        const data = snap.data();
+        if (String(data.documentsStatus || "").toLowerCase() !== "approved") return null;
+
+        const raw = data.documentsReviewedAt;
+        if (!raw || !raw.toDate) return null;
+        const posted = raw.toDate();
+
+        let timeInNote = "Your coordinator will set your OJT start date. You can Time In once it begins.";
+        const sd = data.schedule && data.schedule.startDate;
+        if (sd) {
+            const [y, m, d] = String(sd).split("-").map(Number);
+            const start = new Date(y, (m || 1) - 1, d || 1);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            if (!isNaN(start)) {
+                const pretty = start.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+                timeInNote = start > today
+                    ? `Your OJT starts on ${pretty}. You can Time In starting that day.`
+                    : "Your OJT has started. You can now Time In.";
+            }
+        }
+
+        return {
+            key: `docs-approved:${posted.getTime()}`,
+            kind: "approved",
+            title: `<i class="fa-solid fa-file-circle-check"></i> Requirements Approved`,
+            note: `Your coordinator approved your requirements.<br>${escapeHtml(timeInNote)}`,
+            posted,
+            sortTime: posted.getTime()
+        };
+    } catch (error) {
+        console.error("Error loading approved requirements notification:", error);
+        return null;
+    }
+}
+
+let documentsWatchUid = null;
+
+// Live: lumalabas agad ang notification kapag nag-reject (o nag-approve) ang
+// coordinator habang bukas ang page ng student.
+function watchDocumentsStatus(uid) {
+    if (!uid || documentsWatchUid === uid) return;
+    documentsWatchUid = uid;
+
+    let lastSignature = null;
+
+    try {
+        onSnapshot(
+            doc(db, "users", uid),
+            (snap) => {
+                const data = snap.data() || {};
+                const signature = `${data.documentsStatus || ""}|${data.documentsReviewNote || ""}`;
+
+                // Ang unang snapshot ay hawak na ng loadNotifications() na tumatakbo.
+                if (lastSignature === null) { lastSignature = signature; return; }
+                if (signature === lastSignature) return;
+
+                lastSignature = signature;
+                loadNotifications(uid);
+            },
+            (error) => console.warn("Documents status listener error:", error)
+        );
+    } catch (error) {
+        console.warn("Could not start documents status listener:", error);
+    }
+}
+
+// Binubuo ang buong listahan ng notifications (ginagamit ng bell panel at
+// ng Notifications page).
+async function buildNotificationItems(uid) {
+    let exceptions = [];
+    const snap = await getDocs(collection(db, "calendar_exceptions"));
+    snap.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data && data.date) {
+            const postedRaw = data.updatedAt?.toDate
+                ? data.updatedAt.toDate()
+                : (data.updatedAt ? new Date(data.updatedAt) : null);
+            exceptions.push({ date: data.date, reason: data.reason || "No Duty / Excused", posted: postedRaw });
+        }
+    });
 
     // Limit sa relevant window: 3 days na nakalipas hanggang 60 days pasulong
     const now = new Date();
@@ -406,6 +521,42 @@ export async function loadNotifications(uid = null) {
     const rejectedNotifs = await fetchRejectedAttendanceNotifications(uid);
     items.splice(aiStatusNotif ? 1 : 0, 0, ...rejectedNotifs);
 
+    // Rejected requirements: pinakamataas, dahil hindi makakapag Time In
+    // ang student hangga't hindi naaayos at naaaprubahan.
+    const rejectedDocs = await fetchRejectedDocumentsNotification(uid);
+    if (rejectedDocs) items.unshift(rejectedDocs);
+
+    // Approved requirements: nasa itaas din, para alam agad ng student
+    // na puwede na siyang mag Time In (kapag nag-umpisa na ang OJT).
+    const approvedDocs = await fetchApprovedDocumentsNotification(uid);
+    if (approvedDocs) items.unshift(approvedDocs);
+
+    return items;
+}
+
+export async function fetchAllNotifications(uid = null) {
+    return buildNotificationItems(uid);
+}
+
+export async function loadNotifications(uid = null) {
+    const notifBtn = document.getElementById("notification-btn");
+    const badge = document.getElementById("notification-badge");
+    const panel = document.getElementById("notification-panel");
+    const listEl = document.getElementById("notification-list");
+    if (!notifBtn || !panel || !listEl) return;
+
+    watchRejectedAttendance(uid);
+    watchDocumentsStatus(uid);
+
+    let items;
+    try {
+        items = await buildNotificationItems(uid);
+    } catch (error) {
+        console.error("Error loading calendar exceptions for notifications:", error);
+        listEl.innerHTML = `<div class="notif-empty">Unable to load notifications.</div>`;
+        return;
+    }
+
     // "Seen" only controls the badge count and each item's read styling —
     // the notification itself always stays visible in the list.
     const seenKeys = getSeenNotifKeys();
@@ -428,7 +579,7 @@ export async function loadNotifications(uid = null) {
             const isUnseen = !seenKeys.includes(it.key);
             const riskClass =
                 (it.kind === "ai-risk" || it.kind === "rejected") ? "notif-risk" :
-                (it.kind === "ai-monitor") ? "notif-monitor" :
+                (it.kind === "ai-monitor") ? "notif-monitor" : (it.kind === "approved") ? "notif-approved" :
                 "";
             return `
                 <div class="notif-item ${isUnseen ? "unseen" : ""} ${riskClass}" data-key="${escapeHtml(it.key)}">

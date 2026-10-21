@@ -499,6 +499,23 @@ header#header-container,
     background: #f6f6f7;
 }
 
+/* Requirements Approved - green (desktop + mobile) */
+.notif-item.notif-approved {
+    background: #fff;
+}
+
+.notif-item.notif-approved .notif-title {
+    color: #15803d;
+}
+
+.notif-item.notif-approved .notif-title i {
+    margin-right: 4px;
+}
+
+.notif-item.notif-approved.unseen {
+    background: #f6f6f7;
+}
+
 .notif-empty {
     padding: 32px 16px;
     text-align: center;

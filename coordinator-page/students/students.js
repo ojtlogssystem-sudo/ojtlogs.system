@@ -101,7 +101,12 @@ function getProfileResetFields() {
         profileCompleted: false,
         isProfileComplete: false,
         profileCompletedAt: deleteField(),
-        reEnabledAt: deleteField()
+        reEnabledAt: deleteField(),
+        requirements: deleteField(),
+        requirementsSubmittedAt: deleteField(),
+        documentsStatus: deleteField(),
+        documentsReviewNote: deleteField(),
+        documentsReviewedAt: deleteField()
     };
 }
 
@@ -172,6 +177,31 @@ function showToast(message, type = "success", duration = 3000) {
     }, duration);
 }
 
+// Pang-escape ng text na galing sa user/CSV bago ilagay sa innerHTML
+function escapeHtml(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+// Pinagsasama ang Course + Section (hal. "BSIT" + "403" -> "BSIT 403").
+// Kapag nauuna na sa section ang course (hal. "BSIT 403"), hindi na dodoblehin.
+function combineCourseSection(course, section) {
+    const c = String(course || "").trim();
+    const s = String(section || "").trim();
+    if (!s) return c;
+    if (!c) return s;
+    return s.toLowerCase().startsWith(c.toLowerCase()) ? s : `${c} ${s}`;
+}
+
+// "Review Documents" -> "review-documents" (para magamit bilang CSS class)
+function statusToClass(status) {
+    return String(status || "").toLowerCase().trim().replace(/\s+/g, "-");
+}
+
 // Helper function para kumuha ng initials ng pangalan
 function getInitials(fullName) {
     if (!fullName) return "ST";
@@ -218,6 +248,7 @@ document.addEventListener("DOMContentLoaded", () => {
     safeInit(initEditModal, "initEditModal");
     safeInit(initDeleteModalListeners, "initDeleteModalListeners");
     safeInit(initExportCsv, "initExportCsv");
+    safeInit(initDocsReview, "initDocsReview");
 });
 
 function safeInit(fn, label) {
@@ -331,16 +362,28 @@ async function refreshAndRenderStudents() {
             const emailKey = (data.email || "").toLowerCase().trim();
             if (!emailKey) return;
 
+            // May profile information galing sa CSV import ng coordinator
+            // (full name, student ID, gender, course, section).
+            const hasImportedProfile = !!String(data.fullName || "").trim();
+
+            // Pinakabago ang nauuna (desc). Ang pinakabagong invitation ang
+            // gagamitin, maliban kung wala itong imported profile pero mayroon
+            // ang mas luma - para hindi mawala ang na-import na datos.
+            const prev = studentMap.get(emailKey);
+            if (prev && (prev.imported || !hasImportedProfile)) return;
+
             studentMap.set(emailKey, {
                 photo: null,
-                studentId: "-",
-                name: "",
+                studentId: hasImportedProfile && data.studentId ? String(data.studentId) : "-",
+                name: hasImportedProfile ? String(data.fullName).trim() : "",
                 email: data.email,
-                section: "",
+                section: hasImportedProfile ? combineCourseSection(data.course, data.section) : "",
                 company: data.company || "Pending Assignment",
                 status: data.status || "Pending",
-                profileDone: false,
-                gender: "",
+                // Lalabas sa table ang na-import na student (Pending pa rin ang status)
+                profileDone: hasImportedProfile,
+                imported: hasImportedProfile,
+                gender: hasImportedProfile ? normalizeGender(data.gender) : "",
                 schedule: null
             });
         });
@@ -410,23 +453,23 @@ async function refreshAndRenderStudents() {
                 });
             }
 
-            // Tapos na ang profile setup kung naka-set ang flag, O kung kumpleto
-            // na talaga ang laman ng profile (pangalan + student number + course/section).
-            // Hindi umaasa sa flag lang, kasi may mga account na nakapag-setup na
-            // pero hindi naisulat ang flag. Kapag na-delete/na-reset ang account,
-            // buburahin ang mga field na ito (tingnan ang getProfileResetFields),
-            // kaya babalik pa rin siya sa Pending.
-            const hasProfileData =
-                !!(userData.fullName || userData.name || userData.firstName) &&
-                !!(userData.studentNumber || userData.studentId ||
-                   userData.course || userData.section);
+            // Tapos na ang profile setup LANG kapag na-submit na ng student ang
+            // buong profile (naka-set ang profileCompleted flag, o may na-submit
+            // nang requirements). Hindi na sapat ang may pangalan / student number
+            // lang - dati kasi, dahil dun nagiging Active agad ang student kahit
+            // hindi pa niya natatapos ang pag-input sa profile.
+            const hasSubmittedDocs = !!userData.requirementsSubmittedAt;
 
             const isProfileDone =
                 userData.isProfileComplete === true ||
                 userData.profileCompleted === true ||
-                hasProfileData;
+                hasSubmittedDocs;
 
             const rawStudentNumber = userData.studentNumber || userData.studentId || existingData.studentId;
+
+            // Kung nag-register na ang student pero hindi pa tapos ang sarili niyang
+            // profile setup, ang imported info ng coordinator (CSV) ang ipapakita.
+            const useImported = !isProfileDone && existingData.imported === true;
 
             const userCourse = userData.course || "";
             const userSection = userData.section || "";
@@ -436,31 +479,52 @@ async function refreshAndRenderStudents() {
                 combinedSection = userSection.toLowerCase().startsWith(userCourse.toLowerCase())
                     ? userSection
                     : `${userCourse} ${userSection}`.trim();
+            } else if (useImported) {
+                combinedSection = existingData.section || "";
             }
 
             const rawCompany = userData.companyName || userData.company || existingData.company;
             const hasCompany = !!rawCompany;
             const company = rawCompany || "Pending Assignment";
 
-            // Fully "Active" lang kapag: (1) tapos na sa profile setup steps,
-            // (2) may student number na, at (3) may assigned company na.
-            // "Completed" is a manual, final status coordinators set themselves,
-            // so once that's saved, keep it as-is regardless of the checks above.
+            // STATUS FLOW:
+            //   Pending          -> hindi pa tapos ang profile setup ng student
+            //   Review Documents -> tapos na sa profile, hinihintay ang review ng coordinator
+            //   Needs Revision   -> ibinalik ng coordinator ang documents (may note)
+            //   Active           -> na-approve ng coordinator ang documents
+            //   Completed        -> manual, final status na sine-set ng coordinator
             const isMarkedCompleted = (userData.status || "").toLowerCase() === "completed";
+            // Kung walang documentsStatus: ang mga dating student (walang na-submit na
+            // requirements) ay itinuturing na approved/Active na. "review" lang ang default
+            // kapag may na-submit na documents na hinihintay pang i-review.
+            const documentsStatus = String(
+                userData.documentsStatus || (hasSubmittedDocs ? "review" : "approved")
+            ).toLowerCase();
             const isFullyActive = isProfileDone && !!rawStudentNumber && hasCompany;
 
-            const status = isMarkedCompleted
-                ? "Completed"
-                : (isFullyActive ? "Active" : "Pending");
+            let status;
+            if (isMarkedCompleted) {
+                status = "Completed";
+            } else if (!isProfileDone) {
+                status = "Pending";
+            } else if (documentsStatus === "revision") {
+                status = "Needs Revision";
+            } else if (documentsStatus !== "approved") {
+                status = "Review Documents";
+            } else {
+                status = isFullyActive ? "Active" : "Pending";
+            }
 
             // Hanggat hindi pa tapos ang profile setup ng student, itago muna ang
             // photo, student ID, name, course, at section sa table (blangko lang).
             const fullName = isProfileDone
                 ? (userData.fullName || userData.name ||
                     (userData.firstName ? `${userData.firstName} ${userData.lastName}` : existingData.name || "Student Intern"))
-                : "";
+                : (useImported ? (existingData.name || "") : "");
 
-            const studentNumber = (isProfileDone && rawStudentNumber) ? rawStudentNumber : "-";
+            const studentNumber = (isProfileDone && rawStudentNumber)
+                ? rawStudentNumber
+                : (useImported ? (existingData.studentId || "-") : "-");
             const profilePic = isProfileDone
                 ? (userData.photo || userData.profilePic || userData.photoURL || userData.image || userData.avatar || existingData.photo)
                 : null;
@@ -474,9 +538,14 @@ async function refreshAndRenderStudents() {
                 section: combinedSection,
                 company: company,
                 status: status,
-                profileDone: isProfileDone,
+                profileDone: isProfileDone || useImported,
+                imported: existingData.imported === true,
                 gender: normalizeGender(userData.gender || userData.sex || existingData.gender),
-                schedule: userData.schedule || null
+                schedule: userData.schedule || null,
+                requirements: userData.requirements || null,
+                documentsStatus: documentsStatus,
+                documentsReviewNote: userData.documentsReviewNote || "",
+                submissionCode: hasSubmittedDocs ? getSubmissionCode(docSnap.id) : ""
             });
         });
 
@@ -596,7 +665,8 @@ function applyFiltersAndPagination() {
         const matchesSearch = String(student.name || "").toLowerCase().includes(searchVal) ||
                               String(student.email || "").toLowerCase().includes(searchVal) ||
                               String(student.studentId || "").toLowerCase().includes(searchVal) ||
-                              String(student.section || "").toLowerCase().includes(searchVal);
+                              String(student.section || "").toLowerCase().includes(searchVal) ||
+                              matchesSubmissionCode(student, searchVal);
         
         const matchesStatus = (statusVal === "all status") || (student.status.toLowerCase() === statusVal);
         
@@ -731,11 +801,13 @@ function renderTablePage() {
         const row = document.createElement("tr");
         // Tuloy-tuloy ang numbering kahit lumipat ng page (page 2 = 9, 10, 11...)
         const rowNumber = startIndex + index + 1;
-        const statusClass = student.status.toLowerCase();
+        const statusClass = statusToClass(student.status);
         const profileDone = !!student.profileDone;
         const initials = getInitials(student.name);
         // Pending = wala pang information ang student, kaya naka-disable ang View
         const isPending = (student.status || "").toLowerCase() === "pending";
+        // Active na = na-approve na ang documents, kaya naka-disable na ang Documents button
+        const isActive = (student.status || "").toLowerCase() === "active";
 
         let photoMarkup = "";
         if (!profileDone) {
@@ -759,17 +831,18 @@ function renderTablePage() {
         row.innerHTML = `
             <td class="col-no">${rowNumber}</td>
             <td>${photoMarkup}</td>
-            <td>${student.studentId}</td>
+            <td>${escapeHtml(student.studentId)}</td>
             <td>
-                <strong>${displayName}</strong><br>
-                <small style="color:#777;">${student.email}</small>
+                <strong>${escapeHtml(displayName)}</strong><br>
+                <small style="color:#777;">${escapeHtml(student.email)}</small>
             </td>
-            <td>${courseCode}</td>
-            <td>${sectionNum}</td>
-            <td>${student.company}</td>
+            <td>${escapeHtml(courseCode)}</td>
+            <td>${escapeHtml(sectionNum)}</td>
+            <td>${escapeHtml(student.company)}</td>
             <td><span class="status ${statusClass}">${student.status}</span></td>
             <td class="actions">
                 <button class="action-btn view-btn"${isPending ? ' disabled title="No information yet - student has not completed their profile"' : ''}><i class="fa-solid fa-eye"></i></button>
+                <button class="action-btn docs-btn"${isPending ? ' disabled title="No documents yet - student has not completed their profile"' : (isActive ? ' disabled title="Documents already approved"' : ' title="Review submitted documents"')}><i class="fa-solid fa-file-lines"></i></button>
                 <button class="action-btn archive-btn"><i class="fa-solid fa-trash"></i></button>
             </td>
         `;
@@ -1025,7 +1098,7 @@ function attachActionEvents() {
             const elStatus = document.getElementById("viewStudentStatus");
             if (elStatus) {
                 elStatus.textContent = status;
-                elStatus.className = `status-pill ${status.toLowerCase()}`;
+                elStatus.className = `status-pill ${statusToClass(status)}`;
             }
 
             const avatarBox = document.getElementById("viewStudentAvatar");
@@ -1042,7 +1115,26 @@ function attachActionEvents() {
             return;
         }
 
-        // 2. ARCHIVE / DELETE BUTTON CLICK
+        // 2. DOCUMENTS BUTTON CLICK
+        if (btn.classList.contains("docs-btn")) {
+            e.stopPropagation();
+
+            const nameContainer = row.children[3];
+            const docsEmail = (nameContainer.querySelector("small") ? nameContainer.querySelector("small").innerText : "").toLowerCase().trim();
+            const docsStudent = allStudents.find(s => s.email && s.email.toLowerCase().trim() === docsEmail);
+            if (!docsStudent) return;
+
+            const nameLabel = document.getElementById("docsModalStudentName");
+            if (nameLabel) nameLabel.textContent = docsStudent.name || docsStudent.email;
+
+            renderDocsReview(docsStudent);
+
+            const docsModal = document.getElementById("docsModal");
+            if (docsModal) docsModal.classList.add("active");
+            return;
+        }
+
+        // 3. ARCHIVE / DELETE BUTTON CLICK
         if (btn.classList.contains("archive-btn")) {
             e.stopPropagation();
             const email = row.children[3].querySelector("small") ? row.children[3].querySelector("small").innerText.trim() : "";
@@ -1055,6 +1147,456 @@ function attachActionEvents() {
     };
 
     initViewModalCloseListeners();
+}
+
+/* ==========================================
+   SUBMISSION CODE
+   Parehong code ang makikita ng student (sa student portal) at ng
+   coordinator (dito). Hinango sa UID ng student, kaya walang kailangang
+   i-save sa Firestore at gumagana rin sa mga na-submit na dati.
+   !! DAPAT PAREHONG-PAREHO ang function na ito sa student side !!
+========================================== */
+const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // walang I, O, 0, 1 (iwas malito)
+
+function getSubmissionCode(uid) {
+    if (!uid) return "";
+    // cyrb53 hash (53-bit)
+    let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+    for (let i = 0; i < uid.length; i++) {
+        const ch = uid.charCodeAt(i);
+        h1 = Math.imul(h1 ^ ch, 2654435761);
+        h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    let n = 4294967296 * (2097151 & h2) + (h1 >>> 0);
+
+    let code = "";
+    for (let i = 0; i < 6; i++) {
+        code += CODE_ALPHABET[n % 32];
+        n = Math.floor(n / 32);
+    }
+    return `OJT-${code}`;
+}
+
+// Tinatanggal ang dash/space para pwedeng i-type ang "ojt7k3f9q" o "7K3F9Q" lang
+function normalizeCode(value) {
+    return String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "").replace(/^OJT/, "");
+}
+
+/* ==========================================
+   DOCUMENT REVIEW (Review Documents status)
+   Makikita ng coordinator ang 3 requirements na pinasa ng student
+   (Endorsement Letter, OJT Acceptance, MOA) at pwede niyang
+   i-approve o ibalik para ma-revise.
+   Naka-save ang files bilang chunks:
+   users/{uid}/requirements/{prefix}_{index} -> { data }
+========================================== */
+const DOC_LABELS = {
+    endorsementLetter: "Endorsement Letter",
+    ojtAcceptance: "OJT Acceptance",
+    moa: "MOA (Memorandum of Agreement)"
+};
+
+let reviewStudent = null; // student na kasalukuyang bukas sa View modal
+
+// Mga nakahandang reason sa pag-reject (pipili na lang ang coordinator, hindi na magta-type)
+const REJECT_REASONS = [
+    "Blurry or unreadable",
+    "Missing signature",
+    "Missing date or company stamp",
+    "Incomplete or cut-off pages",
+    "Wrong document submitted",
+    "Incorrect name or details",
+    "Not submitted / missing file",
+    "File can't be opened"
+];
+
+// Gumagawa ng dropdown ng reason para sa bawat document
+function buildRejectReasons() {
+    const box = document.getElementById("docsRejectReasons");
+    if (!box) return;
+
+    box.innerHTML = '<div class="docs-reject-title">Select the reason for each document that needs to be fixed</div>';
+
+    Object.keys(DOC_LABELS).forEach((key) => {
+        const row = document.createElement("div");
+        row.className = "docs-reject-row";
+
+        const label = document.createElement("span");
+        label.className = "docs-reject-label";
+        label.textContent = DOC_LABELS[key];
+
+        const select = document.createElement("select");
+        select.className = "docs-reject-select";
+        select.dataset.doc = key;
+
+        const none = document.createElement("option");
+        none.value = "";
+        none.textContent = "No issue";
+        select.appendChild(none);
+
+        REJECT_REASONS.forEach((reason) => {
+            const opt = document.createElement("option");
+            opt.value = reason;
+            opt.textContent = reason;
+            select.appendChild(opt);
+        });
+
+        row.appendChild(label);
+        row.appendChild(select);
+        box.appendChild(row);
+    });
+}
+
+// Ibinabalik ang listahan ng napiling reasons, hal. "Endorsement Letter: Missing signature"
+function collectRejectReasons() {
+    const box = document.getElementById("docsRejectReasons");
+    if (!box) return [];
+    return Array.from(box.querySelectorAll("select.docs-reject-select"))
+        .filter((sel) => sel.value)
+        .map((sel) => `${DOC_LABELS[sel.dataset.doc]}: ${sel.value}`);
+}
+
+// Gawing listahan ng files ang requirement metadata (sinusuportahan ang lumang format na isang file lang)
+function getRequirementFiles(meta, key) {
+    if (!meta) return [];
+    if (Array.isArray(meta.files) && meta.files.length) return meta.files;
+    if (!meta.fileName && !meta.chunks) return [];
+    return [{
+        fileName: meta.fileName,
+        fileType: meta.fileType,
+        chunks: meta.chunks,
+        prefix: key
+    }];
+}
+
+// Search: tumatama kapag naka-type ang buong code o bahagi nito (min. 3 characters)
+function matchesSubmissionCode(student, searchVal) {
+    if (!student.submissionCode) return false;
+    const q = normalizeCode(searchVal);
+    return q.length >= 3 && normalizeCode(student.submissionCode).includes(q);
+}
+
+// Ipinapakita ang code sa taas ng docs modal + copy button
+function renderSubmissionCode(student) {
+    const box = document.getElementById("docsCodeBox");
+    const valueEl = document.getElementById("docsCodeValue");
+    if (!box || !valueEl) return;
+
+    const code = student && student.submissionCode;
+    box.hidden = !code;
+    valueEl.textContent = code || "";
+}
+
+function initSubmissionCodeCopy() {
+    const btn = document.getElementById("docsCodeCopyBtn");
+    if (!btn) return;
+    btn.addEventListener("click", async () => {
+        const code = document.getElementById("docsCodeValue")?.textContent || "";
+        if (!code) return;
+        try {
+            await navigator.clipboard.writeText(code);
+            showToast("Code copied.", "success");
+        } catch (err) {
+            showToast("Could not copy the code.", "error");
+        }
+    });
+}
+
+function renderDocsReview(student) {
+    reviewStudent = student || null;
+
+    const section = document.getElementById("docsReviewSection");
+    const list = document.getElementById("docsReviewList");
+    const help = document.getElementById("docsReviewHelp");
+    const actions = document.getElementById("docsReviewActions");
+    if (!section || !list) return;
+
+    // Walang ipapakita kung wala pang na-submit na profile/documents
+    const showSection = !!student && student.docId && student.status !== "Pending";
+    section.hidden = !showSection;
+    if (!showSection) return;
+
+    renderSubmissionCode(student);
+
+    list.innerHTML = "";
+    Object.keys(DOC_LABELS).forEach((key) => {
+        const files = getRequirementFiles(student.requirements && student.requirements[key], key);
+        const li = document.createElement("li");
+        li.className = "docs-review-item" + (files.length ? "" : " missing");
+
+        const info = document.createElement("div");
+        info.className = "docs-review-item-info";
+        info.innerHTML = `
+            <span class="docs-review-item-label">${escapeHtml(DOC_LABELS[key])}</span>
+            <span class="docs-review-item-file">${files.length
+                ? escapeHtml(files.map(f => f.fileName || "file").join(", "))
+                : "Not submitted"}</span>
+        `;
+        li.appendChild(info);
+
+        if (files.length) {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "docs-review-view";
+            btn.innerHTML = '<i class="fa-solid fa-eye"></i> View';
+            btn.addEventListener("click", () => openRequirementFiles(btn, student, files, DOC_LABELS[key]));
+            li.appendChild(btn);
+        }
+
+        list.appendChild(li);
+    });
+
+    const status = student.status;
+    if (status === "Review Documents") {
+        help.textContent = "Check the documents submitted by the student, then approve them or reject them by selecting what needs to be fixed.";
+    } else if (status === "Needs Revision") {
+        help.textContent = student.documentsReviewNote
+            ? `Rejected and returned to the student. Reason: ${student.documentsReviewNote}`
+            : "Returned to the student for revision.";
+    } else {
+        help.textContent = "";
+    }
+
+    // Approve / Return buttons: kapag "Review Documents" lang
+    if (actions) actions.hidden = status !== "Review Documents";
+    buildRejectReasons();
+}
+
+// Binubuo ulit ang file mula sa chunks at ipinapakita sa loob mismo ng page
+// (viewer modal) - hindi na bumubukas ng bagong tab.
+async function fetchRequirementBlob(student, meta) {
+    const parts = [];
+    for (let i = 0; i < (meta.chunks || 0); i++) {
+        const snap = await getDoc(doc(db, "users", student.docId, "requirements", `${meta.prefix}_${i}`));
+        if (!snap.exists()) throw new Error("Missing file chunk");
+        parts.push(snap.data().data);
+    }
+    if (!parts.length) throw new Error("Empty file");
+
+    const raw = await (await fetch(parts.join(""))).blob();
+    const blob = raw.type ? raw : new Blob([raw], { type: meta.fileType || "" });
+    return { url: URL.createObjectURL(blob), type: blob.type || meta.fileType || "" };
+}
+
+let docViewerUrls = [];
+
+function closeDocViewer() {
+    const modal = document.getElementById("docViewerModal");
+    if (modal) modal.classList.remove("active");
+    const body = document.getElementById("docViewerBody");
+    if (body) body.innerHTML = "";
+    docViewerUrls.forEach((u) => URL.revokeObjectURL(u));
+    docViewerUrls = [];
+}
+
+function ensureDocViewer() {
+    let modal = document.getElementById("docViewerModal");
+    if (modal) return modal;
+
+    modal = document.createElement("div");
+    modal.className = "modal doc-viewer-modal";
+    modal.id = "docViewerModal";
+    modal.innerHTML = `
+        <div class="doc-viewer-content">
+            <div class="doc-viewer-header">
+                <div class="doc-viewer-title">
+                    <i class="fa-solid fa-file-lines"></i>
+                    <span id="docViewerTitle">Document</span>
+                </div>
+                <button type="button" class="close-modal-btn" id="docViewerCloseBtn" aria-label="Close">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="doc-viewer-tabs" id="docViewerTabs" hidden></div>
+            <div class="doc-viewer-body" id="docViewerBody"></div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    modal.addEventListener("click", (e) => {
+        if (e.target === modal) closeDocViewer();
+    });
+    modal.querySelector("#docViewerCloseBtn").addEventListener("click", closeDocViewer);
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && modal.classList.contains("active")) closeDocViewer();
+    });
+    return modal;
+}
+
+async function openRequirementFiles(btn, student, files, label) {
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading';
+
+    try {
+        const modal = ensureDocViewer();
+        const titleEl = modal.querySelector("#docViewerTitle");
+        const tabsEl = modal.querySelector("#docViewerTabs");
+        const bodyEl = modal.querySelector("#docViewerBody");
+        const loaded = new Array(files.length).fill(null);
+        let currentIndex = -1;
+
+        const render = (index, result) => {
+            const meta = files[index];
+            const name = meta.fileName || "file";
+            const type = String(result.type || "").toLowerCase();
+            bodyEl.innerHTML = "";
+
+            if (type.includes("pdf") || /\.pdf$/i.test(name)) {
+                const frame = document.createElement("iframe");
+                frame.className = "doc-viewer-frame";
+                frame.title = name;
+                frame.src = result.url;
+                bodyEl.appendChild(frame);
+            } else if (type.startsWith("image/")) {
+                const img = document.createElement("img");
+                img.className = "doc-viewer-image";
+                img.alt = name;
+                img.src = result.url;
+                bodyEl.appendChild(img);
+            } else {
+                const box = document.createElement("div");
+                box.className = "doc-viewer-fallback";
+                box.innerHTML = `
+                    <i class="fa-solid fa-file-circle-exclamation"></i>
+                    <p>This file type can't be previewed here.</p>
+                `;
+                const link = document.createElement("a");
+                link.href = result.url;
+                link.download = name;
+                link.className = "doc-viewer-download";
+                link.innerHTML = '<i class="fa-solid fa-download"></i> Download ';
+                link.appendChild(document.createTextNode(name));
+                box.appendChild(link);
+                bodyEl.appendChild(box);
+            }
+        };
+
+        const showFile = async (index) => {
+            if (index === currentIndex) return;
+            currentIndex = index;
+
+            tabsEl.querySelectorAll("button").forEach((b, i) => b.classList.toggle("active", i === index));
+            titleEl.textContent = [label, files[index].fileName].filter(Boolean).join(" - ") || "Document";
+
+            if (!loaded[index]) {
+                bodyEl.innerHTML = '<div class="doc-viewer-loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading document...</div>';
+                try {
+                    loaded[index] = await fetchRequirementBlob(student, files[index]);
+                    docViewerUrls.push(loaded[index].url);
+                } catch (err) {
+                    console.error("Error opening requirement file:", err);
+                    if (currentIndex === index) {
+                        bodyEl.innerHTML = '<div class="doc-viewer-loading error"><i class="fa-solid fa-circle-exclamation"></i> Could not open the document.</div>';
+                    }
+                    return;
+                }
+            }
+            if (currentIndex === index) render(index, loaded[index]);
+        };
+
+        // Tabs lang kapag higit sa isang file ang requirement
+        tabsEl.innerHTML = "";
+        tabsEl.hidden = files.length < 2;
+        if (files.length > 1) {
+            files.forEach((meta, i) => {
+                const tab = document.createElement("button");
+                tab.type = "button";
+                tab.textContent = meta.fileName || `File ${i + 1}`;
+                tab.addEventListener("click", () => showFile(i));
+                tabsEl.appendChild(tab);
+            });
+        }
+
+        docViewerUrls.forEach((u) => URL.revokeObjectURL(u));
+        docViewerUrls = [];
+        modal.classList.add("active");
+        await showFile(0);
+    } catch (error) {
+        console.error("Error opening requirement file:", error);
+        showToast("Could not open the document.", "error");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
+}
+
+function initDocsReview() {
+    initSubmissionCodeCopy();
+    const approveBtn = document.getElementById("approveDocsBtn");
+    const returnBtn = document.getElementById("returnDocsBtn");
+
+    const setBusy = (busy) => {
+        if (approveBtn) approveBtn.disabled = busy;
+        if (returnBtn) returnBtn.disabled = busy;
+    };
+
+    const closeDocsModal = () => {
+        const docsModal = document.getElementById("docsModal");
+        if (docsModal) docsModal.classList.remove("active");
+    };
+    const closeViewModal = closeDocsModal;
+
+    // Close buttons / click sa labas ng docs modal
+    const docsModal = document.getElementById("docsModal");
+    const closeDocsBtn = document.getElementById("closeDocsModalBtn");
+    if (closeDocsBtn) closeDocsBtn.addEventListener("click", closeDocsModal);
+    if (docsModal) {
+        docsModal.addEventListener("click", (e) => {
+            if (e.target === docsModal) closeDocsModal();
+        });
+    }
+
+    if (approveBtn) {
+        approveBtn.addEventListener("click", async () => {
+            if (!reviewStudent || !reviewStudent.docId) return;
+            setBusy(true);
+            try {
+                await updateDoc(doc(db, "users", reviewStudent.docId), {
+                    documentsStatus: "approved",
+                    documentsReviewNote: "",
+                    documentsReviewedAt: serverTimestamp()
+                });
+                showToast("Documents approved. The student is now Active.", "success");
+                closeViewModal();
+            } catch (error) {
+                console.error("Error approving documents:", error);
+                showToast("Failed to approve the documents.", "error");
+            } finally {
+                setBusy(false);
+            }
+        });
+    }
+
+    if (returnBtn) {
+        returnBtn.addEventListener("click", async () => {
+            if (!reviewStudent || !reviewStudent.docId) return;
+
+            const note = collectRejectReasons().join("; ");
+            if (!note) {
+                showToast("Please select at least one reason for rejecting the documents.", "error");
+                return;
+            }
+
+            setBusy(true);
+            try {
+                await updateDoc(doc(db, "users", reviewStudent.docId), {
+                    documentsStatus: "revision",
+                    documentsReviewNote: note,
+                    documentsReviewedAt: serverTimestamp()
+                });
+                showToast("Documents rejected. The student was asked to revise them.", "info");
+                closeViewModal();
+            } catch (error) {
+                console.error("Error returning documents:", error);
+                showToast("Failed to return the documents.", "error");
+            } finally {
+                setBusy(false);
+            }
+        });
+    }
 }
 
 /* ==========================================
@@ -1276,7 +1818,8 @@ function initViewModalCloseListeners() {
 ========================================== */
 // Isang email = isang invitation. Ginagamit ng single at bulk (CSV) invite.
 // Nagre-return ng { restored } - true kung na-restore ang dating na-"delete" na account.
-async function sendInviteToEmail(emailInput) {
+// Optional na "profile" ({ fullName, studentId, gender, course, section }) galing sa CSV import.
+async function sendInviteToEmail(emailInput, profile = null) {
     const loginUrl = `${window.location.origin}/student-page/student_login/student_login.html?email=${encodeURIComponent(emailInput)}`;
 
     // Tignan muna kung may existing "users" doc na para sa email
@@ -1311,12 +1854,23 @@ async function sendInviteToEmail(emailInput) {
     // panibagong imbitasyon ito mula umpisa, kasama ng ibang parte
     // ng system na umaasa sa "invitations" collection (hal.
     // notification bell ng coordinator).
-    await addDoc(collection(db, "invitations"), {
+    const inviteData = {
         email: emailInput,
         status: "Pending",
         role: "student",
         createdAt: new Date().toISOString()
-    });
+    };
+
+    // Ilagay ang information ng student galing sa CSV (kung meron).
+    // Hindi isinasama ang blangko - hindi tumatanggap ang Firestore ng undefined.
+    if (profile) {
+        ["fullName", "studentId", "gender", "course", "section"].forEach((key) => {
+            if (profile[key]) inviteData[key] = profile[key];
+        });
+        if (inviteData.fullName) inviteData.importedFromCsv = true;
+    }
+
+    await addDoc(collection(db, "invitations"), inviteData);
 
     if (window.emailjs) {
         await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
@@ -1349,7 +1903,11 @@ function initInviteModal() {
 
     const EMAIL_REGEX = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
     let csvEmails = [];      // mga email galing sa CSV
+    const csvProfiles = new Map(); // email (lowercase) -> { fullName, studentId, gender, course, section }
     let csvNotes = "";       // hal. "2 duplicates skipped"
+    const csvPreviewList = document.getElementById("csvPreviewList");
+    const toggleCsvListBtn = document.getElementById("toggleCsvListBtn");
+    const toggleCsvListText = document.getElementById("toggleCsvListText");
     let isSending = false;
 
     // Pinagsamang listahan (manual + CSV), walang duplicate.
@@ -1384,48 +1942,194 @@ function initInviteModal() {
         }
 
         csvSummary.textContent =
-            `${csvEmails.length} email${csvEmails.length > 1 ? "s" : ""} ready` +
+            `${csvEmails.length} student${csvEmails.length > 1 ? "s" : ""} ready` +
             (csvNotes ? ` · ${csvNotes}` : "");
+
+        // Maliit na preview ng unang ilang rows para makita ng coordinator
+        // kung tama ang pagkakabasa ng CSV.
+        if (csvPreviewList) {
+            csvPreviewList.innerHTML = "";
+            const PREVIEW_LIMIT = 200;
+            csvEmails.slice(0, PREVIEW_LIMIT).forEach((email) => {
+                const p = csvProfiles.get(email.toLowerCase());
+                const li = document.createElement("li");
+                if (p && p.fullName) {
+                    const extra = [p.studentId, combineCourseSection(p.course, p.section), p.gender]
+                        .filter(Boolean).join(" · ");
+                    li.textContent = p.fullName;
+                    if (extra) {
+                        const span = document.createElement("span");
+                        span.textContent = ` — ${extra}`;
+                        li.appendChild(span);
+                    }
+                } else {
+                    li.textContent = email;
+                }
+                csvPreviewList.appendChild(li);
+            });
+            if (csvEmails.length > PREVIEW_LIMIT) {
+                const more = document.createElement("li");
+                more.className = "csv-more";
+                more.textContent = `+ ${csvEmails.length - PREVIEW_LIMIT} more`;
+                csvPreviewList.appendChild(more);
+            }
+        }
+
         csvPreview.classList.add("active");
         updateSubmitLabel();
     };
 
+    // Dropdown ng listahan ng na-import na students (nakatago by default)
+    const setCsvListOpen = (open) => {
+        if (!csvPreview) return;
+        csvPreview.classList.toggle("open", open);
+        if (toggleCsvListBtn) toggleCsvListBtn.setAttribute("aria-expanded", String(open));
+        if (toggleCsvListText) toggleCsvListText.textContent = open ? "Hide details" : "View details";
+    };
+
+    if (toggleCsvListBtn) {
+        toggleCsvListBtn.addEventListener("click", () => {
+            setCsvListOpen(!csvPreview.classList.contains("open"));
+        });
+    }
+
     const resetCsv = () => {
+        setCsvListOpen(false);
         csvEmails = [];
+        csvProfiles.clear();
         csvNotes = "";
         if (csvFileInput) csvFileInput.value = "";
         renderCsvPreview();
     };
 
-    // Kukunin ang lahat ng email sa CSV, kahit ilang column pa.
-    // Ang cells na walang "@" (header, pangalan, atbp.) ay hindi pinapansin.
-    const parseCsvEmails = (text) => {
-        const tokens = text
-            .replace(/^\uFEFF/, "")
-            .split(/[\r\n,;\t]+/)
-            .map((t) => t.trim().replace(/^["']+|["']+$/g, "").trim())
-            .filter((t) => t.includes("@"));
+    /* ---------- CSV PARSING ---------- */
+    // Expected columns: Full Name, Student ID, Gender, Course, Section, Email
+    // (kahit anong pagkakasunod-sunod, basta nakalagay sa header row).
+    const HEADER_ALIASES = {
+        fullName: ["fullname", "name", "studentname", "completename"],
+        studentId: ["studentid", "studentnumber", "studentno", "idnumber", "idno", "id"],
+        gender: ["gender", "sex"],
+        course: ["course", "program", "degree"],
+        section: ["section", "yearandsection", "yearsection"],
+        email: ["email", "emailaddress", "gmail", "gmailaddress"]
+    };
+
+    const normHeader = (h) => String(h || "").toLowerCase().replace(/[^a-z]/g, "");
+
+    const cleanCell = (v) => String(v ?? "").replace(/[<>]/g, "").replace(/\s+/g, " ").trim();
+
+    const detectDelimiter = (text) => {
+        const firstLine = text.split(/\r?\n/).find((l) => l.trim()) || "";
+        const counts = { ",": 0, ";": 0, "\t": 0 };
+        let inQuotes = false;
+        for (const ch of firstLine) {
+            if (ch === '"') inQuotes = !inQuotes;
+            else if (!inQuotes && ch in counts) counts[ch]++;
+        }
+        return Object.keys(counts).reduce((a, b) => (counts[b] > counts[a] ? b : a), ",");
+    };
+
+    // Tamang CSV parser: sinusuportahan ang quoted fields na may comma
+    // (hal. "DELA CRUZ, JUAN A."), escaped quotes (""), at CRLF/LF.
+    const parseCsvRows = (text, delimiter) => {
+        const rows = [];
+        let row = [];
+        let field = "";
+        let inQuotes = false;
+
+        for (let i = 0; i < text.length; i++) {
+            const ch = text[i];
+            if (inQuotes) {
+                if (ch === '"') {
+                    if (text[i + 1] === '"') { field += '"'; i++; }
+                    else inQuotes = false;
+                } else {
+                    field += ch;
+                }
+            } else if (ch === '"') {
+                inQuotes = true;
+            } else if (ch === delimiter) {
+                row.push(field);
+                field = "";
+            } else if (ch === "\n" || ch === "\r") {
+                if (ch === "\r" && text[i + 1] === "\n") i++;
+                row.push(field);
+                field = "";
+                rows.push(row);
+                row = [];
+            } else {
+                field += ch;
+            }
+        }
+        if (field !== "" || row.length) {
+            row.push(field);
+            rows.push(row);
+        }
+        return rows.filter((r) => r.some((c) => String(c).trim() !== ""));
+    };
+
+    const parseCsvStudents = (rawText) => {
+        const text = rawText.replace(/^\uFEFF/, "");
+        const rows = parseCsvRows(text, detectDelimiter(text));
+        const result = { records: [], invalid: 0, duplicates: 0, duplicateIds: 0, missingEmailColumn: false };
+        if (rows.length === 0) return result;
+
+        // Hanapin kung aling column ang alin base sa header row
+        const headers = rows[0].map(normHeader);
+        const colIndex = {};
+        Object.keys(HEADER_ALIASES).forEach((field) => {
+            const idx = headers.findIndex((h) => HEADER_ALIASES[field].includes(h));
+            if (idx !== -1) colIndex[field] = idx;
+        });
+        const hasHeader = Object.keys(colIndex).length > 0;
 
         const seen = new Set(csvEmails.map((e) => e.toLowerCase()));
-        const valid = [];
-        let invalid = 0;
-        let duplicates = 0;
+        const seenIds = new Set(
+            Array.from(csvProfiles.values()).map((p) => (p.studentId || "").toLowerCase()).filter(Boolean)
+        );
 
-        tokens.forEach((token) => {
-            if (!EMAIL_REGEX.test(token)) {
-                invalid++;
-                return;
-            }
-            const key = token.toLowerCase();
-            if (seen.has(key)) {
-                duplicates++;
-                return;
-            }
+        const pushRecord = (email, profile) => {
+            if (!EMAIL_REGEX.test(email)) { result.invalid++; return; }
+            const key = email.toLowerCase();
+            if (seen.has(key)) { result.duplicates++; return; }
             seen.add(key);
-            valid.push(token);
+
+            const idKey = (profile.studentId || "").toLowerCase();
+            if (idKey) {
+                if (seenIds.has(idKey)) result.duplicateIds++;
+                seenIds.add(idKey);
+            }
+            result.records.push({ email, profile });
+        };
+
+        // Walang header na nakilala -> lumang format: email lang ang kukunin
+        if (!hasHeader) {
+            rows.forEach((r) => {
+                r.map(cleanCell).filter((c) => c.includes("@")).forEach((c) => pushRecord(c, {}));
+            });
+            return result;
+        }
+
+        if (colIndex.email === undefined) {
+            result.missingEmailColumn = true;
+            return result;
+        }
+
+        rows.slice(1).forEach((r) => {
+            const get = (field) => (colIndex[field] === undefined ? "" : cleanCell(r[colIndex[field]]));
+            const email = get("email");
+            if (!email) { result.invalid++; return; }
+
+            pushRecord(email, {
+                fullName: get("fullName"),
+                studentId: get("studentId"),
+                gender: normalizeGender(get("gender")),
+                course: get("course"),
+                section: get("section")
+            });
         });
 
-        return { valid, invalid, duplicates };
+        return result;
     };
 
     if (importCsvBtn && csvFileInput) {
@@ -1439,18 +2143,30 @@ function initInviteModal() {
 
             const reader = new FileReader();
             reader.onload = () => {
-                const { valid, invalid, duplicates } = parseCsvEmails(String(reader.result || ""));
+                const { records, invalid, duplicates, duplicateIds, missingEmailColumn } =
+                    parseCsvStudents(String(reader.result || ""));
 
-                if (valid.length === 0 && csvEmails.length === 0) {
-                    showToast("Walang valid na email na nakita sa CSV.", "error");
+                if (missingEmailColumn) {
+                    showToast("The CSV needs an Email column so the invitation can be sent.", "error", 4500);
                     csvFileInput.value = "";
                     return;
                 }
 
-                csvEmails = csvEmails.concat(valid);
+                if (records.length === 0 && csvEmails.length === 0) {
+                    showToast("No valid students found in the CSV.", "error");
+                    csvFileInput.value = "";
+                    return;
+                }
+
+                records.forEach(({ email, profile }) => {
+                    csvEmails.push(email);
+                    csvProfiles.set(email.toLowerCase(), profile);
+                });
+
                 const notes = [];
                 if (duplicates) notes.push(`${duplicates} duplicate${duplicates > 1 ? "s" : ""} skipped`);
                 if (invalid) notes.push(`${invalid} invalid skipped`);
+                if (duplicateIds) notes.push(`${duplicateIds} repeated student ID`);
                 csvNotes = notes.join(" · ");
                 renderCsvPreview();
                 csvFileInput.value = "";
@@ -1516,7 +2232,7 @@ function initInviteModal() {
                 }
 
                 try {
-                    const result = await sendInviteToEmail(emails[i]);
+                    const result = await sendInviteToEmail(emails[i], csvProfiles.get(emails[i].toLowerCase()) || null);
                     sentCount++;
                     lastSent = emails[i];
                     if (result.restored) restoredCount++;

@@ -249,6 +249,30 @@ function setStatNote(id, hasData, filled, empty) {
 // Isang entry bawat email.
 // ========================================
 
+// APPROVAL NG COORDINATOR (kapareho ng students.js)
+// documentsStatus ang tinatakda ng coordinator sa Students page:
+// "approved" = na-approve ang requirements, "review" = hinihintay pa,
+// "revision" = ibinalik. Kung walang documentsStatus, ang dating
+// student na walang na-submit na requirements ay approved na; kapag
+// may na-submit na (requirementsSubmittedAt), "review" ang default.
+function hasApprovedDocuments(data) {
+
+    const submitted = !!data.requirementsSubmittedAt;
+
+    const status = String(
+        data.documentsStatus || (submitted ? "review" : "approved")
+    ).trim().toLowerCase();
+
+    return status === "approved";
+
+}
+
+// Kumpleto na ang profile pero hindi pa na-a-approve ng coordinator
+// ang requirements -> Pending pa rin, hindi pa Registered.
+function isAwaitingApproval(u) {
+    return !hasApprovedDocuments(u);
+}
+
 async function getPendingStudents() {
 
     const [usersSnap, invitesSnap] = await Promise.all([
@@ -307,7 +331,9 @@ async function getPendingStudents() {
             !!(u.studentNumber || u.studentId) &&
             !!(u.companyName || u.company);
 
-        if (isFinished || isReady) {
+        const awaitingApproval = isReady && isAwaitingApproval(u);
+
+        if (isFinished || (isReady && !awaitingApproval)) {
             pending.delete(key);
             return;
         }
@@ -317,7 +343,7 @@ async function getPendingStudents() {
         pending.set(key, {
             email: u.email,
             createdAt: u.createdAt || (previous && previous.createdAt) || null,
-            kind: "setup"
+            kind: awaitingApproval ? "approval" : "setup"
         });
 
     });
@@ -420,7 +446,8 @@ function hasNotStartedOjt(docId, data, startedIds) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        if (!isNaN(start) && start < today) return false;
+        // Active na mismo sa araw ng start date; bago nun, hindi pa.
+        if (!isNaN(start)) return start > today;
 
     }
 
@@ -536,11 +563,14 @@ async function loadDashboardStats() {
 
             const isPending =
                 rawStatus !== "completed" &&
-                !(
-                    String(data.email || "").trim() &&
-                    profileDone &&
-                    (data.studentNumber || data.studentId) &&
-                    (data.companyName || data.company)
+                (
+                    isAwaitingApproval(data) ||
+                    !(
+                        String(data.email || "").trim() &&
+                        profileDone &&
+                        (data.studentNumber || data.studentId) &&
+                        (data.companyName || data.company)
+                    )
                 );
 
             if (isPending) {
@@ -581,7 +611,12 @@ async function loadDashboardStats() {
 
 
             // ACTIVE (On Track / Needs Monitoring / walang
-            // AI status pa)
+            // AI status pa) - kapag nag-start na ang duty niya.
+            // Bago nun, Registered pa lang siya.
+
+            if (hasNotStartedOjt(docSnap.id, data, startedIds)) {
+                return;
+            }
 
             active++;
 
@@ -1078,9 +1113,10 @@ async function fetchAndDisplayPendingInvitations() {
 
                 }
 
-                const label = item.kind === "setup"
-                    ? "Setting Up Profile"
-                    : "Invite Sent";
+                const label =
+                    item.kind === "approval" ? "Awaiting Approval" :
+                    item.kind === "setup"    ? "Setting Up Profile" :
+                                               "Invite Sent";
 
                 return `
                     <tr>

@@ -3,6 +3,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { 
     getAuth, 
     signInWithEmailAndPassword, 
+    onAuthStateChanged,
     GoogleAuthProvider, 
     signInWithPopup,
     signInWithRedirect,
@@ -15,6 +16,7 @@ import {
     doc, 
     getDoc, 
     setDoc,
+    updateDoc,
     collection,
     addDoc,
     getDocs,
@@ -81,7 +83,10 @@ document.addEventListener("DOMContentLoaded", () => {
 const transitionOverlay = document.getElementById('pageTransitionOverlay');
 const transitionText = document.getElementById('pageTransitionText');
 
+let isNavigating = false;
+
 function goTo(url, message = "Loading...") {
+    isNavigating = true;
     if (!transitionOverlay) {
         window.location.href = url;
         return;
@@ -136,6 +141,50 @@ function showSuccess(msg) {
     showMessage(errorMessage, msg, true);
 }
 
+// Hanapin ang pinakamainam na invitation para sa email. Kung may higit sa
+// isa (hal. na-import ulit ng coordinator), uunahin ang may profile info
+// galing sa CSV, tapos ang pinakabago.
+async function findInviteForEmail(emailKey) {
+    const invitesSnapshot = await getDocs(collection(db, "invitations"));
+    const matches = invitesSnapshot.docs.filter(
+        (docSnap) => (docSnap.data().email || "").toLowerCase().trim() === emailKey
+    );
+    if (matches.length === 0) return null;
+
+    matches.sort((a, b) => {
+        const A = a.data();
+        const B = b.data();
+        const hasA = A.fullName ? 1 : 0;
+        const hasB = B.fullName ? 1 : 0;
+        if (hasA !== hasB) return hasB - hasA;
+        return String(B.createdAt || "").localeCompare(String(A.createdAt || ""));
+    });
+    return matches[0];
+}
+
+// Kinukuha ang student info na in-import ng coordinator (CSV) at ginagawang
+// fields na naiintindihan ng profile page / students table.
+// Wala itong ibabalik na field kung blangko sa invitation.
+function buildProfileFromInvite(inviteData) {
+    const result = {};
+    const fullName = String(inviteData.fullName || "").trim();
+    const studentId = String(inviteData.studentId || "").trim();
+    const gender = String(inviteData.gender || "").trim();
+    const course = String(inviteData.course || "").trim();
+    const sec = String(inviteData.section || "").trim();
+
+    if (fullName) result.name = fullName;
+    if (studentId) result.studentNumber = studentId;
+    if (gender) result.gender = gender;
+    if (course) result.course = course;
+    if (sec) {
+        result.section = (course && !sec.toLowerCase().startsWith(course.toLowerCase()))
+            ? `${course} ${sec}`
+            : sec;
+    }
+    return result;
+}
+
 // Function for checking the Role and Redirecting
 async function processUserLogin(user) {
     const userDocRef = doc(db, "users", user.uid);
@@ -179,6 +228,24 @@ async function processUserLogin(user) {
 
             const isComplete = userData.profileCompleted === true || userData.isProfileComplete === true;
 
+            // Hindi pa tapos ang profile -> ilagay sa user doc ang info na
+            // in-import ng coordinator (CSV), para lumabas ito sa profile page.
+            // Kasama dito ang mga account na na-reset/na-re-invite, kung saan
+            // blangko na ang dating user doc.
+            if (!isComplete) {
+                try {
+                    const invite = await findInviteForEmail((user.email || "").toLowerCase().trim());
+                    if (invite) {
+                        const fromInvite = buildProfileFromInvite(invite.data());
+                        if (fromInvite.name) {
+                            await updateDoc(userDocRef, fromInvite);
+                        }
+                    }
+                } catch (inviteError) {
+                    console.error("Could not apply imported student info:", inviteError);
+                }
+            }
+
             if (isComplete) {
                 // If the profile is complete -> Student Dashboard
                 goTo("/student-page/student_dashboard/student_dashboard.html", "Opening your dashboard...");
@@ -193,11 +260,7 @@ async function processUserLogin(user) {
     // 2. IF THIS IS A NEW LOGIN NOT YET IN THE USERS COLLECTION
     const emailKey = user.email.toLowerCase();
     
-    const invitesSnapshot = await getDocs(collection(db, "invitations"));
-    const matchedInvite = invitesSnapshot.docs.find(
-        (docSnap) => (docSnap.data().email || "").toLowerCase().trim() === emailKey
-    );
-    const inviteDoc = matchedInvite || null;
+    const inviteDoc = await findInviteForEmail(emailKey);
 
     if (!inviteDoc) {
         try {
@@ -212,7 +275,8 @@ async function processUserLogin(user) {
 
     const inviteData = inviteDoc.data();
     let coordinatorId = inviteData.coordinatorId || null;
-    let userName = inviteData.name || user.displayName || "User";
+    const importedProfile = buildProfileFromInvite(inviteData);
+    let userName = importedProfile.name || inviteData.name || user.displayName || "User";
     let detectedRole = inviteData.role ? inviteData.role.toLowerCase() : "student";
 
     // Create an initial record in the Firestore `users` collection
@@ -224,7 +288,10 @@ async function processUserLogin(user) {
         status: "Active",
         profileCompleted: detectedRole === "student" ? false : true,
         invitedBy: coordinatorId,
-        createdAt: new Date()
+        createdAt: new Date(),
+        // Info na in-import ng coordinator (studentNumber, gender, course, section)
+        ...importedProfile,
+        name: userName
     });
 
     if (detectedRole === "coordinator" || detectedRole === "admin") {
@@ -249,7 +316,7 @@ if (loginForm) {
 
         try {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            await processUserLogin(userCredential.user);
+            await handleSignedIn(userCredential.user);
         } catch (error) {
             console.error("Login Error:", error);
             showError("Incorrect email or password. Please try again.");
@@ -346,11 +413,50 @@ if (resetForm) {
     });
 }
 
-// CATCH GOOGLE REDIRECT RESULT (Pagbalik galing sa Google sign-in page)
+// ==========================================
+// SIGN-IN HANDLING (Google / session restore)
+// ==========================================
+
+// Iisang beses lang dapat tumakbo ang processUserLogin sa bawat login,
+// kahit sabay-sabay dumating ang popup result, redirect result, at
+// auth state event.
+let isProcessingLogin = false;
+
+async function handleSignedIn(user) {
+    if (isProcessingLogin) return;
+    isProcessingLogin = true;
+    isNavigating = false;
+
+    try {
+        await processUserLogin(user);
+    } catch (error) {
+        // Hindi na itatago ang totoong error (hal. Firestore permission denied)
+        console.error("Login processing error:", error);
+        showError("Could not finish signing in: " + (error && error.message ? error.message : error));
+    } finally {
+        // Kapag hindi naman lilipat ng page (may error / walang access), payagan ulit mag-login
+        if (!isNavigating) isProcessingLogin = false;
+    }
+}
+
+// Kung may naka-sign in na (hal. bumalik galing Google redirect, o may natirang
+// session), ituloy ang login. Hindi na umaasa lang sa getRedirectResult, na
+// pwedeng bumalik ng null kapag naka-block ang third-party storage ng browser
+// - kaya dati bumabalik lang sa login page na parang walang nangyari.
+let initialAuthChecked = false;
+onAuthStateChanged(auth, (user) => {
+    if (initialAuthChecked) return;
+    initialAuthChecked = true;
+    if (user && !isProcessingLogin) {
+        handleSignedIn(user);
+    }
+});
+
+// CATCH GOOGLE REDIRECT RESULT (fallback lang, kapag na-block ang popup)
 getRedirectResult(auth)
     .then(async (result) => {
         if (result && result.user) {
-            await processUserLogin(result.user);
+            await handleSignedIn(result.user);
         }
     })
     .catch((error) => {
@@ -360,11 +466,43 @@ getRedirectResult(auth)
         }
     });
 
-// GOOGLE SIGN-IN HANDLER (Gamit ang Redirect para hindi ma-block)
+// GOOGLE SIGN-IN HANDLER
+// Popup ang gamit (gumagana kahit naka-block ang third-party storage, na
+// sumisira sa redirect). Kapag na-block ang popup, saka lang mag-re-redirect.
 if (googleBtn) {
-    googleBtn.addEventListener('click', () => {
+    googleBtn.addEventListener('click', async () => {
         hideError();
+        if (isProcessingLogin) return;
+
         const provider = new GoogleAuthProvider();
-        signInWithRedirect(auth, provider);
+        provider.setCustomParameters({ prompt: 'select_account' });
+
+        googleBtn.disabled = true;
+        try {
+            const result = await signInWithPopup(auth, provider);
+            await handleSignedIn(result.user);
+        } catch (error) {
+            console.error("Google Sign-In Error:", error);
+
+            if (error.code === 'auth/popup-blocked' ||
+                error.code === 'auth/operation-not-supported-in-this-environment') {
+                signInWithRedirect(auth, provider);
+                return;
+            }
+
+            if (error.code === 'auth/popup-closed-by-user' ||
+                error.code === 'auth/cancelled-popup-request') {
+                return;
+            }
+
+            if (error.code === 'auth/unauthorized-domain') {
+                showError("This website's domain is not authorized in Firebase. Add it under Authentication > Settings > Authorized domains.");
+                return;
+            }
+
+            showError("Google Sign-In failed: " + (error.message || error.code));
+        } finally {
+            googleBtn.disabled = false;
+        }
     });
 }

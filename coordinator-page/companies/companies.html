@@ -164,35 +164,37 @@
         <div class="modal-body">
             <div id="addModalAlert" class="custom-alert"></div>
 
-            <form id="addCompanyForm">
-                <div class="input-group">
-                    <label for="newCompanyName">Company Name</label>
-                    <input type="text" id="newCompanyName" placeholder="e.g. Globe Telecom" required>
-                </div>
+            <p class="csv-intro">
+                Upload a CSV file to add your partner companies. A QR code is generated for every company you import.
+            </p>
 
-                <div class="input-group">
-                    <label>Supervisor Names</label>
-                    <div class="email-chips-container" id="addSupNameChipsContainer">
-                        <input type="text" id="addSupNameInput" class="email-chips-input" placeholder="Type name and press Enter...">
-                    </div>
-                </div>
-
-                <div class="input-group">
-                    <label>Supervisor Emails</label>
-                    <div class="email-chips-container" id="addSupEmailChipsContainer">
-                        <input type="text" id="addSupEmailInput" class="email-chips-input" placeholder="Type email and press Enter...">
-                    </div>
-                </div>
-
-                <div class="input-group">
-                    <label for="newCompanyLocation">Location / City</label>
-                    <input type="text" id="newCompanyLocation" placeholder="e.g. Caloocan City" required>
-                </div>
-
-                <button type="submit" id="saveCompanyBtn" class="add-btn full-width" style="margin-top: 15px;">
-                    <i class="fa-solid fa-floppy-disk"></i> Save Company & Generate QR Code
+            <div class="csv-import-row">
+                <button type="button" class="btn-import-csv" id="importCompaniesCsvBtn">
+                    <i class="fa-solid fa-file-csv"></i>
+                    Import CSV
                 </button>
-            </form>
+                <input type="file" id="companiesCsvInput" accept=".csv,text/csv" hidden>
+            </div>
+            <p class="csv-hint">
+                CSV columns: <strong>Company Name, Supervisor Names, Supervisor Emails, Location / City</strong><br>
+                For several supervisors in one company, separate them with a semicolon (;).
+            </p>
+
+            <div class="csv-preview" id="companiesCsvPreview">
+                <div class="csv-preview-header">
+                    <div class="csv-summary">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <span id="companiesCsvSummary"></span>
+                    </div>
+                    <button type="button" class="csv-clear-btn" id="companiesCsvClear">Clear</button>
+                </div>
+                <p class="csv-notes" id="companiesCsvNotes" hidden></p>
+                <ul class="csv-company-list" id="companiesCsvList"></ul>
+            </div>
+
+            <button type="button" class="add-btn full-width" id="saveCompaniesCsvBtn" style="margin-top: 15px;">
+                <i class="fa-solid fa-floppy-disk"></i> Save Companies & Generate QR Codes
+            </button>
         </div>
     </div>
 </div>

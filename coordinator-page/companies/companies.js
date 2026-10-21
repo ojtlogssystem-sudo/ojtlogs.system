@@ -166,6 +166,13 @@ document.addEventListener("DOMContentLoaded", () => {
         const usersCol = collection(db, "users");
 
         onSnapshot(companiesCol, (companySnapshot) => {
+            existingCompanyNames = new Set();
+            companySnapshot.forEach((d) => {
+                const n = normalizeName(d.data().companyName);
+                if (n) existingCompanyNames.add(n);
+            });
+            ensureCompanyQrCodes(companySnapshot.docs);
+
             onSnapshot(usersCol, (userSnapshot) => {
                 companyGrid.innerHTML = ""; 
 
@@ -360,83 +367,17 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // ADD COMPANY CHIPS & FORM
-    let addSupNamesList = [];
-    let addSupEmailsList = [];
+    // Mga pangalan ng kumpanyang nasa Firestore na (para sa duplicate check ng CSV import)
+    let existingCompanyNames = new Set();
+
+    // ADD COMPANY MODAL (CSV import na lang ang paraan ng pagdagdag)
     const addCompanyModal = document.getElementById("addCompanyModal");
     const openAddCompanyBtn = document.getElementById("openAddCompanyBtn");
     const closeAddModal = document.getElementById("closeAddModal");
-    const addCompanyForm = document.getElementById("addCompanyForm");
-    const addSupNameInput = document.getElementById("addSupNameInput");
-    const addSupNameChipsContainer = document.getElementById("addSupNameChipsContainer");
-    const addSupEmailInput = document.getElementById("addSupEmailInput");
-    const addSupEmailChipsContainer = document.getElementById("addSupEmailChipsContainer");
-
-    function renderChips(list, container, inputElement) {
-        if (!container) return;
-        container.querySelectorAll(".email-chip").forEach(chip => chip.remove());
-        list.forEach((item, index) => {
-            const chip = document.createElement("div");
-            chip.className = "email-chip";
-            chip.innerHTML = `<span>${item}</span><button type="button" class="remove-chip" data-index="${index}">&times;</button>`;
-            container.insertBefore(chip, inputElement);
-        });
-    }
-
-    if (addSupNameInput) {
-        addSupNameInput.addEventListener("keydown", (e) => {
-            if (e.key === "Enter" || e.key === ",") {
-                e.preventDefault();
-                const val = addSupNameInput.value.trim().replace(",", "");
-                if (val && !addSupNamesList.includes(val)) {
-                    addSupNamesList.push(val);
-                    addSupNameInput.value = "";
-                    renderChips(addSupNamesList, addSupNameChipsContainer, addSupNameInput);
-                }
-            }
-        });
-    }
-
-    if (addSupNameChipsContainer) {
-        addSupNameChipsContainer.addEventListener("click", (e) => {
-            if (e.target.closest(".remove-chip")) {
-                const index = e.target.closest(".remove-chip").dataset.index;
-                addSupNamesList.splice(index, 1);
-                renderChips(addSupNamesList, addSupNameChipsContainer, addSupNameInput);
-            }
-        });
-    }
-
-    if (addSupEmailInput) {
-        addSupEmailInput.addEventListener("keydown", (e) => {
-            if (e.key === "Enter" || e.key === ",") {
-                e.preventDefault();
-                const val = addSupEmailInput.value.trim().replace(",", "");
-                if (val && val.includes("@") && !addSupEmailsList.includes(val)) {
-                    addSupEmailsList.push(val);
-                    addSupEmailInput.value = "";
-                    renderChips(addSupEmailsList, addSupEmailChipsContainer, addSupEmailInput);
-                }
-            }
-        });
-    }
-
-    if (addSupEmailChipsContainer) {
-        addSupEmailChipsContainer.addEventListener("click", (e) => {
-            if (e.target.closest(".remove-chip")) {
-                const index = e.target.closest(".remove-chip").dataset.index;
-                addSupEmailsList.splice(index, 1);
-                renderChips(addSupEmailsList, addSupEmailChipsContainer, addSupEmailInput);
-            }
-        });
-    }
 
     if (openAddCompanyBtn) {
         openAddCompanyBtn.addEventListener("click", () => {
-            addSupNamesList = [];
-            addSupEmailsList = [];
-            renderChips(addSupNamesList, addSupNameChipsContainer, addSupNameInput);
-            renderChips(addSupEmailsList, addSupEmailChipsContainer, addSupEmailInput);
+            if (typeof clearCompaniesCsv === "function") clearCompaniesCsv();
             if (addCompanyModal) addCompanyModal.classList.add("active");
         });
     }
@@ -447,47 +388,357 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    if (addCompanyForm) {
-        addCompanyForm.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            if (addSupNamesList.length === 0 || addSupEmailsList.length === 0) {
-                showModalAlert("addModalAlert", "Maglagay kahit isang Supervisor Name at Supervisor Email.", "error");
+    // ==========================================
+    // QR CODE NG BAWAT COMPANY
+    // Isang lugar lang ang gumagawa ng qrToken + qrImageUrl, para laging
+    // pareho ang format at walang company na walang QR.
+    // ==========================================
+    function randomQrSuffix() {
+        const bytes = new Uint8Array(6);
+        crypto.getRandomValues(bytes);
+        return Array.from(bytes, (b) => (b % 36).toString(36)).join("").toUpperCase();
+    }
+
+    function buildCompanyQr(companyName, existingToken) {
+        const qrToken = existingToken || ("OJT-TOKEN-" + Date.now() + "-" + randomQrSuffix());
+        const qrPayload = JSON.stringify({ system: "OJT_LOGS_SYSTEM", company: companyName, token: qrToken });
+        const qrImageUrl = `https://quickchart.io/qr?text=${encodeURIComponent(qrPayload)}&size=300&margin=2&format=png`;
+        return { qrToken, qrImageUrl };
+    }
+
+    // Kung may kumpanyang walang qrToken/qrImageUrl (hal. dating naidagdag),
+    // gagawan sila ng QR pagbukas ng page. Isang beses lang kada company bawat session.
+    const qrBackfillStarted = new Set();
+    async function ensureCompanyQrCodes(companyDocs) {
+        for (const docSnap of companyDocs) {
+            const data = docSnap.data();
+            if (data.qrToken && data.qrImageUrl) continue;
+            if (!data.companyName || qrBackfillStarted.has(docSnap.id)) continue;
+            qrBackfillStarted.add(docSnap.id);
+
+            try {
+                await updateDoc(doc(db, "companies", docSnap.id), buildCompanyQr(data.companyName, data.qrToken));
+            } catch (err) {
+                qrBackfillStarted.delete(docSnap.id);
+                console.warn("Could not generate QR for", data.companyName, err);
+            }
+        }
+    }
+
+    // ==========================================
+    // BULK ADD COMPANIES VIA CSV
+    // Columns: Company Name, Supervisor Names, Supervisor Emails, Location / City
+    // Maraming supervisor sa isang company = paghiwalayin gamit ang ";".
+    // ==========================================
+    let csvCompanies = [];
+    let csvNotes = "";
+    let isSavingCsv = false;
+
+    const importCompaniesCsvBtn = document.getElementById("importCompaniesCsvBtn");
+    const companiesCsvInput = document.getElementById("companiesCsvInput");
+    const companiesCsvPreview = document.getElementById("companiesCsvPreview");
+    const companiesCsvSummary = document.getElementById("companiesCsvSummary");
+    const companiesCsvNotes = document.getElementById("companiesCsvNotes");
+    const companiesCsvList = document.getElementById("companiesCsvList");
+    const companiesCsvClear = document.getElementById("companiesCsvClear");
+    const saveCompaniesCsvBtn = document.getElementById("saveCompaniesCsvBtn");
+
+    const CSV_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const CSV_HEADER_ALIASES = {
+        companyName: ["companyname", "company", "partnercompany"],
+        supervisorNames: ["supervisornames", "supervisorname", "supervisors", "supervisor"],
+        supervisorEmails: ["supervisoremails", "supervisoremail", "emails", "email"],
+        location: ["locationcity", "location", "city", "address"]
+    };
+    const CSV_FIELD_LABELS = {
+        companyName: "Company Name",
+        supervisorNames: "Supervisor Names",
+        supervisorEmails: "Supervisor Emails",
+        location: "Location / City"
+    };
+
+    const csvNormHeader = (h) => String(h || "").toLowerCase().replace(/[^a-z]/g, "");
+    const csvCleanCell = (v) => String(v ?? "").replace(/[<>]/g, "").replace(/\s+/g, " ").trim();
+    const csvSplitList = (v) => String(v ?? "").split(/[;|\n]/).map(csvCleanCell).filter(Boolean);
+    const csvUnique = (list) => {
+        const seen = new Set();
+        return list.filter((item) => {
+            const key = item.toLowerCase();
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+    };
+
+    const csvDetectDelimiter = (text) => {
+        const firstLine = text.split(/\r?\n/).find((l) => l.trim()) || "";
+        const counts = { ",": 0, ";": 0, "\t": 0 };
+        let inQuotes = false;
+        for (const ch of firstLine) {
+            if (ch === '"') inQuotes = !inQuotes;
+            else if (!inQuotes && ch in counts) counts[ch]++;
+        }
+        return Object.keys(counts).reduce((a, b) => (counts[b] > counts[a] ? b : a), ",");
+    };
+
+    // Tamang CSV parser: quoted fields na may comma, escaped quotes (""), CRLF/LF.
+    const csvParseRows = (text, delimiter) => {
+        const rows = [];
+        let row = [];
+        let field = "";
+        let inQuotes = false;
+
+        for (let i = 0; i < text.length; i++) {
+            const ch = text[i];
+            if (inQuotes) {
+                if (ch === '"') {
+                    if (text[i + 1] === '"') { field += '"'; i++; }
+                    else inQuotes = false;
+                } else {
+                    field += ch;
+                }
+            } else if (ch === '"') {
+                inQuotes = true;
+            } else if (ch === delimiter) {
+                row.push(field);
+                field = "";
+            } else if (ch === "\n" || ch === "\r") {
+                if (ch === "\r" && text[i + 1] === "\n") i++;
+                row.push(field);
+                field = "";
+                rows.push(row);
+                row = [];
+            } else {
+                field += ch;
+            }
+        }
+        if (field !== "" || row.length) {
+            row.push(field);
+            rows.push(row);
+        }
+        return rows.filter((r) => r.some((c) => String(c).trim() !== ""));
+    };
+
+    const parseCompaniesCsv = (rawText) => {
+        const text = rawText.replace(/^\uFEFF/, "");
+        const rows = csvParseRows(text, csvDetectDelimiter(text));
+        const result = { records: [], invalid: 0, duplicates: 0, missingColumns: [] };
+        if (rows.length === 0) return result;
+
+        const headers = rows[0].map(csvNormHeader);
+        const colIndex = {};
+        Object.keys(CSV_HEADER_ALIASES).forEach((field) => {
+            const idx = headers.findIndex((h) => CSV_HEADER_ALIASES[field].includes(h));
+            if (idx !== -1) colIndex[field] = idx;
+        });
+        const hasHeader = Object.keys(colIndex).length > 0;
+
+        let dataRows = rows;
+        if (hasHeader) {
+            result.missingColumns = Object.keys(CSV_HEADER_ALIASES)
+                .filter((f) => colIndex[f] === undefined)
+                .map((f) => CSV_FIELD_LABELS[f]);
+            if (result.missingColumns.length) return result;
+            dataRows = rows.slice(1);
+        } else {
+            // Walang header: sundin ang pagkakasunod ng columns
+            ["companyName", "supervisorNames", "supervisorEmails", "location"]
+                .forEach((f, i) => { colIndex[f] = i; });
+        }
+
+        const seen = new Set([
+            ...existingCompanyNames,
+            ...csvCompanies.map((c) => normalizeName(c.companyName))
+        ]);
+
+        dataRows.forEach((r) => {
+            const companyName = csvCleanCell(r[colIndex.companyName]);
+            const location = csvCleanCell(r[colIndex.location]);
+            const supervisorNames = csvUnique(csvSplitList(r[colIndex.supervisorNames]));
+            const supervisorEmails = csvUnique(
+                csvSplitList(r[colIndex.supervisorEmails]).filter((e) => CSV_EMAIL_REGEX.test(e))
+            );
+
+            // Parehong requirement ng single-add form: lahat ng field, kahit isang
+            // supervisor name at email.
+            if (!companyName || !location || supervisorNames.length === 0 || supervisorEmails.length === 0) {
+                result.invalid++;
                 return;
             }
 
-            const companyName = document.getElementById("newCompanyName").value.trim();
-            const location = document.getElementById("newCompanyLocation").value.trim();
-            const saveBtn = document.getElementById("saveCompanyBtn");
-            saveBtn.disabled = true;
-            saveBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`;
+            const key = normalizeName(companyName);
+            if (seen.has(key)) { result.duplicates++; return; }
+            seen.add(key);
 
-            try {
-                const generatedQrToken = "OJT-TOKEN-" + Date.now() + "-" + Math.random().toString(36).substring(2, 8).toUpperCase();
-                const qrPayload = JSON.stringify({ system: "OJT_LOGS_SYSTEM", company: companyName, token: generatedQrToken });
-                const qrImageUrl = `https://quickchart.io/qr?text=${encodeURIComponent(qrPayload)}&size=300&margin=2&format=png`;
+            result.records.push({ companyName, location, supervisorNames, supervisorEmails });
+        });
 
-                await addDoc(collection(db, "companies"), {
-                    companyName,
-                    supervisorNames: addSupNamesList,
-                    supervisorEmails: addSupEmailsList,
-                    supervisorName: addSupNamesList.join(", "),
-                    supervisorEmail: addSupEmailsList[0] || "",
-                    location,
-                    qrToken: generatedQrToken,
-                    qrImageUrl,
-                    createdAt: serverTimestamp()
-                });
+        return result;
+    };
 
-                addCompanyForm.reset();
-                addSupNamesList = [];
-                addSupEmailsList = [];
+    const SAVE_CSV_DEFAULT_LABEL = `<i class="fa-solid fa-floppy-disk"></i> Save Companies & Generate QR Codes`;
+
+    function renderCompaniesCsvPreview() {
+        if (!companiesCsvPreview) return;
+
+        if (csvCompanies.length === 0) {
+            companiesCsvPreview.classList.remove("active");
+            if (saveCompaniesCsvBtn) saveCompaniesCsvBtn.innerHTML = SAVE_CSV_DEFAULT_LABEL;
+            return;
+        }
+
+        const total = csvCompanies.length;
+        companiesCsvSummary.textContent = `${total} ${total === 1 ? "company" : "companies"} ready to add`;
+
+        companiesCsvNotes.textContent = csvNotes;
+        companiesCsvNotes.hidden = !csvNotes;
+
+        companiesCsvList.innerHTML = "";
+        csvCompanies.forEach((c) => {
+            const li = document.createElement("li");
+            const name = document.createElement("span");
+            name.textContent = c.companyName;
+            const meta = document.createElement("span");
+            meta.textContent = c.location;
+            li.appendChild(name);
+            li.appendChild(meta);
+            companiesCsvList.appendChild(li);
+        });
+
+        saveCompaniesCsvBtn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save ${total} ${total === 1 ? "Company" : "Companies"} & Generate QR ${total === 1 ? "Code" : "Codes"}`;
+        companiesCsvPreview.classList.add("active");
+    }
+
+    function clearCompaniesCsv() {
+        if (isSavingCsv) return;
+        csvCompanies = [];
+        csvNotes = "";
+        if (companiesCsvInput) companiesCsvInput.value = "";
+        renderCompaniesCsvPreview();
+    }
+
+    if (importCompaniesCsvBtn && companiesCsvInput) {
+        importCompaniesCsvBtn.addEventListener("click", () => {
+            if (!isSavingCsv) companiesCsvInput.click();
+        });
+
+        companiesCsvInput.addEventListener("change", () => {
+            const file = companiesCsvInput.files && companiesCsvInput.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = () => {
+                const { records, invalid, duplicates, missingColumns } =
+                    parseCompaniesCsv(String(reader.result || ""));
+
+                if (missingColumns.length) {
+                    showToastNotification(`The CSV is missing: ${missingColumns.join(", ")}.`, "error");
+                    companiesCsvInput.value = "";
+                    return;
+                }
+
+                if (records.length === 0 && csvCompanies.length === 0) {
+                    const why = duplicates && !invalid ? "All companies in the CSV already exist." : "No valid companies found in the CSV.";
+                    showToastNotification(why, "error");
+                    companiesCsvInput.value = "";
+                    return;
+                }
+
+                csvCompanies = csvCompanies.concat(records);
+
+                const notes = [];
+                if (duplicates) notes.push(`${duplicates} already exist${duplicates > 1 ? "" : "s"} (skipped)`);
+                if (invalid) notes.push(`${invalid} incomplete or invalid (skipped)`);
+                csvNotes = notes.join(" · ");
+
+                renderCompaniesCsvPreview();
+                companiesCsvInput.value = "";
+            };
+            reader.onerror = () => {
+                showToastNotification("Could not read the CSV file.", "error");
+                companiesCsvInput.value = "";
+            };
+            reader.readAsText(file);
+        });
+    }
+
+    if (companiesCsvClear) companiesCsvClear.addEventListener("click", clearCompaniesCsv);
+
+    if (saveCompaniesCsvBtn) {
+        saveCompaniesCsvBtn.addEventListener("click", async () => {
+            if (isSavingCsv) return;
+
+            // Walang na-import pa: kailangang maglagay muna ng CSV bago mag-generate ng QR.
+            if (csvCompanies.length === 0) {
+                showModalAlert(
+                    "addModalAlert",
+                    "Please import a CSV file first. Add at least one company before generating QR codes.",
+                    "error"
+                );
+                if (importCompaniesCsvBtn) {
+                    importCompaniesCsvBtn.classList.remove("needs-input");
+                    void importCompaniesCsvBtn.offsetWidth; // para ma-restart ang animation
+                    importCompaniesCsvBtn.classList.add("needs-input");
+                }
+                return;
+            }
+
+            isSavingCsv = true;
+            saveCompaniesCsvBtn.disabled = true;
+            if (importCompaniesCsvBtn) importCompaniesCsvBtn.disabled = true;
+
+            const queue = csvCompanies.slice();
+            let saved = 0;
+            const failedRecords = [];
+
+            for (let i = 0; i < queue.length; i++) {
+                const { companyName, location, supervisorNames, supervisorEmails } = queue[i];
+                saveCompaniesCsvBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving ${i + 1} of ${queue.length}...`;
+
+                try {
+                    // Bawat company ay may sariling QR token + QR image
+                    const { qrToken, qrImageUrl } = buildCompanyQr(companyName);
+
+                    await addDoc(collection(db, "companies"), {
+                        companyName,
+                        supervisorNames,
+                        supervisorEmails,
+                        supervisorName: supervisorNames.join(", "),
+                        supervisorEmail: supervisorEmails[0] || "",
+                        location,
+                        qrToken,
+                        qrImageUrl,
+                        createdAt: serverTimestamp()
+                    });
+                    saved++;
+                } catch (err) {
+                    console.error("Failed to save company from CSV:", companyName, err);
+                    failedRecords.push(queue[i]);
+                }
+            }
+
+            isSavingCsv = false;
+            saveCompaniesCsvBtn.disabled = false;
+            if (importCompaniesCsvBtn) importCompaniesCsvBtn.disabled = false;
+
+            if (failedRecords.length === 0) {
+                clearCompaniesCsv();
                 if (addCompanyModal) addCompanyModal.classList.remove("active");
-                showToastNotification("Company successfully added", "success");
-            } catch (err) {
-                showModalAlert("addModalAlert", "Failed to save: " + err.message, "error");
-            } finally {
-                saveBtn.disabled = false;
-                saveBtn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Company & Generate QR Code`;
+                showToastNotification(
+                    `${saved} ${saved === 1 ? "company" : "companies"} successfully added`,
+                    "success"
+                );
+            } else {
+                // Iwan sa preview ang mga pumalya para ma-retry nang hindi na ulit mag-import
+                csvCompanies = failedRecords;
+                csvNotes = `${failedRecords.length} failed to save - press the button to try again`;
+                renderCompaniesCsvPreview();
+                showToastNotification(
+                    saved > 0
+                        ? `${saved} added, ${failedRecords.length} failed to save`
+                        : "Failed to save the companies. Please try again.",
+                    "error"
+                );
             }
         });
     }

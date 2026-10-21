@@ -362,10 +362,10 @@
     color: #15803D;
 }
 
-/* Natapos na ang profile ng bagong estudyante */
-.notif-icon.profile {
-    background: #E6EEFF;
-    color: #2563EB;
+/* Nag-submit ng requirements - hinihintay ang approval ng coordinator */
+.notif-icon.requirements {
+    background: #FEF3C7;
+    color: #B45309;
 }
 
 .notif-text p {

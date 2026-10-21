@@ -553,6 +553,27 @@ function renderGraduatesByBatchChart(batchRows) {
 
 let globalStudentRecords = [];
 let archivedStudentRecords = [];
+
+
+// COMPLETED NA = tapos na ang required hours. Stop na ang attendance
+// nila kaya hindi na sila pwedeng maging At Risk / Needs Monitoring
+// at hindi na sila kasama sa On Track na bilang.
+function isCompletedStudent(item) {
+
+    if (!item) return false;
+
+    const text = (v) => String(v || "").toLowerCase().trim();
+
+    return (
+        text(item.aiStatus).includes("completed") ||
+        text(item.forecast) === "completed" ||
+        text(item.status) === "completed" ||
+        text(item.manualStatus) === "completed" ||
+        text(item.internshipStatus) === "completed" ||
+        text(item.internshipStatus) === "graduated"
+    );
+
+}
 let globalCompanyExposureData = [];
 
 
@@ -662,7 +683,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 const response =
                     await apiFetch(
-                        "/api/predict-risk"
+                        // Idagdag ang ?refresh=1 sa URL ng page (analytics.html?refresh=1)
+                        // para laktawan ang cache at kunin ang pinakabagong status.
+                        "/api/predict-risk" +
+                        (/[?&]refresh=1/.test(window.location.search) ? "?refresh=1" : "")
                     );
 
                 result =
@@ -780,7 +804,13 @@ document.addEventListener("DOMContentLoaded", () => {
             // Archive ay hindi na lalabas sa table, risk list, cards,
             // pie chart at forecast. Binibilang pa rin sila sa
             // "Graduated by Batch" chart kasi sila ang mga nag-graduate.
-            const allBackendRecords = result.data || [];
+            // COMPLETED NA: wala nang absent. Kahit may lumang absentCount sa
+            // cache (server o browser), gawing 0 dito para hindi na lumabas.
+            const allBackendRecords = (result.data || []).map(item =>
+                isCompletedStudent(item)
+                    ? { ...item, absentCount: 0, consecutiveAbsences: 0 }
+                    : item
+            );
 
             archivedStudentRecords =
                 allBackendRecords.filter(item => item.archived === true);
@@ -826,6 +856,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 ) {
 
                     monitoringCount++;
+
+                } else if (
+                    category === "completed"
+                ) {
+
+                    // Completed na - hindi binibilang sa At Risk,
+                    // Needs Monitoring o On Track.
 
                 } else {
 
@@ -1171,6 +1208,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function getStudentStatusCategory(item) {
 
+        if (isCompletedStudent(item)) {
+            return "completed";
+        }
+
         const status =
             (item.aiStatus || "")
                 .toLowerCase()
@@ -1343,6 +1384,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     function getAbsenceLevel(item) {
+
+        if (isCompletedStudent(item)) return "";
 
         const absent = Number(item.absentCount) || 0;
         const streak = Number(item.consecutiveAbsences) || 0;
@@ -3301,8 +3344,59 @@ window.openAttendanceModal =
             }
 
             const student = result.student || {};
-            const attendance = result.attendance || [];
-            const summary = result.summary || {};
+            let attendance = result.attendance || [];
+            let summary = result.summary || {};
+
+            // COMPLETED NA: stop na ang attendance. Ang mga "absent" na
+            // nakatala pagkatapos ng huling present (o pagkatapos ng
+            // completion date, kung meron) ay hindi totoong absence, kaya
+            // inaalis dito at ni-re-compute ang totals. Wala nang
+            // consecutive absences.
+            const knownRecord =
+                (typeof globalStudentRecords !== "undefined" && globalStudentRecords || [])
+                    .concat(typeof archivedStudentRecords !== "undefined" && archivedStudentRecords || [])
+                    .find(r => String(r.id) === String(studentId));
+
+            if (isCompletedStudent(student) || isCompletedStudent(knownRecord)) {
+
+                const doneRaw =
+                    student.completedAt || student.completionDate ||
+                    student.completedDate || student.dateCompleted ||
+                    (knownRecord && (
+                        knownRecord.completedAt || knownRecord.completionDate ||
+                        knownRecord.completedDate || knownRecord.dateCompleted
+                    ));
+
+                const doneMs = (() => {
+                    if (!doneRaw) return NaN;
+                    if (typeof doneRaw.toMillis === "function") return doneRaw.toMillis();
+                    if (doneRaw.seconds) return doneRaw.seconds * 1000;
+                    return new Date(doneRaw).getTime();
+                })();
+
+                let trimmed = attendance.slice();
+
+                if (Number.isFinite(doneMs)) {
+                    const endOfDay = doneMs + 24 * 60 * 60 * 1000 - 1;
+                    trimmed = trimmed.filter(rec => {
+                        const t = new Date(rec.date).getTime();
+                        return isNaN(t) || t <= endOfDay;
+                    });
+                }
+
+                // Tanggalin ang LAHAT ng absent ng completed na estudyante
+                trimmed = trimmed.filter(rec => rec.status === "present");
+
+                attendance = trimmed;
+
+                summary = {
+                    ...summary,
+                    totalPresent: trimmed.filter(r => r.status === "present").length,
+                    totalAbsent: trimmed.filter(r => r.status !== "present").length,
+                    consecutiveAbsences: 0
+                };
+
+            }
 
             if (nameEl) {
                 nameEl.textContent =
